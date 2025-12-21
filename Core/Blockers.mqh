@@ -1,8 +1,7 @@
 //+------------------------------------------------------------------+
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2025, EP Filho |
-//|                        Sistema de Bloqueios - EPBot Matrix       |
-//|                           VERSÃO COMPLETA - Todas Features       |
+//|                              Sistema de Bloqueios - EPBot Matrix |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property version   "2.00"
@@ -949,440 +948,450 @@ bool CBlockers::CheckDailyLimits(int dailyTrades, double dailyProfit)
       return false;
      }
 
-// ══════════════════════════════════════════════════════════════
+// ───══════════════════════════════════════════════════════════════
 // LIMITE DE GANHO (META)
 // ───────────────────────────────────────────────────────────────
    if(m_maxDailyGain > 0 && dailyProfit >= m_maxDailyGain)
      {
-      // Se ação = STOP, bloqueia
+      // Verificar qual ação tomar
       if(m_profitTargetAction == PROFIT_ACTION_STOP)
         {
+         // Para de operar
          m_currentBlocker = BLOCKER_DAILY_GAIN;
          return false;
         }
+      else  // PROFIT_ACTION_ENABLE_DRAWDOWN
+        {
+         // Ativa proteção de drawdown (se ainda não ativou)
+         if(!m_drawdownProtectionActive)
+           {
+            ActivateDrawdownProtection(dailyProfit);
+           }
 
-      // Se ação = ENABLE_DRAWDOWN, não bloqueia aqui
-      // A ativação da proteção DD será feita no CanTrade()
+         // Continua operando (mas com proteção DD ativa)
+         // A verificação de DD será feita em CheckDrawdownLimit()
+        }
      }
 
    return true;
+  }
 
 //+------------------------------------------------------------------+
 //| PRIVADO: Verifica limite de streak                               |
 //+------------------------------------------------------------------+
-   bool CBlockers::CheckStreakLimit()
-     {
-      if(!m_enableStreakControl)
-         return true;
-
-      // ───────────────────────────────────────────────────────────────
-      // VERIFICAR SE ESTÁ EM PAUSA POR STREAK
-      // ───────────────────────────────────────────────────────────────
-      if(m_streakPauseActive)
-        {
-         // Ainda está em pausa?
-         if(TimeCurrent() < m_streakPauseUntil)
-           {
-            // Log throttle: só loga a cada 5 minutos
-            if(TimeCurrent() - m_lastStreakWarning > 300)
-              {
-               int remainingMinutes = (int)((m_streakPauseUntil - TimeCurrent()) / 60);
-               Print("═══════════════════════════════════════════════════════");
-               Print("⏸️ EA PAUSADO POR SEQUÊNCIA");
-               Print("   📊 Motivo: ", m_streakPauseReason);
-               Print("   ⏱️ Tempo restante: ", remainingMinutes, " minutos");
-               Print("═══════════════════════════════════════════════════════");
-               m_lastStreakWarning = TimeCurrent();
-              }
-            return false;  // Bloqueado
-           }
-         else
-           {
-            // Pausa acabou - retomar operações
-            Print("═══════════════════════════════════════════════════════");
-            Print("▶️ PAUSA DE SEQUÊNCIA FINALIZADA");
-            Print("   📊 Sequência que causou pausa: ", m_streakPauseReason);
-            Print("   🔄 Contadores zerados - pronto para novo ciclo");
-            Print("   ✅ EA retomando operações normais");
-            Print("═══════════════════════════════════════════════════════");
-
-            m_streakPauseActive = false;
-            m_streakPauseReason = "";
-            m_currentWinStreak = 0;
-            m_currentLossStreak = 0;
-
-            return true;
-           }
-        }
-
-      // ───────────────────────────────────────────────────────────────
-      // VERIFICAR LOSS STREAK
-      // ───────────────────────────────────────────────────────────────
-      if(m_maxLossStreak > 0 && m_currentLossStreak >= m_maxLossStreak)
-        {
-         Print("═══════════════════════════════════════════════════════");
-         Print("🛑 SEQUÊNCIA DE PERDAS ATINGIDA!");
-         Print("   📉 Perdas consecutivas: ", m_currentLossStreak);
-         Print("   🎯 Limite configurado: ", m_maxLossStreak);
-
-         if(m_lossStreakAction == STREAK_PAUSE)
-           {
-            m_streakPauseActive = true;
-            m_streakPauseUntil = TimeCurrent() + (m_lossPauseMinutes * 60);
-            m_streakPauseReason = StringFormat("%d perdas consecutivas", m_currentLossStreak);
-
-            Print("   ⏸️ EA PAUSADO por ", m_lossPauseMinutes, " minutos");
-            Print("   🔄 Retorno previsto: ", TimeToString(m_streakPauseUntil, TIME_DATE|TIME_MINUTES));
-           }
-         else  // STREAK_STOP_DAY
-           {
-            Print("   🛑 EA PAUSADO até o FIM DO DIA");
-           }
-
-         Print("═══════════════════════════════════════════════════════");
-         return false;
-        }
-
-      // ───────────────────────────────────────────────────────────────
-      // VERIFICAR WIN STREAK
-      // ───────────────────────────────────────────────────────────────
-      if(m_maxWinStreak > 0 && m_currentWinStreak >= m_maxWinStreak)
-        {
-         Print("═══════════════════════════════════════════════════════");
-         Print("🎯 SEQUÊNCIA DE GANHOS ATINGIDA!");
-         Print("   📈 Ganhos consecutivos: ", m_currentWinStreak);
-         Print("   🎯 Limite configurado: ", m_maxWinStreak);
-
-         if(m_winStreakAction == STREAK_PAUSE)
-           {
-            m_streakPauseActive = true;
-            m_streakPauseUntil = TimeCurrent() + (m_winPauseMinutes * 60);
-            m_streakPauseReason = StringFormat("%d ganhos consecutivos", m_currentWinStreak);
-
-            Print("   ⏸️ EA PAUSADO por ", m_winPauseMinutes, " minutos");
-            Print("   🔄 Retorno previsto: ", TimeToString(m_streakPauseUntil, TIME_DATE|TIME_MINUTES));
-           }
-         else  // STREAK_STOP_DAY
-           {
-            Print("   🎯 META DE SEQUÊNCIA ATINGIDA!");
-            Print("   🛑 EA PAUSADO até o FIM DO DIA");
-           }
-
-         Print("═══════════════════════════════════════════════════════");
-         return false;
-        }
-
+bool CBlockers::CheckStreakLimit()
+  {
+   if(!m_enableStreakControl)
       return true;
+
+// ───────────────────────────────────────────────────────────────
+// VERIFICAR SE ESTÁ EM PAUSA POR STREAK
+// ───────────────────────────────────────────────────────────────
+   if(m_streakPauseActive)
+     {
+      // Ainda está em pausa?
+      if(TimeCurrent() < m_streakPauseUntil)
+        {
+         // Log throttle: só loga a cada 5 minutos
+         if(TimeCurrent() - m_lastStreakWarning > 300)
+           {
+            int remainingMinutes = (int)((m_streakPauseUntil - TimeCurrent()) / 60);
+            Print("═══════════════════════════════════════════════════════");
+            Print("⏸️ EA PAUSADO POR SEQUÊNCIA");
+            Print("   📊 Motivo: ", m_streakPauseReason);
+            Print("   ⏱️ Tempo restante: ", remainingMinutes, " minutos");
+            Print("═══════════════════════════════════════════════════════");
+            m_lastStreakWarning = TimeCurrent();
+           }
+         return false;  // Bloqueado
+        }
+      else
+        {
+         // Pausa acabou - retomar operações
+         Print("═══════════════════════════════════════════════════════");
+         Print("▶️ PAUSA DE SEQUÊNCIA FINALIZADA");
+         Print("   📊 Sequência que causou pausa: ", m_streakPauseReason);
+         Print("   🔄 Contadores zerados - pronto para novo ciclo");
+         Print("   ✅ EA retomando operações normais");
+         Print("═══════════════════════════════════════════════════════");
+
+         m_streakPauseActive = false;
+         m_streakPauseReason = "";
+         m_currentWinStreak = 0;
+         m_currentLossStreak = 0;
+
+         return true;
+        }
      }
+
+// ───────────────────────────────────────────────────────────────
+// VERIFICAR LOSS STREAK
+// ───────────────────────────────────────────────────────────────
+   if(m_maxLossStreak > 0 && m_currentLossStreak >= m_maxLossStreak)
+     {
+      Print("═══════════════════════════════════════════════════════");
+      Print("🛑 SEQUÊNCIA DE PERDAS ATINGIDA!");
+      Print("   📉 Perdas consecutivas: ", m_currentLossStreak);
+      Print("   🎯 Limite configurado: ", m_maxLossStreak);
+
+      if(m_lossStreakAction == STREAK_PAUSE)
+        {
+         m_streakPauseActive = true;
+         m_streakPauseUntil = TimeCurrent() + (m_lossPauseMinutes * 60);
+         m_streakPauseReason = StringFormat("%d perdas consecutivas", m_currentLossStreak);
+
+         Print("   ⏸️ EA PAUSADO por ", m_lossPauseMinutes, " minutos");
+         Print("   🔄 Retorno previsto: ", TimeToString(m_streakPauseUntil, TIME_DATE|TIME_MINUTES));
+        }
+      else  // STREAK_STOP_DAY
+        {
+         Print("   🛑 EA PAUSADO até o FIM DO DIA");
+        }
+
+      Print("═══════════════════════════════════════════════════════");
+      return false;
+     }
+
+// ───────────────────────────────────────────────────────────────
+// VERIFICAR WIN STREAK
+// ───────────────────────────────────────────────────────────────
+   if(m_maxWinStreak > 0 && m_currentWinStreak >= m_maxWinStreak)
+     {
+      Print("═══════════════════════════════════════════════════════");
+      Print("🎯 SEQUÊNCIA DE GANHOS ATINGIDA!");
+      Print("   📈 Ganhos consecutivos: ", m_currentWinStreak);
+      Print("   🎯 Limite configurado: ", m_maxWinStreak);
+
+      if(m_winStreakAction == STREAK_PAUSE)
+        {
+         m_streakPauseActive = true;
+         m_streakPauseUntil = TimeCurrent() + (m_winPauseMinutes * 60);
+         m_streakPauseReason = StringFormat("%d ganhos consecutivos", m_currentWinStreak);
+
+         Print("   ⏸️ EA PAUSADO por ", m_winPauseMinutes, " minutos");
+         Print("   🔄 Retorno previsto: ", TimeToString(m_streakPauseUntil, TIME_DATE|TIME_MINUTES));
+        }
+      else  // STREAK_STOP_DAY
+        {
+         Print("   🎯 META DE SEQUÊNCIA ATINGIDA!");
+         Print("   🛑 EA PAUSADO até o FIM DO DIA");
+        }
+
+      Print("═══════════════════════════════════════════════════════");
+      return false;
+     }
+
+   return true;
+  }
 
 //+------------------------------------------------------------------+
 //| PRIVADO: Verifica limite de drawdown                             |
 //+------------------------------------------------------------------+
-   bool CBlockers::CheckDrawdownLimit()
+bool CBlockers::CheckDrawdownLimit()
+  {
+   if(!m_drawdownProtectionActive)
+      return true;
+
+   if(m_drawdownLimitReached)
+      return false;
+
+   double currentProfit = AccountInfoDouble(ACCOUNT_BALANCE) - m_initialBalance;
+
+// Atualizar pico
+   if(currentProfit > m_dailyPeakProfit)
+      m_dailyPeakProfit = currentProfit;
+
+// Calcular drawdown atual
+   double currentDD = m_dailyPeakProfit - currentProfit;
+   double ddLimit = 0;
+
+   if(m_drawdownType == DD_FINANCIAL)
      {
-      if(!m_drawdownProtectionActive)
-         return true;
+      ddLimit = m_drawdownValue;
+     }
+   else  // DD_PERCENTAGE
+     {
+      ddLimit = (m_dailyPeakProfit * m_drawdownValue) / 100.0;
+     }
 
-      if(m_drawdownLimitReached)
-         return false;
+// Verificar se ultrapassou limite
+   if(currentDD >= ddLimit)
+     {
+      m_drawdownLimitReached = true;
 
-      double currentProfit = AccountInfoDouble(ACCOUNT_BALANCE) - m_initialBalance;
-
-      // Atualizar pico
-      if(currentProfit > m_dailyPeakProfit)
-         m_dailyPeakProfit = currentProfit;
-
-      // Calcular drawdown atual
-      double currentDD = m_dailyPeakProfit - currentProfit;
-      double ddLimit = 0;
+      Print("═══════════════════════════════════════════════════════");
+      Print("🛑 LIMITE DE DRAWDOWN ATINGIDO!");
+      Print("   📊 Pico do dia: $", DoubleToString(m_dailyPeakProfit, 2));
+      Print("   💰 Lucro atual: $", DoubleToString(currentProfit, 2));
+      Print("   📉 Drawdown: $", DoubleToString(currentDD, 2));
 
       if(m_drawdownType == DD_FINANCIAL)
-        {
-         ddLimit = m_drawdownValue;
-        }
-      else  // DD_PERCENTAGE
-        {
-         ddLimit = (m_dailyPeakProfit * m_drawdownValue) / 100.0;
-        }
+         Print("   🛑 Limite: $", DoubleToString(ddLimit, 2), " (Financeiro)");
+      else
+         Print("   🛑 Limite: ", DoubleToString(m_drawdownValue, 1), "% = $", DoubleToString(ddLimit, 2));
 
-      // Verificar se ultrapassou limite
-      if(currentDD >= ddLimit)
-        {
-         m_drawdownLimitReached = true;
+      Print("   🛡️ LUCRO PROTEGIDO! EA pausado até o fim do dia");
+      Print("═══════════════════════════════════════════════════════");
 
-         Print("═══════════════════════════════════════════════════════");
-         Print("🛑 LIMITE DE DRAWDOWN ATINGIDO!");
-         Print("   📊 Pico do dia: $", DoubleToString(m_dailyPeakProfit, 2));
-         Print("   💰 Lucro atual: $", DoubleToString(currentProfit, 2));
-         Print("   📉 Drawdown: $", DoubleToString(currentDD, 2));
-
-         if(m_drawdownType == DD_FINANCIAL)
-            Print("   🛑 Limite: $", DoubleToString(ddLimit, 2), " (Financeiro)");
-         else
-            Print("   🛑 Limite: ", DoubleToString(m_drawdownValue, 1), "% = $", DoubleToString(ddLimit, 2));
-
-         Print("   🛡️ LUCRO PROTEGIDO! EA pausado até o fim do dia");
-         Print("═══════════════════════════════════════════════════════");
-
-         return false;
-        }
-
-      return true;
+      return false;
      }
+
+   return true;
+  }
 
 //+------------------------------------------------------------------+
 //| PRIVADO: Verifica se direção é permitida                         |
 //+------------------------------------------------------------------+
-   bool CBlockers::CheckDirectionAllowed(int orderType)
-     {
-      if(m_tradeDirection == DIRECTION_BOTH)
-         return true;
-
-      if(m_tradeDirection == DIRECTION_BUY_ONLY && orderType == ORDER_TYPE_SELL)
-         return false;
-
-      if(m_tradeDirection == DIRECTION_SELL_ONLY && orderType == ORDER_TYPE_BUY)
-         return false;
-
+bool CBlockers::CheckDirectionAllowed(int orderType)
+  {
+   if(m_tradeDirection == DIRECTION_BOTH)
       return true;
-     }
+
+   if(m_tradeDirection == DIRECTION_BUY_ONLY && orderType == ORDER_TYPE_SELL)
+      return false;
+
+   if(m_tradeDirection == DIRECTION_SELL_ONLY && orderType == ORDER_TYPE_BUY)
+      return false;
+
+   return true;
+  }
 
 //+------------------------------------------------------------------+
 //| PRIVADO: Verifica se é um novo dia                               |
 //+------------------------------------------------------------------+
-   bool CBlockers::IsNewDay()
-     {
-      datetime now = TimeCurrent();
+bool CBlockers::IsNewDay()
+  {
+   datetime now = TimeCurrent();
 
-      MqlDateTime lastDate, currentDate;
-      TimeToStruct(m_lastResetDate, lastDate);
-      TimeToStruct(now, currentDate);
+   MqlDateTime lastDate, currentDate;
+   TimeToStruct(m_lastResetDate, lastDate);
+   TimeToStruct(now, currentDate);
 
-      return (lastDate.year != currentDate.year ||
-              lastDate.mon != currentDate.mon ||
-              lastDate.day != currentDate.day);
-     }
+   return (lastDate.year != currentDate.year ||
+           lastDate.mon != currentDate.mon ||
+           lastDate.day != currentDate.day);
+  }
 
 //+------------------------------------------------------------------+
 //| PRIVADO: Converte enum de bloqueio em texto                      |
 //+------------------------------------------------------------------+
-   string CBlockers::GetBlockerReasonText(ENUM_BLOCKER_REASON reason)
+string CBlockers::GetBlockerReasonText(ENUM_BLOCKER_REASON reason)
+  {
+   switch(reason)
      {
-      switch(reason)
-        {
-         case BLOCKER_NONE:
-            return "Sem bloqueio";
-         case BLOCKER_TIME_FILTER:
-            return "Fora do horário";
-         case BLOCKER_NEWS_FILTER:
-            return "Horário de volatilidade";
-         case BLOCKER_SPREAD:
-            return "Spread alto";
-         case BLOCKER_DAILY_TRADES:
-            return "Limite de trades diários";
-         case BLOCKER_DAILY_LOSS:
-            return "Perda diária máxima";
-         case BLOCKER_DAILY_GAIN:
-            return "Ganho diário máximo";
-         case BLOCKER_LOSS_STREAK:
-            return "Sequência de perdas";
-         case BLOCKER_WIN_STREAK:
-            return "Sequência de ganhos";
-         case BLOCKER_DRAWDOWN:
-            return "Drawdown máximo";
-         case BLOCKER_DIRECTION:
-            return "Direção bloqueada";
-         default:
-            return "Bloqueio desconhecido";
-        }
+      case BLOCKER_NONE:
+         return "Sem bloqueio";
+      case BLOCKER_TIME_FILTER:
+         return "Fora do horário";
+      case BLOCKER_NEWS_FILTER:
+         return "Horário de volatilidade";
+      case BLOCKER_SPREAD:
+         return "Spread alto";
+      case BLOCKER_DAILY_TRADES:
+         return "Limite de trades diários";
+      case BLOCKER_DAILY_LOSS:
+         return "Perda diária máxima";
+      case BLOCKER_DAILY_GAIN:
+         return "Ganho diário máximo";
+      case BLOCKER_LOSS_STREAK:
+         return "Sequência de perdas";
+      case BLOCKER_WIN_STREAK:
+         return "Sequência de ganhos";
+      case BLOCKER_DRAWDOWN:
+         return "Drawdown máximo";
+      case BLOCKER_DIRECTION:
+         return "Direção bloqueada";
+      default:
+         return "Bloqueio desconhecido";
      }
+  }
 
 //+------------------------------------------------------------------+
 //| Imprime status atual                                             |
 //+------------------------------------------------------------------+
-   void CBlockers::PrintStatus()
+void CBlockers::PrintStatus()
+  {
+   Print("╔══════════════════════════════════════════════════════╗");
+   Print("║            BLOCKERS - STATUS ATUAL                   ║");
+   Print("╚══════════════════════════════════════════════════════╝");
+   Print("");
+
+// Bloqueador ativo
+   if(m_currentBlocker != BLOCKER_NONE)
      {
-      Print("╔══════════════════════════════════════════════════════╗");
-      Print("║            BLOCKERS - STATUS ATUAL                   ║");
-      Print("╚══════════════════════════════════════════════════════╝");
-      Print("");
-
-      // Bloqueador ativo
-      if(m_currentBlocker != BLOCKER_NONE)
-        {
-         Print("🚫 BLOQUEADO: ", GetBlockerReasonText(m_currentBlocker));
-        }
-      else
-        {
-         Print("✅ LIBERADO PARA OPERAR");
-        }
-      Print("");
-
-      // Horário
-      if(m_enableTimeFilter)
-        {
-         datetime now = TimeCurrent();
-         MqlDateTime t;
-         TimeToStruct(now, t);
-
-         Print("⏰ Horário:");
-         Print("   Atual: ", StringFormat("%02d:%02d", t.hour, t.min));
-         Print("   Permitido: ", StringFormat("%02d:%02d - %02d:%02d",
-                                              m_startHour, m_startMinute, m_endHour, m_endMinute));
-         Print("   Status: ", CheckTimeFilter() ? "✅ OK" : "❌ BLOQUEADO");
-        }
-
-      // Streaks
-      if(m_enableStreakControl)
-        {
-         Print("");
-         Print("🔴 Streaks:");
-         if(m_maxLossStreak > 0)
-            Print("   Loss: ", m_currentLossStreak, " de ", m_maxLossStreak);
-         if(m_maxWinStreak > 0)
-            Print("   Win: ", m_currentWinStreak, " de ", m_maxWinStreak);
-
-         if(m_streakPauseActive)
-           {
-            int remaining = (int)((m_streakPauseUntil - TimeCurrent()) / 60);
-            Print("   ⏸️ PAUSADO: ", m_streakPauseReason, " (", remaining, " min)");
-           }
-        }
-
-      // Drawdown
-      if(m_drawdownProtectionActive)
-        {
-         double currentProfit = AccountInfoDouble(ACCOUNT_BALANCE) - m_initialBalance;
-         double currentDD = m_dailyPeakProfit - currentProfit;
-
-         Print("");
-         Print("📉 Drawdown (proteção ativa):");
-         Print("   Pico: $", DoubleToString(m_dailyPeakProfit, 2));
-         Print("   Atual: $", DoubleToString(currentProfit, 2));
-         Print("   DD: $", DoubleToString(currentDD, 2));
-         Print("   Status: ", m_drawdownLimitReached ? "❌ LIMITE ATINGIDO" : "✅ OK");
-        }
-
-      Print("");
-      Print("═══════════════════════════════════════════════════════");
+      Print("🚫 BLOQUEADO: ", GetBlockerReasonText(m_currentBlocker));
      }
+   else
+     {
+      Print("✅ LIBERADO PARA OPERAR");
+     }
+   Print("");
+
+// Horário
+   if(m_enableTimeFilter)
+     {
+      datetime now = TimeCurrent();
+      MqlDateTime t;
+      TimeToStruct(now, t);
+
+      Print("⏰ Horário:");
+      Print("   Atual: ", StringFormat("%02d:%02d", t.hour, t.min));
+      Print("   Permitido: ", StringFormat("%02d:%02d - %02d:%02d",
+                                           m_startHour, m_startMinute, m_endHour, m_endMinute));
+      Print("   Status: ", CheckTimeFilter() ? "✅ OK" : "❌ BLOQUEADO");
+     }
+
+// Streaks
+   if(m_enableStreakControl)
+     {
+      Print("");
+      Print("🔴 Streaks:");
+      if(m_maxLossStreak > 0)
+         Print("   Loss: ", m_currentLossStreak, " de ", m_maxLossStreak);
+      if(m_maxWinStreak > 0)
+         Print("   Win: ", m_currentWinStreak, " de ", m_maxWinStreak);
+
+      if(m_streakPauseActive)
+        {
+         int remaining = (int)((m_streakPauseUntil - TimeCurrent()) / 60);
+         Print("   ⏸️ PAUSADO: ", m_streakPauseReason, " (", remaining, " min)");
+        }
+     }
+
+// Drawdown
+   if(m_drawdownProtectionActive)
+     {
+      double currentProfit = AccountInfoDouble(ACCOUNT_BALANCE) - m_initialBalance;
+      double currentDD = m_dailyPeakProfit - currentProfit;
+
+      Print("");
+      Print("📉 Drawdown (proteção ativa):");
+      Print("   Pico: $", DoubleToString(m_dailyPeakProfit, 2));
+      Print("   Atual: $", DoubleToString(currentProfit, 2));
+      Print("   DD: $", DoubleToString(currentDD, 2));
+      Print("   Status: ", m_drawdownLimitReached ? "❌ LIMITE ATINGIDO" : "✅ OK");
+     }
+
+   Print("");
+   Print("═══════════════════════════════════════════════════════");
+  }
 
 //+------------------------------------------------------------------+
 //| Imprime configuração completa                                    |
 //+------------------------------------------------------------------+
-   void CBlockers::PrintConfiguration()
+void CBlockers::PrintConfiguration()
+  {
+   Print("╔══════════════════════════════════════════════════════╗");
+   Print("║         BLOCKERS - CONFIGURAÇÃO COMPLETA            ║");
+   Print("╚══════════════════════════════════════════════════════╝");
+   Print("");
+
+// Horário
+   Print("⏰ Horário:");
+   if(m_enableTimeFilter)
      {
-      Print("╔══════════════════════════════════════════════════════╗");
-      Print("║         BLOCKERS - CONFIGURAÇÃO COMPLETA            ║");
-      Print("╚══════════════════════════════════════════════════════╝");
-      Print("");
-
-      // Horário
-      Print("⏰ Horário:");
-      if(m_enableTimeFilter)
-        {
-         Print("   ", StringFormat("%02d:%02d - %02d:%02d",
-                                   m_startHour, m_startMinute, m_endHour, m_endMinute));
-         Print("   Fecha ao fim: ", m_closeOnEndTime ? "SIM" : "NÃO");
-        }
-      else
-         Print("   DESATIVADO");
-
-      // News
-      Print("");
-      Print("📰 News Filters:");
-      if(m_enableNewsFilter1 || m_enableNewsFilter2 || m_enableNewsFilter3)
-        {
-         if(m_enableNewsFilter1)
-            Print("   1: ", StringFormat("%02d:%02d - %02d:%02d",
-                                         m_newsStart1Hour, m_newsStart1Minute, m_newsEnd1Hour, m_newsEnd1Minute));
-         if(m_enableNewsFilter2)
-            Print("   2: ", StringFormat("%02d:%02d - %02d:%02d",
-                                         m_newsStart2Hour, m_newsStart2Minute, m_newsEnd2Hour, m_newsEnd2Minute));
-         if(m_enableNewsFilter3)
-            Print("   3: ", StringFormat("%02d:%02d - %02d:%02d",
-                                         m_newsStart3Hour, m_newsStart3Minute, m_newsEnd3Hour, m_newsEnd3Minute));
-        }
-      else
-         Print("   DESATIVADOS");
-
-      // Spread
-      Print("");
-      Print("📊 Spread:");
-      if(m_maxSpread > 0)
-         Print("   Máximo: ", m_maxSpread, " pontos");
-      else
-         Print("   ILIMITADO");
-
-      // Limites diários
-      Print("");
-      Print("📅 Limites Diários:");
-      if(m_enableDailyLimits)
-        {
-         if(m_maxDailyTrades > 0)
-            Print("   Trades: ", m_maxDailyTrades);
-         if(m_maxDailyLoss > 0)
-            Print("   Loss: $", DoubleToString(m_maxDailyLoss, 2));
-         if(m_maxDailyGain > 0)
-           {
-            Print("   Gain: $", DoubleToString(m_maxDailyGain, 2));
-            Print("   Ação: ", m_profitTargetAction == PROFIT_ACTION_STOP ? "PARAR" : "ATIVAR DD");
-           }
-        }
-      else
-         Print("   DESATIVADOS");
-
-      // Streak
-      Print("");
-      Print("🔴 Streak Control:");
-      if(m_enableStreakControl)
-        {
-         if(m_maxLossStreak > 0)
-           {
-            Print("   Loss: Max ", m_maxLossStreak);
-            Print("   Ação: ", m_lossStreakAction == STREAK_PAUSE ?
-                  "Pausar " + IntegerToString(m_lossPauseMinutes) + " min" : "Parar dia");
-           }
-         if(m_maxWinStreak > 0)
-           {
-            Print("   Win: Max ", m_maxWinStreak);
-            Print("   Ação: ", m_winStreakAction == STREAK_PAUSE ?
-                  "Pausar " + IntegerToString(m_winPauseMinutes) + " min" : "Parar dia");
-           }
-        }
-      else
-         Print("   DESATIVADO");
-
-      // Drawdown
-      Print("");
-      Print("📉 Drawdown:");
-      if(m_enableDrawdown)
-        {
-         if(m_drawdownType == DD_FINANCIAL)
-            Print("   Tipo: Financeiro ($", DoubleToString(m_drawdownValue, 2), ")");
-         else
-            Print("   Tipo: Percentual (", DoubleToString(m_drawdownValue, 2), "%)");
-        }
-      else
-         Print("   DESATIVADO");
-
-      // Direção
-      Print("");
-      Print("🎯 Direção:");
-      switch(m_tradeDirection)
-        {
-         case DIRECTION_BOTH:
-            Print("   AMBAS");
-            break;
-         case DIRECTION_BUY_ONLY:
-            Print("   APENAS COMPRAS");
-            break;
-         case DIRECTION_SELL_ONLY:
-            Print("   APENAS VENDAS");
-            break;
-        }
-
-      Print("");
-      Print("═══════════════════════════════════════════════════════");
+      Print("   ", StringFormat("%02d:%02d - %02d:%02d",
+                                m_startHour, m_startMinute, m_endHour, m_endMinute));
+      Print("   Fecha ao fim: ", m_closeOnEndTime ? "SIM" : "NÃO");
      }
+   else
+      Print("   DESATIVADO");
+
+// News
+   Print("");
+   Print("📰 News Filters:");
+   if(m_enableNewsFilter1 || m_enableNewsFilter2 || m_enableNewsFilter3)
+     {
+      if(m_enableNewsFilter1)
+         Print("   1: ", StringFormat("%02d:%02d - %02d:%02d",
+                                      m_newsStart1Hour, m_newsStart1Minute, m_newsEnd1Hour, m_newsEnd1Minute));
+      if(m_enableNewsFilter2)
+         Print("   2: ", StringFormat("%02d:%02d - %02d:%02d",
+                                      m_newsStart2Hour, m_newsStart2Minute, m_newsEnd2Hour, m_newsEnd2Minute));
+      if(m_enableNewsFilter3)
+         Print("   3: ", StringFormat("%02d:%02d - %02d:%02d",
+                                      m_newsStart3Hour, m_newsStart3Minute, m_newsEnd3Hour, m_newsEnd3Minute));
+     }
+   else
+      Print("   DESATIVADOS");
+
+// Spread
+   Print("");
+   Print("📊 Spread:");
+   if(m_maxSpread > 0)
+      Print("   Máximo: ", m_maxSpread, " pontos");
+   else
+      Print("   ILIMITADO");
+
+// Limites diários
+   Print("");
+   Print("📅 Limites Diários:");
+   if(m_enableDailyLimits)
+     {
+      if(m_maxDailyTrades > 0)
+         Print("   Trades: ", m_maxDailyTrades);
+      if(m_maxDailyLoss > 0)
+         Print("   Loss: $", DoubleToString(m_maxDailyLoss, 2));
+      if(m_maxDailyGain > 0)
+        {
+         Print("   Gain: $", DoubleToString(m_maxDailyGain, 2));
+         Print("   Ação: ", m_profitTargetAction == PROFIT_ACTION_STOP ? "PARAR" : "ATIVAR DD");
+        }
+     }
+   else
+      Print("   DESATIVADOS");
+
+// Streak
+   Print("");
+   Print("🔴 Streak Control:");
+   if(m_enableStreakControl)
+     {
+      if(m_maxLossStreak > 0)
+        {
+         Print("   Loss: Max ", m_maxLossStreak);
+         Print("   Ação: ", m_lossStreakAction == STREAK_PAUSE ?
+               "Pausar " + IntegerToString(m_lossPauseMinutes) + " min" : "Parar dia");
+        }
+      if(m_maxWinStreak > 0)
+        {
+         Print("   Win: Max ", m_maxWinStreak);
+         Print("   Ação: ", m_winStreakAction == STREAK_PAUSE ?
+               "Pausar " + IntegerToString(m_winPauseMinutes) + " min" : "Parar dia");
+        }
+     }
+   else
+      Print("   DESATIVADO");
+
+// Drawdown
+   Print("");
+   Print("📉 Drawdown:");
+   if(m_enableDrawdown)
+     {
+      if(m_drawdownType == DD_FINANCIAL)
+         Print("   Tipo: Financeiro ($", DoubleToString(m_drawdownValue, 2), ")");
+      else
+         Print("   Tipo: Percentual (", DoubleToString(m_drawdownValue, 2), "%)");
+     }
+   else
+      Print("   DESATIVADO");
+
+// Direção
+   Print("");
+   Print("🎯 Direção:");
+   switch(m_tradeDirection)
+     {
+      case DIRECTION_BOTH:
+         Print("   AMBAS");
+         break;
+      case DIRECTION_BUY_ONLY:
+         Print("   APENAS COMPRAS");
+         break;
+      case DIRECTION_SELL_ONLY:
+         Print("   APENAS VENDAS");
+         break;
+     }
+
+   Print("");
+   Print("═══════════════════════════════════════════════════════");
+  }
 //+------------------------------------------------------------------+
