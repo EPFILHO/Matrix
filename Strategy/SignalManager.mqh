@@ -2,10 +2,10 @@
 //|                                               SignalManager.mqh  |
 //|                                         Copyright 2025, EP Filho |
 //|                   Gerenciador de Sinais e Filtros - EPBot Matrix |
-//|                                                      Versão 2.01 |
+//|                                                      Versão 2.02 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "2.01"
+#property version   "2.02"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -111,6 +111,7 @@ public:
    // ═══════════════════════════════════════════════════════════
    bool Initialize(CLogger* logger);
    void Deinitialize();
+   void Clear();  // Limpar referências sem deletar objetos
    
    // ═══════════════════════════════════════════════════════════
    // MÉTODOS PRINCIPAIS
@@ -567,6 +568,29 @@ void CSignalManager::Deinitialize()
 }
 
 //+------------------------------------------------------------------+
+//| Limpar referências (chamado antes de deletar objetos externos)   |
+//+------------------------------------------------------------------+
+void CSignalManager::Clear()
+{
+   // Zerar ponteiros para evitar acesso a memória inválida no destrutor
+   for(int i = 0; i < m_strategyCount; i++)
+   {
+      m_strategies[i].strategy = NULL;
+   }
+   
+   for(int i = 0; i < m_filterCount; i++)
+   {
+      m_filters[i] = NULL;
+   }
+   
+   string msg = "🧹 [Signal Manager] Referências limpas";
+   if(m_logger != NULL)
+      m_logger.LogInfo(msg);
+   else
+      Print(msg);
+}
+
+//+------------------------------------------------------------------+
 //| Encontrar índice da estratégia por nome                          |
 //+------------------------------------------------------------------+
 int CSignalManager::FindStrategyIndex(string name)
@@ -780,7 +804,7 @@ void CSignalManager::PrintStatus()
    if(m_logger != NULL)
      {
       m_logger.LogInfo("═══════════════════════════════════════════════════════");
-      m_logger.LogInfo("📊 [Signal Manager v2.01] Status");
+      m_logger.LogInfo("📊 [Signal Manager v2.02] Status");
       m_logger.LogInfo("═══════════════════════════════════════════════════════");
       
       m_logger.LogInfo("🎯 Estratégias (" + IntegerToString(m_strategyCount) + "):");
@@ -813,7 +837,7 @@ void CSignalManager::PrintStatus()
    else
      {
       Print("═══════════════════════════════════════════════════════");
-      Print("📊 [Signal Manager v2.01] Status");
+      Print("📊 [Signal Manager v2.02] Status");
       Print("═══════════════════════════════════════════════════════");
       
       Print("🎯 Estratégias (", m_strategyCount, "):");
