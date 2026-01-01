@@ -139,7 +139,7 @@ input int    inp_PartialTP2_Distance = 200;       // TP2: Distância (pontos)
 
 //--- 🔄 TRAILING STOP
 input group "🔄 Trailing Stop"
-input bool   inp_UseTrailing = false;             // Ativar Trailing Stop
+input ENUM_TRAILING_ACTIVATION inp_TrailingActivation = TRAILING_ALWAYS;  // Ativar Trailing
 input ENUM_TRAILING_TYPE inp_TrailingType = TRAILING_FIXED;  // Tipo de Trailing
 input int    inp_TrailingStart = 50;              // Início Trailing (pontos)
 input int    inp_TrailingStep = 30;               // Step Trailing (pontos)
@@ -149,17 +149,12 @@ input bool   inp_Trailing_CompensateSpread = false;  // Compensar Spread no Trai
 
 //--- ⚖️ BREAKEVEN
 input group "⚖️ Breakeven"
-input bool   inp_UseBreakeven = false;            // Ativar Breakeven
+input ENUM_BE_ACTIVATION inp_BEActivationMode = BE_ALWAYS;                // Ativar Breakeven
 input ENUM_BE_TYPE inp_BEType = BE_FIXED;         // Tipo de Breakeven
 input int    inp_BEActivation = 50;               // Ativação BE (pontos)
 input int    inp_BEOffset = 5;                    // Offset BE (pontos)
 input double inp_BE_ATRActivation = 0.5;          // Ativação BE (ATR)
 input double inp_BE_ATROffset = 0.05;             // Offset BE (ATR)
-
-//--- 🔄 ATIVAÇÃO CONDICIONAL (v1.01 - NOVO!)
-input group "🔄 Ativação Condicional (Trailing/Breakeven)"
-input ENUM_TRAILING_ACTIVATION inp_TrailingActivation = TRAILING_ALWAYS;  // Ativar Trailing
-input ENUM_BE_ACTIVATION inp_BEActivationMode = BE_ALWAYS;                // Ativar Breakeven
 
 //+------------------------------------------------------------------+
 //| SEÇÃO 004 - SIGNAL MANAGER                                       |
