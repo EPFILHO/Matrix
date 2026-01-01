@@ -2,13 +2,14 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                        EA Modular Multistrategy - EPBot Matrix   |
-//|                                                      Versão 1.00 |
+//|                                                      Versão 1.01 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.00"
+#property version   "1.01"
 #property description "EPBot Matrix - Sistema de Trading Modular Multistrategy"
 #property description "Arquitetura profissional com hot reload e logging avançado"
+#property description "v1.01: TradeManager integrado - Gerenciamento individual de posições"
 
 //+------------------------------------------------------------------+
 //| INCLUDES - ORDEM IMPORTANTE                                      |
@@ -27,6 +28,7 @@
 // #include "Core/Blockers.mqh"      // ✅ Já incluído
 // RiskManager já incluído via Inputs.mqh
 // #include "Core/RiskManager.mqh"   // ✅ Já incluído
+#include "Core/TradeManager.mqh"
 
 // 3️⃣ SIGNAL MANAGER
 // SignalManager já incluído via Inputs.mqh
@@ -51,6 +53,7 @@
 CLogger*        g_logger        = NULL;  // Sistema de logging centralizado
 CBlockers*      g_blockers      = NULL;  // Gerenciador de bloqueios
 CRiskManager*   g_riskManager   = NULL;  // Gerenciador de risco
+CTradeManager*  g_tradeManager  = NULL;  // Gerenciador de posições (v1.01)
 CSignalManager* g_signalManager = NULL;  // Orquestrador de sinais
 
 // ═══════════════════════════════════════════════════════════════
@@ -81,7 +84,7 @@ bool g_tradingAllowed = true;  // Controle geral de trading
 int OnInit()
 {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.00 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v1.01 - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
    
    // ═══════════════════════════════════════════════════════════════
@@ -235,7 +238,33 @@ int OnInit()
    g_logger.LogInfo("✅ RiskManager inicializado com sucesso");
    
    // ═══════════════════════════════════════════════════════════════
-   // ETAPA 4: INICIALIZAR SIGNAL MANAGER
+   // ETAPA 4: INICIALIZAR TRADE MANAGER
+   // ═══════════════════════════════════════════════════════════════
+   g_tradeManager = new CTradeManager();
+   if(g_tradeManager == NULL)
+   {
+      g_logger.LogError("❌ Falha ao criar TradeManager!");
+      CleanupAndReturn(INIT_FAILED);
+      return INIT_FAILED;
+   }
+   
+   if(!g_tradeManager.Init(
+      g_logger,
+      g_riskManager,
+      _Symbol,
+      inp_MagicNumber,
+      inp_Slippage
+   ))
+   {
+      g_logger.LogError("❌ Falha ao inicializar TradeManager!");
+      CleanupAndReturn(INIT_FAILED);
+      return INIT_FAILED;
+   }
+   
+   g_logger.LogInfo("✅ TradeManager inicializado com sucesso");
+   
+   // ═══════════════════════════════════════════════════════════════
+   // ETAPA 5: INICIALIZAR SIGNAL MANAGER
    // ═══════════════════════════════════════════════════════════════
    g_signalManager = new CSignalManager();
    if(g_signalManager == NULL)
@@ -259,10 +288,10 @@ int OnInit()
    g_logger.LogInfo("✅ SignalManager inicializado com sucesso - Modo: " + EnumToString(inp_ConflictMode));
    
    // ═══════════════════════════════════════════════════════════════
-   // ETAPA 5: CRIAR E REGISTRAR ESTRATÉGIAS
+   // ETAPA 6: CRIAR E REGISTRAR ESTRATÉGIAS
    // ═══════════════════════════════════════════════════════════════
    
-   //--- 5.1: MA CROSS STRATEGY
+   //--- 6.1: MA CROSS STRATEGY
    if(inp_UseMACross)
    {
       g_maCrossStrategy = new CMACrossStrategy();
@@ -317,7 +346,7 @@ int OnInit()
       g_logger.LogInfo("ℹ️ MACrossStrategy desativada");
    }
    
-   //--- 5.2: RSI STRATEGY
+   //--- 6.2: RSI STRATEGY
    if(inp_UseRSI)
    {
       g_rsiStrategy = new CRSIStrategy();
@@ -372,10 +401,10 @@ int OnInit()
    }
    
    // ═══════════════════════════════════════════════════════════════
-   // ETAPA 6: CRIAR E REGISTRAR FILTROS
+   // ETAPA 7: CRIAR E REGISTRAR FILTROS
    // ═══════════════════════════════════════════════════════════════
    
-   //--- 6.1: TREND FILTER
+   //--- 7.1: TREND FILTER
    if(inp_UseTrendFilter)
    {
       g_trendFilter = new CTrendFilter();
@@ -428,7 +457,7 @@ int OnInit()
       g_logger.LogInfo("ℹ️ TrendFilter desativado");
    }
    
-   //--- 6.2: RSI FILTER
+   //--- 7.2: RSI FILTER
    if(inp_UseRSIFilter)
    {
       g_rsiFilter = new CRSIFilter();
@@ -481,7 +510,7 @@ int OnInit()
    }
    
    // ═══════════════════════════════════════════════════════════════
-   // ETAPA 7: CONFIGURAÇÕES FINAIS
+   // ETAPA 8: CONFIGURAÇÕES FINAIS
    // ═══════════════════════════════════════════════════════════════
    
    // Inicializar controle de candles
@@ -493,7 +522,7 @@ int OnInit()
    Print("════════════════════════════════════════════════════════════════");
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
-   g_logger.LogInfo("🚀 EPBot Matrix v1.00 - PRONTO PARA OPERAR!");
+   g_logger.LogInfo("🚀 EPBot Matrix v1.01 - PRONTO PARA OPERAR!");
    g_logger.LogInfo("📊 Símbolo: " + _Symbol);
    g_logger.LogInfo("⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
    g_logger.LogInfo("🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
@@ -545,6 +574,7 @@ void OnDeinit(const int reason)
    
    // ETAPA 4: Deletar módulos base
    if(g_riskManager != NULL) { delete g_riskManager; g_riskManager = NULL; }
+   if(g_tradeManager != NULL) { delete g_tradeManager; g_tradeManager = NULL; }
    if(g_blockers != NULL) { delete g_blockers; g_blockers = NULL; }
    if(g_logger != NULL) { delete g_logger; g_logger = NULL; }
    
@@ -586,11 +616,10 @@ void OnTick()
       if(g_logger.GetDailyTrades() > 0)
       {
          g_logger.LogInfo("📄 Gerando relatório do dia anterior...");
-         g_logger.SaveDailyReport();
+         g_logger.SaveDailyReport();         
          
-         // TODO: Quando módulos tiverem ResetDaily(), descomentar:
-         // g_logger.ResetDaily();
-         // g_blockers.ResetDaily();
+         g_logger.ResetDaily();
+         g_blockers.ResetDaily();
          
          g_logger.LogInfo("✅ Relatório salvo - Iniciando novo dia de trading");
       }
@@ -668,6 +697,9 @@ void OnTick()
          }
       }
       
+      // Remover do TradeManager
+      g_tradeManager.UnregisterPosition(lastPositionTicket);
+      
       lastPositionTicket = 0;
    }
    
@@ -708,11 +740,6 @@ void OnTick()
 //+------------------------------------------------------------------+
 void ManageOpenPosition()
 {
-   // ═══════════════════════════════════════════════════════════════
-   // GERENCIAMENTO DE RISCO
-   // ═══════════════════════════════════════════════════════════════
-   
-   // Obter dados da posição
    if(!PositionSelect(_Symbol))
       return;
    
@@ -722,7 +749,24 @@ void ManageOpenPosition()
    double currentSL = PositionGetDouble(POSITION_SL);
    ulong ticket = PositionGetInteger(POSITION_TICKET);
    
-   // Trailing Stop
+   // ═══════════════════════════════════════════════════════════════
+   // VERIFICAR SE POSIÇÃO ESTÁ REGISTRADA NO TRADEMANAGER
+   // ═══════════════════════════════════════════════════════════════
+   int index = g_tradeManager.GetPositionIndex(ticket);
+   if(index < 0)
+   {
+      g_logger.LogWarning("⚠️ Posição não encontrada no TradeManager - Ignorando gerenciamento");
+      return;
+   }
+   
+   // ═══════════════════════════════════════════════════════════════
+   // MONITORAR PARTIAL TP (se habilitado)
+   // ═══════════════════════════════════════════════════════════════
+   g_tradeManager.MonitorPartialTP(ticket);
+   
+   // ═══════════════════════════════════════════════════════════════
+   // TRAILING STOP
+   // ═══════════════════════════════════════════════════════════════
    if(inp_UseTrailing)
    {
       STrailingResult trailing = g_riskManager.CalculateTrailing(posType, currentPrice, entryPrice, currentSL);
@@ -745,10 +789,13 @@ void ManageOpenPosition()
       }
    }
    
-   // Breakeven
+   // ═══════════════════════════════════════════════════════════════
+   // BREAKEVEN (usando estado da posição - NÃO MAIS GLOBAL!)
+   // ═══════════════════════════════════════════════════════════════
    if(inp_UseBreakeven)
    {
-      static bool beActivated = false; // TODO: Controlar por posição
+      // ✅ BUSCAR ESTADO ESPECÍFICO DESTA POSIÇÃO
+      bool beActivated = g_tradeManager.IsBreakevenActivated(ticket);
       
       SBreakevenResult breakeven = g_riskManager.CalculateBreakeven(posType, currentPrice, entryPrice, currentSL, beActivated);
       
@@ -766,16 +813,16 @@ void ManageOpenPosition()
          if(OrderSend(request, result))
          {
             g_logger.LogInfo("✅ Breakeven ativado em " + DoubleToString(breakeven.new_sl_price, _Digits));
-            beActivated = true;
+            
+            // ✅ MARCAR COMO ATIVADO NO TRADEMANAGER
+            g_tradeManager.SetBreakevenActivated(ticket, true);
          }
       }
    }
    
-// ═══════════════════════════════════════════════════════════════
+   // ═══════════════════════════════════════════════════════════════
    // VERIFICAR SINAL DE SAÍDA (Exit por sinal oposto)
    // ═══════════════════════════════════════════════════════════════
-   
-   // Verificar se MACross está configurada para exit por sinal oposto
    bool checkExit = false;
    
    if(inp_UseMACross && (inp_ExitMode == EXIT_FCO || inp_ExitMode == EXIT_VM))
@@ -783,12 +830,10 @@ void ManageOpenPosition()
       checkExit = true;
    }
    
-   // Se alguma strategy precisa checar exit, buscar sinal RAW (sem filtros)
    if(checkExit)
    {
       ENUM_SIGNAL_TYPE exitSignal = g_signalManager.GetRawSignal();
       
-      // Verificar se sinal é OPOSTO à posição atual
       bool shouldExit = false;
       
       if(posType == POSITION_TYPE_BUY && exitSignal == SIGNAL_SELL)
@@ -802,7 +847,6 @@ void ManageOpenPosition()
          g_logger.LogInfo("🔄 Exit detectado: Sinal de COMPRA com posição de VENDA aberta");
       }
       
-      // Fechar posição se sinal oposto detectado
       if(shouldExit)
       {
          MqlTradeRequest request = {};
@@ -890,6 +934,25 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
    // TP pode ser 0 se configurado como NONE
    
    // ═══════════════════════════════════════════════════════════════
+   // VALIDAR SL/TP CONTRA NÍVEIS MÍNIMOS DO BROKER
+   // ═══════════════════════════════════════════════════════════════
+   SValidateSLTPResult validation = g_riskManager.ValidateSLTP(
+      (orderType == ORDER_TYPE_BUY) ? POSITION_TYPE_BUY : POSITION_TYPE_SELL,
+      price,
+      slPrice,
+      tpPrice
+   );
+   
+   // Usar valores validados
+   slPrice = validation.validated_sl;
+   tpPrice = validation.validated_tp;
+   
+   if(validation.sl_adjusted || validation.tp_adjusted)
+   {
+      g_logger.LogInfo("⚠️ " + validation.message);
+   }
+   
+   // ═══════════════════════════════════════════════════════════════
    // ENVIAR ORDEM
    // ═══════════════════════════════════════════════════════════════
    
@@ -933,8 +996,20 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
       g_logger.LogInfo("   Volume: " + DoubleToString(result.volume, 2));
       g_logger.LogInfo("   Preço: " + DoubleToString(result.price, _Digits));
       
-      // Atualizar estatísticas do Logger (SaveTrade será chamado no fechamento)
-      // Blockers.UpdateAfterTrade será chamado quando soubermos o resultado
+      // ═══════════════════════════════════════════════════════════════
+      // REGISTRAR POSIÇÃO NO TRADEMANAGER
+      // ═══════════════════════════════════════════════════════════════
+      SPartialTPLevel tpLevels[];
+      bool hasPartialTP = false;  // Por enquanto desativado
+      
+      g_tradeManager.RegisterPosition(
+         result.deal,  // ticket
+         (orderType == ORDER_TYPE_BUY) ? POSITION_TYPE_BUY : POSITION_TYPE_SELL,
+         result.price,
+         result.volume,
+         hasPartialTP,
+         tpLevels
+      );
    }
    else
    {
@@ -990,6 +1065,13 @@ void CleanupAndReturn(int returnCode)
       g_riskManager = NULL;
    }
    
+   // TradeManager
+   if(g_tradeManager != NULL)
+   {
+      delete g_tradeManager;
+      g_tradeManager = NULL;
+   }
+   
    // Blockers
    if(g_blockers != NULL)
    {
@@ -1042,5 +1124,5 @@ string GetDeinitReasonText(int reason)
 }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.00                                   |
+//| FIM DO EA - EPBOT MATRIX v1.01                                   |
 //+------------------------------------------------------------------+
