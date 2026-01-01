@@ -26,6 +26,7 @@
 // + Padrão Input + Working variables para hot reload
 // + Métodos Set para alterar parâmetros em runtime
 // + Getters para Input e Working values
+// + ValidateSLTP() - Validação contra níveis mínimos do broker
 // ═══════════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
@@ -110,6 +111,19 @@ struct SPartialTPLevel
    double            lotSize;          // Lote a fechar neste nível
    double            percentLot;       // % do lote original
    string            description;      // "TP1: 50% @ 125450.00"
+  };
+
+//+------------------------------------------------------------------+
+//| Estrutura: Resultado de Validação de SL/TP (v3.01)               |
+//+------------------------------------------------------------------+
+struct SValidateSLTPResult
+  {
+   bool              is_valid;         // SL/TP são válidos?
+   double            validated_sl;     // SL validado
+   double            validated_tp;     // TP validado
+   bool              sl_adjusted;      // SL foi ajustado?
+   bool              tp_adjusted;      // TP foi ajustado?
+   string            message;          // Mensagem (para log)
   };
 
 //+------------------------------------------------------------------+
@@ -328,6 +342,16 @@ public:
    // ═══════════════════════════════════════════════════════════════
    double            CalculateSLPrice(ENUM_ORDER_TYPE orderType, double entryPrice);
    double            CalculateTPPrice(ENUM_ORDER_TYPE orderType, double entryPrice);
+   
+   // ═══════════════════════════════════════════════════════════════
+   // VALIDAÇÃO DE SL/TP CONTRA NÍVEIS MÍNIMOS DO BROKER (v3.01)
+   // ═══════════════════════════════════════════════════════════════
+   SValidateSLTPResult ValidateSLTP(
+      ENUM_POSITION_TYPE posType,
+      double entryPrice,
+      double proposedSL,
+      double proposedTP
+   );
    
    // ═══════════════════════════════════════════════════════════════
    // CÁLCULO DE TRAILING STOP
@@ -1076,6 +1100,175 @@ double CRiskManager::CalculateTPPrice(ENUM_ORDER_TYPE orderType, double entryPri
    tpPrice = NormalizePrice(tpPrice);
    
    return tpPrice;
+  }
+
+//+------------------------------------------------------------------+
+//| Validar SL/TP contra níveis mínimos do broker (v3.01)            |
+//+------------------------------------------------------------------+
+SValidateSLTPResult CRiskManager::ValidateSLTP(
+   ENUM_POSITION_TYPE posType,
+   double entryPrice,
+   double proposedSL,
+   double proposedTP
+)
+  {
+   SValidateSLTPResult result;
+   result.is_valid = true;
+   result.validated_sl = proposedSL;
+   result.validated_tp = proposedTP;
+   result.sl_adjusted = false;
+   result.tp_adjusted = false;
+   result.message = "";
+   
+   double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
+   int stopLevel = GetStopLevel();
+   double minDistance = stopLevel * point;
+   
+   // ═══════════════════════════════════════════════════════════════
+   // VALIDAR STOP LOSS
+   // ═══════════════════════════════════════════════════════════════
+   if(proposedSL > 0)
+     {
+      double slDistance = 0;
+      
+      if(posType == POSITION_TYPE_BUY)
+        {
+         slDistance = entryPrice - proposedSL;
+         
+         // SL está muito próximo?
+         if(slDistance < minDistance)
+           {
+            result.validated_sl = entryPrice - minDistance;
+            result.validated_sl = NormalizePrice(result.validated_sl);
+            result.sl_adjusted = true;
+            
+            if(m_logger != NULL)
+              {
+               m_logger.LogWarning("⚠️ SL ajustado para respeitar stop level mínimo");
+               m_logger.LogWarning(StringFormat("   Stop Level: %d pts (%.5f)", 
+                                               stopLevel, minDistance));
+               m_logger.LogWarning(StringFormat("   SL proposto: %.5f (%.5f pts)", 
+                                               proposedSL, slDistance));
+               m_logger.LogWarning(StringFormat("   SL validado: %.5f (%.5f pts)", 
+                                               result.validated_sl, minDistance));
+              }
+            else
+              {
+               Print("⚠️ SL ajustado para respeitar stop level mínimo");
+               Print("   SL proposto: ", proposedSL, " → SL validado: ", result.validated_sl);
+              }
+           }
+        }
+      else // POSITION_TYPE_SELL
+        {
+         slDistance = proposedSL - entryPrice;
+         
+         // SL está muito próximo?
+         if(slDistance < minDistance)
+           {
+            result.validated_sl = entryPrice + minDistance;
+            result.validated_sl = NormalizePrice(result.validated_sl);
+            result.sl_adjusted = true;
+            
+            if(m_logger != NULL)
+              {
+               m_logger.LogWarning("⚠️ SL ajustado para respeitar stop level mínimo");
+               m_logger.LogWarning(StringFormat("   Stop Level: %d pts (%.5f)", 
+                                               stopLevel, minDistance));
+               m_logger.LogWarning(StringFormat("   SL proposto: %.5f (%.5f pts)", 
+                                               proposedSL, slDistance));
+               m_logger.LogWarning(StringFormat("   SL validado: %.5f (%.5f pts)", 
+                                               result.validated_sl, minDistance));
+              }
+            else
+              {
+               Print("⚠️ SL ajustado para respeitar stop level mínimo");
+               Print("   SL proposto: ", proposedSL, " → SL validado: ", result.validated_sl);
+              }
+           }
+        }
+     }
+   
+   // ═══════════════════════════════════════════════════════════════
+   // VALIDAR TAKE PROFIT
+   // ═══════════════════════════════════════════════════════════════
+   if(proposedTP > 0)
+     {
+      double tpDistance = 0;
+      
+      if(posType == POSITION_TYPE_BUY)
+        {
+         tpDistance = proposedTP - entryPrice;
+         
+         // TP está muito próximo?
+         if(tpDistance < minDistance)
+           {
+            result.validated_tp = entryPrice + minDistance;
+            result.validated_tp = NormalizePrice(result.validated_tp);
+            result.tp_adjusted = true;
+            
+            if(m_logger != NULL)
+              {
+               m_logger.LogWarning("⚠️ TP ajustado para respeitar stop level mínimo");
+               m_logger.LogWarning(StringFormat("   Stop Level: %d pts (%.5f)", 
+                                               stopLevel, minDistance));
+               m_logger.LogWarning(StringFormat("   TP proposto: %.5f (%.5f pts)", 
+                                               proposedTP, tpDistance));
+               m_logger.LogWarning(StringFormat("   TP validado: %.5f (%.5f pts)", 
+                                               result.validated_tp, minDistance));
+              }
+            else
+              {
+               Print("⚠️ TP ajustado para respeitar stop level mínimo");
+               Print("   TP proposto: ", proposedTP, " → TP validado: ", result.validated_tp);
+              }
+           }
+        }
+      else // POSITION_TYPE_SELL
+        {
+         tpDistance = entryPrice - proposedTP;
+         
+         // TP está muito próximo?
+         if(tpDistance < minDistance)
+           {
+            result.validated_tp = entryPrice - minDistance;
+            result.validated_tp = NormalizePrice(result.validated_tp);
+            result.tp_adjusted = true;
+            
+            if(m_logger != NULL)
+              {
+               m_logger.LogWarning("⚠️ TP ajustado para respeitar stop level mínimo");
+               m_logger.LogWarning(StringFormat("   Stop Level: %d pts (%.5f)", 
+                                               stopLevel, minDistance));
+               m_logger.LogWarning(StringFormat("   TP proposto: %.5f (%.5f pts)", 
+                                               proposedTP, tpDistance));
+               m_logger.LogWarning(StringFormat("   TP validado: %.5f (%.5f pts)", 
+                                               result.validated_tp, minDistance));
+              }
+            else
+              {
+               Print("⚠️ TP ajustado para respeitar stop level mínimo");
+               Print("   TP proposto: ", proposedTP, " → TP validado: ", result.validated_tp);
+              }
+           }
+        }
+     }
+   
+   // ═══════════════════════════════════════════════════════════════
+   // MENSAGEM FINAL
+   // ═══════════════════════════════════════════════════════════════
+   if(result.sl_adjusted || result.tp_adjusted)
+     {
+      result.message = "SL/TP ajustados para respeitar stop level do broker";
+      result.is_valid = true; // Mesmo ajustado, agora está válido
+     }
+   else
+     {
+      result.message = "SL/TP dentro dos níveis mínimos do broker";
+      result.is_valid = true;
+     }
+   
+   return result;
   }
 
 //+------------------------------------------------------------------+
