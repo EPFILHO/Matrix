@@ -2,14 +2,14 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                        EA Modular Multistrategy - EPBot Matrix   |
-//|                                                      Versão 1.01 |
+//|                                                      Versão 1.02 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.01"
+#property version   "1.02"
 #property description "EPBot Matrix - Sistema de Trading Modular Multistrategy"
 #property description "Arquitetura profissional com hot reload e logging avançado"
-#property description "v1.01: TradeManager integrado - Gerenciamento individual de posições"
+#property description "v1.02: Partial Take Profit COMPLETO - Até 3 níveis configuráveis"
 
 //+------------------------------------------------------------------+
 //| INCLUDES - ORDEM IMPORTANTE                                      |
@@ -84,7 +84,7 @@ bool g_tradingAllowed = true;  // Controle geral de trading
 int OnInit()
 {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.01 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v1.02 - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
    
    // ═══════════════════════════════════════════════════════════════
@@ -169,7 +169,7 @@ int OnInit()
    g_logger.LogInfo("✅ Blockers inicializado com sucesso");
    
    // ═══════════════════════════════════════════════════════════════
-   // ETAPA 3: INICIALIZAR RISK MANAGER
+   // ETAPA 3: INICIALIZAR RISK MANAGER (COM PARTIAL TP! 🎯)
    // ═══════════════════════════════════════════════════════════════
    g_riskManager = new CRiskManager();
    if(g_riskManager == NULL)
@@ -177,6 +177,19 @@ int OnInit()
       g_logger.LogError("❌ Falha ao criar RiskManager!");
       CleanupAndReturn(INIT_FAILED);
       return INIT_FAILED;
+   }
+   
+   // 🎯 PARTIAL TP - Configurar TP3 como volume restante
+   double tp3_percent = 100.0 - inp_PartialTP1_Percent - inp_PartialTP2_Percent;
+   
+   if(inp_UsePartialTP)
+   {
+      g_logger.LogInfo("═══════════════════════════════════════════════════════");
+      g_logger.LogInfo("🎯 PARTIAL TAKE PROFIT - CONFIGURAÇÃO:");
+      g_logger.LogInfo(StringFormat("   TP1: %.1f%% @ %d pts", inp_PartialTP1_Percent, inp_PartialTP1_Distance));
+      g_logger.LogInfo(StringFormat("   TP2: %.1f%% @ %d pts", inp_PartialTP2_Percent, inp_PartialTP2_Distance));
+      g_logger.LogInfo(StringFormat("   TP3: %.1f%% (restante - trailing)", tp3_percent));
+      g_logger.LogInfo("═══════════════════════════════════════════════════════");
    }
    
    if(!g_riskManager.Init(
@@ -210,21 +223,21 @@ int OnInit()
       inp_BEOffset,
       inp_BE_ATRActivation,
       inp_BE_ATROffset,
-      // Partial TP (desativado por enquanto)
-      false,  // usePartialTP
-      false,  // tp1Enable
-      0,      // tp1Percent
-      TP_NONE, // tp1Type
-      0,      // tp1Distance
-      0,      // tp1ATRMult
-      false,  // tp2Enable
-      0,      // tp2Percent
-      TP_NONE, // tp2Type
-      0,      // tp2Distance
-      0,      // tp2ATRMult
-      // Ativação Condicional (padrão ALWAYS)
-      TRAILING_ALWAYS,
-      BE_ALWAYS,
+      // 🎯 PARTIAL TP (ATIVADO! v1.02)
+      inp_UsePartialTP,                          // ✅ Usar inputs
+      true,                                      // tp1Enable
+      inp_PartialTP1_Percent,                    // tp1Percent
+      TP_FIXED,                                  // tp1Type
+      inp_PartialTP1_Distance,                   // tp1Distance
+      0,                                         // tp1ATRMult
+      true,                                      // tp2Enable
+      inp_PartialTP2_Percent,                    // tp2Percent
+      TP_FIXED,                                  // tp2Type
+      inp_PartialTP2_Distance,                   // tp2Distance
+      0,                                         // tp2ATRMult
+      // Ativação Condicional
+      inp_TrailingActivation,                    // ✅ Usar inputs
+      inp_BEActivationMode,                      // ✅ Usar inputs
       // Global
       _Symbol,
       inp_ATRPeriod
@@ -522,10 +535,13 @@ int OnInit()
    Print("════════════════════════════════════════════════════════════════");
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
-   g_logger.LogInfo("🚀 EPBot Matrix v1.01 - PRONTO PARA OPERAR!");
+   g_logger.LogInfo("🚀 EPBot Matrix v1.02 - PRONTO PARA OPERAR!");
    g_logger.LogInfo("📊 Símbolo: " + _Symbol);
    g_logger.LogInfo("⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
    g_logger.LogInfo("🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
+   
+   if(inp_UsePartialTP)
+      g_logger.LogInfo("🎯 Partial TP: ATIVADO");
    
    return INIT_SUCCEEDED;
 }
@@ -762,12 +778,21 @@ void ManageOpenPosition()
    // ═══════════════════════════════════════════════════════════════
    // MONITORAR PARTIAL TP (se habilitado)
    // ═══════════════════════════════════════════════════════════════
-   g_tradeManager.MonitorPartialTP(ticket);
+   if(inp_UsePartialTP)
+   {
+      g_tradeManager.MonitorPartialTP(ticket);
+   }
    
    // ═══════════════════════════════════════════════════════════════
-   // TRAILING STOP
+   // ATIVAR TRAILING/BREAKEVEN SE NECESSÁRIO (v1.02)
    // ═══════════════════════════════════════════════════════════════
-   if(inp_UseTrailing)
+   bool tp1Executed = g_tradeManager.IsTP1Executed(ticket);
+   bool tp2Executed = g_tradeManager.IsTP2Executed(ticket);
+   
+   // ═══════════════════════════════════════════════════════════════
+   // TRAILING STOP (com ativação condicional)
+   // ═══════════════════════════════════════════════════════════════
+   if(inp_UseTrailing && g_riskManager.ShouldActivateTrailing(tp1Executed, tp2Executed))
    {
       STrailingResult trailing = g_riskManager.CalculateTrailing(posType, currentPrice, entryPrice, currentSL);
       
@@ -790,9 +815,9 @@ void ManageOpenPosition()
    }
    
    // ═══════════════════════════════════════════════════════════════
-   // BREAKEVEN (usando estado da posição - NÃO MAIS GLOBAL!)
+   // BREAKEVEN (usando estado da posição + ativação condicional)
    // ═══════════════════════════════════════════════════════════════
-   if(inp_UseBreakeven)
+   if(inp_UseBreakeven && g_riskManager.ShouldActivateBreakeven(tp1Executed, tp2Executed))
    {
       // ✅ BUSCAR ESTADO ESPECÍFICO DESTA POSIÇÃO
       bool beActivated = g_tradeManager.IsBreakevenActivated(ticket);
@@ -885,7 +910,7 @@ void ManageOpenPosition()
 }
 
 //+------------------------------------------------------------------+
-//| EXECUTAR TRADE                                                    |
+//| EXECUTAR TRADE (v1.02 - COM PARTIAL TP!)                         |
 //+------------------------------------------------------------------+
 void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
 {
@@ -929,9 +954,12 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
       return;
    }
    
-   // Take Profit
-   double tpPrice = g_riskManager.CalculateTPPrice(orderType, price);
-   // TP pode ser 0 se configurado como NONE
+   // Take Profit (SE não usar Partial TP, calcula TP normal)
+   double tpPrice = 0;
+   if(!inp_UsePartialTP)
+   {
+      tpPrice = g_riskManager.CalculateTPPrice(orderType, price);
+   }
    
    // ═══════════════════════════════════════════════════════════════
    // VALIDAR SL/TP CONTRA NÍVEIS MÍNIMOS DO BROKER
@@ -965,7 +993,7 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
    request.type = orderType;
    request.price = price;
    request.sl = slPrice;
-   request.tp = tpPrice;
+   request.tp = tpPrice;  // 0 se usar Partial TP
    request.deviation = inp_Slippage;
    request.magic = inp_MagicNumber;
    request.comment = inp_TradeComment;
@@ -977,7 +1005,7 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
    g_logger.LogInfo("   Lote: " + DoubleToString(lotSize, 2));
    g_logger.LogInfo("   Preço: " + DoubleToString(price, _Digits));
    g_logger.LogInfo("   SL: " + DoubleToString(slPrice, _Digits));
-   g_logger.LogInfo("   TP: " + DoubleToString(tpPrice, _Digits));
+   g_logger.LogInfo("   TP: " + (tpPrice > 0 ? DoubleToString(tpPrice, _Digits) : "Partial TP"));
    
    // Enviar ordem
    if(!OrderSend(request, result))
@@ -997,10 +1025,33 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
       g_logger.LogInfo("   Preço: " + DoubleToString(result.price, _Digits));
       
       // ═══════════════════════════════════════════════════════════════
-      // REGISTRAR POSIÇÃO NO TRADEMANAGER
+      // REGISTRAR POSIÇÃO NO TRADEMANAGER (v1.02 - COM PARTIAL TP!)
       // ═══════════════════════════════════════════════════════════════
       SPartialTPLevel tpLevels[];
-      bool hasPartialTP = false;  // Por enquanto desativado
+      bool hasPartialTP = inp_UsePartialTP;
+      
+      // 🎯 CALCULAR NÍVEIS DE PARTIAL TP
+      if(hasPartialTP)
+      {
+         hasPartialTP = g_riskManager.CalculatePartialTPLevels(
+            orderType,
+            result.price,
+            result.volume,
+            tpLevels
+         );
+         
+         if(hasPartialTP)
+         {
+            g_logger.LogInfo("🎯 Partial TP configurado:");
+            for(int i = 0; i < ArraySize(tpLevels); i++)
+            {
+               if(tpLevels[i].enabled)
+               {
+                  g_logger.LogInfo("   " + tpLevels[i].description);
+               }
+            }
+         }
+      }
       
       g_tradeManager.RegisterPosition(
          result.deal,  // ticket
@@ -1124,5 +1175,5 @@ string GetDeinitReasonText(int reason)
 }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.01                                   |
+//| FIM DO EA - EPBOT MATRIX v1.02                                   |
 //+------------------------------------------------------------------+
