@@ -2,9 +2,11 @@
 //|                                                       Inputs.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                   Sistema de Inputs Centralizados - EPBot Matrix |
+//|                                                      Versão 1.01 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
+#property version   "1.01"
 
 //+------------------------------------------------------------------+
 //| INCLUDES NECESSÁRIOS PARA ENUMS                                  |
@@ -127,6 +129,14 @@ input int    inp_FixedTP = 200;                   // TP Fixo (pontos)
 input double inp_TP_ATRMultiplier = 5.0;          // Multiplicador ATR (TP)
 input bool   inp_TP_CompensateSpread = false;     // Compensar Spread no TP
 
+//--- 🎯 PARTIAL TAKE PROFIT (v1.01 - NOVO!)
+input group "🎯 Partial Take Profit"
+input bool   inp_UsePartialTP = false;            // Ativar Partial TP
+input double inp_PartialTP1_Percent = 50.0;       // TP1: % do Volume
+input int    inp_PartialTP1_Distance = 100;       // TP1: Distância (pontos)
+input double inp_PartialTP2_Percent = 30.0;       // TP2: % do Volume
+input int    inp_PartialTP2_Distance = 200;       // TP2: Distância (pontos)
+
 //--- 🔄 TRAILING STOP
 input group "🔄 Trailing Stop"
 input bool   inp_UseTrailing = false;             // Ativar Trailing Stop
@@ -145,6 +155,11 @@ input int    inp_BEActivation = 50;               // Ativação BE (pontos)
 input int    inp_BEOffset = 5;                    // Offset BE (pontos)
 input double inp_BE_ATRActivation = 0.5;          // Ativação BE (ATR)
 input double inp_BE_ATROffset = 0.05;             // Offset BE (ATR)
+
+//--- 🔄 ATIVAÇÃO CONDICIONAL (v1.01 - NOVO!)
+input group "🔄 Ativação Condicional (Trailing/Breakeven)"
+input ENUM_TRAILING_ACTIVATION inp_TrailingActivation = TRAILING_ALWAYS;  // Ativar Trailing
+input ENUM_BE_ACTIVATION inp_BEActivationMode = BE_ALWAYS;                // Ativar Breakeven
 
 //+------------------------------------------------------------------+
 //| SEÇÃO 004 - SIGNAL MANAGER                                       |
@@ -217,8 +232,8 @@ input int    inp_RSIFilterShift = 1;                    // Shift do Filtro RSI (
 //| SEÇÃO 007 - TRADE MANAGER                                        |
 //+------------------------------------------------------------------+
 input group "═══════════════ 🎯 TRADE MANAGER ═══════════════"
-// Inputs do Trade Manager virão aqui
+// Inputs do Trade Manager virão aqui (se necessário no futuro)
 
 //+------------------------------------------------------------------+
-//| FIM DO ARQUIVO DE INPUTS                                         |
+//| FIM DO ARQUIVO DE INPUTS v1.01                                   |
 //+------------------------------------------------------------------+
