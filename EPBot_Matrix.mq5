@@ -2,14 +2,15 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                        EA Modular Multistrategy - EPBot Matrix   |
-//|                                                      Versão 1.02 |
+//|                                                      Versão 1.03 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.02"
+#property version   "1.03"
 #property description "EPBot Matrix - Sistema de Trading Modular Multistrategy"
 #property description "Arquitetura profissional com hot reload e logging avançado"
 #property description "v1.02: Partial Take Profit COMPLETO - Até 3 níveis configuráveis"
+#property description "v1.03: Removida redundância UseTrailing/UseBreakeven - Usar enum NEVER"
 
 //+------------------------------------------------------------------+
 //| INCLUDES - ORDEM IMPORTANTE                                      |
@@ -84,7 +85,7 @@ bool g_tradingAllowed = true;  // Controle geral de trading
 int OnInit()
 {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.02 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v1.03 - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
    
    // ═══════════════════════════════════════════════════════════════
@@ -169,7 +170,7 @@ int OnInit()
    g_logger.LogInfo("✅ Blockers inicializado com sucesso");
    
    // ═══════════════════════════════════════════════════════════════
-   // ETAPA 3: INICIALIZAR RISK MANAGER (COM PARTIAL TP! 🎯)
+   // ETAPA 3: INICIALIZAR RISK MANAGER (v1.03 - SEM useTrailing/useBreakeven)
    // ═══════════════════════════════════════════════════════════════
    g_riskManager = new CRiskManager();
    if(g_riskManager == NULL)
@@ -208,16 +209,14 @@ int OnInit()
       inp_FixedTP,
       inp_TP_ATRMultiplier,
       inp_TP_CompensateSpread,
-      // Trailing
-      inp_UseTrailing,
+      // Trailing (v1.03: REMOVIDO inp_UseTrailing)
       inp_TrailingType,
       inp_TrailingStart,
       inp_TrailingStep,
       inp_TrailingATRStart,
       inp_TrailingATRStep,
       inp_Trailing_CompensateSpread,
-      // Breakeven
-      inp_UseBreakeven,
+      // Breakeven (v1.03: REMOVIDO inp_UseBreakeven)
       inp_BEType,
       inp_BEActivation,
       inp_BEOffset,
@@ -535,7 +534,7 @@ int OnInit()
    Print("════════════════════════════════════════════════════════════════");
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
-   g_logger.LogInfo("🚀 EPBot Matrix v1.02 - PRONTO PARA OPERAR!");
+   g_logger.LogInfo("🚀 EPBot Matrix v1.03 - PRONTO PARA OPERAR!");
    g_logger.LogInfo("📊 Símbolo: " + _Symbol);
    g_logger.LogInfo("⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
    g_logger.LogInfo("🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
@@ -752,7 +751,7 @@ void OnTick()
 }
 
 //+------------------------------------------------------------------+
-//| GERENCIAR POSIÇÃO ABERTA                                         |
+//| GERENCIAR POSIÇÃO ABERTA (v1.03)                                 |
 //+------------------------------------------------------------------+
 void ManageOpenPosition()
 {
@@ -784,15 +783,15 @@ void ManageOpenPosition()
    }
    
    // ═══════════════════════════════════════════════════════════════
-   // ATIVAR TRAILING/BREAKEVEN SE NECESSÁRIO (v1.02)
+   // ATIVAR TRAILING/BREAKEVEN SE NECESSÁRIO (v1.03)
    // ═══════════════════════════════════════════════════════════════
    bool tp1Executed = g_tradeManager.IsTP1Executed(ticket);
    bool tp2Executed = g_tradeManager.IsTP2Executed(ticket);
    
    // ═══════════════════════════════════════════════════════════════
-   // TRAILING STOP (com ativação condicional)
+   // TRAILING STOP (v1.03: SEM verificação inp_UseTrailing)
    // ═══════════════════════════════════════════════════════════════
-   if(inp_UseTrailing && g_riskManager.ShouldActivateTrailing(tp1Executed, tp2Executed))
+   if(g_riskManager.ShouldActivateTrailing(tp1Executed, tp2Executed))
    {
       STrailingResult trailing = g_riskManager.CalculateTrailing(posType, currentPrice, entryPrice, currentSL);
       
@@ -815,9 +814,9 @@ void ManageOpenPosition()
    }
    
    // ═══════════════════════════════════════════════════════════════
-   // BREAKEVEN (usando estado da posição + ativação condicional)
+   // BREAKEVEN (v1.03: SEM verificação inp_UseBreakeven)
    // ═══════════════════════════════════════════════════════════════
-   if(inp_UseBreakeven && g_riskManager.ShouldActivateBreakeven(tp1Executed, tp2Executed))
+   if(g_riskManager.ShouldActivateBreakeven(tp1Executed, tp2Executed))
    {
       // ✅ BUSCAR ESTADO ESPECÍFICO DESTA POSIÇÃO
       bool beActivated = g_tradeManager.IsBreakevenActivated(ticket);
@@ -1175,5 +1174,5 @@ string GetDeinitReasonText(int reason)
 }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.02                                   |
+//| FIM DO EA - EPBOT MATRIX v1.03                                   |
 //+------------------------------------------------------------------+
