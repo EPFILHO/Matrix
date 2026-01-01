@@ -2,10 +2,10 @@
 //|                                                  RiskManager.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                       Sistema de Cálculo de Risco - EPBot Matrix |
-//|                                                      Versão 3.01 |
+//|                                                      Versão 3.02 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "3.01" 
+#property version   "3.02" 
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
@@ -27,6 +27,10 @@
 // + Métodos Set para alterar parâmetros em runtime
 // + Getters para Input e Working values
 // + ValidateSLTP() - Validação contra níveis mínimos do broker
+//
+// NOVIDADES v3.02:
+// + REMOVIDO: inp_UseTrailing e inp_UseBreakeven (redundância)
+// + SIMPLIFICADO: Trailing/BE ativados via enum (NEVER = desligado)
 // ═══════════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
@@ -186,7 +190,6 @@ private:
    // ═══════════════════════════════════════════════════════════════
    // INPUT PARAMETERS - TRAILING STOP (valores originais)
    // ═══════════════════════════════════════════════════════════════
-   bool              m_inputUseTrailing;
    ENUM_TRAILING_TYPE m_inputTrailingType;
    int               m_inputTrailingStart;
    int               m_inputTrailingStep;
@@ -197,7 +200,6 @@ private:
    // ═══════════════════════════════════════════════════════════════
    // WORKING PARAMETERS - TRAILING STOP (valores usados)
    // ═══════════════════════════════════════════════════════════════
-   bool              m_useTrailing;
    ENUM_TRAILING_TYPE m_trailingType;
    int               m_trailingStart;
    int               m_trailingStep;
@@ -208,7 +210,6 @@ private:
    // ═══════════════════════════════════════════════════════════════
    // INPUT PARAMETERS - BREAKEVEN (valores originais)
    // ═══════════════════════════════════════════════════════════════
-   bool              m_inputUseBreakeven;
    ENUM_BE_TYPE      m_inputBreakevenType;
    int               m_inputBEActivation;
    int               m_inputBEOffset;
@@ -218,7 +219,6 @@ private:
    // ═══════════════════════════════════════════════════════════════
    // WORKING PARAMETERS - BREAKEVEN (valores usados)
    // ═══════════════════════════════════════════════════════════════
-   bool              m_useBreakeven;
    ENUM_BE_TYPE      m_breakevenType;
    int               m_beActivation;
    int               m_beOffset;
@@ -313,12 +313,12 @@ public:
       int rangePeriod, double rangeMult, bool slCompensateSpread,
       // Take Profit
       ENUM_TP_TYPE tpType, int fixedTP, double tpATRMult, bool tpCompensateSpread,
-      // Trailing
-      bool useTrailing, ENUM_TRAILING_TYPE trailingType,
+      // Trailing (v3.02: REMOVIDO useTrailing - usar modo NEVER para desligar)
+      ENUM_TRAILING_TYPE trailingType,
       int trailingStart, int trailingStep,
       double trailingATRStart, double trailingATRStep, bool trailingCompensateSpread,
-      // Breakeven
-      bool useBreakeven, ENUM_BE_TYPE beType,
+      // Breakeven (v3.02: REMOVIDO useBreakeven - usar modo NEVER para desligar)
+      ENUM_BE_TYPE beType,
       int beActivation, int beOffset,
       double beATRActivation, double beATROffset,
       // Partial TP (v3.0)
@@ -404,15 +404,11 @@ public:
    void              SetBreakevenATRParams(double activation, double offset);
    void              SetPartialTP1(bool enable, double percent, int distance);
    void              SetPartialTP2(bool enable, double percent, int distance);
-   void              SetUseTrailing(bool enable);
-   void              SetUseBreakeven(bool enable);
    void              SetUsePartialTP(bool enable);
    
    // ═══════════════════════════════════════════════════════════════
    // GETTERS DE CONFIGURAÇÃO (Working values)
    // ═══════════════════════════════════════════════════════════════
-   bool              IsTrailingEnabled() const { return m_useTrailing; }
-   bool              IsBreakevenEnabled() const { return m_useBreakeven; }
    bool              IsPartialTPEnabled() const { return m_usePartialTP; }
    int               GetFixedSL() const { return m_fixedSL; }
    int               GetFixedTP() const { return m_fixedTP; }
@@ -452,7 +448,6 @@ CRiskManager::CRiskManager()
    m_inputTPATRMultiplier = 5.0;
    m_inputTPCompensateSpread = false;
    
-   m_inputUseTrailing = false;
    m_inputTrailingType = TRAILING_FIXED;
    m_inputTrailingStart = 50;
    m_inputTrailingStep = 30;
@@ -460,7 +455,6 @@ CRiskManager::CRiskManager()
    m_inputTrailingATRStep = 1.0;
    m_inputTrailingCompensateSpread = false;
    
-   m_inputUseBreakeven = false;
    m_inputBreakevenType = BE_FIXED;
    m_inputBEActivation = 50;
    m_inputBEOffset = 5;
@@ -501,7 +495,6 @@ CRiskManager::CRiskManager()
    m_tpATRMultiplier = 5.0;
    m_tpCompensateSpread = false;
    
-   m_useTrailing = false;
    m_trailingType = TRAILING_FIXED;
    m_trailingStart = 50;
    m_trailingStep = 30;
@@ -509,7 +502,6 @@ CRiskManager::CRiskManager()
    m_trailingATRStep = 1.0;
    m_trailingCompensateSpread = false;
    
-   m_useBreakeven = false;
    m_breakevenType = BE_FIXED;
    m_beActivation = 50;
    m_beOffset = 5;
@@ -551,7 +543,7 @@ CRiskManager::~CRiskManager()
   }
 
 //+------------------------------------------------------------------+
-//| Inicialização                                                     |
+//| Inicialização (v3.02 - SEM useTrailing e useBreakeven)           |
 //+------------------------------------------------------------------+
 bool CRiskManager::Init(
    CLogger* logger,
@@ -559,10 +551,10 @@ bool CRiskManager::Init(
    ENUM_SL_TYPE slType, int fixedSL, double slATRMult,
    int rangePeriod, double rangeMult, bool slCompensateSpread,
    ENUM_TP_TYPE tpType, int fixedTP, double tpATRMult, bool tpCompensateSpread,
-   bool useTrailing, ENUM_TRAILING_TYPE trailingType,
+   ENUM_TRAILING_TYPE trailingType,
    int trailingStart, int trailingStep,
    double trailingATRStart, double trailingATRStep, bool trailingCompensateSpread,
-   bool useBreakeven, ENUM_BE_TYPE beType,
+   ENUM_BE_TYPE beType,
    int beActivation, int beOffset,
    double beATRActivation, double beATROffset,
    bool usePartialTP,
@@ -590,7 +582,6 @@ bool CRiskManager::Init(
    m_inputTPATRMultiplier = tpATRMult;
    m_inputTPCompensateSpread = tpCompensateSpread;
    
-   m_inputUseTrailing = useTrailing;
    m_inputTrailingType = trailingType;
    m_inputTrailingStart = trailingStart;
    m_inputTrailingStep = trailingStep;
@@ -598,7 +589,6 @@ bool CRiskManager::Init(
    m_inputTrailingATRStep = trailingATRStep;
    m_inputTrailingCompensateSpread = trailingCompensateSpread;
    
-   m_inputUseBreakeven = useBreakeven;
    m_inputBreakevenType = beType;
    m_inputBEActivation = beActivation;
    m_inputBEOffset = beOffset;
@@ -639,7 +629,6 @@ bool CRiskManager::Init(
    m_tpATRMultiplier = tpATRMult;
    m_tpCompensateSpread = tpCompensateSpread;
    
-   m_useTrailing = useTrailing;
    m_trailingType = trailingType;
    m_trailingStart = trailingStart;
    m_trailingStep = trailingStep;
@@ -647,7 +636,6 @@ bool CRiskManager::Init(
    m_trailingATRStep = trailingATRStep;
    m_trailingCompensateSpread = trailingCompensateSpread;
    
-   m_useBreakeven = useBreakeven;
    m_breakevenType = beType;
    m_beActivation = beActivation;
    m_beOffset = beOffset;
@@ -947,34 +935,6 @@ void CRiskManager::SetPartialTP2(bool enable, double percent, int distance)
   }
 
 //+------------------------------------------------------------------+
-//| Hot Reload - Ativar/Desativar trailing                           |
-//+------------------------------------------------------------------+
-void CRiskManager::SetUseTrailing(bool enable)
-  {
-   bool oldValue = m_useTrailing;
-   m_useTrailing = enable;
-   
-   if(m_logger != NULL)
-      m_logger.LogInfo("🔄 Trailing Stop: " + (enable ? "ATIVADO" : "DESATIVADO"));
-   else
-      Print("🔄 Trailing Stop: ", enable ? "ATIVADO" : "DESATIVADO");
-  }
-
-//+------------------------------------------------------------------+
-//| Hot Reload - Ativar/Desativar breakeven                          |
-//+------------------------------------------------------------------+
-void CRiskManager::SetUseBreakeven(bool enable)
-  {
-   bool oldValue = m_useBreakeven;
-   m_useBreakeven = enable;
-   
-   if(m_logger != NULL)
-      m_logger.LogInfo("🔄 Breakeven: " + (enable ? "ATIVADO" : "DESATIVADO"));
-   else
-      Print("🔄 Breakeven: ", enable ? "ATIVADO" : "DESATIVADO");
-  }
-
-//+------------------------------------------------------------------+
 //| Hot Reload - Ativar/Desativar partial TP                         |
 //+------------------------------------------------------------------+
 void CRiskManager::SetUsePartialTP(bool enable)
@@ -989,8 +949,8 @@ void CRiskManager::SetUsePartialTP(bool enable)
   }
 
 // ═══════════════════════════════════════════════════════════════
-// MÉTODOS DE CÁLCULO - PERMANECEM IDÊNTICOS AO ORIGINAL v3.00
-// (Usam as working variables, então funcionam normalmente)
+// MÉTODOS DE CÁLCULO - PERMANECEM IDÊNTICOS AO ORIGINAL v3.01
+// (Continua igual, mas agora ShouldActivate* não verifica m_useTrailing/m_useBreakeven)
 // ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
@@ -1135,7 +1095,6 @@ SValidateSLTPResult CRiskManager::ValidateSLTP(
         {
          slDistance = entryPrice - proposedSL;
          
-         // SL está muito próximo?
          if(slDistance < minDistance)
            {
             result.validated_sl = entryPrice - minDistance;
@@ -1159,11 +1118,10 @@ SValidateSLTPResult CRiskManager::ValidateSLTP(
               }
            }
         }
-      else // POSITION_TYPE_SELL
+      else
         {
          slDistance = proposedSL - entryPrice;
          
-         // SL está muito próximo?
          if(slDistance < minDistance)
            {
             result.validated_sl = entryPrice + minDistance;
@@ -1200,7 +1158,6 @@ SValidateSLTPResult CRiskManager::ValidateSLTP(
         {
          tpDistance = proposedTP - entryPrice;
          
-         // TP está muito próximo?
          if(tpDistance < minDistance)
            {
             result.validated_tp = entryPrice + minDistance;
@@ -1224,11 +1181,10 @@ SValidateSLTPResult CRiskManager::ValidateSLTP(
               }
            }
         }
-      else // POSITION_TYPE_SELL
+      else
         {
          tpDistance = entryPrice - proposedTP;
          
-         // TP está muito próximo?
          if(tpDistance < minDistance)
            {
             result.validated_tp = entryPrice - minDistance;
@@ -1254,13 +1210,10 @@ SValidateSLTPResult CRiskManager::ValidateSLTP(
         }
      }
    
-   // ═══════════════════════════════════════════════════════════════
-   // MENSAGEM FINAL
-   // ═══════════════════════════════════════════════════════════════
    if(result.sl_adjusted || result.tp_adjusted)
      {
       result.message = "SL/TP ajustados para respeitar stop level do broker";
-      result.is_valid = true; // Mesmo ajustado, agora está válido
+      result.is_valid = true;
      }
    else
      {
@@ -1285,12 +1238,6 @@ STrailingResult CRiskManager::CalculateTrailing(
    result.should_move = false;
    result.new_sl_price = currentSL;
    result.reason = "";
-   
-   if(!m_useTrailing)
-     {
-      result.reason = "Trailing desativado";
-      return result;
-     }
    
    double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
    double spread = SymbolInfoInteger(m_symbol, SYMBOL_SPREAD) * point;
@@ -1412,12 +1359,6 @@ SBreakevenResult CRiskManager::CalculateBreakeven(
    result.should_activate = false;
    result.new_sl_price = currentSL;
    result.reason = "";
-   
-   if(!m_useBreakeven)
-     {
-      result.reason = "Breakeven desativado";
-      return result;
-     }
    
    if(alreadyActivated)
      {
@@ -1679,13 +1620,10 @@ bool CRiskManager::CalculatePartialTPLevels(
   }
 
 //+------------------------------------------------------------------+
-//| Verifica se deve ativar Trailing Stop                            |
+//| Verifica se deve ativar Trailing Stop (v3.02)                    |
 //+------------------------------------------------------------------+
 bool CRiskManager::ShouldActivateTrailing(bool tp1Executed, bool tp2Executed)
   {
-   if(!m_useTrailing)
-      return false;
-   
    switch(m_trailingActivation)
      {
       case TRAILING_ALWAYS:
@@ -1706,13 +1644,10 @@ bool CRiskManager::ShouldActivateTrailing(bool tp1Executed, bool tp2Executed)
   }
 
 //+------------------------------------------------------------------+
-//| Verifica se deve ativar Breakeven                                |
+//| Verifica se deve ativar Breakeven (v3.02)                        |
 //+------------------------------------------------------------------+
 bool CRiskManager::ShouldActivateBreakeven(bool tp1Executed, bool tp2Executed)
   {
-   if(!m_useBreakeven)
-      return false;
-   
    switch(m_beActivation_mode)
      {
       case BE_ALWAYS:
@@ -1740,7 +1675,7 @@ void CRiskManager::PrintConfiguration()
    if(m_logger != NULL)
      {
       m_logger.LogInfo("╔══════════════════════════════════════════════════════╗");
-      m_logger.LogInfo("║       RISKMANAGER v3.01 - CONFIGURAÇÃO ATUAL        ║");
+      m_logger.LogInfo("║       RISKMANAGER v3.02 - CONFIGURAÇÃO ATUAL        ║");
       m_logger.LogInfo("╚══════════════════════════════════════════════════════╝");
       m_logger.LogInfo("");
       
@@ -1773,7 +1708,7 @@ void CRiskManager::PrintConfiguration()
    else
      {
       Print("╔══════════════════════════════════════════════════════╗");
-      Print("║       RISKMANAGER v3.01 - CONFIGURAÇÃO ATUAL        ║");
+      Print("║       RISKMANAGER v3.02 - CONFIGURAÇÃO ATUAL        ║");
       Print("╚══════════════════════════════════════════════════════╝");
       Print("");
       
