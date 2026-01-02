@@ -2,10 +2,15 @@
 //|                                                  TrendFilter.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                      Filtro de Tendência por MA - EPBot Matrix   |
-//|                                                      Versão 2.01 |
+//|                                                      Versão 2.05 |
+//|                                                                  |
+//| CHANGELOG v2.05 - PRODUCTION:                                    |
+//| - Logs otimizados: LogInfo para eventos, LogDebug para detalhes |
+//| - Mantém arquitetura v2.04 (1 MA, zona automática)              |
+//| - Ideal para LOG_COMPLETE (limpo) e LOG_DEBUG (verboso)         |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "2.01"
+#property version   "2.05"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -26,47 +31,38 @@ private:
    CLogger* m_logger;
 
    // ═══════════════════════════════════════════════════════════
-   // HANDLES DOS INDICADORES (não duplica - são internos)
+   // HANDLE DO INDICADOR (1 única MA)
    // ═══════════════════════════════════════════════════════════
-   int               m_handleTrendMA;
-   int               m_handleNeutralMA;
+   int               m_handleMA;
 
    // ═══════════════════════════════════════════════════════════
-   // ARRAYS (não duplica - são buffers internos)
+   // ARRAY (buffer interno)
    // ═══════════════════════════════════════════════════════════
-   double            m_trendMA[];
-   double            m_neutralMA[];
+   double            m_ma[];
+
+   // ═══════════════════════════════════════════════════════════
+   // THROTTLE ANTI-FLOOD (v2.04 - 1 log por candle)
+   // ═══════════════════════════════════════════════════════════
+   datetime          m_lastLogBar;
 
    // ═══════════════════════════════════════════════════════════
    // INPUT PARAMETERS (imutáveis - valores originais)
    // ═══════════════════════════════════════════════════════════
    bool              m_inputUseTrendFilter;
-   int               m_inputTrendPeriod;
-   ENUM_MA_METHOD    m_inputTrendMethod;
-   ENUM_APPLIED_PRICE m_inputTrendApplied;
-   ENUM_TIMEFRAMES   m_inputTrendTimeframe;
-
-   bool              m_inputUseNeutralZone;
-   int               m_inputNeutralPeriod;
-   ENUM_MA_METHOD    m_inputNeutralMethod;
-   ENUM_APPLIED_PRICE m_inputNeutralApplied;
-   ENUM_TIMEFRAMES   m_inputNeutralTimeframe;
+   int               m_inputMAPeriod;
+   ENUM_MA_METHOD    m_inputMAMethod;
+   ENUM_APPLIED_PRICE m_inputMAApplied;
+   ENUM_TIMEFRAMES   m_inputMATimeframe;
    double            m_inputNeutralDistance;
 
    // ═══════════════════════════════════════════════════════════
    // WORKING PARAMETERS (mutáveis - valores em uso)
    // ═══════════════════════════════════════════════════════════
    bool              m_useTrendFilter;
-   int               m_trendPeriod;
-   ENUM_MA_METHOD    m_trendMethod;
-   ENUM_APPLIED_PRICE m_trendApplied;
-   ENUM_TIMEFRAMES   m_trendTimeframe;
-
-   bool              m_useNeutralZone;
-   int               m_neutralPeriod;
-   ENUM_MA_METHOD    m_neutralMethod;
-   ENUM_APPLIED_PRICE m_neutralApplied;
-   ENUM_TIMEFRAMES   m_neutralTimeframe;
+   int               m_maPeriod;
+   ENUM_MA_METHOD    m_maMethod;
+   ENUM_APPLIED_PRICE m_maApplied;
+   ENUM_TIMEFRAMES   m_maTimeframe;
    double            m_neutralDistance;
 
    // ═══════════════════════════════════════════════════════════
@@ -88,18 +84,13 @@ public:
    // ═══════════════════════════════════════════════════════════
    bool              Setup(
       CLogger* logger,
-      // Filtro de tendência
+      // Filtro de tendência (usa mesma MA)
       bool useTrendFilter,
-      int trendPeriod,
-      ENUM_MA_METHOD trendMethod,
-      ENUM_APPLIED_PRICE trendApplied,
-      ENUM_TIMEFRAMES trendTimeframe,
-      // Zona neutra
-      bool useNeutralZone,
-      int neutralPeriod,
-      ENUM_MA_METHOD neutralMethod,
-      ENUM_APPLIED_PRICE neutralApplied,
-      ENUM_TIMEFRAMES neutralTimeframe,
+      int maPeriod,
+      ENUM_MA_METHOD maMethod,
+      ENUM_APPLIED_PRICE maApplied,
+      ENUM_TIMEFRAMES maTimeframe,
+      // Zona neutra (usa mesma MA, ativa se distance > 0)
       double neutralDistancePoints
    );
 
@@ -114,50 +105,36 @@ public:
    // HOT RELOAD - Parâmetros quentes (sem reiniciar indicadores)
    // ═══════════════════════════════════════════════════════════
    bool              SetTrendFilterEnabled(bool enabled);
-   bool              SetNeutralZoneEnabled(bool enabled);
    bool              SetNeutralDistance(double distancePoints);
 
    // ═══════════════════════════════════════════════════════════
    // COLD RELOAD - Parâmetros frios (reinicia indicadores)
    // ═══════════════════════════════════════════════════════════
-   bool              SetTrendMAPeriod(int period);
-   bool              SetNeutralMAPeriod(int period);
-   bool              SetTrendMAMethod(ENUM_MA_METHOD method);
-   bool              SetNeutralMAMethod(ENUM_MA_METHOD method);
+   bool              SetMAPeriod(int period);
+   bool              SetMAMethod(ENUM_MA_METHOD method);
 
    // ═══════════════════════════════════════════════════════════
    // GETTERS - Working values (valores atuais em uso)
    // ═══════════════════════════════════════════════════════════
-   double            GetTrendMA(int shift = 0);
-   double            GetNeutralMA(int shift = 0);
-   double            GetDistanceFromTrend();
-   double            GetDistanceFromNeutral();
+   double            GetMA(int shift = 0);
+   double            GetDistanceFromMA();
    
    bool              IsTrendFilterActive() const { return m_useTrendFilter; }
-   bool              IsNeutralZoneActive() const { return m_useNeutralZone; }
-   int               GetTrendPeriod() const { return m_trendPeriod; }
-   int               GetNeutralPeriod() const { return m_neutralPeriod; }
-   ENUM_MA_METHOD    GetTrendMethod() const { return m_trendMethod; }
-   ENUM_MA_METHOD    GetNeutralMethod() const { return m_neutralMethod; }
-   ENUM_APPLIED_PRICE GetTrendApplied() const { return m_trendApplied; }
-   ENUM_APPLIED_PRICE GetNeutralApplied() const { return m_neutralApplied; }
-   ENUM_TIMEFRAMES   GetTrendTimeframe() const { return m_trendTimeframe; }
-   ENUM_TIMEFRAMES   GetNeutralTimeframe() const { return m_neutralTimeframe; }
+   bool              IsNeutralZoneActive() const { return m_neutralDistance > 0; }
+   int               GetMAPeriod() const { return m_maPeriod; }
+   ENUM_MA_METHOD    GetMAMethod() const { return m_maMethod; }
+   ENUM_APPLIED_PRICE GetMAApplied() const { return m_maApplied; }
+   ENUM_TIMEFRAMES   GetMATimeframe() const { return m_maTimeframe; }
    double            GetNeutralDistance() const { return m_neutralDistance; }
    
    // ═══════════════════════════════════════════════════════════
    // GETTERS - Input values (valores originais da configuração)
    // ═══════════════════════════════════════════════════════════
    bool              GetInputUseTrendFilter() const { return m_inputUseTrendFilter; }
-   bool              GetInputUseNeutralZone() const { return m_inputUseNeutralZone; }
-   int               GetInputTrendPeriod() const { return m_inputTrendPeriod; }
-   int               GetInputNeutralPeriod() const { return m_inputNeutralPeriod; }
-   ENUM_MA_METHOD    GetInputTrendMethod() const { return m_inputTrendMethod; }
-   ENUM_MA_METHOD    GetInputNeutralMethod() const { return m_inputNeutralMethod; }
-   ENUM_APPLIED_PRICE GetInputTrendApplied() const { return m_inputTrendApplied; }
-   ENUM_APPLIED_PRICE GetInputNeutralApplied() const { return m_inputNeutralApplied; }
-   ENUM_TIMEFRAMES   GetInputTrendTimeframe() const { return m_inputTrendTimeframe; }
-   ENUM_TIMEFRAMES   GetInputNeutralTimeframe() const { return m_inputNeutralTimeframe; }
+   int               GetInputMAPeriod() const { return m_inputMAPeriod; }
+   ENUM_MA_METHOD    GetInputMAMethod() const { return m_inputMAMethod; }
+   ENUM_APPLIED_PRICE GetInputMAApplied() const { return m_inputMAApplied; }
+   ENUM_TIMEFRAMES   GetInputMATimeframe() const { return m_inputMATimeframe; }
    double            GetInputNeutralDistance() const { return m_inputNeutralDistance; }
   };
 
@@ -167,39 +144,26 @@ public:
 CTrendFilter::CTrendFilter() : CFilterBase("Trend Filter")
   {
    m_logger = NULL;
-   m_handleTrendMA = INVALID_HANDLE;
-   m_handleNeutralMA = INVALID_HANDLE;
+   m_handleMA = INVALID_HANDLE;
+   m_lastLogBar = 0;
 
    // ═══ INPUT PARAMETERS (valores padrão) ═══
    m_inputUseTrendFilter = false;
-   m_inputTrendPeriod = 0;
-   m_inputTrendMethod = MODE_SMA;
-   m_inputTrendApplied = PRICE_CLOSE;
-   m_inputTrendTimeframe = PERIOD_CURRENT;
-   
-   m_inputUseNeutralZone = false;
-   m_inputNeutralPeriod = 0;
-   m_inputNeutralMethod = MODE_SMA;
-   m_inputNeutralApplied = PRICE_CLOSE;
-   m_inputNeutralTimeframe = PERIOD_CURRENT;
+   m_inputMAPeriod = 0;
+   m_inputMAMethod = MODE_SMA;
+   m_inputMAApplied = PRICE_CLOSE;
+   m_inputMATimeframe = PERIOD_CURRENT;
    m_inputNeutralDistance = 0;
 
    // ═══ WORKING PARAMETERS (começam iguais aos inputs) ═══
    m_useTrendFilter = false;
-   m_trendPeriod = 0;
-   m_trendMethod = MODE_SMA;
-   m_trendApplied = PRICE_CLOSE;
-   m_trendTimeframe = PERIOD_CURRENT;
-   
-   m_useNeutralZone = false;
-   m_neutralPeriod = 0;
-   m_neutralMethod = MODE_SMA;
-   m_neutralApplied = PRICE_CLOSE;
-   m_neutralTimeframe = PERIOD_CURRENT;
+   m_maPeriod = 0;
+   m_maMethod = MODE_SMA;
+   m_maApplied = PRICE_CLOSE;
+   m_maTimeframe = PERIOD_CURRENT;
    m_neutralDistance = 0;
 
-   ArraySetAsSeries(m_trendMA, true);
-   ArraySetAsSeries(m_neutralMA, true);
+   ArraySetAsSeries(m_ma, true);
   }
 
 //+------------------------------------------------------------------+
@@ -216,15 +180,10 @@ CTrendFilter::~CTrendFilter()
 bool CTrendFilter::Setup(
    CLogger* logger,
    bool useTrendFilter,
-   int trendPeriod,
-   ENUM_MA_METHOD trendMethod,
-   ENUM_APPLIED_PRICE trendApplied,
-   ENUM_TIMEFRAMES trendTimeframe,
-   bool useNeutralZone,
-   int neutralPeriod,
-   ENUM_MA_METHOD neutralMethod,
-   ENUM_APPLIED_PRICE neutralApplied,
-   ENUM_TIMEFRAMES neutralTimeframe,
+   int maPeriod,
+   ENUM_MA_METHOD maMethod,
+   ENUM_APPLIED_PRICE maApplied,
+   ENUM_TIMEFRAMES maTimeframe,
    double neutralDistancePoints
 )
   {
@@ -233,9 +192,9 @@ bool CTrendFilter::Setup(
    // ═══════════════════════════════════════════════════════════
    // VALIDAÇÕES
    // ═══════════════════════════════════════════════════════════
-   if(useTrendFilter && trendPeriod <= 0)
+   if(maPeriod <= 0)
      {
-      string msg = "[Trend Filter] Período da MA de tendência inválido: " + IntegerToString(trendPeriod);
+      string msg = "[Trend Filter] Período da MA inválido: " + IntegerToString(maPeriod);
       if(m_logger != NULL)
          m_logger.LogError(msg);
       else
@@ -243,17 +202,7 @@ bool CTrendFilter::Setup(
       return false;
      }
 
-   if(useNeutralZone && neutralPeriod <= 0)
-     {
-      string msg = "[Trend Filter] Período da MA de zona neutra inválido: " + IntegerToString(neutralPeriod);
-      if(m_logger != NULL)
-         m_logger.LogError(msg);
-      else
-         Print("❌ ", msg);
-      return false;
-     }
-
-   if(useNeutralZone && neutralDistancePoints < 0)
+   if(neutralDistancePoints < 0)
      {
       string msg = "[Trend Filter] Distância da zona neutra inválida: " + DoubleToString(neutralDistancePoints, 1);
       if(m_logger != NULL)
@@ -263,7 +212,7 @@ bool CTrendFilter::Setup(
       return false;
      }
 
-   if(!useTrendFilter && !useNeutralZone)
+   if(!useTrendFilter && neutralDistancePoints == 0)
      {
       string msg = "[Trend Filter] Ambos os modos desabilitados - filtro não terá efeito";
       if(m_logger != NULL)
@@ -276,32 +225,20 @@ bool CTrendFilter::Setup(
    // ARMAZENAR INPUTS (imutáveis - valores originais)
    // ═══════════════════════════════════════════════════════════
    m_inputUseTrendFilter = useTrendFilter;
-   m_inputTrendPeriod = trendPeriod;
-   m_inputTrendMethod = trendMethod;
-   m_inputTrendApplied = trendApplied;
-   m_inputTrendTimeframe = trendTimeframe;
-
-   m_inputUseNeutralZone = useNeutralZone;
-   m_inputNeutralPeriod = neutralPeriod;
-   m_inputNeutralMethod = neutralMethod;
-   m_inputNeutralApplied = neutralApplied;
-   m_inputNeutralTimeframe = neutralTimeframe;
+   m_inputMAPeriod = maPeriod;
+   m_inputMAMethod = maMethod;
+   m_inputMAApplied = maApplied;
+   m_inputMATimeframe = maTimeframe;
    m_inputNeutralDistance = neutralDistancePoints;
 
    // ═══════════════════════════════════════════════════════════
    // INICIALIZAR WORKING VARIABLES (mutáveis - começam iguais)
    // ═══════════════════════════════════════════════════════════
    m_useTrendFilter = useTrendFilter;
-   m_trendPeriod = trendPeriod;
-   m_trendMethod = trendMethod;
-   m_trendApplied = trendApplied;
-   m_trendTimeframe = trendTimeframe;
-
-   m_useNeutralZone = useNeutralZone;
-   m_neutralPeriod = neutralPeriod;
-   m_neutralMethod = neutralMethod;
-   m_neutralApplied = neutralApplied;
-   m_neutralTimeframe = neutralTimeframe;
+   m_maPeriod = maPeriod;
+   m_maMethod = maMethod;
+   m_maApplied = maApplied;
+   m_maTimeframe = maTimeframe;
    m_neutralDistance = neutralDistancePoints;
 
    return true;
@@ -313,100 +250,61 @@ bool CTrendFilter::Setup(
 bool CTrendFilter::Initialize()
   {
    if(m_isInitialized)
+   {
+      if(m_logger != NULL)
+         m_logger.LogWarning("⚠️ [Trend Filter] Já está inicializado - ignorando");
       return true;
+   }
 
    // Se ambos desabilitados, não precisa criar indicadores
-   if(!m_useTrendFilter && !m_useNeutralZone)
+   if(!m_useTrendFilter && m_neutralDistance == 0)
      {
       m_isInitialized = true;
-      string msg = "[Trend Filter] Inicializado sem indicadores (ambos os modos desabilitados)";
+      m_isEnabled = true;
+      
       if(m_logger != NULL)
-         m_logger.LogWarning(msg);
-      else
-         Print("⚠️ ", msg);
+         m_logger.LogWarning("⚠️ [Trend Filter] Ambos modos desabilitados - sem efeito");
+      
       return true;
      }
 
-   // Criar handle da MA de tendência
-   if(m_useTrendFilter)
+   // Criar handle da MA (usada para ambos os filtros)
+   m_handleMA = iMA(
+                   _Symbol,
+                   m_maTimeframe,
+                   m_maPeriod,
+                   0,
+                   m_maMethod,
+                   m_maApplied
+                );
+
+   if(m_handleMA == INVALID_HANDLE)
      {
-      m_handleTrendMA = iMA(
-                           _Symbol,
-                           m_trendTimeframe,
-                           m_trendPeriod,
-                           0,
-                           m_trendMethod,
-                           m_trendApplied
-                        );
-
-      if(m_handleTrendMA == INVALID_HANDLE)
-        {
-         int error = GetLastError();
-         string msg = "[Trend Filter] Falha ao criar handle MA de tendência. Código: " + IntegerToString(error);
-         if(m_logger != NULL)
-            m_logger.LogError(msg);
-         else
-            Print("❌ ", msg);
-         return false;
-        }
-
-      int calculated = BarsCalculated(m_handleTrendMA);
-      if(calculated <= 0)
-        {
-         string msg = "[Trend Filter] MA de tendência ainda sem dados calculados";
-         if(m_logger != NULL)
-            m_logger.LogWarning(msg);
-         else
-            Print("⚠️ ", msg);
-        }
+      int error = GetLastError();
+      string msg = "❌ [Trend Filter] Falha ao criar handle MA - Código: " + IntegerToString(error);
+      if(m_logger != NULL)
+         m_logger.LogError(msg);
+      else
+         Print(msg);
+      return false;
      }
 
-   // Criar handle da MA de zona neutra
-   if(m_useNeutralZone)
+   int calculated = BarsCalculated(m_handleMA);
+   if(calculated <= 0)
      {
-      m_handleNeutralMA = iMA(
-                             _Symbol,
-                             m_neutralTimeframe,
-                             m_neutralPeriod,
-                             0,
-                             m_neutralMethod,
-                             m_neutralApplied
-                          );
-
-      if(m_handleNeutralMA == INVALID_HANDLE)
-        {
-         int error = GetLastError();
-         string msg = "[Trend Filter] Falha ao criar handle MA de zona neutra. Código: " + IntegerToString(error);
-         if(m_logger != NULL)
-            m_logger.LogError(msg);
-         else
-            Print("❌ ", msg);
-         if(m_handleTrendMA != INVALID_HANDLE)
-           {
-            IndicatorRelease(m_handleTrendMA);
-            m_handleTrendMA = INVALID_HANDLE;
-           }
-         return false;
-        }
-
-      int calculated = BarsCalculated(m_handleNeutralMA);
-      if(calculated <= 0)
-        {
-         string msg = "[Trend Filter] MA de zona neutra ainda sem dados calculados";
-         if(m_logger != NULL)
-            m_logger.LogWarning(msg);
-         else
-            Print("⚠️ ", msg);
-        }
+      if(m_logger != NULL)
+         m_logger.LogWarning("⚠️ [Trend Filter] MA ainda sem dados calculados (aguardar tick)");
      }
 
    m_isInitialized = true;
+   m_isEnabled = true;
 
-   string msg = "✅ [Trend Filter] Inicializado";
+   // ✅ LOG RESUMIDO
+   string msg = "✅ [Trend Filter] Inicializado | MA " + IntegerToString(m_maPeriod);
    if(m_useTrendFilter)
-      msg += " | Tendência: " + IntegerToString(m_trendPeriod);
-   if(m_useNeutralZone)
-      msg += " | Zona Neutra: " + IntegerToString(m_neutralPeriod) + " (±" + DoubleToString(m_neutralDistance, 0) + " pts)";
+      msg += " | Direcional: ON";
+   if(m_neutralDistance > 0)
+      msg += " | Zona: ±" + DoubleToString(m_neutralDistance, 0) + " pts";
 
    if(m_logger != NULL)
       m_logger.LogInfo(msg);
@@ -421,16 +319,13 @@ bool CTrendFilter::Initialize()
 //+------------------------------------------------------------------+
 void CTrendFilter::Deinitialize()
   {
-   if(m_handleTrendMA != INVALID_HANDLE)
+   if(m_handleMA != INVALID_HANDLE)
      {
-      IndicatorRelease(m_handleTrendMA);
-      m_handleTrendMA = INVALID_HANDLE;
-     }
-
-   if(m_handleNeutralMA != INVALID_HANDLE)
-     {
-      IndicatorRelease(m_handleNeutralMA);
-      m_handleNeutralMA = INVALID_HANDLE;
+      IndicatorRelease(m_handleMA);
+      m_handleMA = INVALID_HANDLE;
+      
+      if(m_logger != NULL)
+         m_logger.LogInfo("🔧 [Trend Filter] Handle MA liberado");
      }
 
    m_isInitialized = false;
@@ -441,57 +336,39 @@ void CTrendFilter::Deinitialize()
 //+------------------------------------------------------------------+
 bool CTrendFilter::UpdateIndicators()
   {
-   if(m_useTrendFilter && m_handleTrendMA != INVALID_HANDLE)
-     {
-      int calculated = BarsCalculated(m_handleTrendMA);
-      if(calculated <= 0)
-        {
-         string msg = "[Trend Filter] MA de tendência ainda calculando... (aguardar próximo tick)";
-         if(m_logger != NULL)
-            m_logger.LogWarning(msg);
-         else
-            Print("⚠️ ", msg);
-         return false;
-        }
+   if(m_handleMA == INVALID_HANDLE)
+      return true;
 
-      int copied = CopyBuffer(m_handleTrendMA, 0, 0, 3, m_trendMA);
-      if(copied <= 0)
-        {
-         int error = GetLastError();
-         string msg = "[Trend Filter] Erro ao copiar buffer MA de tendência. Código: " + IntegerToString(error);
-         if(m_logger != NULL)
-            m_logger.LogError(msg);
-         else
-            Print("❌ ", msg);
-         return false;
-        }
+   int calculated = BarsCalculated(m_handleMA);
+   if(calculated <= 0)
+     {
+      if(m_logger != NULL)
+         m_logger.LogWarning("⚠️ [Trend Filter] MA ainda calculando... (aguardar tick)");
+      return false;
      }
 
-   if(m_useNeutralZone && m_handleNeutralMA != INVALID_HANDLE)
+   int copied = CopyBuffer(m_handleMA, 0, 0, 3, m_ma);
+   if(copied <= 0)
      {
-      int calculated = BarsCalculated(m_handleNeutralMA);
-      if(calculated <= 0)
-        {
-         string msg = "[Trend Filter] MA de zona neutra ainda calculando... (aguardar próximo tick)";
-         if(m_logger != NULL)
-            m_logger.LogWarning(msg);
-         else
-            Print("⚠️ ", msg);
-         return false;
-        }
-
-      int copied = CopyBuffer(m_handleNeutralMA, 0, 0, 3, m_neutralMA);
-      if(copied <= 0)
-        {
-         int error = GetLastError();
-         string msg = "[Trend Filter] Erro ao copiar buffer MA de zona neutra. Código: " + IntegerToString(error);
-         if(m_logger != NULL)
-            m_logger.LogError(msg);
-         else
-            Print("❌ ", msg);
-         return false;
-        }
+      int error = GetLastError();
+      string msg = "❌ [Trend Filter] Erro ao copiar buffer MA - Código: " + IntegerToString(error);
+      if(m_logger != NULL)
+         m_logger.LogError(msg);
+      else
+         Print(msg);
+      return false;
      }
+
+   // 🔍 DEBUG: Buffer copiado (throttle para não poluir)
+   datetime currentBar = iTime(_Symbol, PERIOD_CURRENT, 0);
+   static datetime lastUpdateLog = 0;
+   
+   if(lastUpdateLog != currentBar && m_logger != NULL)
+   {
+      m_logger.LogDebug(StringFormat("📊 [Trend Filter] MA atualizada: [0]=%.2f [1]=%.2f", 
+                                     m_ma[0], m_ma[1]));
+      lastUpdateLog = currentBar;
+   }
 
    return true;
   }
@@ -505,30 +382,51 @@ bool CTrendFilter::CheckTrendDirection(ENUM_SIGNAL_TYPE signal)
       return true;
 
    double closePrice = iClose(_Symbol, PERIOD_CURRENT, 1);
+   datetime currentBar = iTime(_Symbol, PERIOD_CURRENT, 0);
 
    if(signal == SIGNAL_BUY)
      {
-      if(closePrice < m_trendMA[1])
+      if(closePrice < m_ma[1])
         {
-         string msg = "🔴 [Trend Filter] COMPRA bloqueada - preço abaixo da MA de tendência";
-         if(m_logger != NULL)
-            m_logger.LogInfo(msg);
-         else
-            Print(msg);
+         // Throttle: só loga 1x por candle
+         if(m_lastLogBar != currentBar)
+           {
+            string msg = "🔴 [Trend Filter] COMPRA bloqueada - preço abaixo da MA";
+            if(m_logger != NULL)
+               m_logger.LogInfo(msg);
+            else
+               Print(msg);
+            m_lastLogBar = currentBar;
+           }
          return false;
+        }
+      else
+        {
+         if(m_logger != NULL)
+            m_logger.LogDebug("✅ [Trend Filter] COMPRA aprovada - preço acima MA");
         }
      }
 
    if(signal == SIGNAL_SELL)
      {
-      if(closePrice > m_trendMA[1])
+      if(closePrice > m_ma[1])
         {
-         string msg = "🔴 [Trend Filter] VENDA bloqueada - preço acima da MA de tendência";
-         if(m_logger != NULL)
-            m_logger.LogInfo(msg);
-         else
-            Print(msg);
+         // Throttle: só loga 1x por candle
+         if(m_lastLogBar != currentBar)
+           {
+            string msg = "🔴 [Trend Filter] VENDA bloqueada - preço acima da MA";
+            if(m_logger != NULL)
+               m_logger.LogInfo(msg);
+            else
+               Print(msg);
+            m_lastLogBar = currentBar;
+           }
          return false;
+        }
+      else
+        {
+         if(m_logger != NULL)
+            m_logger.LogDebug("✅ [Trend Filter] VENDA aprovada - preço abaixo MA");
         }
      }
 
@@ -540,11 +438,12 @@ bool CTrendFilter::CheckTrendDirection(ENUM_SIGNAL_TYPE signal)
 //+------------------------------------------------------------------+
 bool CTrendFilter::CheckNeutralZone()
   {
-   if(!m_useNeutralZone)
+   // Zona ativa apenas se distance > 0 (automático)
+   if(m_neutralDistance == 0)
       return true;
 
    double closePrice = iClose(_Symbol, PERIOD_CURRENT, 1);
-   double distance = MathAbs(closePrice - m_neutralMA[1]);
+   double distance = MathAbs(closePrice - m_ma[1]);
 
    double pointValue = _Point;
    if(_Digits == 3 || _Digits == 5)
@@ -552,14 +451,26 @@ bool CTrendFilter::CheckNeutralZone()
 
    double distanceInPoints = distance / pointValue;
 
+   // 🔍 DEBUG: Mostrar distância sempre em modo DEBUG
+   if(m_logger != NULL)
+      m_logger.LogDebug(StringFormat("📏 [Trend Filter] Distância: %.1f pts (mín: %.0f)", 
+                                     distanceInPoints, m_neutralDistance));
+
    if(distanceInPoints <= m_neutralDistance)
      {
-      string msg = "🔴 [Trend Filter] Bloqueado - dentro da zona neutra (" + 
-                   DoubleToString(distanceInPoints, 1) + " pts)";
-      if(m_logger != NULL)
-         m_logger.LogInfo(msg);
-      else
-         Print(msg);
+      datetime currentBar = iTime(_Symbol, PERIOD_CURRENT, 0);
+      
+      // Throttle: só loga 1x por candle
+      if(m_lastLogBar != currentBar)
+        {
+         string msg = StringFormat("🔴 [Trend Filter] Bloqueado - zona neutra (%.1f ≤ %.0f pts)", 
+                                   distanceInPoints, m_neutralDistance);
+         if(m_logger != NULL)
+            m_logger.LogInfo(msg);
+         else
+            Print(msg);
+         m_lastLogBar = currentBar;
+        }
       return false;
      }
 
@@ -571,43 +482,57 @@ bool CTrendFilter::CheckNeutralZone()
 //+------------------------------------------------------------------+
 bool CTrendFilter::ValidateSignal(ENUM_SIGNAL_TYPE signal)
   {
+   // 🔍 DEBUG: Fluxo interno
+   if(m_logger != NULL)
+      m_logger.LogDebug("🔍 [Trend Filter] ValidateSignal(" + EnumToString(signal) + ")");
+
    if(!m_isEnabled)
+   {
+      if(m_logger != NULL)
+         m_logger.LogWarning("⚠️ [Trend Filter] DESABILITADO (m_isEnabled=false)");
       return true;
+   }
 
    if(signal == SIGNAL_NONE)
       return true;
 
    if(!m_isInitialized)
      {
-      string msg = "[Trend Filter] Tentativa de validar sinal sem estar inicializado";
+      string msg = "❌ [Trend Filter] Tentativa de validar sinal SEM estar inicializado!";
       if(m_logger != NULL)
          m_logger.LogError(msg);
       else
-         Print("❌ ", msg);
+         Print(msg);
       return false;
      }
 
    if(!UpdateIndicators())
      {
-      string msg = "[Trend Filter] Falha ao atualizar indicadores - BLOQUEANDO sinal por segurança";
+      string msg = "❌ [Trend Filter] Falha ao atualizar indicadores - BLOQUEANDO por segurança";
       if(m_logger != NULL)
          m_logger.LogError(msg);
       else
-         Print("❌ ", msg);
+         Print(msg);
       return false;
      }
 
+   // Verificar filtro direcional
    if(!CheckTrendDirection(signal))
       return false;
 
+   // Verificar zona neutra
    if(!CheckNeutralZone())
       return false;
+
+   // 🔍 DEBUG: Aprovado
+   if(m_logger != NULL)
+      m_logger.LogDebug("✅ [Trend Filter] Sinal aprovado");
 
    return true;
   }
 
 // ═══════════════════════════════════════════════════════════════
-// HOT RELOAD - MÉTODOS SET QUENTES (v2.01)
+// HOT RELOAD - MÉTODOS SET QUENTES (v2.04)
 // ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
@@ -630,26 +555,8 @@ bool CTrendFilter::SetTrendFilterEnabled(bool enabled)
   }
 
 //+------------------------------------------------------------------+
-//| HOT RELOAD - Ativar/desativar zona neutra                        |
-//+------------------------------------------------------------------+
-bool CTrendFilter::SetNeutralZoneEnabled(bool enabled)
-  {
-   bool oldValue = m_useNeutralZone;
-   m_useNeutralZone = enabled;
-
-   string msg = "🔄 [Trend Filter] Zona neutra: " +
-                (oldValue ? "ATIVADA" : "DESATIVADA") + " → " +
-                (enabled ? "ATIVADA" : "DESATIVADA");
-   if(m_logger != NULL)
-      m_logger.LogInfo(msg);
-   else
-      Print(msg);
-
-   return true;
-  }
-
-//+------------------------------------------------------------------+
 //| HOT RELOAD - Alterar distância da zona neutra                    |
+//| v2.04 - Zona ativa automaticamente se distance > 0               |
 //+------------------------------------------------------------------+
 bool CTrendFilter::SetNeutralDistance(double distancePoints)
   {
@@ -666,8 +573,9 @@ bool CTrendFilter::SetNeutralDistance(double distancePoints)
    double oldValue = m_neutralDistance;
    m_neutralDistance = distancePoints;
    
-   string msg = StringFormat("🔄 [Trend Filter] Distância zona neutra alterada: %.0f → %.0f pts", 
-                             oldValue, distancePoints);
+   string status = (distancePoints > 0) ? "ATIVADA" : "DESATIVADA";
+   string msg = StringFormat("🔄 [Trend Filter] Zona neutra: %.0f → %.0f pts (%s)", 
+                             oldValue, distancePoints, status);
    if(m_logger != NULL)
       m_logger.LogInfo(msg);
    else
@@ -677,13 +585,13 @@ bool CTrendFilter::SetNeutralDistance(double distancePoints)
   }
 
 // ═══════════════════════════════════════════════════════════════
-// COLD RELOAD - MÉTODOS SET FRIOS (v2.01)
+// COLD RELOAD - MÉTODOS SET FRIOS (v2.04)
 // ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
-//| COLD RELOAD - Alterar período da MA de tendência                 |
+//| COLD RELOAD - Alterar período da MA                              |
 //+------------------------------------------------------------------+
-bool CTrendFilter::SetTrendMAPeriod(int period)
+bool CTrendFilter::SetMAPeriod(int period)
   {
    if(period <= 0)
      {
@@ -695,15 +603,15 @@ bool CTrendFilter::SetTrendMAPeriod(int period)
       return false;
      }
 
-   int oldValue = m_trendPeriod;
-   m_trendPeriod = period;
+   int oldValue = m_maPeriod;
+   m_maPeriod = period;
 
    Deinitialize();
    bool success = Initialize();
 
    if(success)
      {
-      string msg = StringFormat("🔄 [Trend Filter] Período MA tendência alterado: %d → %d (reiniciado)", 
+      string msg = StringFormat("🔄 [Trend Filter] Período MA alterado: %d → %d (reiniciado)", 
                                 oldValue, period);
       if(m_logger != NULL)
          m_logger.LogInfo(msg);
@@ -715,76 +623,19 @@ bool CTrendFilter::SetTrendMAPeriod(int period)
   }
 
 //+------------------------------------------------------------------+
-//| COLD RELOAD - Alterar período da MA de zona neutra               |
+//| COLD RELOAD - Alterar método da MA                               |
 //+------------------------------------------------------------------+
-bool CTrendFilter::SetNeutralMAPeriod(int period)
+bool CTrendFilter::SetMAMethod(ENUM_MA_METHOD method)
   {
-   if(period <= 0)
-     {
-      string msg = "[Trend Filter] Período inválido: " + IntegerToString(period);
-      if(m_logger != NULL)
-         m_logger.LogError(msg);
-      else
-         Print("❌ ", msg);
-      return false;
-     }
-
-   int oldValue = m_neutralPeriod;
-   m_neutralPeriod = period;
+   ENUM_MA_METHOD oldMethod = m_maMethod;
+   m_maMethod = method;
 
    Deinitialize();
    bool success = Initialize();
 
    if(success)
      {
-      string msg = StringFormat("🔄 [Trend Filter] Período MA zona neutra alterado: %d → %d (reiniciado)",
-                                oldValue, period);
-      if(m_logger != NULL)
-         m_logger.LogInfo(msg);
-      else
-         Print(msg);
-     }
-
-   return success;
-  }
-
-//+------------------------------------------------------------------+
-//| COLD RELOAD - Alterar método da MA de tendência                  |
-//+------------------------------------------------------------------+
-bool CTrendFilter::SetTrendMAMethod(ENUM_MA_METHOD method)
-  {
-   ENUM_MA_METHOD oldMethod = m_trendMethod;
-   m_trendMethod = method;
-
-   Deinitialize();
-   bool success = Initialize();
-
-   if(success)
-     {
-      string msg = "🔄 [Trend Filter] Método MA tendência alterado (reiniciado)";
-      if(m_logger != NULL)
-         m_logger.LogInfo(msg);
-      else
-         Print(msg);
-     }
-
-   return success;
-  }
-
-//+------------------------------------------------------------------+
-//| COLD RELOAD - Alterar método da MA de zona neutra                |
-//+------------------------------------------------------------------+
-bool CTrendFilter::SetNeutralMAMethod(ENUM_MA_METHOD method)
-  {
-   ENUM_MA_METHOD oldMethod = m_neutralMethod;
-   m_neutralMethod = method;
-
-   Deinitialize();
-   bool success = Initialize();
-
-   if(success)
-     {
-      string msg = "🔄 [Trend Filter] Método MA zona neutra alterado (reiniciado)";
+      string msg = "🔄 [Trend Filter] Método MA alterado (reiniciado)";
       if(m_logger != NULL)
          m_logger.LogInfo(msg);
       else
@@ -797,38 +648,21 @@ bool CTrendFilter::SetNeutralMAMethod(ENUM_MA_METHOD method)
 //+------------------------------------------------------------------+
 //| Getters                                                           |
 //+------------------------------------------------------------------+
-double CTrendFilter::GetTrendMA(int shift = 0)
+double CTrendFilter::GetMA(int shift = 0)
   {
-   if(!m_useTrendFilter || !m_isInitialized || shift >= ArraySize(m_trendMA))
+   if(!m_isInitialized || shift >= ArraySize(m_ma))
       return 0.0;
 
-   return m_trendMA[shift];
+   return m_ma[shift];
   }
 
-double CTrendFilter::GetNeutralMA(int shift = 0)
+double CTrendFilter::GetDistanceFromMA()
   {
-   if(!m_useNeutralZone || !m_isInitialized || shift >= ArraySize(m_neutralMA))
-      return 0.0;
-
-   return m_neutralMA[shift];
-  }
-
-double CTrendFilter::GetDistanceFromTrend()
-  {
-   if(!m_useTrendFilter || !m_isInitialized || !UpdateIndicators())
+   if(!m_isInitialized || !UpdateIndicators())
       return 0.0;
 
    double currentPrice = iClose(_Symbol, PERIOD_CURRENT, 0);
-   return currentPrice - m_trendMA[0];
-  }
-
-double CTrendFilter::GetDistanceFromNeutral()
-  {
-   if(!m_useNeutralZone || !m_isInitialized || !UpdateIndicators())
-      return 0.0;
-
-   double currentPrice = iClose(_Symbol, PERIOD_CURRENT, 0);
-   double distance = currentPrice - m_neutralMA[0];
+   double distance = currentPrice - m_ma[0];
 
    double pointValue = _Point;
    if(_Digits == 3 || _Digits == 5)
