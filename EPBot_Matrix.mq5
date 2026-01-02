@@ -7,6 +7,10 @@
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
 #property version   "1.10"
+#property description "EPBot Matrix - Sistema de Trading Modular Multistrategy"
+#property description "Arquitetura profissional com hot reload e logging avançado"
+#property description "v1.02: Partial Take Profit COMPLETO - Até 3 níveis configuráveis"
+#property description "v1.03: Removida redundância UseTrailing/UseBreakeven - Usar enum NEVER"
 #property description "v1.10: Refatoração OOP - Strategies controlam exit signals + Controle de candle"
 
 //+------------------------------------------------------------------+
@@ -416,7 +420,8 @@ int OnInit()
    // ═══════════════════════════════════════════════════════════════
    
    //--- 7.1: TREND FILTER
-   if(inp_UseTrendFilter)
+   // ✅ CRIAR se filtro direcional OU zona neutra estiverem ativos
+   if(inp_UseTrendFilter || inp_TrendMinDistance > 0)
    {
       g_trendFilter = new CTrendFilter();
       if(g_trendFilter == NULL)
@@ -427,18 +432,13 @@ int OnInit()
       }
       
       if(!g_trendFilter.Setup(
-         g_logger,
-         inp_UseTrendFilter,
-         inp_TrendMAPeriod,
-         inp_TrendMAMethod,
-         inp_TrendMAApplied,
-         inp_TrendMATF,
-         false,  // useNeutralZone (não temos input para isso ainda)
-         0,      // neutralPeriod
-         MODE_SMA, // neutralMethod
-         PRICE_CLOSE, // neutralApplied
-         PERIOD_CURRENT, // neutralTimeframe
-         inp_TrendMinDistance
+         g_logger,               
+         inp_UseTrendFilter,      // Filtro direcional
+         inp_TrendMAPeriod,       // Período MA
+         inp_TrendMAMethod,       // Método MA
+         inp_TrendMAApplied,      // Preço aplicado
+         inp_TrendMATF,           // Timeframe
+         inp_TrendMinDistance     // Zona neutra (0=off)
       ))
       {
          g_logger.LogError("❌ Falha ao configurar TrendFilter!");
@@ -465,7 +465,7 @@ int OnInit()
    }
    else
    {
-      g_logger.LogInfo("ℹ️ TrendFilter desativado");
+      g_logger.LogInfo("ℹ️ TrendFilter desativado (ambos os modos OFF)");
    }
    
    //--- 7.2: RSI FILTER
