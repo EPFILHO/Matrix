@@ -2,15 +2,12 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                        EA Modular Multistrategy - EPBot Matrix   |
-//|                                                      Versão 1.03 |
+//|                                                      Versão 1.10 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.03"
-#property description "EPBot Matrix - Sistema de Trading Modular Multistrategy"
-#property description "Arquitetura profissional com hot reload e logging avançado"
-#property description "v1.02: Partial Take Profit COMPLETO - Até 3 níveis configuráveis"
-#property description "v1.03: Removida redundância UseTrailing/UseBreakeven - Usar enum NEVER"
+#property version   "1.10"
+#property description "v1.10: Refatoração OOP - Strategies controlam exit signals + Controle de candle"
 
 //+------------------------------------------------------------------+
 //| INCLUDES - ORDEM IMPORTANTE                                      |
@@ -70,9 +67,11 @@ CTrendFilter* g_trendFilter = NULL;  // Filtro de tendência
 CRSIFilter*   g_rsiFilter   = NULL;  // Filtro RSI
 
 // ═══════════════════════════════════════════════════════════════
-// CONTROLE DE CANDLES
+// CONTROLE DE CANDLES (v1.10 - MODIFICADO!)
 // ═══════════════════════════════════════════════════════════════
-datetime g_lastBarTime = 0;  // Controle de novo candle
+datetime g_lastBarTime = 0;       // Controle de novo candle
+datetime g_lastTradeBarTime = 0;  // 🆕 v1.10: Controle de último trade executado
+datetime g_lastExitBarTime = 0;   // 🆕 v1.10: Controle de último exit (para FCO)
 
 // ═══════════════════════════════════════════════════════════════
 // VARIÁVEIS DE ESTADO
@@ -85,7 +84,7 @@ bool g_tradingAllowed = true;  // Controle geral de trading
 int OnInit()
 {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.03 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v1.10 - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
    
    // ═══════════════════════════════════════════════════════════════
@@ -534,7 +533,7 @@ int OnInit()
    Print("════════════════════════════════════════════════════════════════");
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
-   g_logger.LogInfo("🚀 EPBot Matrix v1.03 - PRONTO PARA OPERAR!");
+   g_logger.LogInfo("🚀 EPBot Matrix v1.10 - PRONTO PARA OPERAR!");
    g_logger.LogInfo("📊 Símbolo: " + _Symbol);
    g_logger.LogInfo("⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
    g_logger.LogInfo("🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
@@ -715,6 +714,13 @@ void OnTick()
       // Remover do TradeManager
       g_tradeManager.UnregisterPosition(lastPositionTicket);
       
+      // 🆕 v1.10: Resetar controle de candle ao fechar posição (exceto no modo VM)
+      if(inp_ExitMode != EXIT_VM)
+      {
+         g_lastTradeBarTime = 0;
+         g_logger.LogDebug("🔄 Controle de candle resetado - pronto para novo trade");
+      }
+      
       lastPositionTicket = 0;
    }
    
@@ -734,6 +740,24 @@ void OnTick()
    }
    
    // ═══════════════════════════════════════════════════════════════
+   // ETAPA 3.5: 🆕 v1.10 - VERIFICAR SE JÁ OPEROU NESTE CANDLE
+   // ═══════════════════════════════════════════════════════════════
+   
+   // EXCEÇÃO: VM (Virar a Mão) pode operar no mesmo candle
+   bool isVMActive = (inp_UseMACross && inp_ExitMode == EXIT_VM);
+   
+   if(!isVMActive)
+   {
+      datetime currentBarTime_Check = iTime(_Symbol, PERIOD_CURRENT, 0);
+      
+      if(currentBarTime_Check == g_lastTradeBarTime)
+      {
+         g_logger.LogDebug("⏸️ Já operou neste candle - aguardando próximo");
+         return;
+      }
+   }
+   
+   // ═══════════════════════════════════════════════════════════════
    // ETAPA 4: BUSCAR SINAL (só se não tem posição)
    // ═══════════════════════════════════════════════════════════════
    ENUM_SIGNAL_TYPE signal = g_signalManager.GetSignal();
@@ -745,13 +769,28 @@ void OnTick()
    }
    
    // ═══════════════════════════════════════════════════════════════
+   // ETAPA 4.5: 🆕 BLOQUEIO FCO - Não entrar no candle do exit
+   // ═══════════════════════════════════════════════════════════════
+   
+   if(inp_ExitMode == EXIT_FCO)
+   {
+      datetime currentBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
+      
+      if(currentBarTime == g_lastExitBarTime)
+      {
+         g_logger.LogDebug("🚫 FCO bloqueado - não entra no sinal que causou exit");
+         return;
+      }
+   }
+   
+   // ═══════════════════════════════════════════════════════════════
    // ETAPA 5: EXECUTAR TRADE
    // ═══════════════════════════════════════════════════════════════
    ExecuteTrade(signal);
 }
 
 //+------------------------------------------------------------------+
-//| GERENCIAR POSIÇÃO ABERTA (v1.03)                                 |
+//| GERENCIAR POSIÇÃO ABERTA (v1.10 - REFATORADO!)                   |
 //+------------------------------------------------------------------+
 void ManageOpenPosition()
 {
@@ -845,71 +884,67 @@ void ManageOpenPosition()
    }
    
    // ═══════════════════════════════════════════════════════════════
-   // VERIFICAR SINAL DE SAÍDA (Exit por sinal oposto)
+   // 🆕 v1.10: VERIFICAR EXIT SIGNAL DAS STRATEGIES (OOP!)
    // ═══════════════════════════════════════════════════════════════
-   bool checkExit = false;
+   ENUM_SIGNAL_TYPE exitSignal = g_signalManager.GetExitSignal(posType);
    
-   if(inp_UseMACross && (inp_ExitMode == EXIT_FCO || inp_ExitMode == EXIT_VM))
+   if(exitSignal != SIGNAL_NONE)
    {
-      checkExit = true;
-   }
-   
-   if(checkExit)
-   {
-      ENUM_SIGNAL_TYPE exitSignal = g_signalManager.GetRawSignal();
+      g_logger.LogInfo("🔄 Exit signal detectado - fechando posição");
       
-      bool shouldExit = false;
+      MqlTradeRequest request = {};
+      MqlTradeResult result = {};
       
-      if(posType == POSITION_TYPE_BUY && exitSignal == SIGNAL_SELL)
-      {
-         shouldExit = true;
-         g_logger.LogInfo("🔄 Exit detectado: Sinal de VENDA com posição de COMPRA aberta");
-      }
-      else if(posType == POSITION_TYPE_SELL && exitSignal == SIGNAL_BUY)
-      {
-         shouldExit = true;
-         g_logger.LogInfo("🔄 Exit detectado: Sinal de COMPRA com posição de VENDA aberta");
-      }
+      request.action = TRADE_ACTION_DEAL;
+      request.position = ticket;
+      request.symbol = _Symbol;
+      request.volume = PositionGetDouble(POSITION_VOLUME);
+      request.type = (posType == POSITION_TYPE_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
+      request.price = currentPrice;
+      request.deviation = inp_Slippage;
+      request.magic = inp_MagicNumber;
+      request.comment = "Exit: " + g_signalManager.GetLastSignalSource();
+      request.type_filling = GetTypeFilling(_Symbol);
       
-      if(shouldExit)
+      if(OrderSend(request, result))
       {
-         MqlTradeRequest request = {};
-         MqlTradeResult result = {};
-         
-         request.action = TRADE_ACTION_DEAL;
-         request.position = ticket;
-         request.symbol = _Symbol;
-         request.volume = PositionGetDouble(POSITION_VOLUME);
-         request.type = (posType == POSITION_TYPE_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
-         request.price = currentPrice;
-         request.deviation = inp_Slippage;
-         request.magic = inp_MagicNumber;
-         request.comment = "Exit: Sinal Oposto";
-         request.type_filling = GetTypeFilling(_Symbol);
-         
-         if(OrderSend(request, result))
+         if(result.retcode == TRADE_RETCODE_DONE)
          {
-            if(result.retcode == TRADE_RETCODE_DONE)
+            g_logger.LogInfo("✅ Posição fechada por exit signal");
+            g_logger.LogInfo("   Fonte: " + g_signalManager.GetLastSignalSource());
+            g_logger.LogInfo("   Preço: " + DoubleToString(result.price, _Digits));
+            
+            // ═══════════════════════════════════════════════════════════════
+            // 🎯 DECISÃO: FCO ou VM?
+            // ═══════════════════════════════════════════════════════════════
+            
+            if(inp_ExitMode == EXIT_VM)
             {
-               g_logger.LogInfo("✅ Posição fechada por sinal oposto");
-               g_logger.LogInfo("   Ticket: " + IntegerToString(result.order));
-               g_logger.LogInfo("   Preço: " + DoubleToString(result.price, _Digits));
+               // VM: VIRA A MÃO (entrada imediata, IGNORA E1c/E2c)
+               g_logger.LogInfo("🔄 VIRAR A MÃO - Executando entrada oposta IMEDIATAMENTE");
+               ExecuteTrade(exitSignal);  // ✅ USA o sinal direto
             }
-            else
+            else  // EXIT_FCO
             {
-               g_logger.LogWarning("⚠️ Fechamento parcial - Retcode: " + IntegerToString(result.retcode));
+               // FCO: Apenas fecha (NÃO usa o sinal, marca candle do exit)
+               g_lastExitBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
+               g_logger.LogInfo("⏸️ EXIT_FCO - Posição fechada, bloqueando re-entrada neste sinal");
             }
          }
          else
          {
-            g_logger.LogError("❌ Falha ao fechar posição - Código: " + IntegerToString(result.retcode));
+            g_logger.LogWarning("⚠️ Retcode: " + IntegerToString(result.retcode));
          }
+      }
+      else
+      {
+         g_logger.LogError("❌ Falha ao fechar posição - Código: " + IntegerToString(result.retcode));
       }
    }
 }
 
 //+------------------------------------------------------------------+
-//| EXECUTAR TRADE (v1.02 - COM PARTIAL TP!)                         |
+//| EXECUTAR TRADE (v1.10 - ATUALIZADO!)                             |
 //+------------------------------------------------------------------+
 void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
 {
@@ -1022,6 +1057,10 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
       g_logger.LogInfo("   Deal: " + IntegerToString(result.deal));
       g_logger.LogInfo("   Volume: " + DoubleToString(result.volume, 2));
       g_logger.LogInfo("   Preço: " + DoubleToString(result.price, _Digits));
+      
+      // 🆕 v1.10: REGISTRAR CANDLE DO TRADE
+      g_lastTradeBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
+      g_logger.LogDebug("📊 Trade executado no candle: " + TimeToString(g_lastTradeBarTime));
       
       // ═══════════════════════════════════════════════════════════════
       // REGISTRAR POSIÇÃO NO TRADEMANAGER (v1.02 - COM PARTIAL TP!)
@@ -1174,5 +1213,5 @@ string GetDeinitReasonText(int reason)
 }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.03                                   |
+//| FIM DO EA - EPBOT MATRIX v1.10                                   |
 //+------------------------------------------------------------------+
