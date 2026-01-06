@@ -2,11 +2,21 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                       Versão 2.01 - Partes 014/a/b/c - Perplexity|
+//|                                  Versão 2.02 - Claude Parte 014d |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "2.01"
+#property version   "2.02"
 #property strict
+
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v2.02:
+// ✅ CORREÇÃO CRÍTICA: Validação de Magic Number adicionada em:
+//    - ShouldCloseOnEndTime()
+//    - ShouldCloseBeforeSessionEnd()
+// ✅ Agora cada EA fecha APENAS suas próprias posições
+// ✅ Compatível com múltiplos EAs no mesmo gráfico (HEDGING)
+// ✅ Logs informativos quando posição de outro EA é ignorada
+// ═══════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════
 // INCLUDES
@@ -73,6 +83,7 @@ private:
    // LOGGER
    // ═══════════════════════════════════════════════════════════════
    CLogger*          m_logger;                // Referência ao logger centralizado
+   int               m_magicNumber;           // Magic number do EA
 
    // ═══════════════════════════════════════════════════════════════
    // INPUT PARAMETERS - HORÁRIO (valores originais, imutáveis)
@@ -263,6 +274,7 @@ public:
 
    bool              Init(
       CLogger* logger,
+      int magicNumber,
       // Horário
       bool enableTime, int startH, int startM, int endH, int endM, bool closeOnEnd, bool closeBeforeSessionEnd, int minutesBeforeSessionEnd,
       // News (3 bloqueios)
@@ -352,6 +364,7 @@ CBlockers::CBlockers()
   {
 // Logger
    m_logger = NULL;
+   m_magicNumber = 0;
 
 // ═══ INPUT PARAMETERS (valores padrão seguros) ═══
 
@@ -503,6 +516,8 @@ CBlockers::~CBlockers()
 //+------------------------------------------------------------------+
 bool CBlockers::Init(
    CLogger* logger,
+   int magicNumber,
+   // Horário
    bool enableTime, int startH, int startM, int endH, int endM, bool closeOnEnd, bool closeBeforeSessionEnd, int minutesBeforeSessionEnd,
    bool news1, int n1StartH, int n1StartM, int n1EndH, int n1EndM,
    bool news2, int n2StartH, int n2StartM, int n2EndH, int n2EndM,
@@ -519,19 +534,20 @@ bool CBlockers::Init(
   {
 // Armazenar referência ao logger
    m_logger = logger;
+   m_magicNumber = magicNumber;
 
    if(m_logger != NULL)
      {
       m_logger.LogInfo("╔══════════════════════════════════════════════════════╗");
       m_logger.LogInfo("║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
-      m_logger.LogInfo("║              VERSÃO COMPLETA v2.01                   ║");
+      m_logger.LogInfo("║              VERSÃO COMPLETA v2.02                   ║");
       m_logger.LogInfo("╚══════════════════════════════════════════════════════╝");
      }
    else
      {
       Print("╔══════════════════════════════════════════════════════╗");
       Print("║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
-      Print("║              VERSÃO COMPLETA v2.01                   ║");
+      Print("║              VERSÃO COMPLETA v2.02                   ║");
       Print("╚══════════════════════════════════════════════════════╝");
      }
 
@@ -1283,7 +1299,8 @@ bool CBlockers::CanTradeDirection(int orderType, string &blockReason)
   }
 
 //+------------------------------------------------------------------+
-//| Verifica se deve fechar posição por término de horário           |
+//| PÚBLICO: Verifica se deve fechar posição por término de horário  |
+//| ✅ v2.02: VALIDAÇÃO DE MAGIC NUMBER ADICIONADA                   |
 //+------------------------------------------------------------------+
 bool CBlockers::ShouldCloseOnEndTime(ulong positionTicket)
   {
@@ -1295,6 +1312,17 @@ bool CBlockers::ShouldCloseOnEndTime(ulong positionTicket)
    if(!PositionSelectByTicket(positionTicket))
       return false;
 
+// ✅ VALIDAR MAGIC NUMBER - CORREÇÃO CRÍTICA v2.02
+   long posMagic = PositionGetInteger(POSITION_MAGIC);
+   if(posMagic != m_magicNumber)
+     {
+      if(m_logger != NULL)
+         m_logger.LogDebug("⏭️ [Blockers] Ignorando posição #" + IntegerToString((int)positionTicket) 
+                         + " (Magic " + IntegerToString((int)posMagic) + " ≠ " 
+                         + IntegerToString(m_magicNumber) + ")");
+      return false;
+     }
+
    datetime now = TimeCurrent();
    MqlDateTime dt;
    TimeToStruct(now, dt);
@@ -1303,42 +1331,59 @@ bool CBlockers::ShouldCloseOnEndTime(ulong positionTicket)
    int startMinutes   = m_startHour * 60 + m_startMinute;
    int endMinutes     = m_endHour   * 60 + m_endMinute;
 
-   bool inSession = false;
+// ✅ CORREÇÃO: Só fecha se PASSOU do fim, não se está antes do início
 
-// Janela normal no mesmo dia (ex.: 09:00–18:00)
+// Janela normal no mesmo dia (ex.: 09:00–17:00)
    if(startMinutes <= endMinutes)
      {
-      inSession = (currentMinutes >= startMinutes && currentMinutes <= endMinutes);
+      // Só fecha se passou do horário de fim
+      if(currentMinutes > endMinutes)
+        {
+         if(m_logger != NULL)
+           {
+            m_logger.LogInfo("⏰ [Blockers] Término de horário de operação atingido");
+            m_logger.LogInfo("   Início: " + IntegerToString(m_startHour) + ":" + IntegerToString(m_startMinute));
+            m_logger.LogInfo("   Fim:    " + IntegerToString(m_endHour)   + ":" + IntegerToString(m_endMinute));
+            m_logger.LogInfo("   Agora:  " + IntegerToString(dt.hour)     + ":" + IntegerToString(dt.min));
+            m_logger.LogInfo("   Posição #" + IntegerToString((int)positionTicket) + " deve ser fechada por horário");
+           }
+         else
+           {
+            Print("⏰ [Blockers] Término de horário de operação atingido para posição #", positionTicket);
+           }
+         
+         return true;
+        }
+      return false;
      }
 // Janela que atravessa meia-noite (ex.: 22:00–02:00)
    else
      {
-      inSession = (currentMinutes >= startMinutes || currentMinutes <= endMinutes);
-     }
-
-// Se ainda está dentro da janela de operação, não fecha
-   if(inSession)
+      // Está entre fim e início = FORA da janela = deve fechar
+      if(currentMinutes > endMinutes && currentMinutes < startMinutes)
+        {
+         if(m_logger != NULL)
+           {
+            m_logger.LogInfo("⏰ [Blockers] Fora do horário de operação (janela noturna)");
+            m_logger.LogInfo("   Janela: " + IntegerToString(m_startHour) + ":" + IntegerToString(m_startMinute)
+                          + " - " + IntegerToString(m_endHour) + ":" + IntegerToString(m_endMinute));
+            m_logger.LogInfo("   Agora:  " + IntegerToString(dt.hour) + ":" + IntegerToString(dt.min));
+            m_logger.LogInfo("   Posição #" + IntegerToString((int)positionTicket) + " deve ser fechada");
+           }
+         else
+           {
+            Print("⏰ [Blockers] Fora do horário noturno para posição #", positionTicket);
+           }
+         
+         return true;
+        }
       return false;
-
-// Já passou do horário de fim da operação → sinaliza que deve fechar
-   if(m_logger != NULL)
-     {
-      m_logger.LogInfo("⏰ [Blockers] Término de horário de operação atingido");
-      m_logger.LogInfo("   Início: " + IntegerToString(m_startHour) + ":" + IntegerToString(m_startMinute));
-      m_logger.LogInfo("   Fim:    " + IntegerToString(m_endHour)   + ":" + IntegerToString(m_endMinute));
-      m_logger.LogInfo("   Agora:  " + IntegerToString(dt.hour)     + ":" + IntegerToString(dt.min));
-      m_logger.LogInfo("   Posição #" + IntegerToString((int)positionTicket) + " deve ser fechada por horário");
      }
-   else
-     {
-      Print("⏰ [Blockers] Término de horário de operação atingido para posição #", positionTicket);
-     }
-
-   return true;
   }
 
 //+------------------------------------------------------------------+
 //| Verifica se deve fechar posição antes do fim da sessão           |
+//| ✅ v2.02: VALIDAÇÃO DE MAGIC NUMBER ADICIONADA                   |
 //+------------------------------------------------------------------+
 bool CBlockers::ShouldCloseBeforeSessionEnd(ulong positionTicket)
   {
@@ -1349,6 +1394,17 @@ bool CBlockers::ShouldCloseBeforeSessionEnd(ulong positionTicket)
 // Garante que a posição existe
    if(!PositionSelectByTicket(positionTicket))
       return false;
+      
+// ✅ VALIDAR MAGIC NUMBER - CORREÇÃO CRÍTICA v2.02
+   long posMagic = PositionGetInteger(POSITION_MAGIC);
+   if(posMagic != m_magicNumber)
+     {
+      if(m_logger != NULL)
+         m_logger.LogDebug("⏭️ [Blockers] Ignorando posição #" + IntegerToString((int)positionTicket) 
+                         + " (Magic " + IntegerToString((int)posMagic) + " ≠ " 
+                         + IntegerToString(m_magicNumber) + " na proteção de sessão)");
+      return false;
+     }      
 
 // Obtém horário atual
    MqlDateTime now;
@@ -2142,9 +2198,6 @@ void CBlockers::PrintConfiguration()
       Print("╚══════════════════════════════════════════════════════╝");
       Print("");
      }
-
-// (Resto do PrintConfiguration() continua idêntico ao original)
-// Código omitido aqui por brevidade, mas está 100% preservado
 
    if(m_logger != NULL)
       m_logger.LogInfo("⏰ Horário:");
