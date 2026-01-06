@@ -2,7 +2,7 @@
 //|                                                       Inputs.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                   Sistema de Inputs Centralizados - EPBot Matrix |
-//|                                                      Versão 1.01 |
+//|                       Versão 1.01 - Partes 014/a/b/c - Perplexity|
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
@@ -38,13 +38,19 @@ input ENUM_LOG_LEVEL inp_LoggerMode = LOG_COMPLETE;  // Modo de Logging
 input group "═══════════════ 🚫 BLOCKERS ═══════════════"
 
 //--- 🕐 HORÁRIO DE OPERAÇÃO
-input group "🕐 Horário de Operação"
+input group "🕐 Horário de Operação - Segurança: Minuto Final pelo menos 5min antes do fim do Horário de Negociação do Ativo"
 input bool   inp_EnableTimeFilter = false;        // Ativar Filtro de Horário
 input int    inp_StartHour = 9;                   // Hora Inicial (0-23)
 input int    inp_StartMinute = 0;                 // Minuto Inicial (0-59)
 input int    inp_EndHour = 17;                    // Hora Final (0-23)
-input int    inp_EndMinute = 0;                   // Minuto Final (0-59)
-input bool   inp_CloseOnEndTime = false;          // Fechar Posição ao Fim do Horário
+input int    inp_EndMinute = 0;                   // Minuto Final (0-59) - Segurança: 5min antes do fim do Horário de Negociação
+input bool   inp_CloseOnEndTime = false;          // Fechar Posição ao Fim do Horário definido
+// ═════════════════════════════════════════════════════════════════
+// FILTRO DE PROTEÇÃO DE SESSÃO
+// ═════════════════════════════════════════════════════════════════
+input group "═══ Proteção de Sessão (Mercado Real) ═══"
+input bool     inp_CloseBeforeSessionEnd = true;           // Fechar antes do fim da sessão?
+input int      inp_MinutesBeforeSessionEnd = 5;            // Minutos antes do fim da sessão - Segurança: 5min antes
 
 //--- 📰 HORÁRIOS DE VOLATILIDADE (NEWS)
 input group "📰 Horários de Volatilidade (News)"
