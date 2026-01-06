@@ -2,16 +2,14 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                        EA Modular Multistrategy - EPBot Matrix   |
-//|                      Versão 1.10 -  Parte 014/a/b/c - Perplexity |
+//|                                  Versão 1.10 - Claude Parte 014d |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
 #property version   "1.10"
 #property description "EPBot Matrix - Sistema de Trading Modular Multistrategy"
 #property description "Arquitetura profissional com hot reload e logging avançado"
-#property description "v1.02: Partial Take Profit COMPLETO - Até 3 níveis configuráveis"
-#property description "v1.03: Removida redundância UseTrailing/UseBreakeven - Usar enum NEVER"
-#property description "v1.10: Refatoração OOP - Strategies controlam exit signals + Controle de candle"
+#property description "v1.10: Refatoração OOP - Strategies controlam exit signals + Controle de candle + Encerramento"
 
 //+------------------------------------------------------------------+
 //| INCLUDES - ORDEM IMPORTANTE                                      |
@@ -122,6 +120,7 @@ int OnInit()
 
    if(!g_blockers.Init(
          g_logger,
+                  inp_MagicNumber,
          inp_EnableTimeFilter,
          inp_StartHour,
          inp_StartMinute,
@@ -630,7 +629,7 @@ void OnDeinit(const int reason)
   }
 
 //+------------------------------------------------------------------+
-//| FUNÇÃO PRINCIPAL - OnTick() - VERSÃO CORRIGIDA                   |
+//| FUNÇÃO PRINCIPAL - OnTick() - VERSÃO CORRIGIDA DEFINITIVA        |
 //+------------------------------------------------------------------+
 void OnTick()
   {
@@ -680,15 +679,32 @@ void OnTick()
    lastDay = timeStruct.day;
 
 // ═══════════════════════════════════════════════════════════════
-// 🆕 ETAPA 1.5: VERIFICAR POSIÇÃO ABERTA E FECHAR POR HORÁRIO
-// (ANTES do CanTrade!)
+// ETAPA 1.5: DETECTAR FECHAMENTO DE POSIÇÃO (histórico)
 // ═══════════════════════════════════════════════════════════════
 
    static ulong lastPositionTicket = 0;
-   bool hasPosition = PositionSelect(_Symbol);
+
+// ═══════════════════════════════════════════════════════════════
+// BUSCAR POSIÇÃO DESTE EA (funciona em HEDGING e NETTING)
+// ═══════════════════════════════════════════════════════════════
+   bool hasMyPosition = false;
+   ulong myPositionTicket = 0;
+
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+     {
+      if(PositionGetSymbol(i) != _Symbol) 
+         continue;
+      
+      if(PositionGetInteger(POSITION_MAGIC) == inp_MagicNumber)
+        {
+         hasMyPosition = true;
+         myPositionTicket = PositionGetTicket(i);
+         break;
+        }
+     }
 
 // Se tinha posição e agora não tem mais = fechou!
-   if(lastPositionTicket > 0 && !hasPosition)
+   if(lastPositionTicket > 0 && !hasMyPosition)
      {
       // Buscar informação do fechamento no histórico
       if(HistorySelectByPosition(lastPositionTicket))
@@ -731,7 +747,7 @@ void OnTick()
       // Remover do TradeManager
       g_tradeManager.UnregisterPosition(lastPositionTicket);
 
-      // 🆕 v1.10: Resetar controle de candle ao fechar posição (exceto no modo VM)
+      // Resetar controle de candle ao fechar posição (exceto no modo VM)
       if(inp_ExitMode != EXIT_VM)
         {
          g_lastTradeBarTime = 0;
@@ -741,22 +757,23 @@ void OnTick()
       lastPositionTicket = 0;
      }
 
-// Atualizar ticket da posição atual
-   if(hasPosition)
+// ═══════════════════════════════════════════════════════════════
+// SE EXISTE POSIÇÃO DESTE EA: GERENCIAR
+// ═══════════════════════════════════════════════════════════════
+   if(hasMyPosition)
      {
-      lastPositionTicket = PositionGetInteger(POSITION_TICKET);
-     }
-
-// ═══════════════════════════════════════════════════════════
-// SE EXISTE POSIÇÃO ABERTA: GERENCIAR (antes do CanTrade!)
-// ═══════════════════════════════════════════════════════════
-   if(hasPosition)
-     {
+      // Atualizar ticket da posição atual
+      lastPositionTicket = myPositionTicket;
+      
+      // Selecionar a posição específica
+      if(!PositionSelectByTicket(myPositionTicket))
+         return;
+      
       ulong  ticket = PositionGetInteger(POSITION_TICKET);
       double volume = PositionGetDouble(POSITION_VOLUME);
       ENUM_POSITION_TYPE posType = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
 
-      // Preço de fechamento (usado pelas duas camadas)
+      // Preço de fechamento
       double closePrice = (posType == POSITION_TYPE_BUY)
                           ? SymbolInfoDouble(_Symbol, SYMBOL_BID)
                           : SymbolInfoDouble(_Symbol, SYMBOL_ASK);
@@ -775,7 +792,7 @@ void OnTick()
          closeTrigger = "Operation";
         }
 
-      // Camada 2: Proteção de Sessão (só verifica se Camada 1 não disparou)
+      // Camada 2: Proteção de Sessão
       if(!shouldCloseByOperation && g_blockers != NULL && g_blockers.ShouldCloseBeforeSessionEnd(ticket))
         {
          shouldCloseBySession = true;
@@ -787,10 +804,8 @@ void OnTick()
         {
          if(closePrice <= 0)
            {
-            if(g_logger != NULL)
-               g_logger.LogError("❌ [Core] Preço de fechamento inválido - Continuando gerenciamento normal");
-
-            ManageOpenPosition();
+            g_logger.LogError("❌ [Core] Preço inválido - Continuando gerenciamento normal");
+            ManageOpenPosition(ticket);
             return;
            }
 
@@ -803,107 +818,46 @@ void OnTick()
          request.symbol       = _Symbol;
          request.volume       = volume;
          request.price        = closePrice;
-         request.deviation    = inp_Slippage;                  // usa seu input
+         request.deviation    = inp_Slippage;
          request.type         = (posType == POSITION_TYPE_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
-         request.type_filling = GetTypeFilling(_Symbol);       // usa seu helper existente
+         request.type_filling = GetTypeFilling(_Symbol);
          request.magic        = inp_MagicNumber;
          request.comment      = "Close[" + closeTrigger + "]";
 
-         if(g_logger != NULL)
-           {
-            g_logger.LogInfo("════════════════════════════════════════════════════════════════");
-            g_logger.LogInfo("🔒 [Core] Fechando posição por: " + closeTrigger);
-            g_logger.LogInfo("   📊 Parâmetros do fechamento:");
-            g_logger.LogInfo("      Ticket: " + IntegerToString((int)ticket));
-            g_logger.LogInfo("      Volume: " + DoubleToString(volume, 2));
-            g_logger.LogInfo("      Preço: " + DoubleToString(closePrice, _Digits));
-            g_logger.LogInfo("      Slippage: " + IntegerToString(inp_Slippage));
-           }
+         g_logger.LogInfo("════════════════════════════════════════════════════════════════");
+         g_logger.LogInfo("🔒 [Core] Fechando posição por: " + closeTrigger);
+         g_logger.LogInfo("   Ticket: " + IntegerToString((int)ticket));
+         g_logger.LogInfo("   Volume: " + DoubleToString(volume, 2));
+         g_logger.LogInfo("   Preço: " + DoubleToString(closePrice, _Digits));
 
          if(!OrderSend(request, result))
            {
-            if(g_logger != NULL)
-               g_logger.LogError("❌ [Core] OrderSend falhou - Erro: " + IntegerToString(GetLastError()));
-
-            ManageOpenPosition();
+            g_logger.LogError("❌ [Core] OrderSend falhou - Erro: " + IntegerToString(GetLastError()));
+            ManageOpenPosition(ticket);
             return;
            }
 
-         // Switch/case para tratar retcodes
-         switch(result.retcode)
+         // Tratar resultado
+         if(result.retcode == TRADE_RETCODE_DONE)
            {
-            case TRADE_RETCODE_DONE:
-              {
-               if(g_logger != NULL)
-                 {
-                  g_logger.LogInfo("✅ [Core] Posição fechada com sucesso");
-                  g_logger.LogInfo("   Deal: #" + IntegerToString((int)result.deal));
-                  g_logger.LogInfo("   Volume executado: " + DoubleToString(result.volume, 2));
-                  g_logger.LogInfo("   Preço executado: " + DoubleToString(result.price, _Digits));
-                  g_logger.LogInfo("   Trigger: " + closeTrigger);
-                  g_logger.LogInfo("════════════════════════════════════════════════════════════════");
-                 }
-               return; // Sai do OnTick - posição fechada
-              }
-
-            case TRADE_RETCODE_MARKET_CLOSED:
-              {
-               if(g_logger != NULL)
-                 {
-                  g_logger.LogWarning("⚠️ [Core] Mercado já fechado - posição permanece aberta");
-                  g_logger.LogWarning("   ℹ️ Configure margem de segurança maior (inp_MinutesBeforeSessionEnd)");
-                 }
-               return;
-              }
-
-            case TRADE_RETCODE_INVALID_PRICE:
-              {
-               if(g_logger != NULL)
-                 {
-                  g_logger.LogError("❌ [Core] Preço inválido para fechamento");
-                  g_logger.LogError("   Bid/Ask: "
-                                    + DoubleToString(SymbolInfoDouble(_Symbol, SYMBOL_BID), _Digits)
-                                    + " / "
-                                    + DoubleToString(SymbolInfoDouble(_Symbol, SYMBOL_ASK), _Digits));
-                 }
-               ManageOpenPosition();
-               return;
-              }
-
-            case TRADE_RETCODE_INVALID_VOLUME:
-              {
-               if(g_logger != NULL)
-                 {
-                  double minLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
-                  double maxLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
-
-                  g_logger.LogError("❌ [Core] Volume inválido");
-                  g_logger.LogError("   Volume solicitado: " + DoubleToString(volume, 2));
-                  g_logger.LogError("   Mín/Máx permitido: " + DoubleToString(minLot, 2)
-                                    + " / " + DoubleToString(maxLot, 2));
-                 }
-               ManageOpenPosition();
-               return;
-              }
-
-            default:
-              {
-               if(g_logger != NULL)
-                  g_logger.LogError("❌ [Core] Fechamento falhou - Retcode: " + IntegerToString(result.retcode));
-
-               ManageOpenPosition();
-               return;
-              }
+            g_logger.LogInfo("✅ [Core] Posição fechada com sucesso");
+            g_logger.LogInfo("   Deal: #" + IntegerToString((int)result.deal));
+            g_logger.LogInfo("   Preço: " + DoubleToString(result.price, _Digits));
+            g_logger.LogInfo("   Trigger: " + closeTrigger);
+            g_logger.LogInfo("════════════════════════════════════════════════════════════════");
+            return;
+           }
+         else
+           {
+            g_logger.LogWarning("⚠️ [Core] Fechamento falhou - Retcode: " + IntegerToString(result.retcode));
+            ManageOpenPosition(ticket);
+            return;
            }
         }
 
-      // Se nenhuma camada pediu fechamento, segue fluxo normal
-
-      // ══════════════════════════════════════════════════════════════
-      // GERENCIAMENTO DE POSIÇÃO ABERTA (Partial TP, BE, Trailing...)
-      // ══════════════════════════════════════════════════════════════
-      ManageOpenPosition();
-      return;
+      // Se não fechou por horário, gerenciamento normal
+      ManageOpenPosition(ticket);
+      return;  // ✅ SEMPRE SAI APÓS GERENCIAR
      }
 
 // ═══════════════════════════════════════════════════════════════
@@ -949,7 +903,7 @@ void OnTick()
      }
 
 // ═══════════════════════════════════════════════════════════════
-// ETAPA 4.5: 🆕 BLOQUEIO FCO - Não entrar no candle do exit
+// ETAPA 4.5: BLOQUEIO FCO - Não entrar no candle do exit
 // ═══════════════════════════════════════════════════════════════
 
    if(inp_ExitMode == EXIT_FCO)
@@ -969,20 +923,18 @@ void OnTick()
    ExecuteTrade(signal);
   }
 
-
 //+------------------------------------------------------------------+
-//| GERENCIAR POSIÇÃO ABERTA                                         |
+//| GERENCIAR POSIÇÃO ABERTA - Recebe ticket específico               |
 //+------------------------------------------------------------------+
-void ManageOpenPosition()
+void ManageOpenPosition(ulong ticket)
   {
-   if(!PositionSelect(_Symbol))
+   if(!PositionSelectByTicket(ticket))
       return;
 
    ENUM_POSITION_TYPE posType = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
    double currentPrice = (posType == POSITION_TYPE_BUY) ? SymbolInfoDouble(_Symbol, SYMBOL_BID) : SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    double entryPrice = PositionGetDouble(POSITION_PRICE_OPEN);
    double currentSL = PositionGetDouble(POSITION_SL);
-   ulong ticket = PositionGetInteger(POSITION_TICKET);
 
 // ═══════════════════════════════════════════════════════════════
 // VERIFICAR SE POSIÇÃO ESTÁ REGISTRADA NO TRADEMANAGER
@@ -1009,7 +961,7 @@ void ManageOpenPosition()
    bool tp2Executed = g_tradeManager.IsTP2Executed(ticket);
 
 // ═══════════════════════════════════════════════════════════════
-// TRAILING STOP (SEM verificação inp_UseTrailing)
+// TRAILING STOP
 // ═══════════════════════════════════════════════════════════════
    if(g_riskManager.ShouldActivateTrailing(tp1Executed, tp2Executed))
      {
@@ -1034,11 +986,10 @@ void ManageOpenPosition()
      }
 
 // ═══════════════════════════════════════════════════════════════
-// BREAKEVEN (SEM verificação inp_UseBreakeven)
+// BREAKEVEN
 // ═══════════════════════════════════════════════════════════════
    if(g_riskManager.ShouldActivateBreakeven(tp1Executed, tp2Executed))
      {
-      // ✅ BUSCAR ESTADO ESPECÍFICO DESTA POSIÇÃO
       bool beActivated = g_tradeManager.IsBreakevenActivated(ticket);
 
       SBreakevenResult breakeven = g_riskManager.CalculateBreakeven(posType, currentPrice, entryPrice, currentSL, beActivated);
@@ -1057,15 +1008,13 @@ void ManageOpenPosition()
          if(OrderSend(request, result))
            {
             g_logger.LogInfo("✅ Breakeven ativado em " + DoubleToString(breakeven.new_sl_price, _Digits));
-
-            // ✅ MARCAR COMO ATIVADO NO TRADEMANAGER
             g_tradeManager.SetBreakevenActivated(ticket, true);
            }
         }
      }
 
 // ═══════════════════════════════════════════════════════════════
-// 🆕 VERIFICAR EXIT SIGNAL DAS STRATEGIES (OOP!)
+// VERIFICAR EXIT SIGNAL DAS STRATEGIES
 // ═══════════════════════════════════════════════════════════════
    ENUM_SIGNAL_TYPE exitSignal = g_signalManager.GetExitSignal(posType);
 
@@ -1095,19 +1044,13 @@ void ManageOpenPosition()
             g_logger.LogInfo("   Fonte: " + g_signalManager.GetLastSignalSource());
             g_logger.LogInfo("   Preço: " + DoubleToString(result.price, _Digits));
 
-            // ═══════════════════════════════════════════════════════════════
-            // 🎯 DECISÃO: FCO ou VM?
-            // ═══════════════════════════════════════════════════════════════
-
             if(inp_ExitMode == EXIT_VM)
               {
-               // VM: VIRA A MÃO (entrada imediata, IGNORA E1c/E2c)
                g_logger.LogInfo("🔄 VIRAR A MÃO - Executando entrada oposta IMEDIATAMENTE");
-               ExecuteTrade(exitSignal);  // ✅ USA o sinal direto
+               ExecuteTrade(exitSignal);
               }
             else  // EXIT_FCO
               {
-               // FCO: Apenas fecha (NÃO usa o sinal, marca candle do exit)
                g_lastExitBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
                g_logger.LogInfo("⏸️ EXIT_FCO - Posição fechada, bloqueando re-entrada neste sinal");
               }
@@ -1273,8 +1216,18 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
            }
         }
 
+// ✅ USAR ORDER TICKET (que vira POSITION ticket em ordens market)
+      ulong positionTicket = result.order;
+      
+      // Verificar se a posição realmente existe
+      if(!PositionSelectByTicket(positionTicket))
+        {
+         g_logger.LogError("❌ Posição não encontrada após abertura! Order: " + IntegerToString(result.order));
+         return;
+        }
+
       g_tradeManager.RegisterPosition(
-         result.deal,  // ticket
+         positionTicket,  // ✅ CORRETO: result.order
          (orderType == ORDER_TYPE_BUY) ? POSITION_TYPE_BUY : POSITION_TYPE_SELL,
          result.price,
          result.volume,
