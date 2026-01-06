@@ -9,7 +9,7 @@
 #property version   "1.10"
 #property description "EPBot Matrix - Sistema de Trading Modular Multistrategy"
 #property description "Arquitetura profissional com hot reload e logging avançado"
-#property description "v1.10: Refatoração OOP - Strategies controlam exit signals + Controle de candle + Encerramento"
+#property description "v1.10: Refatoração OOP - Strategies controlam exit signals + Controle de candle + Encerramento Horário/Sessão"
 
 //+------------------------------------------------------------------+
 //| INCLUDES - ORDEM IMPORTANTE                                      |
