@@ -2,14 +2,12 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                        EA Modular Multistrategy - EPBot Matrix   |
-//|                                  Versão 1.10 - Claude Parte 014d |
+//|                                  Versão 1.11 - Claude Parte 015a |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.10"
-#property description "EPBot Matrix - Sistema de Trading Modular Multistrategy"
-#property description "Arquitetura profissional com hot reload e logging avançado"
-#property description "v1.10: Refatoração OOP - Strategies controlam exit signals + Controle de candle + Encerramento Horário/Sessão"
+#property version   "1.11"
+#property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //+------------------------------------------------------------------+
 //| INCLUDES - ORDEM IMPORTANTE                                      |
@@ -86,7 +84,7 @@ bool g_tradingAllowed = true;  // Controle geral de trading
 int OnInit()
   {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.10 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v1.11 - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
 
 // ═══════════════════════════════════════════════════════════════
@@ -274,6 +272,15 @@ int OnInit()
      }
 
    g_logger.LogInfo("✅ TradeManager inicializado com sucesso!");
+   
+// ═══════════════════════════════════════════════════════════════
+   // ETAPA 4.5: RESSINCRONIZAR POSIÇÕES EXISTENTES
+   // ═══════════════════════════════════════════════════════════════
+   int syncedPositions = g_tradeManager.ResyncExistingPositions();
+   if(syncedPositions > 0)
+   {
+      g_logger.LogInfo("🔄 " + IntegerToString(syncedPositions) + " posição(ões) ressincronizada(s)");
+   }
 
 // ═══════════════════════════════════════════════════════════════
 // ETAPA 5: INICIALIZAR SIGNAL MANAGER
@@ -528,7 +535,7 @@ int OnInit()
    Print("════════════════════════════════════════════════════════════════");
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
-   g_logger.LogInfo("🚀 EPBot Matrix v1.10 - PRONTO PARA OPERAR!");
+   g_logger.LogInfo("🚀 EPBot Matrix v1.11 - PRONTO PARA OPERAR!");
    g_logger.LogInfo("📊 Símbolo: " + _Symbol);
    g_logger.LogInfo("⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
    g_logger.LogInfo("🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
@@ -942,7 +949,7 @@ void ManageOpenPosition(ulong ticket)
    int index = g_tradeManager.GetPositionIndex(ticket);
    if(index < 0)
      {
-      g_logger.LogWarning("⚠️ Posição não encontrada no TradeManager - Ignorando gerenciamento");
+      g_logger.LogDebug("⚠️ Posição não encontrada no TradeManager - Ignorando gerenciamento");
       return;
      }
 
@@ -1360,5 +1367,5 @@ string GetDeinitReasonText(int reason)
   }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.10                                   |
+//| FIM DO EA - EPBOT MATRIX v1.11                                   |
 //+------------------------------------------------------------------+
