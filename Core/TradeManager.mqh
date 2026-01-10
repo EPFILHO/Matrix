@@ -2,10 +2,10 @@
 //|                                                 TradeManager.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|              Gerenciamento de Posições Individuais - EPBot Matrix|
-//|                               Versão 1.01 - Perplexity Parte 014 |
+//|                                  Versão 1.02 - Claude Parte 015a |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "1.01"
+#property version   "1.02"
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
@@ -14,13 +14,14 @@
 #include "RiskManager.mqh"
 
 // ═══════════════════════════════════════════════════════════════════
-// ARQUITETURA TRADEMANAGER v1.01:
+// ARQUITETURA TRADEMANAGER v1.02:
 // - Rastreia CADA posição individualmente com seu próprio estado
 // - Gerencia Breakeven por posição (não global)
 // - Gerencia Trailing por posição (não global)
 // - Gerencia Partial TP por posição (TP1, TP2)
 // - Hot Reload completo (Input + Working variables)
 // - Integração total com Logger e RiskManager
+// - ReSync
 //
 // IMPORTANTE MQL5: Usa ÍNDICES ao invés de ponteiros!
 // MQL5 não permite ponteiros para structs simples
