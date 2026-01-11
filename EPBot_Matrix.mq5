@@ -877,9 +877,14 @@ void OnTick()
 
    if(!g_blockers.CanTrade(dailyTrades, dailyProfit, blockReason))
      {
-      // v3.00: Usa PerCandle para evitar flood (1 log por candle)
-      g_logger.LogDebugPerCandle("ea_trade_blocked", "🚫 Trading bloqueado: " + blockReason);
+      // v3.00: Usa ONCE (loga só quando ENTRA no bloqueio)
+      g_logger.LogDebugOnce("ea_trade_blocked", "🚫 Trading bloqueado: " + blockReason);
       return;
+     }
+   else
+     {
+      // v3.00: Limpa flag quando SAI do bloqueio (Opção A)
+      g_logger.ClearOnce("ea_trade_blocked");
      }
 
 // ═══════════════════════════════════════════════════════════════
@@ -894,9 +899,14 @@ void OnTick()
 
       if(currentBarTime_Check == g_lastTradeBarTime)
         {
-         // v3.00: PerCandle (não precisa logar a cada tick)
-         g_logger.LogDebugPerCandle("ea_already_traded", "⏸️ Já operou neste candle - aguardando próximo");
+         // v3.00: ONCE (loga só quando entra neste estado)
+         g_logger.LogDebugOnce("ea_already_traded", "⏸️ Já operou neste candle - aguardando próximo");
          return;
+        }
+      else
+        {
+         // v3.00: Limpa flag quando muda de candle
+         g_logger.ClearOnce("ea_already_traded");
         }
      }
 
@@ -907,7 +917,7 @@ void OnTick()
 
    if(signal == SIGNAL_NONE)
      {
-      // v3.00: PerCandle (não precisa logar a cada tick)
+      // v3.00: PerCandle (faz sentido logar 1x por candle - checagem periódica)
       g_logger.LogDebugPerCandle("ea_no_signal", "ℹ️ Nenhum sinal válido detectado");
       return;
      }
@@ -922,9 +932,14 @@ void OnTick()
 
       if(currentBarTime == g_lastExitBarTime)
         {
-         // v3.00: PerCandle (não precisa logar a cada tick)
-         g_logger.LogDebugPerCandle("ea_fco_blocked", "🚫 FCO bloqueado - não entra no sinal que causou exit");
+         // v3.00: ONCE (loga só quando entra neste bloqueio)
+         g_logger.LogDebugOnce("ea_fco_blocked", "🚫 FCO bloqueado - não entra no sinal que causou exit");
          return;
+        }
+      else
+        {
+         // v3.00: Limpa flag quando muda de candle
+         g_logger.ClearOnce("ea_fco_blocked");
         }
      }
 
