@@ -2,13 +2,21 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                                                      Versão 3.00 |
+//|                                                      Versão 3.01 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "3.00"
+#property version   "3.01"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.01:
+// ✅ Hierarquia corrigida: Bloqueios de sessão agora usam INFO (não WARNING)
+// ✅ Logs de fechamento por horário consolidados com LogInfoOnce (anti-flood)
+// ✅ Log de drawdown consolidado com LogWarningOnce (anti-flood)
+// ✅ Logs de UpdateAfterTrade consolidados com LogWarningOnce (anti-flood)
+// ✅ Eliminado flood em 6 pontos críticos do código
+// ═══════════════════════════════════════════════════════════════
+//
 // CHANGELOG v3.00:
 // ✅ Refatoração completa do sistema de logging
 // ✅ Uso do Logger v3.00 com sistema de throttle automático
@@ -1165,7 +1173,7 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
                   sessionEndTime.hour, sessionEndTime.min,
                   now.hour, now.min
                );
-               m_logger.LogWarningOnce("blocker_session_before", msg);
+               m_logger.LogInfoOnce("blocker_session_before", msg);
               }
 
             return false;
@@ -1202,7 +1210,7 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
                   m_minutesBeforeSessionEnd,
                   deltaEnd
                );
-               m_logger.LogWarningOnce("blocker_session_window", msg);
+               m_logger.LogInfoOnce("blocker_session_window", msg);
               }
 
             return false;
@@ -1233,7 +1241,7 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
                   sessionEndTime.hour, sessionEndTime.min,
                   now.hour, now.min
                );
-               m_logger.LogWarningOnce("blocker_session_after", msg);
+               m_logger.LogInfoOnce("blocker_session_after", msg);
               }
 
             return false;
@@ -1375,11 +1383,18 @@ bool CBlockers::ShouldCloseOnEndTime(ulong positionTicket)
         {
          if(m_logger != NULL)
            {
-            m_logger.LogInfo("⏰ [Blockers] Término de horário de operação atingido");
-            m_logger.LogInfo("   Início: " + IntegerToString(m_startHour) + ":" + IntegerToString(m_startMinute));
-            m_logger.LogInfo("   Fim:    " + IntegerToString(m_endHour)   + ":" + IntegerToString(m_endMinute));
-            m_logger.LogInfo("   Agora:  " + IntegerToString(dt.hour)     + ":" + IntegerToString(dt.min));
-            m_logger.LogInfo("   Posição #" + IntegerToString((int)positionTicket) + " deve ser fechada por horário");
+            string msg = StringFormat(
+               "⏰ [Blockers] Término de horário de operação atingido\n" +
+               "   Início: %02d:%02d\n" +
+               "   Fim:    %02d:%02d\n" +
+               "   Agora:  %02d:%02d\n" +
+               "   Posição #%d deve ser fechada por horário",
+               m_startHour, m_startMinute,
+               m_endHour, m_endMinute,
+               dt.hour, dt.min,
+               (int)positionTicket
+            );
+            m_logger.LogInfoOnce("blocker_close_endtime", msg);
            }
          else
            {
@@ -1398,11 +1413,17 @@ bool CBlockers::ShouldCloseOnEndTime(ulong positionTicket)
         {
          if(m_logger != NULL)
            {
-            m_logger.LogInfo("⏰ [Blockers] Fora do horário de operação (janela noturna)");
-            m_logger.LogInfo("   Janela: " + IntegerToString(m_startHour) + ":" + IntegerToString(m_startMinute)
-                          + " - " + IntegerToString(m_endHour) + ":" + IntegerToString(m_endMinute));
-            m_logger.LogInfo("   Agora:  " + IntegerToString(dt.hour) + ":" + IntegerToString(dt.min));
-            m_logger.LogInfo("   Posição #" + IntegerToString((int)positionTicket) + " deve ser fechada");
+            string msg = StringFormat(
+               "⏰ [Blockers] Fora do horário de operação (janela noturna)\n" +
+               "   Janela: %02d:%02d - %02d:%02d\n" +
+               "   Agora:  %02d:%02d\n" +
+               "   Posição #%d deve ser fechada",
+               m_startHour, m_startMinute,
+               m_endHour, m_endMinute,
+               dt.hour, dt.min,
+               (int)positionTicket
+            );
+            m_logger.LogInfoOnce("blocker_close_overnight", msg);
            }
          else
            {
@@ -1472,14 +1493,22 @@ bool CBlockers::ShouldCloseBeforeSessionEnd(ulong positionTicket)
      {
       if(m_logger != NULL)
         {
-         m_logger.LogInfo("════════════════════════════════════════════════════════════════");
-         m_logger.LogInfo("⏰ [Blockers] Proteção de Sessão ativada");
-         m_logger.LogInfo(StringFormat("   Sessão encerra: %02d:%02d", sessionEndTime.hour, sessionEndTime.min));
-         m_logger.LogInfo(StringFormat("   Horário atual: %02d:%02d", now.hour, now.min));
-         m_logger.LogInfo(StringFormat("   Margem segurança: %d minutos", m_minutesBeforeSessionEnd));
-         m_logger.LogInfo(StringFormat("   Faltam %d minutos para sessão encerrar", minutesUntilSessionEnd));
-         m_logger.LogInfo("   Posição #" + IntegerToString((int)positionTicket) + " deve ser fechada por proteção de sessão");
-         m_logger.LogInfo("════════════════════════════════════════════════════════════════");
+         string msg = StringFormat(
+            "════════════════════════════════════════════════════════════════\n" +
+            "⏰ [Blockers] Proteção de Sessão ativada\n" +
+            "   Sessão encerra: %02d:%02d\n" +
+            "   Horário atual: %02d:%02d\n" +
+            "   Margem segurança: %d minutos\n" +
+            "   Faltam %d minutos para sessão encerrar\n" +
+            "   Posição #%d deve ser fechada por proteção de sessão\n" +
+            "════════════════════════════════════════════════════════════════",
+            sessionEndTime.hour, sessionEndTime.min,
+            now.hour, now.min,
+            m_minutesBeforeSessionEnd,
+            minutesUntilSessionEnd,
+            (int)positionTicket
+         );
+         m_logger.LogInfoOnce("blocker_close_protection", msg);
         }
       else
         {
@@ -1508,7 +1537,7 @@ void CBlockers::UpdateAfterTrade(bool isWin, double tradeProfit)
            {
             string msg = "⚠️ WIN STREAK ATINGIDO: " + IntegerToString(m_currentWinStreak) + " ganhos consecutivos!";
             if(m_logger != NULL)
-               m_logger.LogWarning(msg);
+               m_logger.LogWarningOnce("streak_win_reached", msg);
             else
                Print(msg);
            }
@@ -1522,7 +1551,7 @@ void CBlockers::UpdateAfterTrade(bool isWin, double tradeProfit)
            {
             string msg = "⚠️ LOSS STREAK ATINGIDO: " + IntegerToString(m_currentLossStreak) + " perdas consecutivas!";
             if(m_logger != NULL)
-               m_logger.LogWarning(msg);
+               m_logger.LogWarningOnce("streak_loss_reached", msg);
             else
                Print(msg);
            }
@@ -1968,19 +1997,25 @@ bool CBlockers::CheckDrawdownLimit()
 
       if(m_logger != NULL)
         {
-         m_logger.LogWarning("═══════════════════════════════════════════════════════");
-         m_logger.LogWarning("🛑 LIMITE DE DRAWDOWN ATINGIDO!");
-         m_logger.LogWarning("   📊 Pico do dia: $" + DoubleToString(m_dailyPeakProfit, 2));
-         m_logger.LogWarning("   💰 Lucro atual: $" + DoubleToString(currentProfit, 2));
-         m_logger.LogWarning("   📉 Drawdown: $" + DoubleToString(currentDD, 2));
-
-         if(m_drawdownType == DD_FINANCIAL)
-            m_logger.LogWarning("   🛑 Limite: $" + DoubleToString(ddLimit, 2) + " (Financeiro)");
-         else
-            m_logger.LogWarning("   🛑 Limite: " + DoubleToString(m_drawdownValue, 1) + "% = $" + DoubleToString(ddLimit, 2));
-
-         m_logger.LogWarning("   🛡️ LUCRO PROTEGIDO! EA pausado até o fim do dia");
-         m_logger.LogWarning("═══════════════════════════════════════════════════════");
+         string limitMsg = (m_drawdownType == DD_FINANCIAL) ?
+            StringFormat("   🛑 Limite: $%.2f (Financeiro)", ddLimit) :
+            StringFormat("   🛑 Limite: %.1f%% = $%.2f", m_drawdownValue, ddLimit);
+         
+         string msg = StringFormat(
+            "═══════════════════════════════════════════════════════\n" +
+            "🛑 LIMITE DE DRAWDOWN ATINGIDO!\n" +
+            "   📊 Pico do dia: $%.2f\n" +
+            "   💰 Lucro atual: $%.2f\n" +
+            "   📉 Drawdown: $%.2f\n" +
+            "%s\n" +
+            "   🛡️ LUCRO PROTEGIDO! EA pausado até o fim do dia\n" +
+            "═══════════════════════════════════════════════════════",
+            m_dailyPeakProfit,
+            currentProfit,
+            currentDD,
+            limitMsg
+         );
+         m_logger.LogWarningOnce("blocker_drawdown_limit", msg);
         }
       else
         {
