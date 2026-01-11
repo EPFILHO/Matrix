@@ -14,7 +14,8 @@
 // ✅ Logs de fechamento por horário consolidados com LogInfoOnce (anti-flood)
 // ✅ Log de drawdown consolidado com LogWarningOnce (anti-flood)
 // ✅ Logs de UpdateAfterTrade consolidados com LogWarningOnce (anti-flood)
-// ✅ Eliminado flood em 6 pontos críticos do código
+// ✅ Logs de horários de volatilidade adicionados com LogInfoOnce (antes eram silenciosos)
+// ✅ Eliminado flood em 6 pontos críticos + adicionado logs em 3 janelas de news
 // ═══════════════════════════════════════════════════════════════
 //
 // CHANGELOG v3.00:
@@ -1707,7 +1708,31 @@ bool CBlockers::CheckNewsFilter()
       if(newsStart1 < newsEnd1)
         {
          if(currentMinutes >= newsStart1 && currentMinutes <= newsEnd1)
+           {
+            // v3.01: Loga ONCE quando entra no horário de volatilidade
+            if(m_logger != NULL)
+              {
+               string msg = StringFormat(
+                  "═══════════════════════════════════════════════════════\n" +
+                  "📰 [Blockers] Horário de Volatilidade ATIVO (Janela 1)\n" +
+                  "   Janela: %02d:%02d - %02d:%02d\n" +
+                  "   Horário atual: %02d:%02d\n" +
+                  "   Novas entradas bloqueadas durante horário de notícias\n" +
+                  "═══════════════════════════════════════════════════════",
+                  m_newsStart1Hour, m_newsStart1Minute,
+                  m_newsEnd1Hour, m_newsEnd1Minute,
+                  dt.hour, dt.min
+               );
+               m_logger.LogInfoOnce("blocker_news_filter1", msg);
+              }
             return false;
+           }
+         else
+           {
+            // Limpa flag ONCE quando sai do horário de volatilidade
+            if(m_logger != NULL)
+               m_logger.ClearOnce("blocker_news_filter1");
+           }
         }
      }
 
@@ -1719,7 +1744,31 @@ bool CBlockers::CheckNewsFilter()
       if(newsStart2 < newsEnd2)
         {
          if(currentMinutes >= newsStart2 && currentMinutes <= newsEnd2)
+           {
+            // v3.01: Loga ONCE quando entra no horário de volatilidade
+            if(m_logger != NULL)
+              {
+               string msg = StringFormat(
+                  "═══════════════════════════════════════════════════════\n" +
+                  "📰 [Blockers] Horário de Volatilidade ATIVO (Janela 2)\n" +
+                  "   Janela: %02d:%02d - %02d:%02d\n" +
+                  "   Horário atual: %02d:%02d\n" +
+                  "   Novas entradas bloqueadas durante horário de notícias\n" +
+                  "═══════════════════════════════════════════════════════",
+                  m_newsStart2Hour, m_newsStart2Minute,
+                  m_newsEnd2Hour, m_newsEnd2Minute,
+                  dt.hour, dt.min
+               );
+               m_logger.LogInfoOnce("blocker_news_filter2", msg);
+              }
             return false;
+           }
+         else
+           {
+            // Limpa flag ONCE quando sai do horário de volatilidade
+            if(m_logger != NULL)
+               m_logger.ClearOnce("blocker_news_filter2");
+           }
         }
      }
 
@@ -1731,7 +1780,31 @@ bool CBlockers::CheckNewsFilter()
       if(newsStart3 < newsEnd3)
         {
          if(currentMinutes >= newsStart3 && currentMinutes <= newsEnd3)
+           {
+            // v3.01: Loga ONCE quando entra no horário de volatilidade
+            if(m_logger != NULL)
+              {
+               string msg = StringFormat(
+                  "═══════════════════════════════════════════════════════\n" +
+                  "📰 [Blockers] Horário de Volatilidade ATIVO (Janela 3)\n" +
+                  "   Janela: %02d:%02d - %02d:%02d\n" +
+                  "   Horário atual: %02d:%02d\n" +
+                  "   Novas entradas bloqueadas durante horário de notícias\n" +
+                  "═══════════════════════════════════════════════════════",
+                  m_newsStart3Hour, m_newsStart3Minute,
+                  m_newsEnd3Hour, m_newsEnd3Minute,
+                  dt.hour, dt.min
+               );
+               m_logger.LogInfoOnce("blocker_news_filter3", msg);
+              }
             return false;
+           }
+         else
+           {
+            // Limpa flag ONCE quando sai do horário de volatilidade
+            if(m_logger != NULL)
+               m_logger.ClearOnce("blocker_news_filter3");
+           }
         }
      }
 
