@@ -180,7 +180,7 @@ private:
    // MÉTODOS PRIVADOS DE THROTTLE (v3.00)
    // ═══════════════════════════════════════════════════════════
    int               FindThrottleKey(string key);
-   SThrottleData*    GetOrCreateThrottle(string key);
+   int               GetOrCreateThrottle(string key);  // ✅ Retorna índice, não ponteiro
    bool              ShouldLogOnce(string key);
    bool              ShouldLogPerCandle(string key);
    bool              ShouldLogThrottled(string key, int intervalSeconds);
@@ -843,14 +843,15 @@ int CLogger::FindThrottleKey(string key)
 
 //+------------------------------------------------------------------+
 //| Obter ou criar entrada de throttle para uma key                  |
+//| Retorna: índice no array (sempre >= 0)                           |
 //+------------------------------------------------------------------+
-SThrottleData* CLogger::GetOrCreateThrottle(string key)
+int CLogger::GetOrCreateThrottle(string key)
   {
    int index = FindThrottleKey(key);
 
-   // Se já existe, retorna ponteiro
+   // Se já existe, retorna índice
    if(index >= 0)
-      return GetPointer(m_throttleData[index]);
+      return index;
 
    // Não existe - criar novo
    m_throttleCount++;
@@ -864,7 +865,7 @@ SThrottleData* CLogger::GetOrCreateThrottle(string key)
    m_throttleData[m_throttleCount - 1].lastBarIndex = -1;
    m_throttleData[m_throttleCount - 1].wasLogged = false;
 
-   return GetPointer(m_throttleData[m_throttleCount - 1]);
+   return m_throttleCount - 1;  // Retorna índice do novo elemento
   }
 
 //+------------------------------------------------------------------+
@@ -872,12 +873,12 @@ SThrottleData* CLogger::GetOrCreateThrottle(string key)
 //+------------------------------------------------------------------+
 bool CLogger::ShouldLogOnce(string key)
   {
-   SThrottleData* throttle = GetOrCreateThrottle(key);
+   int index = GetOrCreateThrottle(key);
 
-   if(!throttle.wasLogged)
+   if(!m_throttleData[index].wasLogged)
      {
-      throttle.wasLogged = true;  // Marca como logado
-      return true;                // Loga desta vez
+      m_throttleData[index].wasLogged = true;  // Marca como logado
+      return true;                             // Loga desta vez
      }
 
    return false;  // Já logou, não loga de novo
@@ -888,14 +889,14 @@ bool CLogger::ShouldLogOnce(string key)
 //+------------------------------------------------------------------+
 bool CLogger::ShouldLogPerCandle(string key)
   {
-   SThrottleData* throttle = GetOrCreateThrottle(key);
+   int index = GetOrCreateThrottle(key);
 
    int currentBar = Bars(_Symbol, PERIOD_CURRENT);
 
    // Se é uma nova barra, permite logar
-   if(throttle.lastBarIndex != currentBar)
+   if(m_throttleData[index].lastBarIndex != currentBar)
      {
-      throttle.lastBarIndex = currentBar;
+      m_throttleData[index].lastBarIndex = currentBar;
       return true;
      }
 
@@ -907,14 +908,14 @@ bool CLogger::ShouldLogPerCandle(string key)
 //+------------------------------------------------------------------+
 bool CLogger::ShouldLogThrottled(string key, int intervalSeconds)
   {
-   SThrottleData* throttle = GetOrCreateThrottle(key);
+   int index = GetOrCreateThrottle(key);
 
    datetime now = TimeCurrent();
 
    // Se passou tempo suficiente, permite logar
-   if((now - throttle.lastLogTime) >= intervalSeconds)
+   if((now - m_throttleData[index].lastLogTime) >= intervalSeconds)
      {
-      throttle.lastLogTime = now;
+      m_throttleData[index].lastLogTime = now;
       return true;
      }
 
