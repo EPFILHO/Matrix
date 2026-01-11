@@ -1151,7 +1151,7 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
             m_currentBlocker = BLOCKER_TIME_FILTER;
             blockReason = "Sessão de negociação ainda não iniciou";
 
-            // v3.00: Usa throttle automático (1 log a cada 300s)
+            // v3.00: Loga ONCE (só quando entra no bloqueio)
             if(m_logger != NULL)
               {
                string msg = StringFormat(
@@ -1165,10 +1165,16 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
                   sessionEndTime.hour, sessionEndTime.min,
                   now.hour, now.min
                );
-               m_logger.LogInfoThrottled("blocker_session_before", msg, 300);
+               m_logger.LogWarningOnce("blocker_session_before", msg);
               }
 
             return false;
+           }
+         else
+           {
+            // v3.00: Limpa flag ONCE quando sai do bloqueio (Opção A)
+            if(m_logger != NULL)
+               m_logger.ClearOnce("blocker_session_before");
            }
 
          // 1) DENTRO da sessão, mas na janela de proteção antes do fim
@@ -1180,7 +1186,7 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
                              deltaEnd, m_minutesBeforeSessionEnd
                           );
 
-            // v3.00: Usa throttle automático (1 log a cada 300s)
+            // v3.00: Loga ONCE (só quando entra no bloqueio)
             if(m_logger != NULL)
               {
                string msg = StringFormat(
@@ -1196,10 +1202,16 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
                   m_minutesBeforeSessionEnd,
                   deltaEnd
                );
-               m_logger.LogInfoThrottled("blocker_session_window", msg, 300);
+               m_logger.LogWarningOnce("blocker_session_window", msg);
               }
 
             return false;
+           }
+         else
+           {
+            // v3.00: Limpa flag ONCE quando sai do bloqueio (Opção A)
+            if(m_logger != NULL)
+               m_logger.ClearOnce("blocker_session_window");
            }
 
          // 2) DEPOIS do fim da sessão → bloquear até próxima sessão
@@ -1208,7 +1220,7 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
             m_currentBlocker = BLOCKER_TIME_FILTER;
             blockReason = "Sessão de negociação encerrada";
 
-            // v3.00: Usa throttle automático (1 log a cada 300s)
+            // v3.00: Loga ONCE (só quando entra no bloqueio)
             if(m_logger != NULL)
               {
                string msg = StringFormat(
@@ -1221,10 +1233,16 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
                   sessionEndTime.hour, sessionEndTime.min,
                   now.hour, now.min
                );
-               m_logger.LogInfoThrottled("blocker_session_after", msg, 300);
+               m_logger.LogWarningOnce("blocker_session_after", msg);
               }
 
             return false;
+           }
+         else
+           {
+            // v3.00: Limpa flag ONCE quando sai do bloqueio (Opção A)
+            if(m_logger != NULL)
+               m_logger.ClearOnce("blocker_session_after");
            }
         }
      }
@@ -1758,28 +1776,23 @@ bool CBlockers::CheckStreakLimit()
      {
       if(TimeCurrent() < m_streakPauseUntil)
         {
-         if(TimeCurrent() - m_lastStreakWarning > 300)
-           {
-            int remainingMinutes = (int)((m_streakPauseUntil - TimeCurrent()) / 60);
+         int remainingMinutes = (int)((m_streakPauseUntil - TimeCurrent()) / 60);
 
-            if(m_logger != NULL)
-              {
-               m_logger.LogWarning("═══════════════════════════════════════════════════════");
-               m_logger.LogWarning("⏸️ EA PAUSADO POR SEQUÊNCIA");
-               m_logger.LogWarning("   📊 Motivo: " + m_streakPauseReason);
-               m_logger.LogWarning("   ⏱️ Tempo restante: " + IntegerToString(remainingMinutes) + " minutos");
-               m_logger.LogWarning("═══════════════════════════════════════════════════════");
-              }
-            else
-              {
-               Print("═══════════════════════════════════════════════════════");
-               Print("⏸️ EA PAUSADO POR SEQUÊNCIA");
-               Print("   📊 Motivo: ", m_streakPauseReason);
-               Print("   ⏱️ Tempo restante: ", remainingMinutes, " minutos");
-               Print("═══════════════════════════════════════════════════════");
-              }
-            m_lastStreakWarning = TimeCurrent();
+         // v3.00: Usa throttle automático (1 log a cada 300s)
+         if(m_logger != NULL)
+           {
+            string msg = StringFormat(
+               "═══════════════════════════════════════════════════════\n" +
+               "⏸️ EA PAUSADO POR SEQUÊNCIA\n" +
+               "   📊 Motivo: %s\n" +
+               "   ⏱️ Tempo restante: %d minutos\n" +
+               "═══════════════════════════════════════════════════════",
+               m_streakPauseReason,
+               remainingMinutes
+            );
+            m_logger.LogWarningThrottled("blocker_streak_pause", msg, 300);
            }
+
          return false;
         }
       else
