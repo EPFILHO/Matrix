@@ -2,20 +2,132 @@
 //|                                                       Logger.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                                Sistema de Logging - EPBot Matrix |
-//|                                                      Versão 2.00 |
+//|                                                      Versão 3.00 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "2.00"
+#property version   "3.00"
+
+/*
+═══════════════════════════════════════════════════════════════════════════════
+   📚 GUIA DE USO DO LOGGER v3.00
+═══════════════════════════════════════════════════════════════════════════════
+
+   ┌─────────────────────────────────────────────────────────────────────────┐
+   │ NÍVEIS DE LOG (hierárquicos)                                            │
+   └─────────────────────────────────────────────────────────────────────────┘
+
+   LOG_MINIMAL  → Só erros e warnings (produção silenciosa)
+                  Exemplo: Spread bloqueado, erros críticos
+
+   LOG_COMPLETE → Erros, warnings e info (padrão - produção normal)
+                  Exemplo: Trades executados, sinais detectados
+
+   LOG_DEBUG    → Tudo incluindo detalhes técnicos (desenvolvimento)
+                  Exemplo: Valores calculados, estados internos
+
+   ┌─────────────────────────────────────────────────────────────────────────┐
+   │ MÉTODOS BÁSICOS                                                         │
+   └─────────────────────────────────────────────────────────────────────────┘
+
+   LogError(msg)   → ❌ SEMPRE mostra (crítico - sem verificação de nível)
+   LogWarning(msg) → ⚠️  Mostra em MINIMAL ou superior
+   LogInfo(msg)    → ℹ️  Mostra em COMPLETE ou superior
+   LogDebug(msg)   → 🔍 Mostra SOMENTE em DEBUG
+
+   Exemplos:
+   logger.LogError("Falha ao abrir posição");           // SEMPRE aparece
+   logger.LogWarning("Spread alto - trade bloqueado");  // MINIMAL+
+   logger.LogInfo("Trade executado com sucesso");       // COMPLETE+
+   logger.LogDebug("SL calculado: 1.2345");             // DEBUG only
+
+   ┌─────────────────────────────────────────────────────────────────────────┐
+   │ SISTEMA DE THROTTLE (anti-flood)                                        │
+   └─────────────────────────────────────────────────────────────────────────┘
+
+   Para evitar logs repetitivos, use versões "throttled":
+
+   1️⃣ ONCE - Loga só na primeira ocorrência
+
+      LogWarningOnce(key, msg)
+
+      Uso: Bloqueios que podem durar vários ticks
+      Exemplo:
+         if(horarioBloqueado) {
+             logger.LogWarningOnce("blocker_horario", "🚫 Horário de volatilidade");
+         } else {
+             logger.ClearOnce("blocker_horario");  // Limpa para logar de novo
+         }
+
+      Saída: Loga só quando ENTRA em bloqueio (não repete a cada tick)
+
+   2️⃣ PER_CANDLE - Loga uma vez por candle (barra)
+
+      LogInfoPerCandle(key, msg)
+
+      Uso: Eventos que acontecem a cada tick mas só interessam 1x/candle
+      Exemplo:
+         logger.LogInfoPerCandle("no_signal", "Nenhum sinal válido detectado");
+
+      Saída: Loga no máximo 1x por barra, mesmo sendo chamado a cada tick
+
+   3️⃣ THROTTLED - Loga no máximo a cada X segundos
+
+      LogDebugThrottled(key, msg, intervalSeconds)
+
+      Uso: Logs de alta frequência (trailing, monitoring)
+      Exemplo:
+         logger.LogDebugThrottled("trailing", "SL: " + sl, 5);
+
+      Saída: Loga no máximo a cada 5 segundos
+
+   ⚠️ IMPORTANTE: A "key" deve ser ÚNICA para cada tipo de mensagem
+
+   Versões disponíveis:
+   - LogErrorOnce(key, msg)
+   - LogErrorPerCandle(key, msg)
+   - LogErrorThrottled(key, msg, seconds)
+   - LogWarningOnce(key, msg)
+   - LogWarningPerCanle(key, msg)
+   - LogWarningThrottled(key, msg, seconds)
+   - LogInfoOnce(key, msg)
+   - LogInfoPerCandle(key, msg)
+   - LogInfoThrottled(key, msg, seconds)
+   - LogDebugOnce(key, msg)
+   - LogDebugPerCandle(key, msg)
+   - LogDebugThrottled(key, msg, seconds)
+
+   ┌─────────────────────────────────────────────────────────────────────────┐
+   │ LIMPEZA DE THROTTLE                                                     │
+   └─────────────────────────────────────────────────────────────────────────┘
+
+   ClearOnce(key)      → Limpa flag ONCE de uma key específica
+   ClearAllOnce()      → Limpa todas as flags ONCE
+   ClearAllThrottle()  → Limpa todo o histórico de throttle
+
+   Uso: Para resetar throttle quando condição muda (Opção A)
+
+═══════════════════════════════════════════════════════════════════════════════
+*/
 
 //+------------------------------------------------------------------+
 //| Enum para nível de log                                           |
 //+------------------------------------------------------------------+
 enum ENUM_LOG_LEVEL
   {
-   LOG_MINIMAL,     // Apenas trades e eventos críticos
-   LOG_COMPLETE,    // Padrão: tudo importante
+   LOG_MINIMAL,     // Apenas erros e warnings
+   LOG_COMPLETE,    // Padrão: erros, warnings e info
    LOG_DEBUG        // Tudo + detalhes técnicos
+  };
+
+//+------------------------------------------------------------------+
+//| Estrutura para controle de throttle                              |
+//+------------------------------------------------------------------+
+struct SThrottleData
+  {
+   datetime          lastLogTime;      // Última vez que logou (para THROTTLED)
+   int               lastBarIndex;     // Última barra que logou (para PER_CANDLE)
+   bool              wasLogged;        // Flag se já logou (para ONCE)
   };
 
 //+------------------------------------------------------------------+
@@ -47,10 +159,11 @@ private:
    string            m_txtFileName;
    
    // ═══════════════════════════════════════════════════════════
-   // CONTROLE DE THROTTLE (anti-flood)
+   // CONTROLE DE THROTTLE (anti-flood) - v3.00
    // ═══════════════════════════════════════════════════════════
-   datetime          m_lastLogTime;
-   int               m_throttleSeconds;
+   string            m_throttleKeys[];       // Array de keys
+   SThrottleData     m_throttleData[];       // Array de dados de throttle
+   int               m_throttleCount;        // Contador de throttles registrados
    
    // ═══════════════════════════════════════════════════════════
    // ESTATÍSTICAS DO DIA
@@ -62,6 +175,15 @@ private:
    int               m_dailyDraws;
    double            m_grossProfit;
    double            m_grossLoss;
+
+   // ═══════════════════════════════════════════════════════════
+   // MÉTODOS PRIVADOS DE THROTTLE (v3.00)
+   // ═══════════════════════════════════════════════════════════
+   int               FindThrottleKey(string key);
+   SThrottleData*    GetOrCreateThrottle(string key);
+   bool              ShouldLogOnce(string key);
+   bool              ShouldLogPerCandle(string key);
+   bool              ShouldLogThrottled(string key, int intervalSeconds);
 
 public:
    // ═══════════════════════════════════════════════════════════
@@ -76,12 +198,43 @@ public:
    bool              Init(ENUM_LOG_LEVEL level, string symbol, int magic);
    
    // ═══════════════════════════════════════════════════════════
-   // LOGS
+   // LOGS BÁSICOS
    // ═══════════════════════════════════════════════════════════
    void              LogInfo(string message);
    void              LogWarning(string message);
    void              LogError(string message);
    void              LogDebug(string message);
+
+   // ═══════════════════════════════════════════════════════════
+   // LOGS COM THROTTLE (v3.00 - anti-flood)
+   // ═══════════════════════════════════════════════════════════
+
+   // --- ERROR com throttle ---
+   void              LogErrorOnce(string key, string message);
+   void              LogErrorPerCandle(string key, string message);
+   void              LogErrorThrottled(string key, string message, int intervalSeconds);
+
+   // --- WARNING com throttle ---
+   void              LogWarningOnce(string key, string message);
+   void              LogWarningPerCandle(string key, string message);
+   void              LogWarningThrottled(string key, string message, int intervalSeconds);
+
+   // --- INFO com throttle ---
+   void              LogInfoOnce(string key, string message);
+   void              LogInfoPerCandle(string key, string message);
+   void              LogInfoThrottled(string key, string message, int intervalSeconds);
+
+   // --- DEBUG com throttle ---
+   void              LogDebugOnce(string key, string message);
+   void              LogDebugPerCandle(string key, string message);
+   void              LogDebugThrottled(string key, string message, int intervalSeconds);
+
+   // ═══════════════════════════════════════════════════════════
+   // LIMPEZA DE THROTTLE (v3.00)
+   // ═══════════════════════════════════════════════════════════
+   void              ClearOnce(string key);         // Limpa flag ONCE de uma key
+   void              ClearAllOnce();                // Limpa todas as flags ONCE
+   void              ClearAllThrottle();            // Limpa todo histórico de throttle
    
    // ═══════════════════════════════════════════════════════════
    // TRADES
@@ -129,9 +282,12 @@ CLogger::CLogger()
   {
    m_inputLogLevel = LOG_COMPLETE;
    m_logLevel = LOG_COMPLETE;
-   m_throttleSeconds = 5;
-   m_lastLogTime = 0;
-   
+
+   // Inicializar throttle (v3.00)
+   m_throttleCount = 0;
+   ArrayResize(m_throttleKeys, 0);
+   ArrayResize(m_throttleData, 0);
+
    m_dailyProfit = 0;
    m_dailyTrades = 0;
    m_dailyWins = 0;
@@ -197,46 +353,44 @@ void CLogger::SetLogLevel(ENUM_LOG_LEVEL newLevel)
   }
 
 //+------------------------------------------------------------------+
-//| Log de informação                                                 |
+//| Log de informação (v3.00 - corrigido hierarquia)                 |
 //+------------------------------------------------------------------+
 void CLogger::LogInfo(string message)
   {
-   if(m_logLevel >= LOG_MINIMAL)
+   if(m_logLevel >= LOG_COMPLETE)  // ✅ CORRIGIDO: era LOG_MINIMAL
      {
-      Print("ℹ️ ", message);
+      Print("ℹ️ [INFO] ", message);
      }
   }
 
 //+------------------------------------------------------------------+
-//| Log de aviso                                                      |
+//| Log de aviso (v3.00 - corrigido hierarquia)                      |
 //+------------------------------------------------------------------+
 void CLogger::LogWarning(string message)
   {
-   if(m_logLevel >= LOG_MINIMAL)
+   if(m_logLevel >= LOG_MINIMAL)  // ✅ OK: continua MINIMAL
      {
-      Print("⚠️ ", message);
+      Print("⚠️ [WARN] ", message);
      }
   }
 
 //+------------------------------------------------------------------+
-//| Log de erro                                                       |
+//| Log de erro (v3.00 - corrigido hierarquia)                       |
 //+------------------------------------------------------------------+
 void CLogger::LogError(string message)
   {
-   if(m_logLevel >= LOG_MINIMAL)
-     {
-      Print("❌ ", message);
-     }
+   // ✅ CORRIGIDO: SEMPRE mostra erro (sem verificação de nível)
+   Print("❌ [ERROR] ", message);
   }
 
 //+------------------------------------------------------------------+
-//| Log de debug                                                      |
+//| Log de debug (v3.00 - já estava correto)                         |
 //+------------------------------------------------------------------+
 void CLogger::LogDebug(string message)
   {
-   if(m_logLevel >= LOG_DEBUG)
+   if(m_logLevel >= LOG_DEBUG)  // ✅ OK: só em DEBUG
      {
-      Print("🔍 ", message);
+      Print("🔍 [DEBUG] ", message);
      }
   }
 
@@ -666,7 +820,230 @@ void CLogger::ResetDaily()
    m_dailyDraws = 0;
    m_grossProfit = 0;
    m_grossLoss = 0;
-   
+
    LogInfo("📅 Estatísticas diárias resetadas");
   }
+
+//+------------------------------------------------------------------+
+//| MÉTODOS PRIVADOS DE THROTTLE (v3.00)                             |
+//+------------------------------------------------------------------+
+
+//+------------------------------------------------------------------+
+//| Encontrar índice da key no array de throttle                     |
+//+------------------------------------------------------------------+
+int CLogger::FindThrottleKey(string key)
+  {
+   for(int i = 0; i < m_throttleCount; i++)
+     {
+      if(m_throttleKeys[i] == key)
+         return i;
+     }
+   return -1;  // Não encontrado
+  }
+
+//+------------------------------------------------------------------+
+//| Obter ou criar entrada de throttle para uma key                  |
+//+------------------------------------------------------------------+
+SThrottleData* CLogger::GetOrCreateThrottle(string key)
+  {
+   int index = FindThrottleKey(key);
+
+   // Se já existe, retorna ponteiro
+   if(index >= 0)
+      return GetPointer(m_throttleData[index]);
+
+   // Não existe - criar novo
+   m_throttleCount++;
+   ArrayResize(m_throttleKeys, m_throttleCount);
+   ArrayResize(m_throttleData, m_throttleCount);
+
+   m_throttleKeys[m_throttleCount - 1] = key;
+
+   // Inicializar nova entrada
+   m_throttleData[m_throttleCount - 1].lastLogTime = 0;
+   m_throttleData[m_throttleCount - 1].lastBarIndex = -1;
+   m_throttleData[m_throttleCount - 1].wasLogged = false;
+
+   return GetPointer(m_throttleData[m_throttleCount - 1]);
+  }
+
+//+------------------------------------------------------------------+
+//| Verificar se deve logar (ONCE)                                   |
+//+------------------------------------------------------------------+
+bool CLogger::ShouldLogOnce(string key)
+  {
+   SThrottleData* throttle = GetOrCreateThrottle(key);
+
+   if(!throttle.wasLogged)
+     {
+      throttle.wasLogged = true;  // Marca como logado
+      return true;                // Loga desta vez
+     }
+
+   return false;  // Já logou, não loga de novo
+  }
+
+//+------------------------------------------------------------------+
+//| Verificar se deve logar (PER_CANDLE)                             |
+//+------------------------------------------------------------------+
+bool CLogger::ShouldLogPerCandle(string key)
+  {
+   SThrottleData* throttle = GetOrCreateThrottle(key);
+
+   int currentBar = Bars(_Symbol, PERIOD_CURRENT);
+
+   // Se é uma nova barra, permite logar
+   if(throttle.lastBarIndex != currentBar)
+     {
+      throttle.lastBarIndex = currentBar;
+      return true;
+     }
+
+   return false;  // Mesma barra, não loga
+  }
+
+//+------------------------------------------------------------------+
+//| Verificar se deve logar (THROTTLED por tempo)                    |
+//+------------------------------------------------------------------+
+bool CLogger::ShouldLogThrottled(string key, int intervalSeconds)
+  {
+   SThrottleData* throttle = GetOrCreateThrottle(key);
+
+   datetime now = TimeCurrent();
+
+   // Se passou tempo suficiente, permite logar
+   if((now - throttle.lastLogTime) >= intervalSeconds)
+     {
+      throttle.lastLogTime = now;
+      return true;
+     }
+
+   return false;  // Ainda em throttle, não loga
+  }
+
+//+------------------------------------------------------------------+
+//| MÉTODOS PÚBLICOS DE THROTTLE - ERROR                             |
+//+------------------------------------------------------------------+
+
+void CLogger::LogErrorOnce(string key, string message)
+  {
+   if(ShouldLogOnce(key))
+      LogError(message);
+  }
+
+void CLogger::LogErrorPerCandle(string key, string message)
+  {
+   if(ShouldLogPerCandle(key))
+      LogError(message);
+  }
+
+void CLogger::LogErrorThrottled(string key, string message, int intervalSeconds)
+  {
+   if(ShouldLogThrottled(key, intervalSeconds))
+      LogError(message);
+  }
+
+//+------------------------------------------------------------------+
+//| MÉTODOS PÚBLICOS DE THROTTLE - WARNING                           |
+//+------------------------------------------------------------------+
+
+void CLogger::LogWarningOnce(string key, string message)
+  {
+   if(ShouldLogOnce(key))
+      LogWarning(message);
+  }
+
+void CLogger::LogWarningPerCandle(string key, string message)
+  {
+   if(ShouldLogPerCandle(key))
+      LogWarning(message);
+  }
+
+void CLogger::LogWarningThrottled(string key, string message, int intervalSeconds)
+  {
+   if(ShouldLogThrottled(key, intervalSeconds))
+      LogWarning(message);
+  }
+
+//+------------------------------------------------------------------+
+//| MÉTODOS PÚBLICOS DE THROTTLE - INFO                              |
+//+------------------------------------------------------------------+
+
+void CLogger::LogInfoOnce(string key, string message)
+  {
+   if(ShouldLogOnce(key))
+      LogInfo(message);
+  }
+
+void CLogger::LogInfoPerCandle(string key, string message)
+  {
+   if(ShouldLogPerCandle(key))
+      LogInfo(message);
+  }
+
+void CLogger::LogInfoThrottled(string key, string message, int intervalSeconds)
+  {
+   if(ShouldLogThrottled(key, intervalSeconds))
+      LogInfo(message);
+  }
+
+//+------------------------------------------------------------------+
+//| MÉTODOS PÚBLICOS DE THROTTLE - DEBUG                             |
+//+------------------------------------------------------------------+
+
+void CLogger::LogDebugOnce(string key, string message)
+  {
+   if(ShouldLogOnce(key))
+      LogDebug(message);
+  }
+
+void CLogger::LogDebugPerCandle(string key, string message)
+  {
+   if(ShouldLogPerCandle(key))
+      LogDebug(message);
+  }
+
+void CLogger::LogDebugThrottled(string key, string message, int intervalSeconds)
+  {
+   if(ShouldLogThrottled(key, intervalSeconds))
+      LogDebug(message);
+  }
+
+//+------------------------------------------------------------------+
+//| LIMPEZA DE THROTTLE                                              |
+//+------------------------------------------------------------------+
+
+//+------------------------------------------------------------------+
+//| Limpar flag ONCE de uma key específica (Opção A)                 |
+//+------------------------------------------------------------------+
+void CLogger::ClearOnce(string key)
+  {
+   int index = FindThrottleKey(key);
+   if(index >= 0)
+     {
+      m_throttleData[index].wasLogged = false;
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| Limpar todas as flags ONCE                                       |
+//+------------------------------------------------------------------+
+void CLogger::ClearAllOnce()
+  {
+   for(int i = 0; i < m_throttleCount; i++)
+     {
+      m_throttleData[i].wasLogged = false;
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| Limpar todo o histórico de throttle                              |
+//+------------------------------------------------------------------+
+void CLogger::ClearAllThrottle()
+  {
+   m_throttleCount = 0;
+   ArrayResize(m_throttleKeys, 0);
+   ArrayResize(m_throttleData, 0);
+  }
+
 //+------------------------------------------------------------------+
