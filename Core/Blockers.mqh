@@ -1731,14 +1731,9 @@ bool CBlockers::CheckNewsFilter()
            }
          else
            {
-            // v3.01: Informa quando sai do horário de volatilidade
+            // Limpa flag ONCE quando sai do horário de volatilidade
             if(m_logger != NULL)
-              {
-               // Usa PerCandle para logar apenas 1x quando sai (evita flood)
-               m_logger.LogInfoPerCandle("news_exit1", 
-                  "✅ [Blockers] Horário de volatilidade encerrado (Janela 1) - retomando operações normais");
                m_logger.ClearOnce("blocker_news_filter1");
-              }
            }
         }
      }
@@ -1772,14 +1767,9 @@ bool CBlockers::CheckNewsFilter()
            }
          else
            {
-            // v3.01: Informa quando sai do horário de volatilidade
+            // Limpa flag ONCE quando sai do horário de volatilidade
             if(m_logger != NULL)
-              {
-               // Usa PerCandle para logar apenas 1x quando sai (evita flood)
-               m_logger.LogInfoPerCandle("news_exit2", 
-                  "✅ [Blockers] Horário de volatilidade encerrado (Janela 2) - retomando operações normais");
                m_logger.ClearOnce("blocker_news_filter2");
-              }
            }
         }
      }
@@ -1813,14 +1803,9 @@ bool CBlockers::CheckNewsFilter()
            }
          else
            {
-            // v3.01: Informa quando sai do horário de volatilidade
+            // Limpa flag ONCE quando sai do horário de volatilidade
             if(m_logger != NULL)
-              {
-               // Usa PerCandle para logar apenas 1x quando sai (evita flood)
-               m_logger.LogInfoPerCandle("news_exit3", 
-                  "✅ [Blockers] Horário de volatilidade encerrado (Janela 3) - retomando operações normais");
                m_logger.ClearOnce("blocker_news_filter3");
-              }
            }
         }
      }
