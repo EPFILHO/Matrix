@@ -1936,22 +1936,17 @@ bool CBlockers::CheckDailyLimits(int dailyTrades, double dailyProfit)
         }
       else
         {
-         // Limpa flag quando não está mais no bloqueio
-         if(m_logger != NULL)
-            m_logger.ClearOnce("blocker_daily_gain");
-            
          if(!m_drawdownProtectionActive)
            {
             ActivateDrawdownProtection(dailyProfit);
            }
         }
-      else
-        {
-         if(!m_drawdownProtectionActive)
-           {
-            ActivateDrawdownProtection(dailyProfit);
-           }
-        }
+     }
+   else
+     {
+      // Limpa flag quando sai do limite (apenas se ação é STOP)
+      if(m_profitTargetAction == PROFIT_ACTION_STOP && m_logger != NULL)
+         m_logger.ClearOnce("blocker_daily_gain");
      }
 
    return true;
