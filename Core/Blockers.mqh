@@ -14,8 +14,10 @@
 // ✅ Logs de fechamento por horário consolidados com LogInfoOnce (anti-flood)
 // ✅ Log de drawdown consolidado com LogWarningOnce (anti-flood)
 // ✅ Logs de UpdateAfterTrade consolidados com LogWarningOnce (anti-flood)
-// ✅ Logs de horários de volatilidade adicionados com LogInfoOnce (antes eram silenciosos)
-// ✅ Eliminado flood em 6 pontos críticos + adicionado logs em 3 janelas de news
+// ✅ Logs de horários de volatilidade (entrada/saída) com Once/PerCandle
+// ✅ Logs de limites diários adicionados com LogWarningOnce (antes eram silenciosos)
+// ✅ Eliminado flood em 9 pontos críticos (sessão, close, streaks, drawdown, daily)
+// ✅ Total: 15 throttled logs (9 InfoOnce + 6 WarningOnce + 3 PerCandle)
 // ═══════════════════════════════════════════════════════════════
 //
 // CHANGELOG v3.00:
@@ -1729,9 +1731,14 @@ bool CBlockers::CheckNewsFilter()
            }
          else
            {
-            // Limpa flag ONCE quando sai do horário de volatilidade
+            // v3.01: Informa quando sai do horário de volatilidade
             if(m_logger != NULL)
+              {
+               // Usa PerCandle para logar apenas 1x quando sai (evita flood)
+               m_logger.LogInfoPerCandle("news_exit1", 
+                  "✅ [Blockers] Horário de volatilidade encerrado (Janela 1) - retomando operações normais");
                m_logger.ClearOnce("blocker_news_filter1");
+              }
            }
         }
      }
@@ -1765,9 +1772,14 @@ bool CBlockers::CheckNewsFilter()
            }
          else
            {
-            // Limpa flag ONCE quando sai do horário de volatilidade
+            // v3.01: Informa quando sai do horário de volatilidade
             if(m_logger != NULL)
+              {
+               // Usa PerCandle para logar apenas 1x quando sai (evita flood)
+               m_logger.LogInfoPerCandle("news_exit2", 
+                  "✅ [Blockers] Horário de volatilidade encerrado (Janela 2) - retomando operações normais");
                m_logger.ClearOnce("blocker_news_filter2");
+              }
            }
         }
      }
@@ -1801,9 +1813,14 @@ bool CBlockers::CheckNewsFilter()
            }
          else
            {
-            // Limpa flag ONCE quando sai do horário de volatilidade
+            // v3.01: Informa quando sai do horário de volatilidade
             if(m_logger != NULL)
+              {
+               // Usa PerCandle para logar apenas 1x quando sai (evita flood)
+               m_logger.LogInfoPerCandle("news_exit3", 
+                  "✅ [Blockers] Horário de volatilidade encerrado (Janela 3) - retomando operações normais");
                m_logger.ClearOnce("blocker_news_filter3");
+              }
            }
         }
      }
@@ -1838,13 +1855,59 @@ bool CBlockers::CheckDailyLimits(int dailyTrades, double dailyProfit)
    if(m_maxDailyTrades > 0 && dailyTrades >= m_maxDailyTrades)
      {
       m_currentBlocker = BLOCKER_DAILY_TRADES;
+      
+      // v3.01: Loga ONCE quando atinge limite de trades
+      if(m_logger != NULL)
+        {
+         string msg = StringFormat(
+            "═══════════════════════════════════════════════════════\n" +
+            "🛑 LIMITE DIÁRIO DE TRADES ATINGIDO!\n" +
+            "   📊 Trades realizados hoje: %d\n" +
+            "   🎯 Limite configurado: %d\n" +
+            "   🛡️ EA pausado até o fim do dia (proteção ativa)\n" +
+            "═══════════════════════════════════════════════════════",
+            dailyTrades,
+            m_maxDailyTrades
+         );
+         m_logger.LogWarningOnce("blocker_daily_trades", msg);
+        }
+      
       return false;
+     }
+   else
+     {
+      // Limpa flag quando sai do bloqueio
+      if(m_logger != NULL)
+         m_logger.ClearOnce("blocker_daily_trades");
      }
 
    if(m_maxDailyLoss > 0 && dailyProfit <= -m_maxDailyLoss)
      {
       m_currentBlocker = BLOCKER_DAILY_LOSS;
+      
+      // v3.01: Loga ONCE quando atinge perda diária máxima
+      if(m_logger != NULL)
+        {
+         string msg = StringFormat(
+            "═══════════════════════════════════════════════════════\n" +
+            "🛑 PERDA DIÁRIA MÁXIMA ATINGIDA!\n" +
+            "   📉 Perda acumulada hoje: $%.2f\n" +
+            "   🎯 Limite configurado: $%.2f\n" +
+            "   🛡️ EA pausado até o fim do dia (stop loss diário)\n" +
+            "═══════════════════════════════════════════════════════",
+            dailyProfit,
+            m_maxDailyLoss
+         );
+         m_logger.LogWarningOnce("blocker_daily_loss", msg);
+        }
+      
       return false;
+     }
+   else
+     {
+      // Limpa flag quando sai do bloqueio
+      if(m_logger != NULL)
+         m_logger.ClearOnce("blocker_daily_loss");
      }
 
    if(m_maxDailyGain > 0 && dailyProfit >= m_maxDailyGain)
@@ -1852,7 +1915,35 @@ bool CBlockers::CheckDailyLimits(int dailyTrades, double dailyProfit)
       if(m_profitTargetAction == PROFIT_ACTION_STOP)
         {
          m_currentBlocker = BLOCKER_DAILY_GAIN;
+         
+         // v3.01: Loga ONCE quando atinge ganho diário máximo
+         if(m_logger != NULL)
+           {
+            string msg = StringFormat(
+               "═══════════════════════════════════════════════════════\n" +
+               "🎯 GANHO DIÁRIO MÁXIMO ATINGIDO!\n" +
+               "   📈 Lucro acumulado hoje: $%.2f\n" +
+               "   🎯 Meta configurada: $%.2f\n" +
+               "   🏆 META BATIDA! EA pausado até o fim do dia\n" +
+               "═══════════════════════════════════════════════════════",
+               dailyProfit,
+               m_maxDailyGain
+            );
+            m_logger.LogWarningOnce("blocker_daily_gain", msg);
+           }
+         
          return false;
+        }
+      else
+        {
+         // Limpa flag quando não está mais no bloqueio
+         if(m_logger != NULL)
+            m_logger.ClearOnce("blocker_daily_gain");
+            
+         if(!m_drawdownProtectionActive)
+           {
+            ActivateDrawdownProtection(dailyProfit);
+           }
         }
       else
         {
