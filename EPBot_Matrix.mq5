@@ -877,7 +877,8 @@ void OnTick()
 
    if(!g_blockers.CanTrade(dailyTrades, dailyProfit, blockReason))
      {
-      g_logger.LogDebug("🚫 Trading bloqueado: " + blockReason);
+      // v3.00: Usa PerCandle para evitar flood (1 log por candle)
+      g_logger.LogDebugPerCandle("ea_trade_blocked", "🚫 Trading bloqueado: " + blockReason);
       return;
      }
 
@@ -893,7 +894,8 @@ void OnTick()
 
       if(currentBarTime_Check == g_lastTradeBarTime)
         {
-         g_logger.LogDebug("⏸️ Já operou neste candle - aguardando próximo");
+         // v3.00: PerCandle (não precisa logar a cada tick)
+         g_logger.LogDebugPerCandle("ea_already_traded", "⏸️ Já operou neste candle - aguardando próximo");
          return;
         }
      }
@@ -905,7 +907,8 @@ void OnTick()
 
    if(signal == SIGNAL_NONE)
      {
-      g_logger.LogDebug("ℹ️ Nenhum sinal válido detectado");
+      // v3.00: PerCandle (não precisa logar a cada tick)
+      g_logger.LogDebugPerCandle("ea_no_signal", "ℹ️ Nenhum sinal válido detectado");
       return;
      }
 
@@ -919,7 +922,8 @@ void OnTick()
 
       if(currentBarTime == g_lastExitBarTime)
         {
-         g_logger.LogDebug("🚫 FCO bloqueado - não entra no sinal que causou exit");
+         // v3.00: PerCandle (não precisa logar a cada tick)
+         g_logger.LogDebugPerCandle("ea_fco_blocked", "🚫 FCO bloqueado - não entra no sinal que causou exit");
          return;
         }
      }
