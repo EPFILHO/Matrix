@@ -2,13 +2,22 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                                  Versão 2.02 - Claude Parte 014d |
+//|                                                      Versão 3.00 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "2.02"
+#property version   "3.00"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.00:
+// ✅ Refatoração completa do sistema de logging
+// ✅ Uso do Logger v3.00 com sistema de throttle automático
+// ✅ Removidas variáveis de throttle manual (m_lastXxxWarning)
+// ✅ Todos os logs agora usam métodos throttled (Once/Throttled)
+// ✅ Simplificação: removido pattern if(m_logger != NULL) ... else Print()
+// ✅ Verbosidade controlada: bloqueios repetitivos agora usam LogWarningOnce
+// ═══════════════════════════════════════════════════════════════
+//
 // CHANGELOG v2.02:
 // ✅ CORREÇÃO CRÍTICA: Validação de Magic Number adicionada em:
 //    - ShouldCloseOnEndTime()
@@ -243,10 +252,11 @@ private:
    datetime          m_lastResetDate;
    ENUM_BLOCKER_REASON m_currentBlocker;
 
-   datetime          m_lastStreakWarning;
-   datetime          m_lastNewsWarning;
-   datetime          m_lastTimeWarning;
-   datetime          m_lastDailyLimitWarning;
+   // ═══════════════════════════════════════════════════════════════
+   // v3.00: Throttle manual removido - agora usa Logger v3.00
+   // Variáveis removidas: m_lastStreakWarning, m_lastNewsWarning,
+   // m_lastTimeWarning, m_lastDailyLimitWarning
+   // ═══════════════════════════════════════════════════════════════
 
    // ═══════════════════════════════════════════════════════════════
    // MÉTODOS PRIVADOS - VERIFICADORES INDIVIDUAIS
@@ -497,10 +507,7 @@ CBlockers::CBlockers()
    m_lastResetDate = TimeCurrent();
    m_currentBlocker = BLOCKER_NONE;
 
-   m_lastStreakWarning = 0;
-   m_lastNewsWarning = 0;
-   m_lastTimeWarning = 0;
-   m_lastDailyLimitWarning = 0;
+   // v3.00: Throttle manual removido (agora usa Logger v3.00)
   }
 
 //+------------------------------------------------------------------+
@@ -1144,18 +1151,21 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
             m_currentBlocker = BLOCKER_TIME_FILTER;
             blockReason = "Sessão de negociação ainda não iniciou";
 
-            if(m_logger != NULL && (TimeCurrent() - m_lastTimeWarning > 300))
+            // v3.00: Usa throttle automático (1 log a cada 300s)
+            if(m_logger != NULL)
               {
-               m_logger.LogInfo("═══════════════════════════════════════════════════════");
-               m_logger.LogInfo("⏰ [Blockers] Sessão de negociação AINDA NÃO INICIOU");
-               m_logger.LogInfo(StringFormat("   Sessão: %02d:%02d → %02d:%02d",
-                                             sessionStartTime.hour, sessionStartTime.min,
-                                             sessionEndTime.hour,   sessionEndTime.min));
-               m_logger.LogInfo(StringFormat("   Horário atual: %02d:%02d",
-                                             now.hour, now.min));
-               m_logger.LogInfo("   Novas entradas bloqueadas até abertura da sessão");
-               m_logger.LogInfo("═══════════════════════════════════════════════════════");
-               m_lastTimeWarning = TimeCurrent();
+               string msg = StringFormat(
+                  "═══════════════════════════════════════════════════════\n" +
+                  "⏰ [Blockers] Sessão de negociação AINDA NÃO INICIOU\n" +
+                  "   Sessão: %02d:%02d → %02d:%02d\n" +
+                  "   Horário atual: %02d:%02d\n" +
+                  "   Novas entradas bloqueadas até abertura da sessão\n" +
+                  "═══════════════════════════════════════════════════════",
+                  sessionStartTime.hour, sessionStartTime.min,
+                  sessionEndTime.hour, sessionEndTime.min,
+                  now.hour, now.min
+               );
+               m_logger.LogInfoThrottled("blocker_session_before", msg, 300);
               }
 
             return false;
@@ -1170,20 +1180,23 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
                              deltaEnd, m_minutesBeforeSessionEnd
                           );
 
-            if(m_logger != NULL && (TimeCurrent() - m_lastTimeWarning > 300))
+            // v3.00: Usa throttle automático (1 log a cada 300s)
+            if(m_logger != NULL)
               {
-               m_logger.LogInfo("═══════════════════════════════════════════════════════");
-               m_logger.LogInfo("⏰ [Blockers] Proteção de Sessão - bloqueando novas entradas");
-               m_logger.LogInfo(StringFormat("   Sessão encerra: %02d:%02d",
-                                             sessionEndTime.hour, sessionEndTime.min));
-               m_logger.LogInfo(StringFormat("   Horário atual: %02d:%02d",
-                                             now.hour, now.min));
-               m_logger.LogInfo(StringFormat("   Margem segurança: %d minutos",
-                                             m_minutesBeforeSessionEnd));
-               m_logger.LogInfo(StringFormat("   Faltam %d minutos para sessão encerrar",
-                                             deltaEnd));
-               m_logger.LogInfo("═══════════════════════════════════════════════════════");
-               m_lastTimeWarning = TimeCurrent();
+               string msg = StringFormat(
+                  "═══════════════════════════════════════════════════════\n" +
+                  "⏰ [Blockers] Proteção de Sessão - bloqueando novas entradas\n" +
+                  "   Sessão encerra: %02d:%02d\n" +
+                  "   Horário atual: %02d:%02d\n" +
+                  "   Margem segurança: %d minutos\n" +
+                  "   Faltam %d minutos para sessão encerrar\n" +
+                  "═══════════════════════════════════════════════════════",
+                  sessionEndTime.hour, sessionEndTime.min,
+                  now.hour, now.min,
+                  m_minutesBeforeSessionEnd,
+                  deltaEnd
+               );
+               m_logger.LogInfoThrottled("blocker_session_window", msg, 300);
               }
 
             return false;
@@ -1195,17 +1208,20 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
             m_currentBlocker = BLOCKER_TIME_FILTER;
             blockReason = "Sessão de negociação encerrada";
 
-            if(m_logger != NULL && (TimeCurrent() - m_lastTimeWarning > 300))
+            // v3.00: Usa throttle automático (1 log a cada 300s)
+            if(m_logger != NULL)
               {
-               m_logger.LogInfo("═══════════════════════════════════════════════════════");
-               m_logger.LogInfo("⏰ [Blockers] Sessão de negociação ENCERRADA");
-               m_logger.LogInfo(StringFormat("   Sessão encerra: %02d:%02d",
-                                             sessionEndTime.hour, sessionEndTime.min));
-               m_logger.LogInfo(StringFormat("   Horário atual: %02d:%02d",
-                                             now.hour, now.min));
-               m_logger.LogInfo("   Novas entradas bloqueadas até próxima sessão");
-               m_logger.LogInfo("═══════════════════════════════════════════════════════");
-               m_lastTimeWarning = TimeCurrent();
+               string msg = StringFormat(
+                  "═══════════════════════════════════════════════════════\n" +
+                  "⏰ [Blockers] Sessão de negociação ENCERRADA\n" +
+                  "   Sessão encerra: %02d:%02d\n" +
+                  "   Horário atual: %02d:%02d\n" +
+                  "   Novas entradas bloqueadas até próxima sessão\n" +
+                  "═══════════════════════════════════════════════════════",
+                  sessionEndTime.hour, sessionEndTime.min,
+                  now.hour, now.min
+               );
+               m_logger.LogInfoThrottled("blocker_session_after", msg, 300);
               }
 
             return false;
