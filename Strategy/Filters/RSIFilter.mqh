@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
 //|                                                    RSIFilter.mqh |
 //|                                         Copyright 2025, EP Filho |
-//|                        Filtro RSI - EPBot Matrix Modular         |
-//|                                                      Versão 1.01 |
+//|                                        Filtro RSI - EPBot Matrix |
+//|                                   Versão 1.10 - Claude Parte 016 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "1.01"
+#property version   "1.10"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -13,6 +13,12 @@
 // ═══════════════════════════════════════════════════════════════
 #include "../../Core/Logger.mqh"
 #include "../Base/FilterBase.mqh"
+
+// ═══════════════════════════════════════════════════════════════
+// NOVIDADES v1.10:
+// + Migração para Logger v3.00 (5 níveis + throttle inteligente)
+// + Todas as mensagens classificadas (ERROR/EVENT/DEBUG)
+// ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
 //| Enumeração de Modos de Filtro RSI                                |
@@ -243,7 +249,7 @@ bool CRSIFilter::Setup(CLogger* logger, string symbol, ENUM_TIMEFRAMES timeframe
 }
 
 //+------------------------------------------------------------------+
-//| Initialize (criar handles)                                       |
+//| Initialize (criar handles) - v1.10                               |
 //+------------------------------------------------------------------+
 bool CRSIFilter::Initialize()
 {
@@ -256,7 +262,7 @@ bool CRSIFilter::Initialize()
    {
       string msg = "[" + m_filterName + "] Erro ao criar indicador RSI";
       if(m_logger != NULL)
-         m_logger.LogError(msg);
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", msg);
       else
          Print("❌ ", msg);
       return false;
@@ -268,7 +274,7 @@ bool CRSIFilter::Initialize()
                 EnumToString(m_timeframe) + " | Período: " + IntegerToString(m_period) + " | Modo: " +
                 GetFilterModeText() + "]";
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
    else
       Print(msg);
    
@@ -308,7 +314,7 @@ bool CRSIFilter::UpdateColdParameters()
 }
 
 //+------------------------------------------------------------------+
-//| Carregar valores do RSI                                          |
+//| Carregar valores do RSI - v1.10                                  |
 //+------------------------------------------------------------------+
 bool CRSIFilter::LoadRSIValues(int count)
 {
@@ -319,7 +325,7 @@ bool CRSIFilter::LoadRSIValues(int count)
    {
       string msg = "[" + m_filterName + "] Erro ao copiar buffer RSI";
       if(m_logger != NULL)
-         m_logger.LogWarning(msg);
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER", msg);
       else
          Print("⚠️ ", msg);
       return false;
@@ -357,7 +363,7 @@ bool CRSIFilter::ValidateSignal(ENUM_SIGNAL_TYPE signal)
 }
 
 //+------------------------------------------------------------------+
-//| Modo ZONE: Bloqueia trades em zonas extremas                     |
+//| Modo ZONE: Bloqueia trades em zonas extremas - v1.10             |
 //+------------------------------------------------------------------+
 bool CRSIFilter::CheckZoneFilter(ENUM_SIGNAL_TYPE signal)
 {
@@ -370,7 +376,7 @@ bool CRSIFilter::CheckZoneFilter(ENUM_SIGNAL_TYPE signal)
          string msg = "🚫 [" + m_filterName + "] BUY bloqueado - RSI em sobrecompra: " + 
                       DoubleToString(rsi_current, 2);
          if(m_logger != NULL)
-            m_logger.LogInfo(msg);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
          else
             Print(msg);
          return false;
@@ -385,7 +391,7 @@ bool CRSIFilter::CheckZoneFilter(ENUM_SIGNAL_TYPE signal)
          string msg = "🚫 [" + m_filterName + "] SELL bloqueado - RSI em sobrevenda: " +
                       DoubleToString(rsi_current, 2);
          if(m_logger != NULL)
-            m_logger.LogInfo(msg);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
          else
             Print(msg);
          return false;
@@ -397,7 +403,7 @@ bool CRSIFilter::CheckZoneFilter(ENUM_SIGNAL_TYPE signal)
 }
 
 //+------------------------------------------------------------------+
-//| Modo DIRECTION: Permite trade apenas se RSI aponta na direção    |
+//| Modo DIRECTION: Permite trade apenas se RSI aponta na direção - v1.10 |
 //+------------------------------------------------------------------+
 bool CRSIFilter::CheckDirectionFilter(ENUM_SIGNAL_TYPE signal)
 {
@@ -410,7 +416,7 @@ bool CRSIFilter::CheckDirectionFilter(ENUM_SIGNAL_TYPE signal)
          string msg = "🚫 [" + m_filterName + "] BUY bloqueado - RSI não indica força compradora: " +
                       DoubleToString(rsi_current, 2);
          if(m_logger != NULL)
-            m_logger.LogInfo(msg);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
          else
             Print(msg);
          return false;
@@ -425,7 +431,7 @@ bool CRSIFilter::CheckDirectionFilter(ENUM_SIGNAL_TYPE signal)
          string msg = "🚫 [" + m_filterName + "] SELL bloqueado - RSI não indica força vendedora: " +
                       DoubleToString(rsi_current, 2);
          if(m_logger != NULL)
-            m_logger.LogInfo(msg);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
          else
             Print(msg);
          return false;
@@ -437,7 +443,7 @@ bool CRSIFilter::CheckDirectionFilter(ENUM_SIGNAL_TYPE signal)
 }
 
 //+------------------------------------------------------------------+
-//| Modo NEUTRAL: Permite trade apenas em zona neutra (sem extremos) |
+//| Modo NEUTRAL: Permite trade apenas em zona neutra - v1.10        |
 //+------------------------------------------------------------------+
 bool CRSIFilter::CheckNeutralFilter(ENUM_SIGNAL_TYPE signal)
 {
@@ -452,18 +458,18 @@ bool CRSIFilter::CheckNeutralFilter(ENUM_SIGNAL_TYPE signal)
                 DoubleToString(rsi_current, 2) + " (zona: " + DoubleToString(m_lower_neutral, 0) + 
                 " a " + DoubleToString(m_upper_neutral, 0) + ")";
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
    else
       Print(msg);
    return false;
 }
 
 // ═══════════════════════════════════════════════════════════════
-// HOT RELOAD - MÉTODOS SET QUENTES (v1.01)
+// HOT RELOAD - MÉTODOS SET QUENTES (v1.10)
 // ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
-//| HOT RELOAD - Alterar modo de filtro                              |
+//| HOT RELOAD - Alterar modo de filtro - v1.10                      |
 //+------------------------------------------------------------------+
 void CRSIFilter::SetFilterMode(ENUM_RSI_FILTER_MODE mode)
 {
@@ -487,13 +493,13 @@ void CRSIFilter::SetFilterMode(ENUM_RSI_FILTER_MODE mode)
    
    string msg = "🔄 [RSI Filter] Modo alterado: " + oldStr + " → " + newStr;
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
 }
 
 //+------------------------------------------------------------------+
-//| HOT RELOAD - Alterar nível de sobrevenda                         |
+//| HOT RELOAD - Alterar nível de sobrevenda - v1.10                 |
 //+------------------------------------------------------------------+
 void CRSIFilter::SetOversold(double value)
 {
@@ -502,13 +508,13 @@ void CRSIFilter::SetOversold(double value)
    
    string msg = StringFormat("🔄 [RSI Filter] Sobrevenda alterado: %.1f → %.1f", oldValue, value);
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
 }
 
 //+------------------------------------------------------------------+
-//| HOT RELOAD - Alterar nível de sobrecompra                        |
+//| HOT RELOAD - Alterar nível de sobrecompra - v1.10                |
 //+------------------------------------------------------------------+
 void CRSIFilter::SetOverbought(double value)
 {
@@ -517,13 +523,13 @@ void CRSIFilter::SetOverbought(double value)
    
    string msg = StringFormat("🔄 [RSI Filter] Sobrecompra alterado: %.1f → %.1f", oldValue, value);
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
 }
 
 //+------------------------------------------------------------------+
-//| HOT RELOAD - Alterar limite inferior da zona neutra              |
+//| HOT RELOAD - Alterar limite inferior da zona neutra - v1.10      |
 //+------------------------------------------------------------------+
 void CRSIFilter::SetLowerNeutral(double value)
 {
@@ -532,13 +538,13 @@ void CRSIFilter::SetLowerNeutral(double value)
    
    string msg = StringFormat("🔄 [RSI Filter] Lower neutral alterado: %.1f → %.1f", oldValue, value);
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
 }
 
 //+------------------------------------------------------------------+
-//| HOT RELOAD - Alterar limite superior da zona neutra              |
+//| HOT RELOAD - Alterar limite superior da zona neutra - v1.10      |
 //+------------------------------------------------------------------+
 void CRSIFilter::SetUpperNeutral(double value)
 {
@@ -547,13 +553,13 @@ void CRSIFilter::SetUpperNeutral(double value)
    
    string msg = StringFormat("🔄 [RSI Filter] Upper neutral alterado: %.1f → %.1f", oldValue, value);
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
 }
 
 //+------------------------------------------------------------------+
-//| HOT RELOAD - Alterar shift                                       |
+//| HOT RELOAD - Alterar shift - v1.10                               |
 //+------------------------------------------------------------------+
 void CRSIFilter::SetShift(int value)
 {
@@ -562,17 +568,17 @@ void CRSIFilter::SetShift(int value)
    
    string msg = StringFormat("🔄 [RSI Filter] Shift alterado: %d → %d", oldValue, value);
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
 }
 
 // ═══════════════════════════════════════════════════════════════
-// COLD RELOAD - MÉTODOS SET FRIOS (v1.01)
+// COLD RELOAD - MÉTODOS SET FRIOS (v1.10)
 // ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
-//| COLD RELOAD - Alterar período (reinicia indicador)               |
+//| COLD RELOAD - Alterar período (reinicia indicador) - v1.10       |
 //+------------------------------------------------------------------+
 bool CRSIFilter::SetPeriod(int value)
 {
@@ -580,7 +586,7 @@ bool CRSIFilter::SetPeriod(int value)
    {
       string msg = "[RSI Filter] Período inválido: " + IntegerToString(value);
       if(m_logger != NULL)
-         m_logger.LogError(msg);
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD", msg);
       else
          Print("❌ ", msg);
       return false;
@@ -596,7 +602,7 @@ bool CRSIFilter::SetPeriod(int value)
    {
       string msg = StringFormat("🔄 [RSI Filter] Período alterado: %d → %d (reiniciado)", oldValue, value);
       if(m_logger != NULL)
-         m_logger.LogInfo(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
       else
          Print(msg);
    }
@@ -605,7 +611,7 @@ bool CRSIFilter::SetPeriod(int value)
 }
 
 //+------------------------------------------------------------------+
-//| COLD RELOAD - Alterar timeframe (reinicia indicador)             |
+//| COLD RELOAD - Alterar timeframe (reinicia indicador) - v1.10     |
 //+------------------------------------------------------------------+
 bool CRSIFilter::SetTimeframe(ENUM_TIMEFRAMES tf)
 {
@@ -619,7 +625,7 @@ bool CRSIFilter::SetTimeframe(ENUM_TIMEFRAMES tf)
    {
       string msg = "🔄 [RSI Filter] Timeframe alterado: " + EnumToString(oldTF) + " → " + EnumToString(tf) + " (reiniciado)";
       if(m_logger != NULL)
-         m_logger.LogInfo(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
       else
          Print(msg);
    }
@@ -628,7 +634,7 @@ bool CRSIFilter::SetTimeframe(ENUM_TIMEFRAMES tf)
 }
 
 //+------------------------------------------------------------------+
-//| COLD RELOAD - Alterar applied price (reinicia indicador)         |
+//| COLD RELOAD - Alterar applied price (reinicia indicador) - v1.10 |
 //+------------------------------------------------------------------+
 bool CRSIFilter::SetAppliedPrice(ENUM_APPLIED_PRICE price)
 {
@@ -642,7 +648,7 @@ bool CRSIFilter::SetAppliedPrice(ENUM_APPLIED_PRICE price)
    {
       string msg = "🔄 [RSI Filter] Applied price alterado (reiniciado)";
       if(m_logger != NULL)
-         m_logger.LogInfo(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
       else
          Print(msg);
    }
