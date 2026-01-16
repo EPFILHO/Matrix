@@ -1,8 +1,8 @@
 //+------------------------------------------------------------------+
 //|                                                 RSIStrategy.mqh  |
 //|                                         Copyright 2025, EP Filho |
-//|                      Estratégia RSI - EPBot Matrix Modular       |
-//|                                                      Versão 2.01 |
+//|                                    Estratégia RSI - EPBot Matrix |
+//|                                   Versão 2.10 - Claude Parte 016 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property version   "2.10"
@@ -13,6 +13,13 @@
 // ═══════════════════════════════════════════════════════════════
 #include "../../Core/Logger.mqh"
 #include "../Base/StrategyBase.mqh"
+
+// ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.10:
+// + Migração para Logger v3.00 (5 níveis + throttle inteligente)
+// + Todas as mensagens classificadas (ERROR/EVENT/SIGNAL/DEBUG)
+// + Adicionado LOG_SIGNAL para detecção de sinais RSI
+// ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
 //| Enumeração de Modos de Sinal RSI                                 |
@@ -107,7 +114,7 @@ public:
    virtual ENUM_SIGNAL_TYPE GetSignal() override;
 
    //+------------------------------------------------------------------+
-   //| Obter sinal de SAÍDA (v2.10 - NOVO!)                             |
+   //| Obter sinal de SAÍDA (v2.10)                                     |
    //+------------------------------------------------------------------+
    virtual ENUM_SIGNAL_TYPE GetExitSignal(ENUM_POSITION_TYPE currentPosition) override
      {
@@ -251,7 +258,7 @@ bool CRSIStrategy::Setup(CLogger* logger, string symbol, ENUM_TIMEFRAMES timefra
   }
 
 //+------------------------------------------------------------------+
-//| Initialize (criar handles)                                       |
+//| Initialize (criar handles) - v2.10                               |
 //+------------------------------------------------------------------+
 bool CRSIStrategy::Initialize()
   {
@@ -264,7 +271,7 @@ bool CRSIStrategy::Initialize()
      {
       string msg = "[" + m_strategyName + "] Erro ao criar indicador RSI";
       if(m_logger != NULL)
-         m_logger.LogError(msg);
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", msg);
       else
          Print("❌ ", msg);
       return false;
@@ -276,7 +283,7 @@ bool CRSIStrategy::Initialize()
                 EnumToString(m_timeframe) + " | Período: " + IntegerToString(m_period) + " | Modo: " +
                 GetSignalModeText() + "]";
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
    else
       Print(msg);
 
@@ -316,7 +323,7 @@ bool CRSIStrategy::UpdateColdParameters()
   }
 
 //+------------------------------------------------------------------+
-//| Carregar valores do RSI                                          |
+//| Carregar valores do RSI - v2.10                                  |
 //+------------------------------------------------------------------+
 bool CRSIStrategy::LoadRSIValues(int count)
   {
@@ -327,7 +334,7 @@ bool CRSIStrategy::LoadRSIValues(int count)
      {
       string msg = "[" + m_strategyName + "] Erro ao copiar buffer RSI";
       if(m_logger != NULL)
-         m_logger.LogWarning(msg);
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER", msg);
       else
          Print("⚠️ ", msg);
       return false;
@@ -364,7 +371,7 @@ ENUM_SIGNAL_TYPE CRSIStrategy::GetSignal()
   }
 
 //+------------------------------------------------------------------+
-//| Modo CROSSOVER: Cruza níveis                                     |
+//| Modo CROSSOVER: Cruza níveis - v2.10                             |
 //+------------------------------------------------------------------+
 ENUM_SIGNAL_TYPE CRSIStrategy::CheckCrossoverSignal()
   {
@@ -373,17 +380,33 @@ ENUM_SIGNAL_TYPE CRSIStrategy::CheckCrossoverSignal()
 
 // BUY: RSI cruza DE BAIXO para CIMA o nível de sobrevenda
    if(rsi_previous <= m_oversold && rsi_current > m_oversold)
+     {
+      string msg = StringFormat("🎯 [RSI] COMPRA - Cruzou sobrevenda: %.1f → %.1f (limite: %.1f)", 
+                                rsi_previous, rsi_current, m_oversold);
+      if(m_logger != NULL)
+         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
+      else
+         Print(msg);
       return SIGNAL_BUY;
+     }
 
 // SELL: RSI cruza DE CIMA para BAIXO o nível de sobrecompra
    if(rsi_previous >= m_overbought && rsi_current < m_overbought)
+     {
+      string msg = StringFormat("🎯 [RSI] VENDA - Cruzou sobrecompra: %.1f → %.1f (limite: %.1f)", 
+                                rsi_previous, rsi_current, m_overbought);
+      if(m_logger != NULL)
+         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
+      else
+         Print(msg);
       return SIGNAL_SELL;
+     }
 
    return SIGNAL_NONE;
   }
 
 //+------------------------------------------------------------------+
-//| Modo ZONE: Permanência em zona                                   |
+//| Modo ZONE: Permanência em zona - v2.10                           |
 //+------------------------------------------------------------------+
 ENUM_SIGNAL_TYPE CRSIStrategy::CheckZoneSignal()
   {
@@ -391,17 +414,33 @@ ENUM_SIGNAL_TYPE CRSIStrategy::CheckZoneSignal()
 
 // BUY: RSI está em zona de sobrevenda
    if(rsi_current <= m_oversold)
+     {
+      string msg = StringFormat("🎯 [RSI] COMPRA - Em sobrevenda: %.1f (≤ %.1f)", 
+                                rsi_current, m_oversold);
+      if(m_logger != NULL)
+         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
+      else
+         Print(msg);
       return SIGNAL_BUY;
+     }
 
 // SELL: RSI está em zona de sobrecompra
    if(rsi_current >= m_overbought)
+     {
+      string msg = StringFormat("🎯 [RSI] VENDA - Em sobrecompra: %.1f (≥ %.1f)", 
+                                rsi_current, m_overbought);
+      if(m_logger != NULL)
+         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
+      else
+         Print(msg);
       return SIGNAL_SELL;
+     }
 
    return SIGNAL_NONE;
   }
 
 //+------------------------------------------------------------------+
-//| Modo MIDDLE: Cruzamento da linha 50                              |
+//| Modo MIDDLE: Cruzamento da linha 50 - v2.10                      |
 //+------------------------------------------------------------------+
 ENUM_SIGNAL_TYPE CRSIStrategy::CheckMiddleSignal()
   {
@@ -410,21 +449,37 @@ ENUM_SIGNAL_TYPE CRSIStrategy::CheckMiddleSignal()
 
 // BUY: RSI cruza linha média de baixo para cima
    if(rsi_previous < m_middle && rsi_current >= m_middle)
+     {
+      string msg = StringFormat("🎯 [RSI] COMPRA - Cruzou linha média: %.1f → %.1f (linha: %.1f)", 
+                                rsi_previous, rsi_current, m_middle);
+      if(m_logger != NULL)
+         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
+      else
+         Print(msg);
       return SIGNAL_BUY;
+     }
 
 // SELL: RSI cruza linha média de cima para baixo
    if(rsi_previous > m_middle && rsi_current <= m_middle)
+     {
+      string msg = StringFormat("🎯 [RSI] VENDA - Cruzou linha média: %.1f → %.1f (linha: %.1f)", 
+                                rsi_previous, rsi_current, m_middle);
+      if(m_logger != NULL)
+         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
+      else
+         Print(msg);
       return SIGNAL_SELL;
+     }
 
    return SIGNAL_NONE;
   }
 
 // ═══════════════════════════════════════════════════════════════
-// HOT RELOAD - MÉTODOS SET QUENTES (v2.01)
+// HOT RELOAD - MÉTODOS SET QUENTES (v2.10)
 // ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
-//| HOT RELOAD - Alterar modo de sinal                               |
+//| HOT RELOAD - Alterar modo de sinal - v2.10                       |
 //+------------------------------------------------------------------+
 void CRSIStrategy::SetSignalMode(ENUM_RSI_SIGNAL_MODE mode)
   {
@@ -460,13 +515,13 @@ void CRSIStrategy::SetSignalMode(ENUM_RSI_SIGNAL_MODE mode)
 
    string msg = "🔄 [RSI] Modo alterado: " + oldStr + " → " + newStr;
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
   }
 
 //+------------------------------------------------------------------+
-//| HOT RELOAD - Alterar nível de sobrevenda                         |
+//| HOT RELOAD - Alterar nível de sobrevenda - v2.10                 |
 //+------------------------------------------------------------------+
 void CRSIStrategy::SetOversold(double value)
   {
@@ -475,13 +530,13 @@ void CRSIStrategy::SetOversold(double value)
 
    string msg = StringFormat("🔄 [RSI] Sobrevenda alterado: %.1f → %.1f", oldValue, value);
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
   }
 
 //+------------------------------------------------------------------+
-//| HOT RELOAD - Alterar nível de sobrecompra                        |
+//| HOT RELOAD - Alterar nível de sobrecompra - v2.10                |
 //+------------------------------------------------------------------+
 void CRSIStrategy::SetOverbought(double value)
   {
@@ -490,13 +545,13 @@ void CRSIStrategy::SetOverbought(double value)
 
    string msg = StringFormat("🔄 [RSI] Sobrecompra alterado: %.1f → %.1f", oldValue, value);
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
   }
 
 //+------------------------------------------------------------------+
-//| HOT RELOAD - Alterar linha média                                 |
+//| HOT RELOAD - Alterar linha média - v2.10                         |
 //+------------------------------------------------------------------+
 void CRSIStrategy::SetMiddle(double value)
   {
@@ -505,13 +560,13 @@ void CRSIStrategy::SetMiddle(double value)
 
    string msg = StringFormat("🔄 [RSI] Linha média alterada: %.1f → %.1f", oldValue, value);
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
   }
 
 //+------------------------------------------------------------------+
-//| HOT RELOAD - Alterar shift do sinal                              |
+//| HOT RELOAD - Alterar shift do sinal - v2.10                      |
 //+------------------------------------------------------------------+
 void CRSIStrategy::SetSignalShift(int value)
   {
@@ -520,13 +575,13 @@ void CRSIStrategy::SetSignalShift(int value)
 
    string msg = StringFormat("🔄 [RSI] Signal shift alterado: %d → %d", oldValue, value);
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
   }
 
 //+------------------------------------------------------------------+
-//| HOT RELOAD - Ativar/desativar estratégia                         |
+//| HOT RELOAD - Ativar/desativar estratégia - v2.10                 |
 //+------------------------------------------------------------------+
 void CRSIStrategy::SetEnabled(bool value)
   {
@@ -535,17 +590,17 @@ void CRSIStrategy::SetEnabled(bool value)
 
    string msg = "🔄 [RSI] Estratégia: " + (value ? "ATIVADA" : "DESATIVADA");
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
   }
 
 // ═══════════════════════════════════════════════════════════════
-// COLD RELOAD - MÉTODOS SET FRIOS (v2.01)
+// COLD RELOAD - MÉTODOS SET FRIOS (v2.10)
 // ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
-//| COLD RELOAD - Alterar período (reinicia indicador)               |
+//| COLD RELOAD - Alterar período (reinicia indicador) - v2.10       |
 //+------------------------------------------------------------------+
 bool CRSIStrategy::SetPeriod(int value)
   {
@@ -553,7 +608,7 @@ bool CRSIStrategy::SetPeriod(int value)
      {
       string msg = "[RSI] Período inválido: " + IntegerToString(value);
       if(m_logger != NULL)
-         m_logger.LogError(msg);
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD", msg);
       else
          Print("❌ ", msg);
       return false;
@@ -569,7 +624,7 @@ bool CRSIStrategy::SetPeriod(int value)
      {
       string msg = StringFormat("🔄 [RSI] Período alterado: %d → %d (reiniciado)", oldValue, value);
       if(m_logger != NULL)
-         m_logger.LogInfo(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
       else
          Print(msg);
      }
@@ -578,7 +633,7 @@ bool CRSIStrategy::SetPeriod(int value)
   }
 
 //+------------------------------------------------------------------+
-//| COLD RELOAD - Alterar timeframe (reinicia indicador)             |
+//| COLD RELOAD - Alterar timeframe (reinicia indicador) - v2.10     |
 //+------------------------------------------------------------------+
 bool CRSIStrategy::SetTimeframe(ENUM_TIMEFRAMES tf)
   {
@@ -592,7 +647,7 @@ bool CRSIStrategy::SetTimeframe(ENUM_TIMEFRAMES tf)
      {
       string msg = "🔄 [RSI] Timeframe alterado: " + EnumToString(oldTF) + " → " + EnumToString(tf) + " (reiniciado)";
       if(m_logger != NULL)
-         m_logger.LogInfo(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
       else
          Print(msg);
      }
@@ -601,7 +656,7 @@ bool CRSIStrategy::SetTimeframe(ENUM_TIMEFRAMES tf)
   }
 
 //+------------------------------------------------------------------+
-//| COLD RELOAD - Alterar applied price (reinicia indicador)         |
+//| COLD RELOAD - Alterar applied price (reinicia indicador) - v2.10 |
 //+------------------------------------------------------------------+
 bool CRSIStrategy::SetAppliedPrice(ENUM_APPLIED_PRICE price)
   {
@@ -615,7 +670,7 @@ bool CRSIStrategy::SetAppliedPrice(ENUM_APPLIED_PRICE price)
      {
       string msg = "🔄 [RSI] Applied price alterado (reiniciado)";
       if(m_logger != NULL)
-         m_logger.LogInfo(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
       else
          Print(msg);
      }
@@ -631,9 +686,6 @@ double CRSIStrategy::GetCurrentRSI()
    return GetRSI(m_signal_shift);
   }
 
-//+------------------------------------------------------------------+
-//|                                                                  |
-//+------------------------------------------------------------------+
 double CRSIStrategy::GetRSI(int shift)
   {
    if(!LoadRSIValues(shift + 2))
