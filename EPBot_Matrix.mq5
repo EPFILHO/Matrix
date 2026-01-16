@@ -1,13 +1,14 @@
 //+------------------------------------------------------------------+
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
-//|                        EA Modular Multistrategy - EPBot Matrix   |
-//|                                  Versão 1.11 - Claude Parte 015a |
+//|                          EA Modular Multistrategy - EPBot Matrix |
+//|                                   Versão 1.12 - Claude Parte 016 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.11"
+#property version   "1.12"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
+#property description "Logging Refatorado - Logger v3.00"
 
 //+------------------------------------------------------------------+
 //| INCLUDES - ORDEM IMPORTANTE                                      |
@@ -84,7 +85,7 @@ bool g_tradingAllowed = true;  // Controle geral de trading
 int OnInit()
   {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.11 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v1.12 - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
 
 // ═══════════════════════════════════════════════════════════════
@@ -97,7 +98,7 @@ int OnInit()
       return INIT_FAILED;
      }
 
-   if(!g_logger.Init(inp_LoggerMode, _Symbol, inp_MagicNumber))
+   if(!g_logger.Init(inp_ShowDebugLogs, _Symbol, inp_MagicNumber, inp_DebugCooldownSec))
      {
       Print("❌ ERRO CRÍTICO: Falha ao inicializar Logger!");
       delete g_logger;
@@ -111,14 +112,14 @@ int OnInit()
    g_blockers = new CBlockers();
    if(g_blockers == NULL)
      {
-      g_logger.LogError("❌ Falha ao criar Blockers!");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar Blockers!");
       CleanupAndReturn(INIT_FAILED);
       return INIT_FAILED;
      }
 
    if(!g_blockers.Init(
          g_logger,
-                  inp_MagicNumber,
+         inp_MagicNumber,
          inp_EnableTimeFilter,
          inp_StartHour,
          inp_StartMinute,
@@ -162,7 +163,7 @@ int OnInit()
          inp_TradeDirection
       ))
      {
-      g_logger.LogError("❌ Falha ao inicializar Blockers!");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar Blockers!");
       CleanupAndReturn(INIT_FAILED);
       return INIT_FAILED;
      }
@@ -173,7 +174,7 @@ int OnInit()
    g_riskManager = new CRiskManager();
    if(g_riskManager == NULL)
      {
-      g_logger.LogError("❌ Falha ao criar RiskManager!");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar RiskManager!");
       CleanupAndReturn(INIT_FAILED);
       return INIT_FAILED;
      }
@@ -183,12 +184,15 @@ int OnInit()
 
    if(inp_UsePartialTP)
      {
-      g_logger.LogInfo("═══════════════════════════════════════════════════════");
-      g_logger.LogInfo("🎯 PARTIAL TAKE PROFIT - CONFIGURAÇÃO:");
-      g_logger.LogInfo(StringFormat("   TP1: %.1f%% @ %d pts", inp_PartialTP1_Percent, inp_PartialTP1_Distance));
-      g_logger.LogInfo(StringFormat("   TP2: %.1f%% @ %d pts", inp_PartialTP2_Percent, inp_PartialTP2_Distance));
-      g_logger.LogInfo(StringFormat("   TP3: %.1f%% (restante - trailing)", tp3_percent));
-      g_logger.LogInfo("═══════════════════════════════════════════════════════");
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG", "═══════════════════════════════════════════════════════");
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG", "🎯 PARTIAL TAKE PROFIT - CONFIGURAÇÃO:");
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG", 
+         StringFormat("   TP1: %.1f%% @ %d pts", inp_PartialTP1_Percent, inp_PartialTP1_Distance));
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG", 
+         StringFormat("   TP2: %.1f%% @ %d pts", inp_PartialTP2_Percent, inp_PartialTP2_Distance));
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG", 
+         StringFormat("   TP3: %.1f%% (restante - trailing)", tp3_percent));
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG", "═══════════════════════════════════════════════════════");
      }
 
    if(!g_riskManager.Init(
@@ -221,31 +225,31 @@ int OnInit()
          inp_BE_ATRActivation,
          inp_BE_ATROffset,
 // 🎯 PARTIAL TP 
-         inp_UsePartialTP,                          // ✅ Usar inputs
-         true,                                      // tp1Enable
-         inp_PartialTP1_Percent,                    // tp1Percent
-         TP_FIXED,                                  // tp1Type
-         inp_PartialTP1_Distance,                   // tp1Distance
-         0,                                         // tp1ATRMult
-         true,                                      // tp2Enable
-         inp_PartialTP2_Percent,                    // tp2Percent
-         TP_FIXED,                                  // tp2Type
-         inp_PartialTP2_Distance,                   // tp2Distance
-         0,                                         // tp2ATRMult
+         inp_UsePartialTP,
+         true,
+         inp_PartialTP1_Percent,
+         TP_FIXED,
+         inp_PartialTP1_Distance,
+         0,
+         true,
+         inp_PartialTP2_Percent,
+         TP_FIXED,
+         inp_PartialTP2_Distance,
+         0,
 // Ativação Condicional
-         inp_TrailingActivation,                    // ✅ Usar inputs
-         inp_BEActivationMode,                      // ✅ Usar inputs
+         inp_TrailingActivation,
+         inp_BEActivationMode,
 // Global
          _Symbol,
          inp_ATRPeriod
       ))
      {
-      g_logger.LogError("❌ Falha ao inicializar RiskManager!");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar RiskManager!");
       CleanupAndReturn(INIT_FAILED);
       return INIT_FAILED;
      }
 
-   g_logger.LogInfo("✅ RiskManager inicializado com sucesso!");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "RiskManager inicializado com sucesso!");
 
 // ═══════════════════════════════════════════════════════════════
 // ETAPA 4: INICIALIZAR TRADE MANAGER
@@ -253,7 +257,7 @@ int OnInit()
    g_tradeManager = new CTradeManager();
    if(g_tradeManager == NULL)
      {
-      g_logger.LogError("❌ Falha ao criar TradeManager!");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar TradeManager!");
       CleanupAndReturn(INIT_FAILED);
       return INIT_FAILED;
      }
@@ -266,12 +270,12 @@ int OnInit()
          inp_Slippage
       ))
      {
-      g_logger.LogError("❌ Falha ao inicializar TradeManager!");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar TradeManager!");
       CleanupAndReturn(INIT_FAILED);
       return INIT_FAILED;
      }
 
-   g_logger.LogInfo("✅ TradeManager inicializado com sucesso!");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "TradeManager inicializado com sucesso!");
    
 // ═══════════════════════════════════════════════════════════════
    // ETAPA 4.5: RESSINCRONIZAR POSIÇÕES EXISTENTES
@@ -279,7 +283,8 @@ int OnInit()
    int syncedPositions = g_tradeManager.ResyncExistingPositions();
    if(syncedPositions > 0)
    {
-      g_logger.LogInfo("🔄 " + IntegerToString(syncedPositions) + " posição(ões) ressincronizada(s)");
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", 
+         "🔄 " + IntegerToString(syncedPositions) + " posição(ões) ressincronizada(s)");
    }
 
 // ═══════════════════════════════════════════════════════════════
@@ -288,7 +293,7 @@ int OnInit()
    g_signalManager = new CSignalManager();
    if(g_signalManager == NULL)
      {
-      g_logger.LogError("❌ Falha ao criar SignalManager!");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar SignalManager!");
       CleanupAndReturn(INIT_FAILED);
       return INIT_FAILED;
      }
@@ -296,7 +301,7 @@ int OnInit()
 // Inicializar (passa logger para as strategies/filters)
    if(!g_signalManager.Initialize(g_logger))
      {
-      g_logger.LogError("❌ Falha ao inicializar SignalManager!");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar SignalManager!");
       CleanupAndReturn(INIT_FAILED);
       return INIT_FAILED;
      }
@@ -314,7 +319,7 @@ int OnInit()
       g_maCrossStrategy = new CMACrossStrategy();
       if(g_maCrossStrategy == NULL)
         {
-         g_logger.LogError("❌ Falha ao criar MACrossStrategy!");
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar MACrossStrategy!");
          CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
@@ -333,7 +338,7 @@ int OnInit()
             inp_ExitMode
          ))
         {
-         g_logger.LogError("❌ Falha ao configurar MACrossStrategy!");
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar MACrossStrategy!");
          CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
@@ -341,7 +346,7 @@ int OnInit()
       // Inicializar a estratégia
       if(!g_maCrossStrategy.Initialize())
         {
-         g_logger.LogError("❌ Falha ao inicializar MACrossStrategy!");
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar MACrossStrategy!");
          CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
@@ -351,16 +356,17 @@ int OnInit()
 
       if(!g_signalManager.AddStrategy(g_maCrossStrategy))
         {
-         g_logger.LogError("❌ Falha ao registrar MACrossStrategy no SignalManager!");
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao registrar MACrossStrategy no SignalManager!");
          CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
-      g_logger.LogInfo("✅ MACrossStrategy criada e registrada - Prioridade: " + IntegerToString(inp_MACrossPriority));
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", 
+         "MACrossStrategy criada e registrada - Prioridade: " + IntegerToString(inp_MACrossPriority));
      }
    else
      {
-      g_logger.LogInfo("ℹ️ MACrossStrategy desativada");
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "MACrossStrategy desativada");
      }
 
 //--- 6.2: RSI STRATEGY
@@ -369,7 +375,7 @@ int OnInit()
       g_rsiStrategy = new CRSIStrategy();
       if(g_rsiStrategy == NULL)
         {
-         g_logger.LogError("❌ Falha ao criar RSIStrategy!");
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar RSIStrategy!");
          CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
@@ -387,7 +393,7 @@ int OnInit()
             inp_RSISignalShift
          ))
         {
-         g_logger.LogError("❌ Falha ao configurar RSIStrategy!");
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar RSIStrategy!");
          CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
@@ -395,7 +401,7 @@ int OnInit()
       // Inicializar a estratégia
       if(!g_rsiStrategy.Initialize())
         {
-         g_logger.LogError("❌ Falha ao inicializar RSIStrategy!");
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar RSIStrategy!");
          CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
@@ -405,16 +411,17 @@ int OnInit()
 
       if(!g_signalManager.AddStrategy(g_rsiStrategy))
         {
-         g_logger.LogError("❌ Falha ao registrar RSIStrategy no SignalManager!");
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao registrar RSIStrategy no SignalManager!");
          CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
-      g_logger.LogInfo("✅ RSIStrategy criada e registrada - Prioridade: " + IntegerToString(inp_RSIPriority));
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", 
+         "RSIStrategy criada e registrada - Prioridade: " + IntegerToString(inp_RSIPriority));
      }
    else
      {
-      g_logger.LogInfo("ℹ️ RSIStrategy desativada");
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "RSIStrategy desativada");
      }
 
 // ═══════════════════════════════════════════════════════════════
@@ -428,7 +435,7 @@ int OnInit()
       g_trendFilter = new CTrendFilter();
       if(g_trendFilter == NULL)
         {
-         g_logger.LogError("❌ Falha ao criar TrendFilter!");
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar TrendFilter!");
          CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
@@ -443,7 +450,7 @@ int OnInit()
             inp_TrendMinDistance     // Zona neutra (0=off)
          ))
         {
-         g_logger.LogError("❌ Falha ao configurar TrendFilter!");
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar TrendFilter!");
          CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
@@ -451,23 +458,23 @@ int OnInit()
       // Inicializar o filtro
       if(!g_trendFilter.Initialize())
         {
-         g_logger.LogError("❌ Falha ao inicializar TrendFilter!");
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar TrendFilter!");
          CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
       if(!g_signalManager.AddFilter(g_trendFilter))
         {
-         g_logger.LogError("❌ Falha ao registrar TrendFilter no SignalManager!");
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao registrar TrendFilter no SignalManager!");
          CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
-      g_logger.LogInfo("✅ TrendFilter criado e registrado");
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "TrendFilter criado e registrado");
      }
    else
      {
-      g_logger.LogInfo("ℹ️ TrendFilter desativado (ambos os modos OFF)");
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "TrendFilter desativado (ambos os modos OFF)");
      }
 
 //--- 7.2: RSI FILTER
@@ -476,7 +483,7 @@ int OnInit()
       g_rsiFilter = new CRSIFilter();
       if(g_rsiFilter == NULL)
         {
-         g_logger.LogError("❌ Falha ao criar RSIFilter!");
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar RSIFilter!");
          CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
@@ -495,7 +502,7 @@ int OnInit()
             inp_RSIFilterShift
          ))
         {
-         g_logger.LogError("❌ Falha ao configurar RSIFilter!");
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar RSIFilter!");
          CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
@@ -503,23 +510,23 @@ int OnInit()
       // Inicializar o filtro
       if(!g_rsiFilter.Initialize())
         {
-         g_logger.LogError("❌ Falha ao inicializar RSIFilter!");
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar RSIFilter!");
          CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
       if(!g_signalManager.AddFilter(g_rsiFilter))
         {
-         g_logger.LogError("❌ Falha ao registrar RSIFilter no SignalManager!");
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao registrar RSIFilter no SignalManager!");
          CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
-      g_logger.LogInfo("✅ RSIFilter criado e registrado");
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "RSIFilter criado e registrado");
      }
    else
      {
-      g_logger.LogInfo("ℹ️ RSIFilter desativado");
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "RSIFilter desativado");
      }
 
 // ═══════════════════════════════════════════════════════════════
@@ -535,13 +542,14 @@ int OnInit()
    Print("════════════════════════════════════════════════════════════════");
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
-   g_logger.LogInfo("🚀 EPBot Matrix v1.11 - PRONTO PARA OPERAR!");
-   g_logger.LogInfo("📊 Símbolo: " + _Symbol);
-   g_logger.LogInfo("⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
-   g_logger.LogInfo("🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
+   
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.12 - PRONTO PARA OPERAR!");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Símbolo: " + _Symbol);
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
 
    if(inp_UsePartialTP)
-      g_logger.LogInfo("🎯 Partial TP: ATIVADO");
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Partial TP: ATIVADO");
 
    return INIT_SUCCEEDED;
   }
@@ -551,15 +559,16 @@ int OnInit()
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason)
   {
-   g_logger.LogInfo("════════════════════════════════════════════════════════════════");
-   g_logger.LogInfo("            EPBOT MATRIX - FINALIZANDO...                      ");
-   g_logger.LogInfo("════════════════════════════════════════════════════════════════");
-   g_logger.LogInfo("Motivo: " + IntegerToString(reason) + " - " + GetDeinitReasonText(reason));
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT", "════════════════════════════════════════════════════════════════");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT", "            EPBOT MATRIX - FINALIZANDO...                      ");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT", "════════════════════════════════════════════════════════════════");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT", 
+      "Motivo: " + IntegerToString(reason) + " - " + GetDeinitReasonText(reason));
 
 // Salvar relatório diário antes de finalizar
    if(g_logger != NULL && g_logger.GetDailyTrades() > 0)
      {
-      g_logger.LogInfo("📄 Gerando relatório final...");
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT", "📄 Gerando relatório final...");
       g_logger.SaveDailyReport();
      }
 
@@ -649,7 +658,8 @@ void OnTick()
    if(isNewBar)
      {
       g_lastBarTime = currentBarTime;
-      g_logger.LogDebug("🕐 Novo candle detectado: " + TimeToString(currentBarTime));
+      g_logger.Log(LOG_DEBUG, THROTTLE_CANDLE, "TICK", 
+         "🕐 Novo candle detectado: " + TimeToString(currentBarTime));
      }
 
 // Detectar mudança de dia (para reset diário e relatório)
@@ -660,27 +670,28 @@ void OnTick()
    if(lastDay != 0 && timeStruct.day != lastDay)
      {
       // Novo dia detectado - gerar relatório do dia anterior
-      g_logger.LogInfo("═══════════════════════════════════════════════════════════════");
-      g_logger.LogInfo("📅 NOVO DIA DETECTADO - " + TimeToString(TimeCurrent(), TIME_DATE));
-      g_logger.LogInfo("═══════════════════════════════════════════════════════════════");
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAY", "═══════════════════════════════════════════════════════════════");
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAY", 
+         "📅 NOVO DIA DETECTADO - " + TimeToString(TimeCurrent(), TIME_DATE));
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAY", "═══════════════════════════════════════════════════════════════");
 
       // Gerar relatório final do dia anterior (se houve trades)
       if(g_logger.GetDailyTrades() > 0)
         {
-         g_logger.LogInfo("📄 Gerando relatório do dia anterior...");
+         g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAY", "📄 Gerando relatório do dia anterior...");
          g_logger.SaveDailyReport();
 
          g_logger.ResetDaily();
          g_blockers.ResetDaily();
 
-         g_logger.LogInfo("✅ Relatório salvo - Iniciando novo dia de trading");
+         g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAY", "✅ Relatório salvo - Iniciando novo dia de trading");
         }
       else
         {
-         g_logger.LogInfo("ℹ️ Dia anterior sem trades - Iniciando novo dia");
+         g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAY", "ℹ️ Dia anterior sem trades - Iniciando novo dia");
         }
 
-      g_logger.LogInfo("═══════════════════════════════════════════════════════════════");
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAY", "═══════════════════════════════════════════════════════════════");
      }
 
    lastDay = timeStruct.day;
@@ -739,11 +750,13 @@ void OnTick()
                   bool isWin = (positionProfit > 0);
                   g_blockers.UpdateAfterTrade(isWin, positionProfit);
 
-                  g_logger.LogInfo("📊 Posição #" + IntegerToString(lastPositionTicket) + " fechada | P/L: $" + DoubleToString(positionProfit, 2));
+                  g_logger.Log(LOG_TRADE, THROTTLE_NONE, "CLOSE", 
+                     "📊 Posição #" + IntegerToString(lastPositionTicket) + 
+                     " fechada | P/L: $" + DoubleToString(positionProfit, 2));
 
                   // Gerar relatório TXT atualizado após cada trade
                   g_logger.SaveDailyReport();
-                  g_logger.LogInfo("📄 Relatório diário atualizado");
+                  g_logger.Log(LOG_TRADE, THROTTLE_NONE, "REPORT", "📄 Relatório diário atualizado");
 
                   break;
                  }
@@ -758,7 +771,7 @@ void OnTick()
       if(inp_ExitMode != EXIT_VM)
         {
          g_lastTradeBarTime = 0;
-         g_logger.LogDebug("🔄 Controle de candle resetado - pronto para novo trade");
+         g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "RESET", "🔄 Controle de candle resetado - pronto para novo trade");
         }
 
       lastPositionTicket = 0;
@@ -811,7 +824,8 @@ void OnTick()
         {
          if(closePrice <= 0)
            {
-            g_logger.LogError("❌ [Core] Preço inválido - Continuando gerenciamento normal");
+            g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TIME_CLOSE", 
+               "[Core] Preço inválido - Continuando gerenciamento normal");
             ManageOpenPosition(ticket);
             return;
            }
@@ -831,15 +845,16 @@ void OnTick()
          request.magic        = inp_MagicNumber;
          request.comment      = "Close[" + closeTrigger + "]";
 
-         g_logger.LogInfo("════════════════════════════════════════════════════════════════");
-         g_logger.LogInfo("🔒 [Core] Fechando posição por: " + closeTrigger);
-         g_logger.LogInfo("   Ticket: " + IntegerToString((int)ticket));
-         g_logger.LogInfo("   Volume: " + DoubleToString(volume, 2));
-         g_logger.LogInfo("   Preço: " + DoubleToString(closePrice, _Digits));
+         g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TIME_CLOSE", "════════════════════════════════════════════════════════════════");
+         g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TIME_CLOSE", "🔒 [Core] Fechando posição por: " + closeTrigger);
+         g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TIME_CLOSE", "   Ticket: " + IntegerToString((int)ticket));
+         g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TIME_CLOSE", "   Volume: " + DoubleToString(volume, 2));
+         g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TIME_CLOSE", "   Preço: " + DoubleToString(closePrice, _Digits));
 
          if(!OrderSend(request, result))
            {
-            g_logger.LogError("❌ [Core] OrderSend falhou - Erro: " + IntegerToString(GetLastError()));
+            g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TIME_CLOSE", 
+               "[Core] OrderSend falhou - Erro: " + IntegerToString(GetLastError()));
             ManageOpenPosition(ticket);
             return;
            }
@@ -847,16 +862,17 @@ void OnTick()
          // Tratar resultado
          if(result.retcode == TRADE_RETCODE_DONE)
            {
-            g_logger.LogInfo("✅ [Core] Posição fechada com sucesso");
-            g_logger.LogInfo("   Deal: #" + IntegerToString((int)result.deal));
-            g_logger.LogInfo("   Preço: " + DoubleToString(result.price, _Digits));
-            g_logger.LogInfo("   Trigger: " + closeTrigger);
-            g_logger.LogInfo("════════════════════════════════════════════════════════════════");
+            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TIME_CLOSE", "[Core] Posição fechada com sucesso");
+            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TIME_CLOSE", "   Deal: #" + IntegerToString((int)result.deal));
+            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TIME_CLOSE", "   Preço: " + DoubleToString(result.price, _Digits));
+            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TIME_CLOSE", "   Trigger: " + closeTrigger);
+            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TIME_CLOSE", "════════════════════════════════════════════════════════════════");
             return;
            }
          else
            {
-            g_logger.LogWarning("⚠️ [Core] Fechamento falhou - Retcode: " + IntegerToString(result.retcode));
+            g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TIME_CLOSE", 
+               "[Core] Fechamento falhou - Retcode: " + IntegerToString(result.retcode));
             ManageOpenPosition(ticket);
             return;
            }
@@ -877,7 +893,7 @@ void OnTick()
 
    if(!g_blockers.CanTrade(dailyTrades, dailyProfit, blockReason))
      {
-      g_logger.LogDebug("🚫 Trading bloqueado: " + blockReason);
+      g_logger.Log(LOG_DEBUG, THROTTLE_TIME, "BLOCKER", "🚫 Trading bloqueado: " + blockReason, 60);
       return;
      }
 
@@ -893,7 +909,7 @@ void OnTick()
 
       if(currentBarTime_Check == g_lastTradeBarTime)
         {
-         g_logger.LogDebug("⏸️ Já operou neste candle - aguardando próximo");
+         g_logger.Log(LOG_DEBUG, THROTTLE_CANDLE, "BLOCKER", "⏸️ Já operou neste candle - aguardando próximo");
          return;
         }
      }
@@ -905,7 +921,7 @@ void OnTick()
 
    if(signal == SIGNAL_NONE)
      {
-      g_logger.LogDebug("ℹ️ Nenhum sinal válido detectado");
+      g_logger.Log(LOG_DEBUG, THROTTLE_CANDLE, "SIGNAL", "ℹ️ Nenhum sinal válido detectado");
       return;
      }
 
@@ -919,7 +935,7 @@ void OnTick()
 
       if(currentBarTime == g_lastExitBarTime)
         {
-         g_logger.LogDebug("🚫 FCO bloqueado - não entra no sinal que causou exit");
+         g_logger.Log(LOG_DEBUG, THROTTLE_CANDLE, "FCO", "🚫 FCO bloqueado - não entra no sinal que causou exit");
          return;
         }
      }
@@ -949,7 +965,8 @@ void ManageOpenPosition(ulong ticket)
    int index = g_tradeManager.GetPositionIndex(ticket);
    if(index < 0)
      {
-      g_logger.LogDebug("⚠️ Posição não encontrada no TradeManager - Ignorando gerenciamento");
+      g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "POSITION", 
+         "⚠️ Posição não encontrada no TradeManager - Ignorando gerenciamento");
       return;
      }
 
@@ -987,7 +1004,8 @@ void ManageOpenPosition(ulong ticket)
 
          if(OrderSend(request, result))
            {
-            g_logger.LogInfo("✅ Trailing Stop movido para " + DoubleToString(trailing.new_sl_price, _Digits));
+            g_logger.Log(LOG_TRADE, THROTTLE_TIME, "TRAILING", 
+               "✅ Trailing Stop movido para " + DoubleToString(trailing.new_sl_price, _Digits), 5);
            }
         }
      }
@@ -1014,7 +1032,8 @@ void ManageOpenPosition(ulong ticket)
 
          if(OrderSend(request, result))
            {
-            g_logger.LogInfo("✅ Breakeven ativado em " + DoubleToString(breakeven.new_sl_price, _Digits));
+            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "BREAKEVEN", 
+               "✅ Breakeven ativado em " + DoubleToString(breakeven.new_sl_price, _Digits));
             g_tradeManager.SetBreakevenActivated(ticket, true);
            }
         }
@@ -1027,7 +1046,7 @@ void ManageOpenPosition(ulong ticket)
 
    if(exitSignal != SIGNAL_NONE)
      {
-      g_logger.LogInfo("🔄 Exit signal detectado - fechando posição");
+      g_logger.Log(LOG_TRADE, THROTTLE_NONE, "EXIT", "🔄 Exit signal detectado - fechando posição");
 
       MqlTradeRequest request = {};
       MqlTradeResult result = {};
@@ -1047,29 +1066,29 @@ void ManageOpenPosition(ulong ticket)
         {
          if(result.retcode == TRADE_RETCODE_DONE)
            {
-            g_logger.LogInfo("✅ Posição fechada por exit signal");
-            g_logger.LogInfo("   Fonte: " + g_signalManager.GetLastSignalSource());
-            g_logger.LogInfo("   Preço: " + DoubleToString(result.price, _Digits));
+            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "EXIT", "✅ Posição fechada por exit signal");
+            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "EXIT", "   Fonte: " + g_signalManager.GetLastSignalSource());
+            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "EXIT", "   Preço: " + DoubleToString(result.price, _Digits));
 
             if(inp_ExitMode == EXIT_VM)
               {
-               g_logger.LogInfo("🔄 VIRAR A MÃO - Executando entrada oposta IMEDIATAMENTE");
+               g_logger.Log(LOG_TRADE, THROTTLE_NONE, "VM", "🔄 VIRAR A MÃO - Executando entrada oposta IMEDIATAMENTE");
                ExecuteTrade(exitSignal);
               }
             else  // EXIT_FCO
               {
                g_lastExitBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
-               g_logger.LogInfo("⏸️ EXIT_FCO - Posição fechada, bloqueando re-entrada neste sinal");
+               g_logger.Log(LOG_TRADE, THROTTLE_NONE, "FCO", "⏸️ EXIT_FCO - Posição fechada, bloqueando re-entrada neste sinal");
               }
            }
          else
            {
-            g_logger.LogWarning("⚠️ Retcode: " + IntegerToString(result.retcode));
+            g_logger.Log(LOG_ERROR, THROTTLE_NONE, "EXIT", "⚠️ Retcode: " + IntegerToString(result.retcode));
            }
         }
       else
         {
-         g_logger.LogError("❌ Falha ao fechar posição - Código: " + IntegerToString(result.retcode));
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "EXIT", "❌ Falha ao fechar posição - Código: " + IntegerToString(result.retcode));
         }
      }
   }
@@ -1079,8 +1098,8 @@ void ManageOpenPosition(ulong ticket)
 //+------------------------------------------------------------------+
 void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
   {
-   g_logger.LogInfo("════════════════════════════════════════════════════════════════");
-   g_logger.LogInfo("🎯 SINAL DETECTADO: " + EnumToString(signal));
+   g_logger.Log(LOG_SIGNAL, THROTTLE_NONE, "SIGNAL", "════════════════════════════════════════════════════════════════");
+   g_logger.Log(LOG_SIGNAL, THROTTLE_NONE, "SIGNAL", "🎯 SINAL DETECTADO: " + EnumToString(signal));
 
 // ═══════════════════════════════════════════════════════════════
 // DETERMINAR TIPO DE ORDEM
@@ -1089,14 +1108,13 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
 
    if(signal == SIGNAL_BUY)
       orderType = ORDER_TYPE_BUY;
+   else if(signal == SIGNAL_SELL)
+      orderType = ORDER_TYPE_SELL;
    else
-      if(signal == SIGNAL_SELL)
-         orderType = ORDER_TYPE_SELL;
-      else
-        {
-         g_logger.LogWarning("⚠️ Sinal inválido ignorado: " + EnumToString(signal));
-         return;
-        }
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "SIGNAL", "⚠️ Sinal inválido ignorado: " + EnumToString(signal));
+      return;
+     }
 
 // ═══════════════════════════════════════════════════════════════
 // CALCULAR PARÂMETROS DE RISCO
@@ -1108,7 +1126,8 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
    double lotSize = g_riskManager.GetLotSize();
    if(lotSize <= 0)
      {
-      g_logger.LogError("❌ Falha ao calcular lote - Valor inválido: " + DoubleToString(lotSize, 2));
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TRADE", 
+         "❌ Falha ao calcular lote - Valor inválido: " + DoubleToString(lotSize, 2));
       return;
      }
 
@@ -1116,7 +1135,7 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
    double slPrice = g_riskManager.CalculateSLPrice(orderType, price);
    if(slPrice <= 0)
      {
-      g_logger.LogError("❌ Falha ao calcular SL - Valor inválido");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TRADE", "❌ Falha ao calcular SL - Valor inválido");
       return;
      }
 
@@ -1143,7 +1162,7 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
 
    if(validation.sl_adjusted || validation.tp_adjusted)
      {
-      g_logger.LogInfo("⚠️ " + validation.message);
+      g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "VALIDATION", "⚠️ " + validation.message);
      }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1166,33 +1185,34 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
    request.type_filling = GetTypeFilling(_Symbol);
 
 // Log dos parâmetros
-   g_logger.LogInfo("📊 Parâmetros da Ordem:");
-   g_logger.LogInfo("   Tipo: " + EnumToString(orderType));
-   g_logger.LogInfo("   Lote: " + DoubleToString(lotSize, 2));
-   g_logger.LogInfo("   Preço: " + DoubleToString(price, _Digits));
-   g_logger.LogInfo("   SL: " + DoubleToString(slPrice, _Digits));
-   g_logger.LogInfo("   TP: " + (tpPrice > 0 ? DoubleToString(tpPrice, _Digits) : "Partial TP"));
+   g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE", "📊 Parâmetros da Ordem:");
+   g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE", "   Tipo: " + EnumToString(orderType));
+   g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE", "   Lote: " + DoubleToString(lotSize, 2));
+   g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE", "   Preço: " + DoubleToString(price, _Digits));
+   g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE", "   SL: " + DoubleToString(slPrice, _Digits));
+   g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE", "   TP: " + (tpPrice > 0 ? DoubleToString(tpPrice, _Digits) : "Partial TP"));
 
 // Enviar ordem
    if(!OrderSend(request, result))
      {
-      g_logger.LogError("❌ Falha ao enviar ordem - Código: " + IntegerToString(result.retcode));
-      g_logger.LogError("   Descrição: " + result.comment);
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TRADE", "❌ Falha ao enviar ordem - Código: " + IntegerToString(result.retcode));
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TRADE", "   Descrição: " + result.comment);
       return;
      }
 
 // Verificar resultado
    if(result.retcode == TRADE_RETCODE_DONE || result.retcode == TRADE_RETCODE_PLACED)
      {
-      g_logger.LogInfo("✅ ORDEM EXECUTADA COM SUCESSO!");
-      g_logger.LogInfo("   Ticket: " + IntegerToString(result.order));
-      g_logger.LogInfo("   Deal: " + IntegerToString(result.deal));
-      g_logger.LogInfo("   Volume: " + DoubleToString(result.volume, 2));
-      g_logger.LogInfo("   Preço: " + DoubleToString(result.price, _Digits));
+      g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE", "✅ ORDEM EXECUTADA COM SUCESSO!");
+      g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE", "   Ticket: " + IntegerToString(result.order));
+      g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE", "   Deal: " + IntegerToString(result.deal));
+      g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE", "   Volume: " + DoubleToString(result.volume, 2));
+      g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE", "   Preço: " + DoubleToString(result.price, _Digits));
 
       // 🆕 REGISTRAR CANDLE DO TRADE
       g_lastTradeBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
-      g_logger.LogDebug("📊 Trade executado no candle: " + TimeToString(g_lastTradeBarTime));
+      g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE", 
+         "📊 Trade executado no candle: " + TimeToString(g_lastTradeBarTime));
 
       // ═══════════════════════════════════════════════════════════════
       // REGISTRAR POSIÇÃO NO TRADEMANAGER 
@@ -1212,12 +1232,12 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
 
          if(hasPartialTP)
            {
-            g_logger.LogInfo("🎯 Partial TP configurado:");
+            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "PARTIAL_TP", "🎯 Partial TP configurado:");
             for(int i = 0; i < ArraySize(tpLevels); i++)
               {
                if(tpLevels[i].enabled)
                  {
-                  g_logger.LogInfo("   " + tpLevels[i].description);
+                  g_logger.Log(LOG_TRADE, THROTTLE_NONE, "PARTIAL_TP", "   " + tpLevels[i].description);
                  }
               }
            }
@@ -1229,7 +1249,8 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
       // Verificar se a posição realmente existe
       if(!PositionSelectByTicket(positionTicket))
         {
-         g_logger.LogError("❌ Posição não encontrada após abertura! Order: " + IntegerToString(result.order));
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TRADE", 
+            "❌ Posição não encontrada após abertura! Order: " + IntegerToString(result.order));
          return;
         }
 
@@ -1244,11 +1265,12 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
      }
    else
      {
-      g_logger.LogWarning("⚠️ Ordem parcialmente executada - Retcode: " + IntegerToString(result.retcode));
-      g_logger.LogWarning("   Descrição: " + result.comment);
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TRADE", 
+         "⚠️ Ordem parcialmente executada - Retcode: " + IntegerToString(result.retcode));
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TRADE", "   Descrição: " + result.comment);
      }
 
-   g_logger.LogInfo("════════════════════════════════════════════════════════════════");
+   g_logger.Log(LOG_SIGNAL, THROTTLE_NONE, "SIGNAL", "════════════════════════════════════════════════════════════════");
   }
 
 //+------------------------------------------------------------------+
@@ -1327,11 +1349,10 @@ ENUM_ORDER_TYPE_FILLING GetTypeFilling(string symbol)
 
    if((filling & SYMBOL_FILLING_FOK) == SYMBOL_FILLING_FOK)
       return ORDER_FILLING_FOK;
+   else if((filling & SYMBOL_FILLING_IOC) == SYMBOL_FILLING_IOC)
+      return ORDER_FILLING_IOC;
    else
-      if((filling & SYMBOL_FILLING_IOC) == SYMBOL_FILLING_IOC)
-         return ORDER_FILLING_IOC;
-      else
-         return ORDER_FILLING_RETURN;
+      return ORDER_FILLING_RETURN;
   }
 
 //+------------------------------------------------------------------+
@@ -1367,5 +1388,5 @@ string GetDeinitReasonText(int reason)
   }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.11                                   |
+//| FIM DO EA - EPBOT MATRIX v1.12                                   |
 //+------------------------------------------------------------------+
