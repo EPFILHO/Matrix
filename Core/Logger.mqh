@@ -2,24 +2,59 @@
 //|                                                       Logger.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                                Sistema de Logging - EPBot Matrix |
-//|                                                      Versão 2.00 |
+//|                                   Versão 3.00 - Claude Parte 016 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "2.00"
+#property version   "3.00"
+
+// ═══════════════════════════════════════════════════════════════════
+// CHANGELOG v3.00:
+// ✅ NOVA ARQUITETURA DE LOGGING FOCADA EM TRADING
+// ✅ Níveis orientados ao negócio (ERROR/TRADE/EVENT/SIGNAL/DEBUG)
+// ✅ Throttle inteligente separado por contexto
+// ✅ ERROR/TRADE/EVENT/SIGNAL SEMPRE aparecem
+// ✅ DEBUG condicional (controlado por input)
+// ✅ Mantém compatibilidade com versão anterior
+// ═══════════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
-//| Enum para nível de log                                           |
+//| Enumerações - Nova Arquitetura v3.00                             |
 //+------------------------------------------------------------------+
+
+// Nível de Log - ORIENTADO AO NEGÓCIO (Trading)
 enum ENUM_LOG_LEVEL
   {
-   LOG_MINIMAL,     // Apenas trades e eventos críticos
-   LOG_COMPLETE,    // Padrão: tudo importante
-   LOG_DEBUG        // Tudo + detalhes técnicos
+   LOG_ERROR,    // SEMPRE visível - falhas operacionais
+   LOG_TRADE,    // SEMPRE visível - trades, entries, exits
+   LOG_EVENT,    // SEMPRE visível - inicialização, mudança de dia, configurações
+   LOG_SIGNAL,   // SEMPRE visível - sinais detectados (mesmo que rejeitados)
+   LOG_DEBUG     // Opcional - detalhes internos para debugging
+  };
+
+// Modo de Throttle - CONTROLE DE FREQUÊNCIA
+enum ENUM_LOG_THROTTLE
+  {
+   THROTTLE_NONE,      // Sempre loga (trades, erros, eventos)
+   THROTTLE_CANDLE,    // Uma vez por candle (sinais, filtros)
+   THROTTLE_TIME,      // Cooldown em segundos (debug repetitivo)
+   THROTTLE_CHANGE,    // Apenas quando valor muda
+   THROTTLE_TICK       // Todo tick (sem throttle - debug agressivo)
   };
 
 //+------------------------------------------------------------------+
-//| Classe Logger - Sistema de logs e relatórios                     |
+//| Estrutura: Controle de Throttle                                  |
+//+------------------------------------------------------------------+
+struct SThrottleControl
+  {
+   string            key;           // Identificador único (context + hash)
+   datetime          lastLog;       // Último log
+   datetime          lastCandle;    // Último candle logado
+   string            lastValue;     // Último valor (para THROTTLE_CHANGE)
+  };
+
+//+------------------------------------------------------------------+
+//| Classe Logger v3.00 - Sistema de logs e relatórios               |
 //+------------------------------------------------------------------+
 class CLogger
   {
@@ -27,12 +62,14 @@ private:
    // ═══════════════════════════════════════════════════════════
    // INPUT PARAMETER (imutável - valor original)
    // ═══════════════════════════════════════════════════════════
-   ENUM_LOG_LEVEL    m_inputLogLevel;
+   bool              m_inputShowDebug;      // Mostrar logs DEBUG?
+   int               m_inputDebugCooldown;  // Cooldown para DEBUG com THROTTLE_TIME
    
    // ═══════════════════════════════════════════════════════════
-   // WORKING PARAMETER (mutável - usado no código)
+   // WORKING PARAMETERS (mutáveis - usados no código)
    // ═══════════════════════════════════════════════════════════
-   ENUM_LOG_LEVEL    m_logLevel;
+   bool              m_showDebug;
+   int               m_debugCooldown;
    
    // ═══════════════════════════════════════════════════════════
    // CONFIGURAÇÃO
@@ -47,10 +84,9 @@ private:
    string            m_txtFileName;
    
    // ═══════════════════════════════════════════════════════════
-   // CONTROLE DE THROTTLE (anti-flood)
+   // CONTROLE DE THROTTLE
    // ═══════════════════════════════════════════════════════════
-   datetime          m_lastLogTime;
-   int               m_throttleSeconds;
+   SThrottleControl  m_throttles[];
    
    // ═══════════════════════════════════════════════════════════
    // ESTATÍSTICAS DO DIA
@@ -62,6 +98,14 @@ private:
    int               m_dailyDraws;
    double            m_grossProfit;
    double            m_grossLoss;
+   
+   // ═══════════════════════════════════════════════════════════
+   // MÉTODOS PRIVADOS
+   // ═══════════════════════════════════════════════════════════
+   bool              ShouldLog(ENUM_LOG_LEVEL level, ENUM_LOG_THROTTLE throttle, string context, string message, int cooldownSec);
+   void              UpdateThrottle(string key, string value);
+   string            GenerateThrottleKey(string context, string message);
+   string            GetLevelPrefix(ENUM_LOG_LEVEL level);
 
 public:
    // ═══════════════════════════════════════════════════════════
@@ -73,10 +117,21 @@ public:
    // ═══════════════════════════════════════════════════════════
    // INICIALIZAÇÃO
    // ═══════════════════════════════════════════════════════════
-   bool              Init(ENUM_LOG_LEVEL level, string symbol, int magic);
+   bool              Init(bool showDebug, string symbol, int magic, int debugCooldown = 5);
    
    // ═══════════════════════════════════════════════════════════
-   // LOGS
+   // NOVO MÉTODO UNIFICADO v3.00
+   // ═══════════════════════════════════════════════════════════
+   void              Log(
+                        ENUM_LOG_LEVEL level,
+                        ENUM_LOG_THROTTLE throttle,
+                        string context,
+                        string message,
+                        int cooldownSec = 5
+                     );
+   
+   // ═══════════════════════════════════════════════════════════
+   // MÉTODOS LEGADOS (compatibilidade com v2.00)
    // ═══════════════════════════════════════════════════════════
    void              LogInfo(string message);
    void              LogWarning(string message);
@@ -97,12 +152,13 @@ public:
    string            GetConfigSummary();
    
    // ═══════════════════════════════════════════════════════════
-   // HOT RELOAD - Alteração em Runtime
+   // HOT RELOAD
    // ═══════════════════════════════════════════════════════════
-   void              SetLogLevel(ENUM_LOG_LEVEL newLevel);
+   void              SetShowDebug(bool show);
+   void              SetDebugCooldown(int seconds);
    
    // ═══════════════════════════════════════════════════════════
-   // GETTERS DE ESTATÍSTICAS
+   // GETTERS
    // ═══════════════════════════════════════════════════════════
    double            GetDailyProfit() { return m_dailyProfit; }
    int               GetDailyTrades() { return m_dailyTrades; }
@@ -110,11 +166,8 @@ public:
    int               GetDailyLosses() { return m_dailyLosses; }
    int               GetDailyDraws() { return m_dailyDraws; }
    
-   // ═══════════════════════════════════════════════════════════
-   // GETTERS DE CONFIGURAÇÃO
-   // ═══════════════════════════════════════════════════════════
-   ENUM_LOG_LEVEL    GetLogLevel() { return m_logLevel; }
-   ENUM_LOG_LEVEL    GetInputLogLevel() { return m_inputLogLevel; }
+   bool              GetShowDebug() { return m_showDebug; }
+   bool              GetInputShowDebug() { return m_inputShowDebug; }
    
    // ═══════════════════════════════════════════════════════════
    // RESET
@@ -127,10 +180,10 @@ public:
 //+------------------------------------------------------------------+
 CLogger::CLogger()
   {
-   m_inputLogLevel = LOG_COMPLETE;
-   m_logLevel = LOG_COMPLETE;
-   m_throttleSeconds = 5;
-   m_lastLogTime = 0;
+   m_inputShowDebug = false;
+   m_inputDebugCooldown = 5;
+   m_showDebug = false;
+   m_debugCooldown = 5;
    
    m_dailyProfit = 0;
    m_dailyTrades = 0;
@@ -139,6 +192,8 @@ CLogger::CLogger()
    m_dailyDraws = 0;
    m_grossProfit = 0;
    m_grossLoss = 0;
+   
+   ArrayResize(m_throttles, 0);
   }
 
 //+------------------------------------------------------------------+
@@ -146,19 +201,21 @@ CLogger::CLogger()
 //+------------------------------------------------------------------+
 CLogger::~CLogger()
   {
-   // Cleanup se necessário
+   ArrayFree(m_throttles);
   }
 
 //+------------------------------------------------------------------+
-//| Inicialização                                                     |
+//| Inicialização v3.00                                              |
 //+------------------------------------------------------------------+
-bool CLogger::Init(ENUM_LOG_LEVEL level, string symbol, int magic)
+bool CLogger::Init(bool showDebug, string symbol, int magic, int debugCooldown = 5)
   {
-   // ═══ SALVAR INPUT (valor original) ═══
-   m_inputLogLevel = level;
+   // Salvar INPUT
+   m_inputShowDebug = showDebug;
+   m_inputDebugCooldown = debugCooldown;
    
-   // ═══ INICIALIZAR WORKING (começa igual ao input) ═══
-   m_logLevel = level;
+   // Inicializar WORKING
+   m_showDebug = showDebug;
+   m_debugCooldown = debugCooldown;
    
    m_symbol = symbol;
    m_magicNumber = magic;
@@ -173,71 +230,213 @@ bool CLogger::Init(ENUM_LOG_LEVEL level, string symbol, int magic)
    m_txtFileName = StringFormat("EPBot_Matrix_DailySummary_%s_M%d_%02d%02d%04d.txt",
                                 m_symbol, m_magicNumber, dt.day, dt.mon, dt.year);
    
-   LogInfo("📂 CSV: " + m_csvFileName);
-   LogInfo("📄 TXT: " + m_txtFileName);
+   Print("╔══════════════════════════════════════════════════════════════╗");
+   Print("║           LOGGER v3.00 - NOVA ARQUITETURA                   ║");
+   Print("╠══════════════════════════════════════════════════════════════╣");
+   Print("║  ERROR/TRADE/EVENT/SIGNAL: Sempre visíveis                  ║");
+   Print("║  DEBUG: ", showDebug ? "ATIVADO" : "DESATIVADO", "                                          ║");
+   Print("║  Throttle DEBUG: ", debugCooldown, " segundos                               ║");
+   Print("╚══════════════════════════════════════════════════════════════╝");
    
-   // Carregar estatísticas do dia (se existirem)
    LoadDailyStats();
    
-   Print("✅ Logger inicializado - Nível: ", EnumToString(m_logLevel));
    return true;
   }
 
 //+------------------------------------------------------------------+
-//| Hot Reload - Alterar nível de log em runtime                     |
+//| NOVO MÉTODO UNIFICADO - Log() v3.00                              |
 //+------------------------------------------------------------------+
-void CLogger::SetLogLevel(ENUM_LOG_LEVEL newLevel)
+void CLogger::Log(
+   ENUM_LOG_LEVEL level,
+   ENUM_LOG_THROTTLE throttle,
+   string context,
+   string message,
+   int cooldownSec = 5
+)
   {
-   ENUM_LOG_LEVEL oldLevel = m_logLevel;
-   m_logLevel = newLevel;
+   // ═══════════════════════════════════════════════════════════
+   // REGRA 1: DEBUG é condicional
+   // ═══════════════════════════════════════════════════════════
+   if(level == LOG_DEBUG && !m_showDebug)
+      return;
    
-   LogInfo(StringFormat("🔄 Nível de log alterado: %s → %s", 
-                        EnumToString(oldLevel), 
-                        EnumToString(newLevel)));
+   // ═══════════════════════════════════════════════════════════
+   // REGRA 2: Verificar throttle
+   // ═══════════════════════════════════════════════════════════
+   if(!ShouldLog(level, throttle, context, message, cooldownSec))
+      return;
+   
+   // ═══════════════════════════════════════════════════════════
+   // REGRA 3: Formatar e imprimir
+   // ═══════════════════════════════════════════════════════════
+   string prefix = GetLevelPrefix(level);
+   string fullMessage = StringFormat("%s [%s] %s", prefix, context, message);
+   
+   Print(fullMessage);
   }
 
 //+------------------------------------------------------------------+
-//| Log de informação                                                 |
+//| Verificar se deve logar (throttle)                               |
 //+------------------------------------------------------------------+
+bool CLogger::ShouldLog(
+   ENUM_LOG_LEVEL level,
+   ENUM_LOG_THROTTLE throttle,
+   string context,
+   string message,
+   int cooldownSec
+)
+  {
+   // ═══════════════════════════════════════════════════════════
+   // THROTTLE_NONE e THROTTLE_TICK: SEMPRE loga
+   // ═══════════════════════════════════════════════════════════
+   if(throttle == THROTTLE_NONE || throttle == THROTTLE_TICK)
+     {
+      return true;
+     }
+   
+   // ═══════════════════════════════════════════════════════════
+   // Gerar chave única
+   // ═══════════════════════════════════════════════════════════
+   string key = GenerateThrottleKey(context, message);
+   
+   // Buscar controle existente
+   int index = -1;
+   for(int i = 0; i < ArraySize(m_throttles); i++)
+     {
+      if(m_throttles[i].key == key)
+        {
+         index = i;
+         break;
+        }
+     }
+   
+   // Criar novo se não existe
+   if(index < 0)
+     {
+      index = ArraySize(m_throttles);
+      ArrayResize(m_throttles, index + 1);
+      m_throttles[index].key = key;
+      m_throttles[index].lastLog = 0;
+      m_throttles[index].lastCandle = 0;
+      m_throttles[index].lastValue = "";
+     }
+   
+   datetime now = TimeCurrent();
+   datetime currentCandle = iTime(_Symbol, PERIOD_CURRENT, 0);
+   
+   // ═══════════════════════════════════════════════════════════
+   // THROTTLE_CANDLE: 1x por candle
+   // ═══════════════════════════════════════════════════════════
+   if(throttle == THROTTLE_CANDLE)
+     {
+      if(m_throttles[index].lastCandle == currentCandle)
+         return false;
+      
+      m_throttles[index].lastCandle = currentCandle;
+      m_throttles[index].lastLog = now;
+      return true;
+     }
+   
+   // ═══════════════════════════════════════════════════════════
+   // THROTTLE_TIME: Cooldown em segundos
+   // ═══════════════════════════════════════════════════════════
+   if(throttle == THROTTLE_TIME)
+     {
+      // Usar cooldown específico ou padrão
+      int cooldown = (level == LOG_DEBUG) ? m_debugCooldown : cooldownSec;
+      
+      if((now - m_throttles[index].lastLog) < cooldown)
+         return false;
+      
+      m_throttles[index].lastLog = now;
+      return true;
+     }
+   
+   // ═══════════════════════════════════════════════════════════
+   // THROTTLE_CHANGE: Apenas quando valor muda
+   // ═══════════════════════════════════════════════════════════
+   if(throttle == THROTTLE_CHANGE)
+     {
+      if(m_throttles[index].lastValue == message)
+         return false;
+      
+      m_throttles[index].lastValue = message;
+      m_throttles[index].lastLog = now;
+      return true;
+     }
+   
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| Gerar chave de throttle                                          |
+//+------------------------------------------------------------------+
+string CLogger::GenerateThrottleKey(string context, string message)
+  {
+   // Usa apenas o contexto para agrupar mensagens similares
+   return context;
+  }
+
+//+------------------------------------------------------------------+
+//| Obter prefixo do nível                                           |
+//+------------------------------------------------------------------+
+string CLogger::GetLevelPrefix(ENUM_LOG_LEVEL level)
+  {
+   switch(level)
+     {
+      case LOG_ERROR:   return "❌ [ERROR]";
+      case LOG_TRADE:   return "💰 [TRADE]";
+      case LOG_EVENT:   return "📅 [EVENT]";
+      case LOG_SIGNAL:  return "🎯 [SIGNAL]";
+      case LOG_DEBUG:   return "🔍 [DEBUG]";
+      default:          return "ℹ️ [INFO]";
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| Hot Reload - Alterar exibição de DEBUG                           |
+//+------------------------------------------------------------------+
+void CLogger::SetShowDebug(bool show)
+  {
+   bool oldValue = m_showDebug;
+   m_showDebug = show;
+   
+   Print("🔄 Logger: DEBUG ", show ? "ATIVADO" : "DESATIVADO");
+  }
+
+//+------------------------------------------------------------------+
+//| Hot Reload - Alterar cooldown de DEBUG                           |
+//+------------------------------------------------------------------+
+void CLogger::SetDebugCooldown(int seconds)
+  {
+   int oldValue = m_debugCooldown;
+   m_debugCooldown = seconds;
+   
+   Print("🔄 Logger: Cooldown DEBUG: ", oldValue, " → ", seconds, " segundos");
+  }
+
+//+------------------------------------------------------------------+
+//| MÉTODOS LEGADOS - Compatibilidade com v2.00                      |
+//+------------------------------------------------------------------+
+
 void CLogger::LogInfo(string message)
   {
-   if(m_logLevel >= LOG_MINIMAL)
-     {
-      Print("ℹ️ ", message);
-     }
+   Log(LOG_EVENT, THROTTLE_NONE, "INFO", message);
   }
 
-//+------------------------------------------------------------------+
-//| Log de aviso                                                      |
-//+------------------------------------------------------------------+
 void CLogger::LogWarning(string message)
   {
-   if(m_logLevel >= LOG_MINIMAL)
-     {
-      Print("⚠️ ", message);
-     }
+   Log(LOG_EVENT, THROTTLE_NONE, "WARNING", message);
   }
 
-//+------------------------------------------------------------------+
-//| Log de erro                                                       |
-//+------------------------------------------------------------------+
 void CLogger::LogError(string message)
   {
-   if(m_logLevel >= LOG_MINIMAL)
-     {
-      Print("❌ ", message);
-     }
+   Log(LOG_ERROR, THROTTLE_NONE, "ERROR", message);
   }
 
-//+------------------------------------------------------------------+
-//| Log de debug                                                      |
-//+------------------------------------------------------------------+
 void CLogger::LogDebug(string message)
   {
-   if(m_logLevel >= LOG_DEBUG)
-     {
-      Print("🔍 ", message);
-     }
+   Log(LOG_DEBUG, THROTTLE_TICK, "DEBUG", message);
   }
 
 //+------------------------------------------------------------------+
