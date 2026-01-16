@@ -2,20 +2,24 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                                  Versão 2.02 - Claude Parte 014d |
+//|                                   Versão 3.00 - Claude Parte 016 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "2.02"
+#property version   "3.00"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
-// CHANGELOG v2.02:
-// ✅ CORREÇÃO CRÍTICA: Validação de Magic Number adicionada em:
-//    - ShouldCloseOnEndTime()
-//    - ShouldCloseBeforeSessionEnd()
-// ✅ Agora cada EA fecha APENAS suas próprias posições
-// ✅ Compatível com múltiplos EAs no mesmo gráfico (HEDGING)
-// ✅ Logs informativos quando posição de outro EA é ignorada
+// CHANGELOG v3.00:
+// ✅ REFATORAÇÃO COMPLETA DE LOGGING:
+//    - Migração para Logger v3.00 (5 níveis + throttle inteligente)
+//    - Remoção de throttle manual (m_lastXWarning)
+//    - Uso de THROTTLE_TIME automático do Logger
+//    - PrintStatus() e PrintConfiguration() atualizados
+// ✅ Mantém TODAS as funcionalidades v2.02:
+//    - Validação de Magic Number
+//    - Proteção de sessão
+//    - Hot reload
+//    - Compatibilidade total
 // ═══════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════
@@ -242,11 +246,6 @@ private:
 
    datetime          m_lastResetDate;
    ENUM_BLOCKER_REASON m_currentBlocker;
-
-   datetime          m_lastStreakWarning;
-   datetime          m_lastNewsWarning;
-   datetime          m_lastTimeWarning;
-   datetime          m_lastDailyLimitWarning;
 
    // ═══════════════════════════════════════════════════════════════
    // MÉTODOS PRIVADOS - VERIFICADORES INDIVIDUAIS
@@ -496,11 +495,6 @@ CBlockers::CBlockers()
 
    m_lastResetDate = TimeCurrent();
    m_currentBlocker = BLOCKER_NONE;
-
-   m_lastStreakWarning = 0;
-   m_lastNewsWarning = 0;
-   m_lastTimeWarning = 0;
-   m_lastDailyLimitWarning = 0;
   }
 
 //+------------------------------------------------------------------+
@@ -538,16 +532,16 @@ bool CBlockers::Init(
 
    if(m_logger != NULL)
      {
-      m_logger.LogInfo("╔══════════════════════════════════════════════════════╗");
-      m_logger.LogInfo("║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
-      m_logger.LogInfo("║              VERSÃO COMPLETA v2.02                   ║");
-      m_logger.LogInfo("╚══════════════════════════════════════════════════════╝");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "╔══════════════════════════════════════════════════════╗");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║              VERSÃO COMPLETA v3.00                   ║");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "╚══════════════════════════════════════════════════════╝");
      }
    else
      {
       Print("╔══════════════════════════════════════════════════════╗");
       Print("║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
-      Print("║              VERSÃO COMPLETA v2.02                   ║");
+      Print("║              VERSÃO COMPLETA v3.00                   ║");
       Print("╚══════════════════════════════════════════════════════╝");
      }
 
@@ -563,7 +557,7 @@ bool CBlockers::Init(
    m_enableTimeFilter = enableTime;
    m_closeOnEndTime = closeOnEnd;
    m_closeBeforeSessionEnd = closeBeforeSessionEnd;
-   m_minutesBeforeSessionEnd = minutesBeforeSessionEnd; 
+   m_minutesBeforeSessionEnd = minutesBeforeSessionEnd;
 
    if(enableTime)
      {
@@ -571,7 +565,7 @@ bool CBlockers::Init(
          startM < 0 || startM > 59 || endM < 0 || endM > 59)
         {
          if(m_logger != NULL)
-            m_logger.LogError("Horários inválidos!");
+            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Horários inválidos!");
          else
             Print("❌ Horários inválidos!");
          return false;
@@ -591,14 +585,14 @@ bool CBlockers::Init(
                        StringFormat("%02d:%02d - %02d:%02d", startH, startM, endH, endM);
 
       if(m_logger != NULL)
-         m_logger.LogInfo(timeMsg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", timeMsg);
       else
          Print(timeMsg);
 
       if(closeOnEnd)
         {
          if(m_logger != NULL)
-            m_logger.LogInfo("   └─ Fecha posição ao fim do horário");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "   └─ Fecha posição ao fim do horário");
          else
             Print("   └─ Fecha posição ao fim do horário");
         }
@@ -606,7 +600,7 @@ bool CBlockers::Init(
    else
      {
       if(m_logger != NULL)
-         m_logger.LogInfo("⏰ Filtro de Horário: DESATIVADO");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Filtro de Horário: DESATIVADO");
       else
          Print("⏰ Filtro de Horário: DESATIVADO");
      }
@@ -653,7 +647,7 @@ bool CBlockers::Init(
    if(news1 || news2 || news3)
      {
       if(m_logger != NULL)
-         m_logger.LogInfo("📰 Horários de Volatilidade:");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📰 Horários de Volatilidade:");
       else
          Print("📰 Horários de Volatilidade:");
 
@@ -661,7 +655,7 @@ bool CBlockers::Init(
         {
          string msg = "   • Bloqueio 1: " + StringFormat("%02d:%02d - %02d:%02d", n1StartH, n1StartM, n1EndH, n1EndM);
          if(m_logger != NULL)
-            m_logger.LogInfo(msg);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", msg);
          else
             Print(msg);
         }
@@ -669,7 +663,7 @@ bool CBlockers::Init(
         {
          string msg = "   • Bloqueio 2: " + StringFormat("%02d:%02d - %02d:%02d", n2StartH, n2StartM, n2EndH, n2EndM);
          if(m_logger != NULL)
-            m_logger.LogInfo(msg);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", msg);
          else
             Print(msg);
         }
@@ -677,7 +671,7 @@ bool CBlockers::Init(
         {
          string msg = "   • Bloqueio 3: " + StringFormat("%02d:%02d - %02d:%02d", n3StartH, n3StartM, n3EndH, n3EndM);
          if(m_logger != NULL)
-            m_logger.LogInfo(msg);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", msg);
          else
             Print(msg);
         }
@@ -685,7 +679,7 @@ bool CBlockers::Init(
    else
      {
       if(m_logger != NULL)
-         m_logger.LogInfo("📰 Horários de Volatilidade: DESATIVADOS");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📰 Horários de Volatilidade: DESATIVADOS");
       else
          Print("📰 Horários de Volatilidade: DESATIVADOS");
      }
@@ -700,14 +694,14 @@ bool CBlockers::Init(
      {
       string msg = "📊 Spread Máximo: " + IntegerToString(maxSpread) + " pontos";
       if(m_logger != NULL)
-         m_logger.LogInfo(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", msg);
       else
          Print(msg);
      }
    else
      {
       if(m_logger != NULL)
-         m_logger.LogInfo("📊 Spread Máximo: ILIMITADO");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Spread Máximo: ILIMITADO");
       else
          Print("📊 Spread Máximo: ILIMITADO");
      }
@@ -731,7 +725,7 @@ bool CBlockers::Init(
       m_maxDailyGain = MathAbs(maxGain);
 
       if(m_logger != NULL)
-         m_logger.LogInfo("📅 Limites Diários:");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📅 Limites Diários:");
       else
          Print("📅 Limites Diários:");
 
@@ -739,7 +733,7 @@ bool CBlockers::Init(
         {
          string msg = "   - Max Trades: " + IntegerToString(maxTrades);
          if(m_logger != NULL)
-            m_logger.LogInfo(msg);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", msg);
          else
             Print(msg);
         }
@@ -747,7 +741,7 @@ bool CBlockers::Init(
         {
          string msg = "   - Max Loss: $" + DoubleToString(m_maxDailyLoss, 2);
          if(m_logger != NULL)
-            m_logger.LogInfo(msg);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", msg);
          else
             Print(msg);
         }
@@ -757,8 +751,8 @@ bool CBlockers::Init(
          string msg2 = "     └─ Ação: " + (profitAction == PROFIT_ACTION_STOP ? "PARAR ao atingir meta" : "ATIVAR proteção de drawdown");
          if(m_logger != NULL)
            {
-            m_logger.LogInfo(msg1);
-            m_logger.LogInfo(msg2);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", msg1);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", msg2);
            }
          else
            {
@@ -770,7 +764,7 @@ bool CBlockers::Init(
    else
      {
       if(m_logger != NULL)
-         m_logger.LogInfo("📅 Limites Diários: DESATIVADOS");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📅 Limites Diários: DESATIVADOS");
       else
          Print("📅 Limites Diários: DESATIVADOS");
      }
@@ -798,7 +792,7 @@ bool CBlockers::Init(
       m_winPauseMinutes = winPauseMin;
 
       if(m_logger != NULL)
-         m_logger.LogInfo("🔴 Controle de Streak:");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🔴 Controle de Streak:");
       else
          Print("🔴 Controle de Streak:");
 
@@ -806,7 +800,7 @@ bool CBlockers::Init(
         {
          string msg = "   • Loss Streak: Max " + IntegerToString(maxLossStreak) + " perdas";
          if(m_logger != NULL)
-            m_logger.LogInfo(msg);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", msg);
          else
             Print(msg);
 
@@ -814,7 +808,7 @@ bool CBlockers::Init(
                             "     └─ Ação: Pausar por " + IntegerToString(lossPauseMin) + " minutos" :
                             "     └─ Ação: Parar até fim do dia";
          if(m_logger != NULL)
-            m_logger.LogInfo(actionMsg);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", actionMsg);
          else
             Print(actionMsg);
         }
@@ -823,7 +817,7 @@ bool CBlockers::Init(
         {
          string msg = "   • Win Streak: Max " + IntegerToString(maxWinStreak) + " ganhos";
          if(m_logger != NULL)
-            m_logger.LogInfo(msg);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", msg);
          else
             Print(msg);
 
@@ -831,7 +825,7 @@ bool CBlockers::Init(
                             "     └─ Ação: Pausar por " + IntegerToString(winPauseMin) + " minutos" :
                             "     └─ Ação: Parar até fim do dia";
          if(m_logger != NULL)
-            m_logger.LogInfo(actionMsg);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", actionMsg);
          else
             Print(actionMsg);
         }
@@ -839,7 +833,7 @@ bool CBlockers::Init(
    else
      {
       if(m_logger != NULL)
-         m_logger.LogInfo("🔴 Controle de Streak: DESATIVADO");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🔴 Controle de Streak: DESATIVADO");
       else
          Print("🔴 Controle de Streak: DESATIVADO");
      }
@@ -859,7 +853,7 @@ bool CBlockers::Init(
       if(ddValue <= 0 || (ddType == DD_PERCENTAGE && ddValue > 100))
         {
          if(m_logger != NULL)
-            m_logger.LogError("Drawdown inválido!");
+            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Drawdown inválido!");
          else
             Print("❌ Drawdown inválido!");
          return false;
@@ -868,7 +862,7 @@ bool CBlockers::Init(
       if(initialBalance <= 0)
         {
          if(m_logger != NULL)
-            m_logger.LogError("Saldo inicial inválido!");
+            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Saldo inicial inválido!");
          else
             Print("❌ Saldo inicial inválido!");
          return false;
@@ -879,7 +873,7 @@ bool CBlockers::Init(
       m_peakBalance = initialBalance;
 
       if(m_logger != NULL)
-         m_logger.LogInfo("📉 Drawdown Máximo:");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📉 Drawdown Máximo:");
       else
          Print("📉 Drawdown Máximo:");
 
@@ -887,20 +881,20 @@ bool CBlockers::Init(
                        "   - Tipo: Financeiro ($" + DoubleToString(ddValue, 2) + ")" :
                        "   - Tipo: Percentual (" + DoubleToString(ddValue, 2) + "%)";
       if(m_logger != NULL)
-         m_logger.LogInfo(typeMsg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", typeMsg);
       else
          Print(typeMsg);
 
       string balMsg = "   - Saldo Inicial: $" + DoubleToString(initialBalance, 2);
       if(m_logger != NULL)
-         m_logger.LogInfo(balMsg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", balMsg);
       else
          Print(balMsg);
      }
    else
      {
       if(m_logger != NULL)
-         m_logger.LogInfo("📉 Proteção Drawdown: DESATIVADA");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📉 Proteção Drawdown: DESATIVADA");
       else
          Print("📉 Proteção Drawdown: DESATIVADA");
      }
@@ -927,7 +921,7 @@ bool CBlockers::Init(
 
    string dirMsg = "🎯 Direção Permitida: " + dirText;
    if(m_logger != NULL)
-      m_logger.LogInfo(dirMsg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", dirMsg);
    else
       Print(dirMsg);
 
@@ -947,9 +941,9 @@ bool CBlockers::Init(
 
    if(m_logger != NULL)
      {
-      m_logger.LogInfo("");
-      m_logger.LogInfo("✅ Blockers inicializados com sucesso!");
-      m_logger.LogInfo("");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "✅ Blockers inicializados com sucesso!");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "");
      }
    else
      {
@@ -974,7 +968,8 @@ void CBlockers::SetMaxSpread(int newMaxSpread)
    m_maxSpread = newMaxSpread;
 
    if(m_logger != NULL)
-      m_logger.LogInfo(StringFormat("🔄 Spread máximo alterado: %d → %d pontos", oldValue, newMaxSpread));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("Spread máximo alterado: %d → %d pontos", oldValue, newMaxSpread));
    else
       Print("🔄 Spread máximo alterado: ", oldValue, " → ", newMaxSpread, " pontos");
   }
@@ -1017,7 +1012,8 @@ void CBlockers::SetTradeDirection(ENUM_TRADE_DIRECTION newDirection)
      }
 
    if(m_logger != NULL)
-      m_logger.LogInfo(StringFormat("🔄 Direção alterada: %s → %s", oldText, newText));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("Direção alterada: %s → %s", oldText, newText));
    else
       Print("🔄 Direção alterada: ", oldText, " → ", newText);
   }
@@ -1034,11 +1030,11 @@ void CBlockers::SetDailyLimits(int maxTrades, double maxLoss, double maxGain, EN
 
    if(m_logger != NULL)
      {
-      m_logger.LogInfo("🔄 Limites diários alterados:");
-      m_logger.LogInfo("   • Max Trades: " + IntegerToString(maxTrades));
-      m_logger.LogInfo("   • Max Loss: $" + DoubleToString(m_maxDailyLoss, 2));
-      m_logger.LogInfo("   • Max Gain: $" + DoubleToString(m_maxDailyGain, 2));
-      m_logger.LogInfo("   • Ação: " + (action == PROFIT_ACTION_STOP ? "PARAR" : "ATIVAR DD"));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "Limites diários alterados:");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "   • Max Trades: " + IntegerToString(maxTrades));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "   • Max Loss: $" + DoubleToString(m_maxDailyLoss, 2));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "   • Max Gain: $" + DoubleToString(m_maxDailyGain, 2));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "   • Ação: " + (action == PROFIT_ACTION_STOP ? "PARAR" : "ATIVAR DD"));
      }
    else
      {
@@ -1065,11 +1061,13 @@ void CBlockers::SetStreakLimits(int maxLoss, ENUM_STREAK_ACTION lossAction, int 
 
    if(m_logger != NULL)
      {
-      m_logger.LogInfo("🔄 Limites de streak alterados:");
-      m_logger.LogInfo("   • Loss: Max " + IntegerToString(maxLoss));
-      m_logger.LogInfo("     └─ " + (lossAction == STREAK_PAUSE ? "Pausar " + IntegerToString(lossPause) + " min" : "Parar dia"));
-      m_logger.LogInfo("   • Win: Max " + IntegerToString(maxWin));
-      m_logger.LogInfo("     └─ " + (winAction == STREAK_PAUSE ? "Pausar " + IntegerToString(winPause) + " min" : "Parar dia"));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "Limites de streak alterados:");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "   • Loss: Max " + IntegerToString(maxLoss));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", 
+         "     └─ " + (lossAction == STREAK_PAUSE ? "Pausar " + IntegerToString(lossPause) + " min" : "Parar dia"));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "   • Win: Max " + IntegerToString(maxWin));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", 
+         "     └─ " + (winAction == STREAK_PAUSE ? "Pausar " + IntegerToString(winPause) + " min" : "Parar dia"));
      }
    else
      {
@@ -1092,8 +1090,8 @@ void CBlockers::SetDrawdownValue(double newValue)
    string typeText = (m_drawdownType == DD_FINANCIAL) ? "$" : "%";
 
    if(m_logger != NULL)
-      m_logger.LogInfo(StringFormat("🔄 Drawdown alterado: %s%.2f → %s%.2f",
-                                    typeText, oldValue, typeText, newValue));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("Drawdown alterado: %s%.2f → %s%.2f", typeText, oldValue, typeText, newValue));
    else
       Print("🔄 Drawdown alterado: ", typeText, oldValue, " → ", typeText, newValue);
   }
@@ -1144,18 +1142,18 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
             m_currentBlocker = BLOCKER_TIME_FILTER;
             blockReason = "Sessão de negociação ainda não iniciou";
 
-            if(m_logger != NULL && (TimeCurrent() - m_lastTimeWarning > 300))
+            if(m_logger != NULL)
               {
-               m_logger.LogInfo("═══════════════════════════════════════════════════════");
-               m_logger.LogInfo("⏰ [Blockers] Sessão de negociação AINDA NÃO INICIOU");
-               m_logger.LogInfo(StringFormat("   Sessão: %02d:%02d → %02d:%02d",
-                                             sessionStartTime.hour, sessionStartTime.min,
-                                             sessionEndTime.hour,   sessionEndTime.min));
-               m_logger.LogInfo(StringFormat("   Horário atual: %02d:%02d",
-                                             now.hour, now.min));
-               m_logger.LogInfo("   Novas entradas bloqueadas até abertura da sessão");
-               m_logger.LogInfo("═══════════════════════════════════════════════════════");
-               m_lastTimeWarning = TimeCurrent();
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "⏰ Sessão de negociação AINDA NÃO INICIOU");
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
+                  StringFormat("   Sessão: %02d:%02d → %02d:%02d",
+                              sessionStartTime.hour, sessionStartTime.min,
+                              sessionEndTime.hour,   sessionEndTime.min));
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
+                  StringFormat("   Horário atual: %02d:%02d", now.hour, now.min));
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "   Novas entradas bloqueadas até abertura da sessão");
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
               }
 
             return false;
@@ -1170,20 +1168,19 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
                              deltaEnd, m_minutesBeforeSessionEnd
                           );
 
-            if(m_logger != NULL && (TimeCurrent() - m_lastTimeWarning > 300))
+            if(m_logger != NULL)
               {
-               m_logger.LogInfo("═══════════════════════════════════════════════════════");
-               m_logger.LogInfo("⏰ [Blockers] Proteção de Sessão - bloqueando novas entradas");
-               m_logger.LogInfo(StringFormat("   Sessão encerra: %02d:%02d",
-                                             sessionEndTime.hour, sessionEndTime.min));
-               m_logger.LogInfo(StringFormat("   Horário atual: %02d:%02d",
-                                             now.hour, now.min));
-               m_logger.LogInfo(StringFormat("   Margem segurança: %d minutos",
-                                             m_minutesBeforeSessionEnd));
-               m_logger.LogInfo(StringFormat("   Faltam %d minutos para sessão encerrar",
-                                             deltaEnd));
-               m_logger.LogInfo("═══════════════════════════════════════════════════════");
-               m_lastTimeWarning = TimeCurrent();
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "⏰ Proteção de Sessão - bloqueando novas entradas");
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
+                  StringFormat("   Sessão encerra: %02d:%02d", sessionEndTime.hour, sessionEndTime.min));
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
+                  StringFormat("   Horário atual: %02d:%02d", now.hour, now.min));
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
+                  StringFormat("   Margem segurança: %d minutos", m_minutesBeforeSessionEnd));
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
+                  StringFormat("   Faltam %d minutos para sessão encerrar", deltaEnd));
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
               }
 
             return false;
@@ -1195,17 +1192,16 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
             m_currentBlocker = BLOCKER_TIME_FILTER;
             blockReason = "Sessão de negociação encerrada";
 
-            if(m_logger != NULL && (TimeCurrent() - m_lastTimeWarning > 300))
+            if(m_logger != NULL)
               {
-               m_logger.LogInfo("═══════════════════════════════════════════════════════");
-               m_logger.LogInfo("⏰ [Blockers] Sessão de negociação ENCERRADA");
-               m_logger.LogInfo(StringFormat("   Sessão encerra: %02d:%02d",
-                                             sessionEndTime.hour, sessionEndTime.min));
-               m_logger.LogInfo(StringFormat("   Horário atual: %02d:%02d",
-                                             now.hour, now.min));
-               m_logger.LogInfo("   Novas entradas bloqueadas até próxima sessão");
-               m_logger.LogInfo("═══════════════════════════════════════════════════════");
-               m_lastTimeWarning = TimeCurrent();
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "⏰ Sessão de negociação ENCERRADA");
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
+                  StringFormat("   Sessão encerra: %02d:%02d", sessionEndTime.hour, sessionEndTime.min));
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
+                  StringFormat("   Horário atual: %02d:%02d", now.hour, now.min));
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "   Novas entradas bloqueadas até próxima sessão");
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
               }
 
             return false;
@@ -1300,7 +1296,7 @@ bool CBlockers::CanTradeDirection(int orderType, string &blockReason)
 
 //+------------------------------------------------------------------+
 //| PÚBLICO: Verifica se deve fechar posição por término de horário  |
-//| ✅ v2.02: VALIDAÇÃO DE MAGIC NUMBER ADICIONADA                   |
+//| ✅ v3.00: Logging refatorado                                     |
 //+------------------------------------------------------------------+
 bool CBlockers::ShouldCloseOnEndTime(ulong positionTicket)
   {
@@ -1317,9 +1313,10 @@ bool CBlockers::ShouldCloseOnEndTime(ulong positionTicket)
    if(posMagic != m_magicNumber)
      {
       if(m_logger != NULL)
-         m_logger.LogDebug("⏭️ [Blockers] Ignorando posição #" + IntegerToString((int)positionTicket) 
-                         + " (Magic " + IntegerToString((int)posMagic) + " ≠ " 
-                         + IntegerToString(m_magicNumber) + ")");
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "TIME_CLOSE",
+            "Ignorando posição #" + IntegerToString((int)positionTicket) +
+            " (Magic " + IntegerToString((int)posMagic) + " ≠ " +
+            IntegerToString(m_magicNumber) + ")");
       return false;
      }
 
@@ -1341,17 +1338,21 @@ bool CBlockers::ShouldCloseOnEndTime(ulong positionTicket)
         {
          if(m_logger != NULL)
            {
-            m_logger.LogInfo("⏰ [Blockers] Término de horário de operação atingido");
-            m_logger.LogInfo("   Início: " + IntegerToString(m_startHour) + ":" + IntegerToString(m_startMinute));
-            m_logger.LogInfo("   Fim:    " + IntegerToString(m_endHour)   + ":" + IntegerToString(m_endMinute));
-            m_logger.LogInfo("   Agora:  " + IntegerToString(dt.hour)     + ":" + IntegerToString(dt.min));
-            m_logger.LogInfo("   Posição #" + IntegerToString((int)positionTicket) + " deve ser fechada por horário");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE", "⏰ Término de horário de operação atingido");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE",
+               "   Início: " + IntegerToString(m_startHour) + ":" + IntegerToString(m_startMinute));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE",
+               "   Fim:    " + IntegerToString(m_endHour)   + ":" + IntegerToString(m_endMinute));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE",
+               "   Agora:  " + IntegerToString(dt.hour)     + ":" + IntegerToString(dt.min));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE",
+               "   Posição #" + IntegerToString((int)positionTicket) + " deve ser fechada por horário");
            }
          else
            {
             Print("⏰ [Blockers] Término de horário de operação atingido para posição #", positionTicket);
            }
-         
+
          return true;
         }
       return false;
@@ -1364,17 +1365,20 @@ bool CBlockers::ShouldCloseOnEndTime(ulong positionTicket)
         {
          if(m_logger != NULL)
            {
-            m_logger.LogInfo("⏰ [Blockers] Fora do horário de operação (janela noturna)");
-            m_logger.LogInfo("   Janela: " + IntegerToString(m_startHour) + ":" + IntegerToString(m_startMinute)
-                          + " - " + IntegerToString(m_endHour) + ":" + IntegerToString(m_endMinute));
-            m_logger.LogInfo("   Agora:  " + IntegerToString(dt.hour) + ":" + IntegerToString(dt.min));
-            m_logger.LogInfo("   Posição #" + IntegerToString((int)positionTicket) + " deve ser fechada");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE", "⏰ Fora do horário de operação (janela noturna)");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE",
+               "   Janela: " + IntegerToString(m_startHour) + ":" + IntegerToString(m_startMinute)
+                        + " - " + IntegerToString(m_endHour) + ":" + IntegerToString(m_endMinute));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE",
+               "   Agora:  " + IntegerToString(dt.hour) + ":" + IntegerToString(dt.min));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE",
+               "   Posição #" + IntegerToString((int)positionTicket) + " deve ser fechada");
            }
          else
            {
             Print("⏰ [Blockers] Fora do horário noturno para posição #", positionTicket);
            }
-         
+
          return true;
         }
       return false;
@@ -1383,7 +1387,7 @@ bool CBlockers::ShouldCloseOnEndTime(ulong positionTicket)
 
 //+------------------------------------------------------------------+
 //| Verifica se deve fechar posição antes do fim da sessão           |
-//| ✅ v2.02: VALIDAÇÃO DE MAGIC NUMBER ADICIONADA                   |
+//| ✅ v3.00: Logging refatorado                                     |
 //+------------------------------------------------------------------+
 bool CBlockers::ShouldCloseBeforeSessionEnd(ulong positionTicket)
   {
@@ -1394,17 +1398,18 @@ bool CBlockers::ShouldCloseBeforeSessionEnd(ulong positionTicket)
 // Garante que a posição existe
    if(!PositionSelectByTicket(positionTicket))
       return false;
-      
+
 // ✅ VALIDAR MAGIC NUMBER - CORREÇÃO CRÍTICA v2.02
    long posMagic = PositionGetInteger(POSITION_MAGIC);
    if(posMagic != m_magicNumber)
      {
       if(m_logger != NULL)
-         m_logger.LogDebug("⏭️ [Blockers] Ignorando posição #" + IntegerToString((int)positionTicket) 
-                         + " (Magic " + IntegerToString((int)posMagic) + " ≠ " 
-                         + IntegerToString(m_magicNumber) + " na proteção de sessão)");
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "SESSION_CLOSE",
+            "Ignorando posição #" + IntegerToString((int)positionTicket) +
+            " (Magic " + IntegerToString((int)posMagic) + " ≠ " +
+            IntegerToString(m_magicNumber) + " na proteção de sessão)");
       return false;
-     }      
+     }
 
 // Obtém horário atual
    MqlDateTime now;
@@ -1438,14 +1443,19 @@ bool CBlockers::ShouldCloseBeforeSessionEnd(ulong positionTicket)
      {
       if(m_logger != NULL)
         {
-         m_logger.LogInfo("════════════════════════════════════════════════════════════════");
-         m_logger.LogInfo("⏰ [Blockers] Proteção de Sessão ativada");
-         m_logger.LogInfo(StringFormat("   Sessão encerra: %02d:%02d", sessionEndTime.hour, sessionEndTime.min));
-         m_logger.LogInfo(StringFormat("   Horário atual: %02d:%02d", now.hour, now.min));
-         m_logger.LogInfo(StringFormat("   Margem segurança: %d minutos", m_minutesBeforeSessionEnd));
-         m_logger.LogInfo(StringFormat("   Faltam %d minutos para sessão encerrar", minutesUntilSessionEnd));
-         m_logger.LogInfo("   Posição #" + IntegerToString((int)positionTicket) + " deve ser fechada por proteção de sessão");
-         m_logger.LogInfo("════════════════════════════════════════════════════════════════");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE", "════════════════════════════════════════════════════════════════");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE", "⏰ Proteção de Sessão ativada");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE",
+            StringFormat("   Sessão encerra: %02d:%02d", sessionEndTime.hour, sessionEndTime.min));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE",
+            StringFormat("   Horário atual: %02d:%02d", now.hour, now.min));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE",
+            StringFormat("   Margem segurança: %d minutos", m_minutesBeforeSessionEnd));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE",
+            StringFormat("   Faltam %d minutos para sessão encerrar", minutesUntilSessionEnd));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE",
+            "   Posição #" + IntegerToString((int)positionTicket) + " deve ser fechada por proteção de sessão");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE", "════════════════════════════════════════════════════════════════");
         }
       else
         {
@@ -1472,11 +1482,11 @@ void CBlockers::UpdateAfterTrade(bool isWin, double tradeProfit)
 
          if(m_maxWinStreak > 0 && m_currentWinStreak >= m_maxWinStreak)
            {
-            string msg = "⚠️ WIN STREAK ATINGIDO: " + IntegerToString(m_currentWinStreak) + " ganhos consecutivos!";
             if(m_logger != NULL)
-               m_logger.LogWarning(msg);
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK",
+                  "⚠️ WIN STREAK ATINGIDO: " + IntegerToString(m_currentWinStreak) + " ganhos consecutivos!");
             else
-               Print(msg);
+               Print("⚠️ WIN STREAK ATINGIDO: ", m_currentWinStreak, " ganhos consecutivos!");
            }
         }
       else
@@ -1486,11 +1496,11 @@ void CBlockers::UpdateAfterTrade(bool isWin, double tradeProfit)
 
          if(m_maxLossStreak > 0 && m_currentLossStreak >= m_maxLossStreak)
            {
-            string msg = "⚠️ LOSS STREAK ATINGIDO: " + IntegerToString(m_currentLossStreak) + " perdas consecutivas!";
             if(m_logger != NULL)
-               m_logger.LogWarning(msg);
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK",
+                  "⚠️ LOSS STREAK ATINGIDO: " + IntegerToString(m_currentLossStreak) + " perdas consecutivas!");
             else
-               Print(msg);
+               Print("⚠️ LOSS STREAK ATINGIDO: ", m_currentLossStreak, " perdas consecutivas!");
            }
         }
      }
@@ -1530,16 +1540,18 @@ void CBlockers::ActivateDrawdownProtection(double peakProfit)
 
    if(m_logger != NULL)
      {
-      m_logger.LogInfo("═══════════════════════════════════════════════════════");
-      m_logger.LogInfo("🛡️ PROTEÇÃO DE DRAWDOWN ATIVADA!");
-      m_logger.LogInfo("   Pico de lucro: $" + DoubleToString(peakProfit, 2));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "═══════════════════════════════════════════════════════");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "🛡️ PROTEÇÃO DE DRAWDOWN ATIVADA!");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "   Pico de lucro: $" + DoubleToString(peakProfit, 2));
 
       if(m_drawdownType == DD_FINANCIAL)
-         m_logger.LogInfo("   Proteção: Máx $" + DoubleToString(m_drawdownValue, 2) + " de drawdown");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", 
+            "   Proteção: Máx $" + DoubleToString(m_drawdownValue, 2) + " de drawdown");
       else
-         m_logger.LogInfo("   Proteção: Máx " + DoubleToString(m_drawdownValue, 1) + "% de drawdown");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", 
+            "   Proteção: Máx " + DoubleToString(m_drawdownValue, 1) + "% de drawdown");
 
-      m_logger.LogInfo("═══════════════════════════════════════════════════════");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "═══════════════════════════════════════════════════════");
      }
    else
      {
@@ -1562,7 +1574,7 @@ void CBlockers::ActivateDrawdownProtection(double peakProfit)
 void CBlockers::ResetDaily()
   {
    if(m_logger != NULL)
-      m_logger.LogInfo("🔄 RESET DIÁRIO - Limpando contadores...");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "RESET", "🔄 RESET DIÁRIO - Limpando contadores...");
    else
       Print("🔄 RESET DIÁRIO - Limpando contadores...");
 
@@ -1578,7 +1590,7 @@ void CBlockers::ResetDaily()
    m_lastResetDate = TimeCurrent();
 
    if(m_logger != NULL)
-      m_logger.LogInfo("✅ Contadores zerados!");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "RESET", "✅ Contadores zerados!");
    else
       Print("✅ Contadores zerados!");
   }
@@ -1738,53 +1750,39 @@ bool CBlockers::CheckStreakLimit()
    if(!m_enableStreakControl)
       return true;
 
+// ═══════════════════════════════════════════════════════════════
+// VERIFICAR SE PAUSA ESTÁ ATIVA
+// ═══════════════════════════════════════════════════════════════
    if(m_streakPauseActive)
      {
       if(TimeCurrent() < m_streakPauseUntil)
         {
-         if(TimeCurrent() - m_lastStreakWarning > 300)
-           {
-            int remainingMinutes = (int)((m_streakPauseUntil - TimeCurrent()) / 60);
+         // ✅ LOG_DEBUG com throttle de 300s (loga a cada 5min)
+         int remainingMinutes = (int)((m_streakPauseUntil - TimeCurrent()) / 60);
 
-            if(m_logger != NULL)
-              {
-               m_logger.LogWarning("═══════════════════════════════════════════════════════");
-               m_logger.LogWarning("⏸️ EA PAUSADO POR SEQUÊNCIA");
-               m_logger.LogWarning("   📊 Motivo: " + m_streakPauseReason);
-               m_logger.LogWarning("   ⏱️ Tempo restante: " + IntegerToString(remainingMinutes) + " minutos");
-               m_logger.LogWarning("═══════════════════════════════════════════════════════");
-              }
-            else
-              {
-               Print("═══════════════════════════════════════════════════════");
-               Print("⏸️ EA PAUSADO POR SEQUÊNCIA");
-               Print("   📊 Motivo: ", m_streakPauseReason);
-               Print("   ⏱️ Tempo restante: ", remainingMinutes, " minutos");
-               Print("═══════════════════════════════════════════════════════");
-              }
-            m_lastStreakWarning = TimeCurrent();
-           }
+         m_logger.Log(LOG_DEBUG, THROTTLE_TIME, "STREAK",
+            "⏸️ EA pausado - Restam " + IntegerToString(remainingMinutes) +
+            " minutos | Motivo: " + m_streakPauseReason,
+            300);
+
          return false;
         }
       else
         {
+         // ✅ Pausa finalizada - LOG_EVENT sem throttle (acontece 1x)
          if(m_logger != NULL)
            {
-            m_logger.LogInfo("═══════════════════════════════════════════════════════");
-            m_logger.LogInfo("▶️ PAUSA DE SEQUÊNCIA FINALIZADA");
-            m_logger.LogInfo("   📊 Sequência que causou pausa: " + m_streakPauseReason);
-            m_logger.LogInfo("   🔄 Contadores zerados - pronto para novo ciclo");
-            m_logger.LogInfo("   ✅ EA retomando operações normais");
-            m_logger.LogInfo("═══════════════════════════════════════════════════════");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK", "▶️ PAUSA DE SEQUÊNCIA FINALIZADA");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK", 
+               "   📊 Sequência que causou pausa: " + m_streakPauseReason);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK", 
+               "   🔄 Contadores zerados - pronto para novo ciclo");
            }
          else
            {
-            Print("═══════════════════════════════════════════════════════");
             Print("▶️ PAUSA DE SEQUÊNCIA FINALIZADA");
             Print("   📊 Sequência que causou pausa: ", m_streakPauseReason);
             Print("   🔄 Contadores zerados - pronto para novo ciclo");
-            Print("   ✅ EA retomando operações normais");
-            Print("═══════════════════════════════════════════════════════");
            }
 
          m_streakPauseActive = false;
@@ -1796,18 +1794,22 @@ bool CBlockers::CheckStreakLimit()
         }
      }
 
+// ═══════════════════════════════════════════════════════════════
+// VERIFICAR SE ATINGIU LOSS STREAK
+// ═══════════════════════════════════════════════════════════════
    if(m_maxLossStreak > 0 && m_currentLossStreak >= m_maxLossStreak)
      {
+      // ✅ Ativando pausa - LOG_EVENT sem throttle (acontece 1x)
       if(m_logger != NULL)
         {
-         m_logger.LogWarning("═══════════════════════════════════════════════════════");
-         m_logger.LogWarning("🛑 SEQUÊNCIA DE PERDAS ATINGIDA!");
-         m_logger.LogWarning("   📉 Perdas consecutivas: " + IntegerToString(m_currentLossStreak));
-         m_logger.LogWarning("   🎯 Limite configurado: " + IntegerToString(m_maxLossStreak));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK", "🛑 SEQUÊNCIA DE PERDAS ATINGIDA!");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK", 
+            "   📉 Perdas consecutivas: " + IntegerToString(m_currentLossStreak));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK", 
+            "   🎯 Limite configurado: " + IntegerToString(m_maxLossStreak));
         }
       else
         {
-         Print("═══════════════════════════════════════════════════════");
          Print("🛑 SEQUÊNCIA DE PERDAS ATINGIDA!");
          Print("   📉 Perdas consecutivas: ", m_currentLossStreak);
          Print("   🎯 Limite configurado: ", m_maxLossStreak);
@@ -1821,43 +1823,44 @@ bool CBlockers::CheckStreakLimit()
 
          if(m_logger != NULL)
            {
-            m_logger.LogWarning("   ⏸️ EA PAUSADO por " + IntegerToString(m_lossPauseMinutes) + " minutos");
-            m_logger.LogWarning("   🔄 Retorno previsto: " + TimeToString(m_streakPauseUntil, TIME_DATE|TIME_MINUTES));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK", 
+               "   ⏱️ Tempo da pausa: " + IntegerToString(m_lossPauseMinutes) + " minutos");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK", 
+               "   🔄 Retorno previsto: " + TimeToString(m_streakPauseUntil, TIME_DATE|TIME_MINUTES));
            }
          else
            {
-            Print("   ⏸️ EA PAUSADO por ", m_lossPauseMinutes, " minutos");
+            Print("   ⏱️ Tempo da pausa: ", m_lossPauseMinutes, " minutos");
             Print("   🔄 Retorno previsto: ", TimeToString(m_streakPauseUntil, TIME_DATE|TIME_MINUTES));
            }
         }
       else
         {
          if(m_logger != NULL)
-            m_logger.LogWarning("   🛑 EA PAUSADO até o FIM DO DIA");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK", "   🛑 EA PAUSADO até o FIM DO DIA");
          else
             Print("   🛑 EA PAUSADO até o FIM DO DIA");
         }
 
-      if(m_logger != NULL)
-         m_logger.LogWarning("═══════════════════════════════════════════════════════");
-      else
-         Print("═══════════════════════════════════════════════════════");
-
       return false;
      }
 
+// ═══════════════════════════════════════════════════════════════
+// VERIFICAR SE ATINGIU WIN STREAK
+// ═══════════════════════════════════════════════════════════════
    if(m_maxWinStreak > 0 && m_currentWinStreak >= m_maxWinStreak)
      {
+      // ✅ Ativando pausa - LOG_EVENT sem throttle (acontece 1x)
       if(m_logger != NULL)
         {
-         m_logger.LogWarning("═══════════════════════════════════════════════════════");
-         m_logger.LogWarning("🎯 SEQUÊNCIA DE GANHOS ATINGIDA!");
-         m_logger.LogWarning("   📈 Ganhos consecutivos: " + IntegerToString(m_currentWinStreak));
-         m_logger.LogWarning("   🎯 Limite configurado: " + IntegerToString(m_maxWinStreak));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK", "🎯 SEQUÊNCIA DE GANHOS ATINGIDA!");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK", 
+            "   📈 Ganhos consecutivos: " + IntegerToString(m_currentWinStreak));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK", 
+            "   🎯 Limite configurado: " + IntegerToString(m_maxWinStreak));
         }
       else
         {
-         Print("═══════════════════════════════════════════════════════");
          Print("🎯 SEQUÊNCIA DE GANHOS ATINGIDA!");
          Print("   📈 Ganhos consecutivos: ", m_currentWinStreak);
          Print("   🎯 Limite configurado: ", m_maxWinStreak);
@@ -1871,12 +1874,14 @@ bool CBlockers::CheckStreakLimit()
 
          if(m_logger != NULL)
            {
-            m_logger.LogWarning("   ⏸️ EA PAUSADO por " + IntegerToString(m_winPauseMinutes) + " minutos");
-            m_logger.LogWarning("   🔄 Retorno previsto: " + TimeToString(m_streakPauseUntil, TIME_DATE|TIME_MINUTES));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK", 
+               "   ⏱️ Tempo da pausa: " + IntegerToString(m_winPauseMinutes) + " minutos");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK", 
+               "   🔄 Retorno previsto: " + TimeToString(m_streakPauseUntil, TIME_DATE|TIME_MINUTES));
            }
          else
            {
-            Print("   ⏸️ EA PAUSADO por ", m_winPauseMinutes, " minutos");
+            Print("   ⏱️ Tempo da pausa: ", m_winPauseMinutes, " minutos");
             Print("   🔄 Retorno previsto: ", TimeToString(m_streakPauseUntil, TIME_DATE|TIME_MINUTES));
            }
         }
@@ -1884,8 +1889,8 @@ bool CBlockers::CheckStreakLimit()
         {
          if(m_logger != NULL)
            {
-            m_logger.LogWarning("   🎯 META DE SEQUÊNCIA ATINGIDA!");
-            m_logger.LogWarning("   🛑 EA PAUSADO até o FIM DO DIA");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK", "   🎯 META DE SEQUÊNCIA ATINGIDA!");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK", "   🛑 EA PAUSADO até o FIM DO DIA");
            }
          else
            {
@@ -1893,11 +1898,6 @@ bool CBlockers::CheckStreakLimit()
             Print("   🛑 EA PAUSADO até o FIM DO DIA");
            }
         }
-
-      if(m_logger != NULL)
-         m_logger.LogWarning("═══════════════════════════════════════════════════════");
-      else
-         Print("═══════════════════════════════════════════════════════");
 
       return false;
      }
@@ -1939,19 +1939,25 @@ bool CBlockers::CheckDrawdownLimit()
 
       if(m_logger != NULL)
         {
-         m_logger.LogWarning("═══════════════════════════════════════════════════════");
-         m_logger.LogWarning("🛑 LIMITE DE DRAWDOWN ATINGIDO!");
-         m_logger.LogWarning("   📊 Pico do dia: $" + DoubleToString(m_dailyPeakProfit, 2));
-         m_logger.LogWarning("   💰 Lucro atual: $" + DoubleToString(currentProfit, 2));
-         m_logger.LogWarning("   📉 Drawdown: $" + DoubleToString(currentDD, 2));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "═══════════════════════════════════════════════════════");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "🛑 LIMITE DE DRAWDOWN ATINGIDO!");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", 
+            "   📊 Pico do dia: $" + DoubleToString(m_dailyPeakProfit, 2));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", 
+            "   💰 Lucro atual: $" + DoubleToString(currentProfit, 2));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", 
+            "   📉 Drawdown: $" + DoubleToString(currentDD, 2));
 
          if(m_drawdownType == DD_FINANCIAL)
-            m_logger.LogWarning("   🛑 Limite: $" + DoubleToString(ddLimit, 2) + " (Financeiro)");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", 
+               "   🛑 Limite: $" + DoubleToString(ddLimit, 2) + " (Financeiro)");
          else
-            m_logger.LogWarning("   🛑 Limite: " + DoubleToString(m_drawdownValue, 1) + "% = $" + DoubleToString(ddLimit, 2));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", 
+               "   🛑 Limite: " + DoubleToString(m_drawdownValue, 1) + "% = $" + DoubleToString(ddLimit, 2));
 
-         m_logger.LogWarning("   🛡️ LUCRO PROTEGIDO! EA pausado até o fim do dia");
-         m_logger.LogWarning("═══════════════════════════════════════════════════════");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", 
+            "   🛡️ LUCRO PROTEGIDO! EA pausado até o fim do dia");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "═══════════════════════════════════════════════════════");
         }
       else
         {
@@ -2050,10 +2056,10 @@ void CBlockers::PrintStatus()
   {
    if(m_logger != NULL)
      {
-      m_logger.LogInfo("╔══════════════════════════════════════════════════════╗");
-      m_logger.LogInfo("║            BLOCKERS - STATUS ATUAL                   ║");
-      m_logger.LogInfo("╚══════════════════════════════════════════════════════╝");
-      m_logger.LogInfo("");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", "╔══════════════════════════════════════════════════════╗");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", "║            BLOCKERS - STATUS ATUAL                   ║");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", "╚══════════════════════════════════════════════════════╝");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", "");
      }
    else
      {
@@ -2067,20 +2073,20 @@ void CBlockers::PrintStatus()
      {
       string msg = "🚫 BLOQUEADO: " + GetBlockerReasonText(m_currentBlocker);
       if(m_logger != NULL)
-         m_logger.LogWarning(msg);
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", msg);
       else
          Print(msg);
      }
    else
      {
       if(m_logger != NULL)
-         m_logger.LogInfo("✅ LIBERADO PARA OPERAR");
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", "✅ LIBERADO PARA OPERAR");
       else
          Print("✅ LIBERADO PARA OPERAR");
      }
 
    if(m_logger != NULL)
-      m_logger.LogInfo("");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", "");
    else
       Print("");
 
@@ -2092,18 +2098,17 @@ void CBlockers::PrintStatus()
 
       if(m_logger != NULL)
         {
-         m_logger.LogInfo("⏰ Horário:");
-         m_logger.LogInfo("   Atual: " + StringFormat("%02d:%02d", t.hour, t.min));
-         m_logger.LogInfo("   Permitido: " + StringFormat("%02d:%02d - %02d:%02d",
-                          m_startHour, m_startMinute, m_endHour, m_endMinute));
-         m_logger.LogInfo("   Status: " + (CheckTimeFilter() ? "✅ OK" : "❌ BLOQUEADO"));
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", "⏰ Horário:");
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", "   Atual: " + StringFormat("%02d:%02d", t.hour, t.min));
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", 
+            "   Permitido: " + StringFormat("%02d:%02d - %02d:%02d", m_startHour, m_startMinute, m_endHour, m_endMinute));
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", "   Status: " + (CheckTimeFilter() ? "✅ OK" : "❌ BLOQUEADO"));
         }
       else
         {
          Print("⏰ Horário:");
          Print("   Atual: ", StringFormat("%02d:%02d", t.hour, t.min));
-         Print("   Permitido: ", StringFormat("%02d:%02d - %02d:%02d",
-                                              m_startHour, m_startMinute, m_endHour, m_endMinute));
+         Print("   Permitido: ", StringFormat("%02d:%02d - %02d:%02d", m_startHour, m_startMinute, m_endHour, m_endMinute));
          Print("   Status: ", CheckTimeFilter() ? "✅ OK" : "❌ BLOQUEADO");
         }
      }
@@ -2112,17 +2117,20 @@ void CBlockers::PrintStatus()
      {
       if(m_logger != NULL)
         {
-         m_logger.LogInfo("");
-         m_logger.LogInfo("🔴 Streaks:");
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", "");
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", "🔴 Streaks:");
          if(m_maxLossStreak > 0)
-            m_logger.LogInfo("   Loss: " + IntegerToString(m_currentLossStreak) + " de " + IntegerToString(m_maxLossStreak));
+            m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", 
+               "   Loss: " + IntegerToString(m_currentLossStreak) + " de " + IntegerToString(m_maxLossStreak));
          if(m_maxWinStreak > 0)
-            m_logger.LogInfo("   Win: " + IntegerToString(m_currentWinStreak) + " de " + IntegerToString(m_maxWinStreak));
+            m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", 
+               "   Win: " + IntegerToString(m_currentWinStreak) + " de " + IntegerToString(m_maxWinStreak));
 
          if(m_streakPauseActive)
            {
             int remaining = (int)((m_streakPauseUntil - TimeCurrent()) / 60);
-            m_logger.LogWarning("   ⏸️ PAUSADO: " + m_streakPauseReason + " (" + IntegerToString(remaining) + " min)");
+            m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", 
+               "   ⏸️ PAUSADO: " + m_streakPauseReason + " (" + IntegerToString(remaining) + " min)");
            }
         }
       else
@@ -2149,12 +2157,13 @@ void CBlockers::PrintStatus()
 
       if(m_logger != NULL)
         {
-         m_logger.LogInfo("");
-         m_logger.LogInfo("📉 Drawdown (proteção ativa):");
-         m_logger.LogInfo("   Pico: $" + DoubleToString(m_dailyPeakProfit, 2));
-         m_logger.LogInfo("   Atual: $" + DoubleToString(currentProfit, 2));
-         m_logger.LogInfo("   DD: $" + DoubleToString(currentDD, 2));
-         m_logger.LogInfo("   Status: " + (m_drawdownLimitReached ? "❌ LIMITE ATINGIDO" : "✅ OK"));
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", "");
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", "📉 Drawdown (proteção ativa):");
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", "   Pico: $" + DoubleToString(m_dailyPeakProfit, 2));
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", "   Atual: $" + DoubleToString(currentProfit, 2));
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", "   DD: $" + DoubleToString(currentDD, 2));
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", 
+            "   Status: " + (m_drawdownLimitReached ? "❌ LIMITE ATINGIDO" : "✅ OK"));
         }
       else
         {
@@ -2169,8 +2178,8 @@ void CBlockers::PrintStatus()
 
    if(m_logger != NULL)
      {
-      m_logger.LogInfo("");
-      m_logger.LogInfo("═══════════════════════════════════════════════════════");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", "");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", "═══════════════════════════════════════════════════════");
      }
    else
      {
@@ -2186,10 +2195,10 @@ void CBlockers::PrintConfiguration()
   {
    if(m_logger != NULL)
      {
-      m_logger.LogInfo("╔══════════════════════════════════════════════════════╗");
-      m_logger.LogInfo("║         BLOCKERS - CONFIGURAÇÃO COMPLETA            ║");
-      m_logger.LogInfo("╚══════════════════════════════════════════════════════╝");
-      m_logger.LogInfo("");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "╔══════════════════════════════════════════════════════╗");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "║         BLOCKERS - CONFIGURAÇÃO COMPLETA            ║");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "╚══════════════════════════════════════════════════════╝");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "");
      }
    else
      {
@@ -2200,18 +2209,17 @@ void CBlockers::PrintConfiguration()
      }
 
    if(m_logger != NULL)
-      m_logger.LogInfo("⏰ Horário:");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "⏰ Horário:");
    else
       Print("⏰ Horário:");
 
    if(m_enableTimeFilter)
      {
-      string msg = "   " + StringFormat("%02d:%02d - %02d:%02d",
-                                        m_startHour, m_startMinute, m_endHour, m_endMinute);
+      string msg = "   " + StringFormat("%02d:%02d - %02d:%02d", m_startHour, m_startMinute, m_endHour, m_endMinute);
       if(m_logger != NULL)
         {
-         m_logger.LogInfo(msg);
-         m_logger.LogInfo("   Fecha ao fim: " + (m_closeOnEndTime ? "SIM" : "NÃO"));
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", msg);
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "   Fecha ao fim: " + (m_closeOnEndTime ? "SIM" : "NÃO"));
         }
       else
         {
@@ -2222,15 +2230,15 @@ void CBlockers::PrintConfiguration()
    else
      {
       if(m_logger != NULL)
-         m_logger.LogInfo("   DESATIVADO");
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "   DESATIVADO");
       else
          Print("   DESATIVADO");
      }
 
    if(m_logger != NULL)
      {
-      m_logger.LogInfo("");
-      m_logger.LogInfo("═══════════════════════════════════════════════════════");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "═══════════════════════════════════════════════════════");
      }
    else
      {
