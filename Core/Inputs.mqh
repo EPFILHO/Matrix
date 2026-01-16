@@ -2,11 +2,11 @@
 //|                                                       Inputs.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                   Sistema de Inputs Centralizados - EPBot Matrix |
-//|                       Versão 1.01 - Partes 014/a/b/c - Perplexity|
+//|                                   Versão 1.02 - Claude Parte 016 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.01"
+#property version   "1.02"
 
 //+------------------------------------------------------------------+
 //| INCLUDES NECESSÁRIOS PARA ENUMS                                  |
@@ -30,7 +30,8 @@ input string inp_TradeComment = "EPBot Matrix";     // Comentário das Ordens
 //| SEÇÃO 001 - LOGGER                                               |
 //+------------------------------------------------------------------+
 input group "═══════════════ 📊 LOGGER ═══════════════"
-input ENUM_LOG_LEVEL inp_LoggerMode = LOG_COMPLETE;  // Modo de Logging
+input bool inp_ShowDebugLogs = false;     // Mostrar logs DEBUG?
+input int  inp_DebugCooldownSec = 5;      // Cooldown para logs DEBUG (segundos)
 
 //+------------------------------------------------------------------+
 //| SEÇÃO 002 - BLOCKERS                                             |
