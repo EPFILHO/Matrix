@@ -2,10 +2,10 @@
 //|                                                  RiskManager.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                       Sistema de Cálculo de Risco - EPBot Matrix |
-//|                                                      Versão 3.02 |
+//|                                   Versão 3.10 - Claude Parte 016 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "3.02" 
+#property version   "3.10" 
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
@@ -31,6 +31,11 @@
 // NOVIDADES v3.02:
 // + REMOVIDO: inp_UseTrailing e inp_UseBreakeven (redundância)
 // + SIMPLIFICADO: Trailing/BE ativados via enum (NEVER = desligado)
+//
+// NOVIDADES v3.10:
+// + Migração para Logger v3.00 (5 níveis + throttle inteligente)
+// + Todas as mensagens classificadas (ERROR/EVENT/DEBUG)
+// + PrintConfiguration() agora usa LOG_DEBUG
 // ═══════════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
@@ -543,7 +548,7 @@ CRiskManager::~CRiskManager()
   }
 
 //+------------------------------------------------------------------+
-//| Inicialização (v3.02 - SEM useTrailing e useBreakeven)           |
+//| Inicialização (v3.10 - Logging refatorado)                       |
 //+------------------------------------------------------------------+
 bool CRiskManager::Init(
    CLogger* logger,
@@ -661,7 +666,9 @@ bool CRiskManager::Init(
    m_symbol = symbol;
    m_atrPeriod = atrPeriod;
    
-   // Validar Partial TP
+   // ═══════════════════════════════════════════════════════════════
+   // VALIDAR PARTIAL TP
+   // ═══════════════════════════════════════════════════════════════
    if(m_usePartialTP)
      {
       double totalPercent = 0;
@@ -670,30 +677,38 @@ bool CRiskManager::Init(
       
       if(totalPercent >= 100.0)
         {
-         string msg = "RiskManager: Soma dos % de TP parcial >= 100%!";
          if(m_logger != NULL)
-            m_logger.LogError(msg);
+           {
+            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Soma dos % de TP parcial >= 100%!");
+            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT",
+               StringFormat("   TP1: %.1f%% + TP2: %.1f%% = %.1f%%", 
+                           m_tp1_percent, m_tp2_percent, totalPercent));
+           }
          else
-            Print("❌ ", msg);
-            
-         string detailMsg = StringFormat("   TP1: %.1f%% + TP2: %.1f%% = %.1f%%", 
-                                        m_tp1_percent, m_tp2_percent, totalPercent);
-         if(m_logger != NULL)
-            m_logger.LogError(detailMsg);
-         else
-            Print(detailMsg);
+           {
+            Print("❌ Soma dos % de TP parcial >= 100%!");
+            Print(StringFormat("   TP1: %.1f%% + TP2: %.1f%% = %.1f%%", 
+                              m_tp1_percent, m_tp2_percent, totalPercent));
+           }
          return false;
         }
       
-      string msg = StringFormat("✅ Partial TP validado: %.1f%% fechado em parciais, %.1f%% para trailing",
-                               totalPercent, 100.0 - totalPercent);
       if(m_logger != NULL)
-         m_logger.LogInfo(msg);
+        {
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+            StringFormat("✅ Partial TP validado: %.1f%% fechado em parciais, %.1f%% para trailing",
+                        totalPercent, 100.0 - totalPercent));
+        }
       else
-         Print(msg);
+        {
+         Print(StringFormat("✅ Partial TP validado: %.1f%% fechado em parciais, %.1f%% para trailing",
+                           totalPercent, 100.0 - totalPercent));
+        }
      }
    
-   // Criar handle ATR se necessário
+   // ═══════════════════════════════════════════════════════════════
+   // CRIAR HANDLE ATR SE NECESSÁRIO
+   // ═══════════════════════════════════════════════════════════════
    if(m_slType == SL_ATR || m_tpType == TP_ATR || 
       m_trailingType == TRAILING_ATR || m_breakevenType == BE_ATR ||
       (m_usePartialTP && (m_tp1_type == TP_ATR || m_tp2_type == TP_ATR)))
@@ -702,11 +717,10 @@ bool CRiskManager::Init(
       
       if(m_handleATR == INVALID_HANDLE)
         {
-         string msg = "RiskManager: Falha ao criar handle ATR";
          if(m_logger != NULL)
-            m_logger.LogError(msg);
+            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar handle ATR");
          else
-            Print("❌ ", msg);
+            Print("❌ Falha ao criar handle ATR");
          return false;
         }
      }
@@ -715,7 +729,7 @@ bool CRiskManager::Init(
   }
 
 // ═══════════════════════════════════════════════════════════════
-// HOT RELOAD - MÉTODOS SET (v3.01)
+// HOT RELOAD - MÉTODOS SET (v3.10 - Logging refatorado)
 // ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
@@ -727,7 +741,8 @@ void CRiskManager::SetLotSize(double newLotSize)
    m_lotSize = newLotSize;
    
    if(m_logger != NULL)
-      m_logger.LogInfo(StringFormat("🔄 Lote alterado: %.2f → %.2f", oldValue, newLotSize));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 Lote alterado: %.2f → %.2f", oldValue, newLotSize));
    else
       Print("🔄 Lote alterado: ", oldValue, " → ", newLotSize);
   }
@@ -741,7 +756,8 @@ void CRiskManager::SetFixedSL(int newSL)
    m_fixedSL = newSL;
    
    if(m_logger != NULL)
-      m_logger.LogInfo(StringFormat("🔄 SL fixo alterado: %d → %d pts", oldValue, newSL));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 SL fixo alterado: %d → %d pts", oldValue, newSL));
    else
       Print("🔄 SL fixo alterado: ", oldValue, " → ", newSL, " pts");
   }
@@ -755,7 +771,8 @@ void CRiskManager::SetFixedTP(int newTP)
    m_fixedTP = newTP;
    
    if(m_logger != NULL)
-      m_logger.LogInfo(StringFormat("🔄 TP fixo alterado: %d → %d pts", oldValue, newTP));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 TP fixo alterado: %d → %d pts", oldValue, newTP));
    else
       Print("🔄 TP fixo alterado: ", oldValue, " → ", newTP, " pts");
   }
@@ -769,7 +786,8 @@ void CRiskManager::SetSLATRMultiplier(double newMult)
    m_slATRMultiplier = newMult;
    
    if(m_logger != NULL)
-      m_logger.LogInfo(StringFormat("🔄 SL ATR mult alterado: %.1f → %.1f×", oldValue, newMult));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 SL ATR mult alterado: %.1f → %.1f×", oldValue, newMult));
    else
       Print("🔄 SL ATR mult alterado: ", oldValue, " → ", newMult, "×");
   }
@@ -783,7 +801,8 @@ void CRiskManager::SetTPATRMultiplier(double newMult)
    m_tpATRMultiplier = newMult;
    
    if(m_logger != NULL)
-      m_logger.LogInfo(StringFormat("🔄 TP ATR mult alterado: %.1f → %.1f×", oldValue, newMult));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 TP ATR mult alterado: %.1f → %.1f×", oldValue, newMult));
    else
       Print("🔄 TP ATR mult alterado: ", oldValue, " → ", newMult, "×");
   }
@@ -800,9 +819,11 @@ void CRiskManager::SetTrailingParams(int start, int step)
    
    if(m_logger != NULL)
      {
-      m_logger.LogInfo("🔄 Trailing fixo alterado:");
-      m_logger.LogInfo(StringFormat("   • Start: %d → %d pts", oldStart, start));
-      m_logger.LogInfo(StringFormat("   • Step: %d → %d pts", oldStep, step));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "🔄 Trailing fixo alterado:");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("   • Start: %d → %d pts", oldStart, start));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("   • Step: %d → %d pts", oldStep, step));
      }
    else
      {
@@ -824,9 +845,11 @@ void CRiskManager::SetTrailingATRParams(double start, double step)
    
    if(m_logger != NULL)
      {
-      m_logger.LogInfo("🔄 Trailing ATR alterado:");
-      m_logger.LogInfo(StringFormat("   • Start: %.1f → %.1f× ATR", oldStart, start));
-      m_logger.LogInfo(StringFormat("   • Step: %.1f → %.1f× ATR", oldStep, step));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "🔄 Trailing ATR alterado:");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("   • Start: %.1f → %.1f× ATR", oldStart, start));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("   • Step: %.1f → %.1f× ATR", oldStep, step));
      }
    else
      {
@@ -848,9 +871,11 @@ void CRiskManager::SetBreakevenParams(int activation, int offset)
    
    if(m_logger != NULL)
      {
-      m_logger.LogInfo("🔄 Breakeven fixo alterado:");
-      m_logger.LogInfo(StringFormat("   • Ativação: %d → %d pts", oldActivation, activation));
-      m_logger.LogInfo(StringFormat("   • Offset: %d → %d pts", oldOffset, offset));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "🔄 Breakeven fixo alterado:");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("   • Ativação: %d → %d pts", oldActivation, activation));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("   • Offset: %d → %d pts", oldOffset, offset));
      }
    else
      {
@@ -872,9 +897,11 @@ void CRiskManager::SetBreakevenATRParams(double activation, double offset)
    
    if(m_logger != NULL)
      {
-      m_logger.LogInfo("🔄 Breakeven ATR alterado:");
-      m_logger.LogInfo(StringFormat("   • Ativação: %.2f → %.2f× ATR", oldActivation, activation));
-      m_logger.LogInfo(StringFormat("   • Offset: %.2f → %.2f× ATR", oldOffset, offset));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "🔄 Breakeven ATR alterado:");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("   • Ativação: %.2f → %.2f× ATR", oldActivation, activation));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("   • Offset: %.2f → %.2f× ATR", oldOffset, offset));
      }
    else
      {
@@ -895,10 +922,13 @@ void CRiskManager::SetPartialTP1(bool enable, double percent, int distance)
    
    if(m_logger != NULL)
      {
-      m_logger.LogInfo("🔄 TP1 parcial alterado:");
-      m_logger.LogInfo("   • Ativo: " + (enable ? "SIM" : "NÃO"));
-      m_logger.LogInfo(StringFormat("   • Percentual: %.1f%%", percent));
-      m_logger.LogInfo(StringFormat("   • Distância: %d pts", distance));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "🔄 TP1 parcial alterado:");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "   • Ativo: " + (enable ? "SIM" : "NÃO"));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("   • Percentual: %.1f%%", percent));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("   • Distância: %d pts", distance));
      }
    else
      {
@@ -920,10 +950,13 @@ void CRiskManager::SetPartialTP2(bool enable, double percent, int distance)
    
    if(m_logger != NULL)
      {
-      m_logger.LogInfo("🔄 TP2 parcial alterado:");
-      m_logger.LogInfo("   • Ativo: " + (enable ? "SIM" : "NÃO"));
-      m_logger.LogInfo(StringFormat("   • Percentual: %.1f%%", percent));
-      m_logger.LogInfo(StringFormat("   • Distância: %d pts", distance));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "🔄 TP2 parcial alterado:");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "   • Ativo: " + (enable ? "SIM" : "NÃO"));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("   • Percentual: %.1f%%", percent));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("   • Distância: %d pts", distance));
      }
    else
      {
@@ -943,14 +976,14 @@ void CRiskManager::SetUsePartialTP(bool enable)
    m_usePartialTP = enable;
    
    if(m_logger != NULL)
-      m_logger.LogInfo("🔄 Partial TP: " + (enable ? "ATIVADO" : "DESATIVADO"));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 Partial TP: " + (enable ? "ATIVADO" : "DESATIVADO"));
    else
       Print("🔄 Partial TP: ", enable ? "ATIVADO" : "DESATIVADO");
   }
 
 // ═══════════════════════════════════════════════════════════════
-// MÉTODOS DE CÁLCULO - PERMANECEM IDÊNTICOS AO ORIGINAL v3.01
-// (Continua igual, mas agora ShouldActivate* não verifica m_useTrailing/m_useBreakeven)
+// MÉTODOS DE CÁLCULO - PERMANECEM IDÊNTICOS
 // ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
@@ -1063,7 +1096,7 @@ double CRiskManager::CalculateTPPrice(ENUM_ORDER_TYPE orderType, double entryPri
   }
 
 //+------------------------------------------------------------------+
-//| Validar SL/TP contra níveis mínimos do broker (v3.01)            |
+//| Validar SL/TP contra níveis mínimos do broker (v3.10)            |
 //+------------------------------------------------------------------+
 SValidateSLTPResult CRiskManager::ValidateSLTP(
    ENUM_POSITION_TYPE posType,
@@ -1103,13 +1136,14 @@ SValidateSLTPResult CRiskManager::ValidateSLTP(
             
             if(m_logger != NULL)
               {
-               m_logger.LogWarning("⚠️ SL ajustado para respeitar stop level mínimo");
-               m_logger.LogWarning(StringFormat("   Stop Level: %d pts (%.5f)", 
-                                               stopLevel, minDistance));
-               m_logger.LogWarning(StringFormat("   SL proposto: %.5f (%.5f pts)", 
-                                               proposedSL, slDistance));
-               m_logger.LogWarning(StringFormat("   SL validado: %.5f (%.5f pts)", 
-                                               result.validated_sl, minDistance));
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "VALIDATION",
+                  "⚠️ SL ajustado para respeitar stop level mínimo");
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "VALIDATION",
+                  StringFormat("   Stop Level: %d pts (%.5f)", stopLevel, minDistance));
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "VALIDATION",
+                  StringFormat("   SL proposto: %.5f (%.5f pts)", proposedSL, slDistance));
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "VALIDATION",
+                  StringFormat("   SL validado: %.5f (%.5f pts)", result.validated_sl, minDistance));
               }
             else
               {
@@ -1130,13 +1164,14 @@ SValidateSLTPResult CRiskManager::ValidateSLTP(
             
             if(m_logger != NULL)
               {
-               m_logger.LogWarning("⚠️ SL ajustado para respeitar stop level mínimo");
-               m_logger.LogWarning(StringFormat("   Stop Level: %d pts (%.5f)", 
-                                               stopLevel, minDistance));
-               m_logger.LogWarning(StringFormat("   SL proposto: %.5f (%.5f pts)", 
-                                               proposedSL, slDistance));
-               m_logger.LogWarning(StringFormat("   SL validado: %.5f (%.5f pts)", 
-                                               result.validated_sl, minDistance));
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "VALIDATION",
+                  "⚠️ SL ajustado para respeitar stop level mínimo");
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "VALIDATION",
+                  StringFormat("   Stop Level: %d pts (%.5f)", stopLevel, minDistance));
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "VALIDATION",
+                  StringFormat("   SL proposto: %.5f (%.5f pts)", proposedSL, slDistance));
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "VALIDATION",
+                  StringFormat("   SL validado: %.5f (%.5f pts)", result.validated_sl, minDistance));
               }
             else
               {
@@ -1166,13 +1201,14 @@ SValidateSLTPResult CRiskManager::ValidateSLTP(
             
             if(m_logger != NULL)
               {
-               m_logger.LogWarning("⚠️ TP ajustado para respeitar stop level mínimo");
-               m_logger.LogWarning(StringFormat("   Stop Level: %d pts (%.5f)", 
-                                               stopLevel, minDistance));
-               m_logger.LogWarning(StringFormat("   TP proposto: %.5f (%.5f pts)", 
-                                               proposedTP, tpDistance));
-               m_logger.LogWarning(StringFormat("   TP validado: %.5f (%.5f pts)", 
-                                               result.validated_tp, minDistance));
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "VALIDATION",
+                  "⚠️ TP ajustado para respeitar stop level mínimo");
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "VALIDATION",
+                  StringFormat("   Stop Level: %d pts (%.5f)", stopLevel, minDistance));
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "VALIDATION",
+                  StringFormat("   TP proposto: %.5f (%.5f pts)", proposedTP, tpDistance));
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "VALIDATION",
+                  StringFormat("   TP validado: %.5f (%.5f pts)", result.validated_tp, minDistance));
               }
             else
               {
@@ -1193,13 +1229,14 @@ SValidateSLTPResult CRiskManager::ValidateSLTP(
             
             if(m_logger != NULL)
               {
-               m_logger.LogWarning("⚠️ TP ajustado para respeitar stop level mínimo");
-               m_logger.LogWarning(StringFormat("   Stop Level: %d pts (%.5f)", 
-                                               stopLevel, minDistance));
-               m_logger.LogWarning(StringFormat("   TP proposto: %.5f (%.5f pts)", 
-                                               proposedTP, tpDistance));
-               m_logger.LogWarning(StringFormat("   TP validado: %.5f (%.5f pts)", 
-                                               result.validated_tp, minDistance));
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "VALIDATION",
+                  "⚠️ TP ajustado para respeitar stop level mínimo");
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "VALIDATION",
+                  StringFormat("   Stop Level: %d pts (%.5f)", stopLevel, minDistance));
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "VALIDATION",
+                  StringFormat("   TP proposto: %.5f (%.5f pts)", proposedTP, tpDistance));
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "VALIDATION",
+                  StringFormat("   TP validado: %.5f (%.5f pts)", result.validated_tp, minDistance));
               }
             else
               {
@@ -1620,7 +1657,7 @@ bool CRiskManager::CalculatePartialTPLevels(
   }
 
 //+------------------------------------------------------------------+
-//| Verifica se deve ativar Trailing Stop (v3.02)                    |
+//| Verifica se deve ativar Trailing Stop (v3.10)                    |
 //+------------------------------------------------------------------+
 bool CRiskManager::ShouldActivateTrailing(bool tp1Executed, bool tp2Executed)
   {
@@ -1644,7 +1681,7 @@ bool CRiskManager::ShouldActivateTrailing(bool tp1Executed, bool tp2Executed)
   }
 
 //+------------------------------------------------------------------+
-//| Verifica se deve ativar Breakeven (v3.02)                        |
+//| Verifica se deve ativar Breakeven (v3.10)                        |
 //+------------------------------------------------------------------+
 bool CRiskManager::ShouldActivateBreakeven(bool tp1Executed, bool tp2Executed)
   {
@@ -1668,47 +1705,53 @@ bool CRiskManager::ShouldActivateBreakeven(bool tp1Executed, bool tp2Executed)
   }
 
 //+------------------------------------------------------------------+
-//| Imprimir configuração completa                                   |
+//| Imprimir configuração completa (v3.10)                           |
 //+------------------------------------------------------------------+
 void CRiskManager::PrintConfiguration()
   {
    if(m_logger != NULL)
      {
-      m_logger.LogInfo("╔══════════════════════════════════════════════════════╗");
-      m_logger.LogInfo("║       RISKMANAGER v3.02 - CONFIGURAÇÃO ATUAL        ║");
-      m_logger.LogInfo("╚══════════════════════════════════════════════════════╝");
-      m_logger.LogInfo("");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "╔══════════════════════════════════════════════════════╗");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "║       RISKMANAGER v3.10 - CONFIGURAÇÃO ATUAL        ║");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "╚══════════════════════════════════════════════════════╝");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "");
       
-      m_logger.LogInfo("💰 LOTE:");
-      m_logger.LogInfo("   Tamanho: " + DoubleToString(m_lotSize, 2));
-      m_logger.LogInfo("");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "💰 LOTE:");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", 
+         "   Tamanho: " + DoubleToString(m_lotSize, 2));
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "");
       
-      m_logger.LogInfo("🛑 STOP LOSS:");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "🛑 STOP LOSS:");
       switch(m_slType)
         {
          case SL_FIXED:
-            m_logger.LogInfo("   Tipo: FIXO");
-            m_logger.LogInfo("   Distância: " + IntegerToString(m_fixedSL) + " pts");
+            m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "   Tipo: FIXO");
+            m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", 
+               "   Distância: " + IntegerToString(m_fixedSL) + " pts");
             break;
          case SL_RANGE:
-            m_logger.LogInfo("   Tipo: DINÂMICO RANGE");
-            m_logger.LogInfo("   Período: " + IntegerToString(m_rangePeriod) + " barras");
-            m_logger.LogInfo("   Multiplicador: " + DoubleToString(m_rangeMultiplier, 1) + "×");
+            m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "   Tipo: DINÂMICO RANGE");
+            m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", 
+               "   Período: " + IntegerToString(m_rangePeriod) + " barras");
+            m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", 
+               "   Multiplicador: " + DoubleToString(m_rangeMultiplier, 1) + "×");
             break;
          case SL_ATR:
-            m_logger.LogInfo("   Tipo: DINÂMICO ATR");
-            m_logger.LogInfo("   Multiplicador: " + DoubleToString(m_slATRMultiplier, 1) + "×");
+            m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "   Tipo: DINÂMICO ATR");
+            m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", 
+               "   Multiplicador: " + DoubleToString(m_slATRMultiplier, 1) + "×");
             break;
         }
-      m_logger.LogInfo("   Compensar Spread: " + (m_slCompensateSpread ? "SIM" : "NÃO"));
-      m_logger.LogInfo("");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", 
+         "   Compensar Spread: " + (m_slCompensateSpread ? "SIM" : "NÃO"));
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "");
       
-      m_logger.LogInfo("═══════════════════════════════════════════════════════");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "═══════════════════════════════════════════════════════");
      }
    else
      {
       Print("╔══════════════════════════════════════════════════════╗");
-      Print("║       RISKMANAGER v3.02 - CONFIGURAÇÃO ATUAL        ║");
+      Print("║       RISKMANAGER v3.10 - CONFIGURAÇÃO ATUAL        ║");
       Print("╚══════════════════════════════════════════════════════╝");
       Print("");
       
