@@ -2,7 +2,7 @@
 //|                                               SignalManager.mqh  |
 //|                                         Copyright 2025, EP Filho |
 //|                   Gerenciador de Sinais e Filtros - EPBot Matrix |
-//|                                                      Versão 2.02 |
+//|                                   Versão 2.10 - Claude Parte 016 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property version   "2.10"
@@ -14,6 +14,13 @@
 #include "../Core/Logger.mqh"
 #include "Base/StrategyBase.mqh"
 #include "Base/FilterBase.mqh"
+
+// ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.10:
+// + Migração para Logger v3.00 (5 níveis + throttle inteligente)
+// + Todas as mensagens classificadas (ERROR/EVENT/INFO)
+// + GetExitSignal() para saídas de posição
+// ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
 //| Enum para resolução de conflitos entre estratégias               |
@@ -120,7 +127,7 @@ public:
    ENUM_SIGNAL_TYPE  GetRawSignal();        // Sem filtros (para SAÍDAS)
 
    //+------------------------------------------------------------------+
-   //| Obter sinal de SAÍDA das strategies (v2.10 - NOVO!)              |
+   //| Obter sinal de SAÍDA das strategies (v2.10)                      |
    //+------------------------------------------------------------------+
    ENUM_SIGNAL_TYPE  GetExitSignal(ENUM_POSITION_TYPE currentPosition)
      {
@@ -140,7 +147,7 @@ public:
                string msg = "🔄 [Signal Manager] Exit signal de '" + m_lastSignalSource +
                             "': " + EnumToString(exitSignal);
                if(m_logger != NULL)
-                  m_logger.LogInfo(msg);
+                  m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SIGNAL", msg);
                else
                   Print(msg);
 
@@ -203,7 +210,7 @@ CSignalManager::~CSignalManager()
   }
 
 //+------------------------------------------------------------------+
-//| Hot Reload - Configurar modo de resolução de conflitos           |
+//| Hot Reload - Configurar modo de resolução de conflitos (v2.10)   |
 //+------------------------------------------------------------------+
 void CSignalManager::SetConflictResolution(ENUM_CONFLICT_RESOLUTION mode)
   {
@@ -216,13 +223,13 @@ void CSignalManager::SetConflictResolution(ENUM_CONFLICT_RESOLUTION mode)
    string msg = "🔄 [Signal Manager] Modo de conflito alterado: " + oldModeStr + " → " + newModeStr;
 
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
   }
 
 //+------------------------------------------------------------------+
-//| Hot Reload - Adicionar estratégia                                |
+//| Hot Reload - Adicionar estratégia (v2.10)                        |
 //+------------------------------------------------------------------+
 bool CSignalManager::AddStrategy(CStrategyBase* strategy)
   {
@@ -230,7 +237,7 @@ bool CSignalManager::AddStrategy(CStrategyBase* strategy)
      {
       string msg = "[Signal Manager] Estratégia nula";
       if(m_logger != NULL)
-         m_logger.LogError(msg);
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", msg);
       else
          Print("❌ ", msg);
       return false;
@@ -240,7 +247,7 @@ bool CSignalManager::AddStrategy(CStrategyBase* strategy)
      {
       string msg = "[Signal Manager] Estratégia '" + strategy.GetName() + "' já existe";
       if(m_logger != NULL)
-         m_logger.LogWarning(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
       else
          Print("⚠️ ", msg);
       return false;
@@ -254,7 +261,7 @@ bool CSignalManager::AddStrategy(CStrategyBase* strategy)
    string msg = "✅ [Signal Manager] Estratégia adicionada: '" + strategy.GetName() +
                 "' (Prioridade: " + IntegerToString(strategy.GetPriority()) + ")";
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
 
@@ -262,7 +269,7 @@ bool CSignalManager::AddStrategy(CStrategyBase* strategy)
   }
 
 //+------------------------------------------------------------------+
-//| Hot Reload - Remover estratégia                                  |
+//| Hot Reload - Remover estratégia (v2.10)                          |
 //+------------------------------------------------------------------+
 bool CSignalManager::RemoveStrategy(string strategyName)
   {
@@ -271,7 +278,7 @@ bool CSignalManager::RemoveStrategy(string strategyName)
      {
       string msg = "[Signal Manager] Estratégia '" + strategyName + "' não encontrada";
       if(m_logger != NULL)
-         m_logger.LogWarning(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
       else
          Print("⚠️ ", msg);
       return false;
@@ -287,7 +294,7 @@ bool CSignalManager::RemoveStrategy(string strategyName)
 
    string msg = "🗑️ [Signal Manager] Estratégia removida: '" + strategyName + "'";
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
 
@@ -295,7 +302,7 @@ bool CSignalManager::RemoveStrategy(string strategyName)
   }
 
 //+------------------------------------------------------------------+
-//| Hot Reload - Ativar estratégia                                   |
+//| Hot Reload - Ativar estratégia (v2.10)                           |
 //+------------------------------------------------------------------+
 bool CSignalManager::EnableStrategy(string strategyName)
   {
@@ -304,7 +311,7 @@ bool CSignalManager::EnableStrategy(string strategyName)
      {
       string msg = "[Signal Manager] Estratégia '" + strategyName + "' não encontrada";
       if(m_logger != NULL)
-         m_logger.LogWarning(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
       else
          Print("⚠️ ", msg);
       return false;
@@ -314,7 +321,7 @@ bool CSignalManager::EnableStrategy(string strategyName)
 
    string msg = "✅ [Signal Manager] Estratégia habilitada: '" + strategyName + "'";
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
 
@@ -322,7 +329,7 @@ bool CSignalManager::EnableStrategy(string strategyName)
   }
 
 //+------------------------------------------------------------------+
-//| Hot Reload - Desativar estratégia                                |
+//| Hot Reload - Desativar estratégia (v2.10)                        |
 //+------------------------------------------------------------------+
 bool CSignalManager::DisableStrategy(string strategyName)
   {
@@ -331,7 +338,7 @@ bool CSignalManager::DisableStrategy(string strategyName)
      {
       string msg = "[Signal Manager] Estratégia '" + strategyName + "' não encontrada";
       if(m_logger != NULL)
-         m_logger.LogWarning(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
       else
          Print("⚠️ ", msg);
       return false;
@@ -341,7 +348,7 @@ bool CSignalManager::DisableStrategy(string strategyName)
 
    string msg = "⏸️ [Signal Manager] Estratégia desabilitada: '" + strategyName + "'";
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
 
@@ -349,7 +356,7 @@ bool CSignalManager::DisableStrategy(string strategyName)
   }
 
 //+------------------------------------------------------------------+
-//| Hot Reload - Definir prioridade da estratégia                    |
+//| Hot Reload - Definir prioridade da estratégia (v2.10)            |
 //+------------------------------------------------------------------+
 bool CSignalManager::SetStrategyPriority(string strategyName, int priority)
   {
@@ -358,7 +365,7 @@ bool CSignalManager::SetStrategyPriority(string strategyName, int priority)
      {
       string msg = "[Signal Manager] Estratégia '" + strategyName + "' não encontrada";
       if(m_logger != NULL)
-         m_logger.LogWarning(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
       else
          Print("⚠️ ", msg);
       return false;
@@ -372,7 +379,7 @@ bool CSignalManager::SetStrategyPriority(string strategyName, int priority)
       string msg = "🔧 [Signal Manager] Prioridade alterada: '" + strategyName +
                    "' " + IntegerToString(oldPriority) + " → " + IntegerToString(priority);
       if(m_logger != NULL)
-         m_logger.LogInfo(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
       else
          Print(msg);
       return true;
@@ -382,7 +389,7 @@ bool CSignalManager::SetStrategyPriority(string strategyName, int priority)
   }
 
 //+------------------------------------------------------------------+
-//| Hot Reload - Adicionar filtro                                    |
+//| Hot Reload - Adicionar filtro (v2.10)                            |
 //+------------------------------------------------------------------+
 bool CSignalManager::AddFilter(CFilterBase* filter)
   {
@@ -390,7 +397,7 @@ bool CSignalManager::AddFilter(CFilterBase* filter)
      {
       string msg = "[Signal Manager] Filtro nulo";
       if(m_logger != NULL)
-         m_logger.LogError(msg);
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", msg);
       else
          Print("❌ ", msg);
       return false;
@@ -400,7 +407,7 @@ bool CSignalManager::AddFilter(CFilterBase* filter)
      {
       string msg = "[Signal Manager] Filtro '" + filter.GetName() + "' já existe";
       if(m_logger != NULL)
-         m_logger.LogWarning(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
       else
          Print("⚠️ ", msg);
       return false;
@@ -412,7 +419,7 @@ bool CSignalManager::AddFilter(CFilterBase* filter)
 
    string msg = "✅ [Signal Manager] Filtro adicionado: '" + filter.GetName() + "'";
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
 
@@ -420,7 +427,7 @@ bool CSignalManager::AddFilter(CFilterBase* filter)
   }
 
 //+------------------------------------------------------------------+
-//| Hot Reload - Remover filtro                                      |
+//| Hot Reload - Remover filtro (v2.10)                              |
 //+------------------------------------------------------------------+
 bool CSignalManager::RemoveFilter(string filterName)
   {
@@ -429,7 +436,7 @@ bool CSignalManager::RemoveFilter(string filterName)
      {
       string msg = "[Signal Manager] Filtro '" + filterName + "' não encontrado";
       if(m_logger != NULL)
-         m_logger.LogWarning(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
       else
          Print("⚠️ ", msg);
       return false;
@@ -445,7 +452,7 @@ bool CSignalManager::RemoveFilter(string filterName)
 
    string msg = "🗑️ [Signal Manager] Filtro removido: '" + filterName + "'";
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
 
@@ -453,7 +460,7 @@ bool CSignalManager::RemoveFilter(string filterName)
   }
 
 //+------------------------------------------------------------------+
-//| Hot Reload - Ativar filtro                                       |
+//| Hot Reload - Ativar filtro (v2.10)                               |
 //+------------------------------------------------------------------+
 bool CSignalManager::EnableFilter(string filterName)
   {
@@ -462,7 +469,7 @@ bool CSignalManager::EnableFilter(string filterName)
      {
       string msg = "[Signal Manager] Filtro '" + filterName + "' não encontrado";
       if(m_logger != NULL)
-         m_logger.LogWarning(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
       else
          Print("⚠️ ", msg);
       return false;
@@ -472,7 +479,7 @@ bool CSignalManager::EnableFilter(string filterName)
 
    string msg = "✅ [Signal Manager] Filtro habilitado: '" + filterName + "'";
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
 
@@ -480,7 +487,7 @@ bool CSignalManager::EnableFilter(string filterName)
   }
 
 //+------------------------------------------------------------------+
-//| Hot Reload - Desativar filtro                                    |
+//| Hot Reload - Desativar filtro (v2.10)                            |
 //+------------------------------------------------------------------+
 bool CSignalManager::DisableFilter(string filterName)
   {
@@ -489,7 +496,7 @@ bool CSignalManager::DisableFilter(string filterName)
      {
       string msg = "[Signal Manager] Filtro '" + filterName + "' não encontrado";
       if(m_logger != NULL)
-         m_logger.LogWarning(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
       else
          Print("⚠️ ", msg);
       return false;
@@ -499,7 +506,7 @@ bool CSignalManager::DisableFilter(string filterName)
 
    string msg = "⏸️ [Signal Manager] Filtro desabilitado: '" + filterName + "'";
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
       Print(msg);
 
@@ -507,7 +514,7 @@ bool CSignalManager::DisableFilter(string filterName)
   }
 
 //+------------------------------------------------------------------+
-//| Inicializar todas as estratégias e filtros                       |
+//| Inicializar todas as estratégias e filtros (v2.10)               |
 //+------------------------------------------------------------------+
 bool CSignalManager::Initialize(CLogger* logger)
   {
@@ -518,7 +525,7 @@ bool CSignalManager::Initialize(CLogger* logger)
 
    string msg = "🚀 [Signal Manager] Inicializando...";
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", msg);
    else
       Print(msg);
 
@@ -534,7 +541,7 @@ bool CSignalManager::Initialize(CLogger* logger)
             string errMsg = "[Signal Manager] Falha ao inicializar estratégia: '" +
                             m_strategies[i].strategy.GetName() + "'";
             if(m_logger != NULL)
-               m_logger.LogError(errMsg);
+               m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", errMsg);
             else
                Print("❌ ", errMsg);
             success = false;
@@ -552,7 +559,7 @@ bool CSignalManager::Initialize(CLogger* logger)
             string errMsg = "[Signal Manager] Falha ao inicializar filtro: '" +
                             m_filters[i].GetName() + "'";
             if(m_logger != NULL)
-               m_logger.LogError(errMsg);
+               m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", errMsg);
             else
                Print("❌ ", errMsg);
             success = false;
@@ -564,7 +571,7 @@ bool CSignalManager::Initialize(CLogger* logger)
      {
       string successMsg = "✅ [Signal Manager] Inicializado com sucesso";
       if(m_logger != NULL)
-         m_logger.LogInfo(successMsg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", successMsg);
       else
          Print(successMsg);
      }
@@ -573,7 +580,7 @@ bool CSignalManager::Initialize(CLogger* logger)
   }
 
 //+------------------------------------------------------------------+
-//| Desinicializar                                                   |
+//| Desinicializar (v2.10)                                           |
 //+------------------------------------------------------------------+
 void CSignalManager::Deinitialize()
   {
@@ -595,13 +602,13 @@ void CSignalManager::Deinitialize()
 
    string msg = "🔌 [Signal Manager] Desinicializado";
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT", msg);
    else
       Print(msg);
   }
 
 //+------------------------------------------------------------------+
-//| Limpar referências (chamado antes de deletar objetos externos)   |
+//| Limpar referências (v2.10)                                       |
 //+------------------------------------------------------------------+
 void CSignalManager::Clear()
   {
@@ -618,7 +625,7 @@ void CSignalManager::Clear()
 
    string msg = "🧹 [Signal Manager] Referências limpas";
    if(m_logger != NULL)
-      m_logger.LogInfo(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "CLEANUP", msg);
    else
       Print(msg);
   }
@@ -655,7 +662,7 @@ int CSignalManager::FindFilterIndex(string name)
   }
 
 //+------------------------------------------------------------------+
-//| Resolver conflitos entre sinais (usa PRIORIDADE)                 |
+//| Resolver conflitos entre sinais (v2.10)                          |
 //+------------------------------------------------------------------+
 ENUM_SIGNAL_TYPE CSignalManager::ResolveConflict(ENUM_SIGNAL_TYPE &signals[], int count)
   {
@@ -693,7 +700,7 @@ ENUM_SIGNAL_TYPE CSignalManager::ResolveConflict(ENUM_SIGNAL_TYPE &signals[], in
      {
       string msg = "🚫 [Signal Manager] Conflito detectado - operação cancelada";
       if(m_logger != NULL)
-         m_logger.LogWarning(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SIGNAL", msg);
       else
          Print(msg);
       return SIGNAL_NONE;
@@ -726,7 +733,7 @@ ENUM_SIGNAL_TYPE CSignalManager::ResolveConflict(ENUM_SIGNAL_TYPE &signals[], in
       string msg = "⚖️ [Signal Manager] Conflito detectado - vencedor por prioridade: '" +
                    winningStrategy + "' (" + IntegerToString(maxPriority) + ")";
       if(m_logger != NULL)
-         m_logger.LogWarning(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SIGNAL", msg);
       else
          Print(msg);
      }
@@ -832,47 +839,49 @@ ENUM_SIGNAL_TYPE CSignalManager::GetSignal()
   }
 
 //+------------------------------------------------------------------+
-//| Imprimir status do Signal Manager                                |
+//| Imprimir status do Signal Manager (v2.10)                        |
 //+------------------------------------------------------------------+
 void CSignalManager::PrintStatus()
   {
    if(m_logger != NULL)
      {
-      m_logger.LogInfo("═══════════════════════════════════════════════════════");
-      m_logger.LogInfo("📊 [Signal Manager v2.02] Status");
-      m_logger.LogInfo("═══════════════════════════════════════════════════════");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "📊 [Signal Manager v2.10] Status");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════");
 
-      m_logger.LogInfo("🎯 Estratégias (" + IntegerToString(m_strategyCount) + "):");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "🎯 Estratégias (" + IntegerToString(m_strategyCount) + "):");
       for(int i = 0; i < m_strategyCount; i++)
         {
          if(m_strategies[i].strategy != NULL)
            {
             string status = m_strategies[i].enabled ? "✅" : "⏸️";
             int priority = m_strategies[i].strategy.GetPriority();
-            m_logger.LogInfo("  " + IntegerToString(i+1) + ". " + status + " " + m_strategies[i].strategy.GetName() +
-                             " (Prioridade: " + IntegerToString(priority) + ")");
+            m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO",
+                         "  " + IntegerToString(i+1) + ". " + status + " " + m_strategies[i].strategy.GetName() +
+                         " (Prioridade: " + IntegerToString(priority) + ")");
            }
         }
 
-      m_logger.LogInfo("🔍 Filtros (" + IntegerToString(m_filterCount) + "):");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "🔍 Filtros (" + IntegerToString(m_filterCount) + "):");
       for(int i = 0; i < m_filterCount; i++)
         {
          if(m_filters[i] != NULL)
            {
             string status = m_filters[i].IsEnabled() ? "✅" : "⏸️";
-            m_logger.LogInfo("  " + IntegerToString(i+1) + ". " + status + " " + m_filters[i].GetName());
+            m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO",
+                         "  " + IntegerToString(i+1) + ". " + status + " " + m_filters[i].GetName());
            }
         }
 
       string conflictMode = (m_conflictMode == CONFLICT_PRIORITY) ? "Prioridade (maior número ganha)" : "Cancelar conflitos";
-      m_logger.LogInfo("⚙️ Resolução de conflitos: " + conflictMode);
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "⚙️ Resolução de conflitos: " + conflictMode);
 
-      m_logger.LogInfo("═══════════════════════════════════════════════════════");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════");
      }
    else
      {
       Print("═══════════════════════════════════════════════════════");
-      Print("📊 [Signal Manager v2.02] Status");
+      Print("📊 [Signal Manager v2.10] Status");
       Print("═══════════════════════════════════════════════════════");
 
       Print("🎯 Estratégias (", m_strategyCount, "):");
@@ -903,5 +912,4 @@ void CSignalManager::PrintStatus()
       Print("═══════════════════════════════════════════════════════");
      }
   }
-//+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
