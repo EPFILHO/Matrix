@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
 //|                                                 TradeManager.mqh |
 //|                                         Copyright 2025, EP Filho |
-//|              Gerenciamento de Posições Individuais - EPBot Matrix|
-//|                                  Versão 1.02 - Claude Parte 015a |
+//|             Gerenciamento de Posições Individuais - EPBot Matrix |
+//|                                   Versão 1.10 - Claude Parte 016 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "1.02"
+#property version   "1.10"
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
@@ -22,6 +22,11 @@
 // - Hot Reload completo (Input + Working variables)
 // - Integração total com Logger e RiskManager
 // - ReSync
+//
+// NOVIDADES v1.10:
+// + Migração para Logger v3.00 (5 níveis + throttle inteligente)
+// + Todas as mensagens classificadas (ERROR/EVENT/DEBUG)
+// + PrintAllPositions() agora usa LOG_DEBUG
 //
 // IMPORTANTE MQL5: Usa ÍNDICES ao invés de ponteiros!
 // MQL5 não permite ponteiros para structs simples
@@ -135,7 +140,7 @@ CTradeManager::~CTradeManager()
   }
 
 //+------------------------------------------------------------------+
-//| Inicialização                                                     |
+//| Inicialização (v1.10 - Logging refatorado)                       |
 //+------------------------------------------------------------------+
 bool CTradeManager::Init(CLogger* logger, CRiskManager* riskManager, string symbol, int magicNumber, int slippage)
   {
@@ -150,17 +155,17 @@ bool CTradeManager::Init(CLogger* logger, CRiskManager* riskManager, string symb
 
    if(m_logger != NULL)
      {
-      m_logger.LogInfo("✅ TradeManager inicializado");
-      m_logger.LogInfo("   Símbolo: " + m_symbol);
-      m_logger.LogInfo("   Magic: " + IntegerToString(m_magicNumber));
-      m_logger.LogInfo("   Slippage: " + IntegerToString(m_slippage) + " pts");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "✅ TradeManager inicializado");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Símbolo: " + m_symbol);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Magic: " + IntegerToString(m_magicNumber));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Slippage: " + IntegerToString(m_slippage) + " pts");
      }
 
    return true;
   }
 
 //+------------------------------------------------------------------+
-//| Ressincronizar posições existentes (chamado no OnInit)           |
+//| Ressincronizar posições existentes (v1.10)                       |
 //+------------------------------------------------------------------+
 int CTradeManager::ResyncExistingPositions()
   {
@@ -195,21 +200,23 @@ int CTradeManager::ResyncExistingPositions()
       synced++;
 
       if(m_logger != NULL)
-         m_logger.LogInfo("🔄 Posição ressincronizada: #" + IntegerToString(ticket));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "RESYNC", 
+            "🔄 Posição ressincronizada: #" + IntegerToString(ticket));
      }
 
    return synced;
   }
 
 //+------------------------------------------------------------------+
-//| Registrar posição                                                |
+//| Registrar posição (v1.10)                                        |
 //+------------------------------------------------------------------+
 bool CTradeManager::RegisterPosition(ulong ticket, ENUM_POSITION_TYPE posType, double openPrice, double openLot, bool usePartialTP, SPartialTPLevel &tpLevels[])
   {
    if(GetPositionIndex(ticket) >= 0)
      {
       if(m_logger != NULL)
-         m_logger.LogWarning("⚠️ Posição #" + IntegerToString(ticket) + " já registrada!");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "WARNING", 
+            "⚠️ Posição #" + IntegerToString(ticket) + " já registrada!");
       return false;
      }
 
@@ -253,19 +260,21 @@ bool CTradeManager::RegisterPosition(ulong ticket, ENUM_POSITION_TYPE posType, d
 
    if(m_logger != NULL)
      {
-      m_logger.LogInfo("📊 Posição registrada no TradeManager:");
-      m_logger.LogInfo("   Ticket: #" + IntegerToString(ticket));
-      m_logger.LogInfo("   Tipo: " + EnumToString(posType));
-      m_logger.LogInfo("   Preço: " + DoubleToString(openPrice, _Digits));
-      m_logger.LogInfo("   Lote: " + DoubleToString(openLot, 2));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "📊 Posição registrada no TradeManager:");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Ticket: #" + IntegerToString(ticket));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Tipo: " + EnumToString(posType));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Preço: " + DoubleToString(openPrice, _Digits));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Lote: " + DoubleToString(openLot, 2));
 
       if(usePartialTP)
         {
-         m_logger.LogInfo("   🎯 Partial TP ATIVO:");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   🎯 Partial TP ATIVO:");
          if(newPos.tp1_enabled)
-            m_logger.LogInfo("      TP1: " + DoubleToString(newPos.tp1_lot, 2) + " @ " + DoubleToString(newPos.tp1_price, _Digits));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+               "      TP1: " + DoubleToString(newPos.tp1_lot, 2) + " @ " + DoubleToString(newPos.tp1_price, _Digits));
          if(newPos.tp2_enabled)
-            m_logger.LogInfo("      TP2: " + DoubleToString(newPos.tp2_lot, 2) + " @ " + DoubleToString(newPos.tp2_price, _Digits));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+               "      TP2: " + DoubleToString(newPos.tp2_lot, 2) + " @ " + DoubleToString(newPos.tp2_price, _Digits));
         }
      }
 
@@ -273,7 +282,7 @@ bool CTradeManager::RegisterPosition(ulong ticket, ENUM_POSITION_TYPE posType, d
   }
 
 //+------------------------------------------------------------------+
-//| Remover posição                                                  |
+//| Remover posição (v1.10)                                          |
 //+------------------------------------------------------------------+
 bool CTradeManager::UnregisterPosition(ulong ticket)
   {
@@ -281,7 +290,8 @@ bool CTradeManager::UnregisterPosition(ulong ticket)
    if(index < 0)
      {
       if(m_logger != NULL)
-         m_logger.LogWarning("⚠️ Tentativa de remover posição não encontrada: #" + IntegerToString(ticket));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "WARNING", 
+            "⚠️ Tentativa de remover posição não encontrada: #" + IntegerToString(ticket));
       return false;
      }
 
@@ -291,13 +301,14 @@ bool CTradeManager::UnregisterPosition(ulong ticket)
    ArrayResize(m_positions, size - 1);
 
    if(m_logger != NULL)
-      m_logger.LogInfo("🗑️ Posição #" + IntegerToString(ticket) + " removida do TradeManager");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+         "🗑️ Posição #" + IntegerToString(ticket) + " removida do TradeManager");
 
    return true;
   }
 
 //+------------------------------------------------------------------+
-//| Fechar posição (total ou parcial) - v1.01 NEW                    |
+//| Fechar posição (total ou parcial) - v1.10                        |
 //+------------------------------------------------------------------+
 bool CTradeManager::ClosePosition(ulong ticket, double lotToClose, string comment)
   {
@@ -325,7 +336,7 @@ bool CTradeManager::IsBreakevenActivated(ulong ticket)
   }
 
 //+------------------------------------------------------------------+
-//| Marcar Breakeven                                                 |
+//| Marcar Breakeven (v1.10)                                         |
 //+------------------------------------------------------------------+
 void CTradeManager::SetBreakevenActivated(ulong ticket, bool state)
   {
@@ -339,9 +350,11 @@ void CTradeManager::SetBreakevenActivated(ulong ticket, bool state)
    if(m_logger != NULL && oldState != state)
      {
       if(state)
-         m_logger.LogInfo("🔒 Breakeven ativado para posição #" + IntegerToString(ticket));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+            "🔒 Breakeven ativado para posição #" + IntegerToString(ticket));
       else
-         m_logger.LogInfo("🔓 Breakeven desativado para posição #" + IntegerToString(ticket));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+            "🔓 Breakeven desativado para posição #" + IntegerToString(ticket));
      }
   }
 
@@ -355,7 +368,7 @@ bool CTradeManager::IsTrailingActive(ulong ticket)
   }
 
 //+------------------------------------------------------------------+
-//| Marcar Trailing                                                  |
+//| Marcar Trailing (v1.10)                                          |
 //+------------------------------------------------------------------+
 void CTradeManager::SetTrailingActive(ulong ticket, bool state)
   {
@@ -369,9 +382,11 @@ void CTradeManager::SetTrailingActive(ulong ticket, bool state)
    if(m_logger != NULL && oldState != state)
      {
       if(state)
-         m_logger.LogInfo("📈 Trailing ativado para posição #" + IntegerToString(ticket));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+            "📈 Trailing ativado para posição #" + IntegerToString(ticket));
       else
-         m_logger.LogInfo("📉 Trailing desativado para posição #" + IntegerToString(ticket));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+            "📉 Trailing desativado para posição #" + IntegerToString(ticket));
      }
   }
 
@@ -385,7 +400,7 @@ bool CTradeManager::IsTP1Executed(ulong ticket)
   }
 
 //+------------------------------------------------------------------+
-//| Marcar TP1                                                       |
+//| Marcar TP1 (v1.10)                                               |
 //+------------------------------------------------------------------+
 void CTradeManager::SetTP1Executed(ulong ticket, bool state)
   {
@@ -398,9 +413,12 @@ void CTradeManager::SetTP1Executed(ulong ticket, bool state)
 
    if(m_logger != NULL && oldState != state && state)
      {
-      m_logger.LogInfo("🎯 TP1 executado para posição #" + IntegerToString(ticket));
-      m_logger.LogInfo("   Lote fechado: " + DoubleToString(m_positions[index].tp1_lot, 2));
-      m_logger.LogInfo("   Preço: " + DoubleToString(m_positions[index].tp1_price, _Digits));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+         "🎯 TP1 executado para posição #" + IntegerToString(ticket));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+         "   Lote fechado: " + DoubleToString(m_positions[index].tp1_lot, 2));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+         "   Preço: " + DoubleToString(m_positions[index].tp1_price, _Digits));
      }
   }
 
@@ -414,7 +432,7 @@ bool CTradeManager::IsTP2Executed(ulong ticket)
   }
 
 //+------------------------------------------------------------------+
-//| Marcar TP2                                                       |
+//| Marcar TP2 (v1.10)                                               |
 //+------------------------------------------------------------------+
 void CTradeManager::SetTP2Executed(ulong ticket, bool state)
   {
@@ -427,14 +445,17 @@ void CTradeManager::SetTP2Executed(ulong ticket, bool state)
 
    if(m_logger != NULL && oldState != state && state)
      {
-      m_logger.LogInfo("🎯 TP2 executado para posição #" + IntegerToString(ticket));
-      m_logger.LogInfo("   Lote fechado: " + DoubleToString(m_positions[index].tp2_lot, 2));
-      m_logger.LogInfo("   Preço: " + DoubleToString(m_positions[index].tp2_price, _Digits));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+         "🎯 TP2 executado para posição #" + IntegerToString(ticket));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+         "   Lote fechado: " + DoubleToString(m_positions[index].tp2_lot, 2));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+         "   Preço: " + DoubleToString(m_positions[index].tp2_price, _Digits));
      }
   }
 
 //+------------------------------------------------------------------+
-//| Monitorar Partial TP                                             |
+//| Monitorar Partial TP (v1.10)                                     |
 //+------------------------------------------------------------------+
 void CTradeManager::MonitorPartialTP(ulong ticket)
   {
@@ -446,7 +467,9 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
                          SymbolInfoDouble(m_symbol, SYMBOL_BID) :
                          SymbolInfoDouble(m_symbol, SYMBOL_ASK);
 
-// TP1
+   // ═══════════════════════════════════════════════════════════════
+   // TP1
+   // ═══════════════════════════════════════════════════════════════
    if(m_positions[index].tp1_enabled && !m_positions[index].tp1_executed)
      {
       bool tp1Hit = (m_positions[index].posType == POSITION_TYPE_BUY && currentPrice >= m_positions[index].tp1_price) ||
@@ -456,31 +479,36 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
         {
          if(m_logger != NULL)
            {
-            m_logger.LogInfo("═══════════════════════════════════════════════════════════════");
-            m_logger.LogInfo("🎯 TP1 ATINGIDO - Posição #" + IntegerToString(ticket));
-            m_logger.LogInfo("   Preço alvo: " + DoubleToString(m_positions[index].tp1_price, _Digits));
-            m_logger.LogInfo("   Preço atual: " + DoubleToString(currentPrice, _Digits));
-            m_logger.LogInfo("   Fechando: " + DoubleToString(m_positions[index].tp1_lot, 2) + " lote(s)");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════════════");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "🎯 TP1 ATINGIDO - Posição #" + IntegerToString(ticket));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+               "   Preço alvo: " + DoubleToString(m_positions[index].tp1_price, _Digits));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+               "   Preço atual: " + DoubleToString(currentPrice, _Digits));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+               "   Fechando: " + DoubleToString(m_positions[index].tp1_lot, 2) + " lote(s)");
            }
 
          if(ExecutePartialClose(ticket, m_positions[index].tp1_lot, "Partial TP1"))
            {
             SetTP1Executed(ticket, true);
             if(m_logger != NULL)
-               m_logger.LogInfo("✅ TP1 executado com sucesso!");
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "✅ TP1 executado com sucesso!");
            }
          else
            {
             if(m_logger != NULL)
-               m_logger.LogError("❌ Falha ao executar TP1");
+               m_logger.Log(LOG_ERROR, THROTTLE_NONE, "PARTIAL_TP", "❌ Falha ao executar TP1");
            }
 
          if(m_logger != NULL)
-            m_logger.LogInfo("═══════════════════════════════════════════════════════════════");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════════════");
         }
      }
 
-// TP2
+   // ═══════════════════════════════════════════════════════════════
+   // TP2
+   // ═══════════════════════════════════════════════════════════════
    if(m_positions[index].tp2_enabled && !m_positions[index].tp2_executed)
      {
       bool tp2Hit = (m_positions[index].posType == POSITION_TYPE_BUY && currentPrice >= m_positions[index].tp2_price) ||
@@ -490,40 +518,44 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
         {
          if(m_logger != NULL)
            {
-            m_logger.LogInfo("═══════════════════════════════════════════════════════════════");
-            m_logger.LogInfo("🎯 TP2 ATINGIDO - Posição #" + IntegerToString(ticket));
-            m_logger.LogInfo("   Preço alvo: " + DoubleToString(m_positions[index].tp2_price, _Digits));
-            m_logger.LogInfo("   Preço atual: " + DoubleToString(currentPrice, _Digits));
-            m_logger.LogInfo("   Fechando: " + DoubleToString(m_positions[index].tp2_lot, 2) + " lote(s)");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════════════");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "🎯 TP2 ATINGIDO - Posição #" + IntegerToString(ticket));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+               "   Preço alvo: " + DoubleToString(m_positions[index].tp2_price, _Digits));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+               "   Preço atual: " + DoubleToString(currentPrice, _Digits));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+               "   Fechando: " + DoubleToString(m_positions[index].tp2_lot, 2) + " lote(s)");
            }
 
          if(ExecutePartialClose(ticket, m_positions[index].tp2_lot, "Partial TP2"))
            {
             SetTP2Executed(ticket, true);
             if(m_logger != NULL)
-               m_logger.LogInfo("✅ TP2 executado com sucesso!");
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "✅ TP2 executado com sucesso!");
            }
          else
            {
             if(m_logger != NULL)
-               m_logger.LogError("❌ Falha ao executar TP2");
+               m_logger.Log(LOG_ERROR, THROTTLE_NONE, "PARTIAL_TP", "❌ Falha ao executar TP2");
            }
 
          if(m_logger != NULL)
-            m_logger.LogInfo("═══════════════════════════════════════════════════════════════");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════════════");
         }
      }
   }
 
 //+------------------------------------------------------------------+
-//| Executar fechamento parcial                                      |
+//| Executar fechamento parcial (v1.10)                              |
 //+------------------------------------------------------------------+
 bool CTradeManager::ExecutePartialClose(ulong ticket, double lot, string comment)
   {
    if(!PositionSelectByTicket(ticket))
      {
       if(m_logger != NULL)
-         m_logger.LogError("❌ Posição #" + IntegerToString(ticket) + " não encontrada");
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "CLOSE", 
+            "❌ Posição #" + IntegerToString(ticket) + " não encontrada");
       return false;
      }
 
@@ -533,7 +565,7 @@ bool CTradeManager::ExecutePartialClose(ulong ticket, double lot, string comment
    if(lot >= currentVolume)
      {
       if(m_logger != NULL)
-         m_logger.LogWarning("⚠️ Lote parcial >= lote atual - Ajustando");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "CLOSE", "⚠️ Lote parcial >= lote atual - Ajustando");
 
       double minLot = SymbolInfoDouble(m_symbol, SYMBOL_VOLUME_MIN);
       lot = currentVolume - minLot;
@@ -541,7 +573,8 @@ bool CTradeManager::ExecutePartialClose(ulong ticket, double lot, string comment
       if(lot <= 0)
         {
          if(m_logger != NULL)
-            m_logger.LogError("❌ Não é possível fechar parcial - Lote insuficiente");
+            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "CLOSE", 
+               "❌ Não é possível fechar parcial - Lote insuficiente");
          return false;
         }
      }
@@ -567,8 +600,9 @@ bool CTradeManager::ExecutePartialClose(ulong ticket, double lot, string comment
      {
       if(m_logger != NULL)
         {
-         m_logger.LogError("❌ Falha ao enviar ordem parcial");
-         m_logger.LogError("   Retcode: " + IntegerToString(result.retcode));
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "CLOSE", "❌ Falha ao enviar ordem parcial");
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "CLOSE", 
+            "   Retcode: " + IntegerToString(result.retcode));
         }
       return false;
      }
@@ -577,22 +611,26 @@ bool CTradeManager::ExecutePartialClose(ulong ticket, double lot, string comment
      {
       if(m_logger != NULL)
         {
-         m_logger.LogInfo("✅ Fechamento parcial executado:");
-         m_logger.LogInfo("   Deal: #" + IntegerToString(result.deal));
-         m_logger.LogInfo("   Volume: " + DoubleToString(result.volume, 2));
-         m_logger.LogInfo("   Preço: " + DoubleToString(result.price, _Digits));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "✅ Fechamento parcial executado:");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+            "   Deal: #" + IntegerToString(result.deal));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+            "   Volume: " + DoubleToString(result.volume, 2));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+            "   Preço: " + DoubleToString(result.price, _Digits));
         }
       return true;
      }
 
    if(m_logger != NULL)
-      m_logger.LogWarning("⚠️ Retcode: " + IntegerToString(result.retcode));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "CLOSE", 
+         "⚠️ Retcode: " + IntegerToString(result.retcode));
 
    return false;
   }
 
 //+------------------------------------------------------------------+
-//| Limpar posições fechadas                                         |
+//| Limpar posições fechadas (v1.10)                                 |
 //+------------------------------------------------------------------+
 void CTradeManager::CleanClosedPositions()
   {
@@ -610,26 +648,29 @@ void CTradeManager::CleanClosedPositions()
          removedCount++;
 
          if(m_logger != NULL)
-            m_logger.LogDebug("🗑️ Posição fechada removida: #" + IntegerToString(ticket));
+            m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CLEANUP", 
+               "🗑️ Posição fechada removida: #" + IntegerToString(ticket));
         }
      }
 
    if(removedCount > 0 && m_logger != NULL)
-      m_logger.LogInfo("🧹 Limpeza: " + IntegerToString(removedCount) + " posição(ões) removida(s)");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "CLEANUP", 
+         "🧹 Limpeza: " + IntegerToString(removedCount) + " posição(ões) removida(s)");
   }
 
 //+------------------------------------------------------------------+
-//| Limpar todas                                                     |
+//| Limpar todas (v1.10)                                             |
 //+------------------------------------------------------------------+
 void CTradeManager::Clear()
   {
    ArrayResize(m_positions, 0);
    if(m_logger != NULL)
-      m_logger.LogInfo("🗑️ TradeManager: Todas as posições limpas");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "CLEANUP", 
+         "🗑️ TradeManager: Todas as posições limpas");
   }
 
 //+------------------------------------------------------------------+
-//| Hot Reload                                                       |
+//| Hot Reload (v1.10)                                               |
 //+------------------------------------------------------------------+
 void CTradeManager::SetSlippage(int newSlippage)
   {
@@ -637,11 +678,12 @@ void CTradeManager::SetSlippage(int newSlippage)
    m_slippage = newSlippage;
 
    if(m_logger != NULL)
-      m_logger.LogInfo("🔄 Slippage: " + IntegerToString(oldValue) + " → " + IntegerToString(newSlippage) + " pts");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", 
+         "🔄 Slippage: " + IntegerToString(oldValue) + " → " + IntegerToString(newSlippage) + " pts");
   }
 
 //+------------------------------------------------------------------+
-//| Debug                                                            |
+//| Debug (v1.10)                                                    |
 //+------------------------------------------------------------------+
 void CTradeManager::PrintAllPositions()
   {
@@ -650,39 +692,41 @@ void CTradeManager::PrintAllPositions()
 
    int count = ArraySize(m_positions);
 
-   m_logger.LogInfo("═══════════════════════════════════════════════════════════════");
-   m_logger.LogInfo("📊 TRADEMANAGER - POSIÇÕES: " + IntegerToString(count));
-   m_logger.LogInfo("═══════════════════════════════════════════════════════════════");
+   m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DEBUG", "═══════════════════════════════════════════════════════════════");
+   m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DEBUG", "📊 TRADEMANAGER - POSIÇÕES: " + IntegerToString(count));
+   m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DEBUG", "═══════════════════════════════════════════════════════════════");
 
    if(count == 0)
      {
-      m_logger.LogInfo("   (Nenhuma posição rastreada)");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DEBUG", "   (Nenhuma posição rastreada)");
      }
    else
      {
       for(int i = 0; i < count; i++)
         {
-         m_logger.LogInfo("");
-         m_logger.LogInfo("🔹 Posição #" + IntegerToString(i + 1) + ":");
-         m_logger.LogInfo("   Ticket: #" + IntegerToString(m_positions[i].ticket));
-         m_logger.LogInfo("   Tipo: " + EnumToString(m_positions[i].posType));
-         m_logger.LogInfo("   Breakeven: " + (m_positions[i].beActivated ? "ATIVADO" : "não"));
-         m_logger.LogInfo("   Trailing: " + (m_positions[i].trailingActive ? "ATIVO" : "não"));
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DEBUG", "");
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DEBUG", "🔹 Posição #" + IntegerToString(i + 1) + ":");
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DEBUG", "   Ticket: #" + IntegerToString(m_positions[i].ticket));
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DEBUG", "   Tipo: " + EnumToString(m_positions[i].posType));
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DEBUG", "   Breakeven: " + (m_positions[i].beActivated ? "ATIVADO" : "não"));
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DEBUG", "   Trailing: " + (m_positions[i].trailingActive ? "ATIVO" : "não"));
 
          if(m_positions[i].hasPartialTP)
            {
-            m_logger.LogInfo("   🎯 Partial TP:");
+            m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DEBUG", "   🎯 Partial TP:");
             if(m_positions[i].tp1_enabled)
-               m_logger.LogInfo("      TP1: " + (m_positions[i].tp1_executed ? "✅" : "⏳") +
-                                " | " + DoubleToString(m_positions[i].tp1_lot, 2) + " @ " + DoubleToString(m_positions[i].tp1_price, _Digits));
+               m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DEBUG", 
+                  "      TP1: " + (m_positions[i].tp1_executed ? "✅" : "⏳") +
+                  " | " + DoubleToString(m_positions[i].tp1_lot, 2) + " @ " + DoubleToString(m_positions[i].tp1_price, _Digits));
             if(m_positions[i].tp2_enabled)
-               m_logger.LogInfo("      TP2: " + (m_positions[i].tp2_executed ? "✅" : "⏳") +
-                                " | " + DoubleToString(m_positions[i].tp2_lot, 2) + " @ " + DoubleToString(m_positions[i].tp2_price, _Digits));
+               m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DEBUG", 
+                  "      TP2: " + (m_positions[i].tp2_executed ? "✅" : "⏳") +
+                  " | " + DoubleToString(m_positions[i].tp2_lot, 2) + " @ " + DoubleToString(m_positions[i].tp2_price, _Digits));
            }
         }
      }
 
-   m_logger.LogInfo("═══════════════════════════════════════════════════════════════");
+   m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DEBUG", "═══════════════════════════════════════════════════════════════");
   }
 
 //+------------------------------------------------------------------+
