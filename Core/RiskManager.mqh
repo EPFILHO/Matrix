@@ -2,10 +2,10 @@
 //|                                                  RiskManager.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                       Sistema de Cálculo de Risco - EPBot Matrix |
-//|                                   Versão 3.10 - Claude Parte 016 |
+//|                                   Versão 3.11 - Claude Parte 017 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "3.10" 
+#property version   "3.11" 
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
@@ -36,6 +36,11 @@
 // + Migração para Logger v3.00 (5 níveis + throttle inteligente)
 // + Todas as mensagens classificadas (ERROR/EVENT/DEBUG)
 // + PrintConfiguration() agora usa LOG_DEBUG
+//
+// NOVIDADES v3.11:
+// + TP FALLBACK: Quando Partial TP ativo, usa TP Fixo como proteção
+// + Protege contra falha de conexão/PC desligado
+// + TP será removido pelo TradeManager após TP2
 // ═══════════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
@@ -1050,10 +1055,39 @@ double CRiskManager::CalculateSLPrice(ENUM_ORDER_TYPE orderType, double entryPri
   }
 
 //+------------------------------------------------------------------+
-//| Calcular preço de Take Profit                                    |
+//| Calcular preço de Take Profit (v3.11 - TP FALLBACK)             |
 //+------------------------------------------------------------------+
 double CRiskManager::CalculateTPPrice(ENUM_ORDER_TYPE orderType, double entryPrice)
   {
+   // ═══════════════════════════════════════════════════════════════
+   // 🆕 v3.11: PARTIAL TP ATIVO → USA TP FIXO COMO FALLBACK
+   // ═══════════════════════════════════════════════════════════════
+   if(m_usePartialTP)
+     {
+      double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
+      double tpDistance = m_fixedTP * point;
+      
+      double tpPrice = 0;
+      if(orderType == ORDER_TYPE_BUY)
+         tpPrice = entryPrice + tpDistance;
+      else
+         tpPrice = entryPrice - tpDistance;
+      
+      // Normalizar
+      tpPrice = NormalizePrice(tpPrice);
+      
+      // Log informativo
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
+            "🎯 Partial TP ativo - TP Fixo como fallback: " + 
+            DoubleToString(tpDistance/point, 1) + " pts");
+      
+      return tpPrice;  // ← RETORNA AQUI!
+     }
+   
+   // ═══════════════════════════════════════════════════════════════
+   // SEM PARTIAL TP: LÓGICA NORMAL (código existente)
+   // ═══════════════════════════════════════════════════════════════
    if(m_tpType == TP_NONE)
       return 0;
    
@@ -1712,7 +1746,7 @@ void CRiskManager::PrintConfiguration()
    if(m_logger != NULL)
      {
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "╔══════════════════════════════════════════════════════╗");
-      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "║       RISKMANAGER v3.10 - CONFIGURAÇÃO ATUAL        ║");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "║       RISKMANAGER v3.11 - CONFIGURAÇÃO ATUAL        ║");
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "╚══════════════════════════════════════════════════════╝");
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "");
       
@@ -1751,7 +1785,7 @@ void CRiskManager::PrintConfiguration()
    else
      {
       Print("╔══════════════════════════════════════════════════════╗");
-      Print("║       RISKMANAGER v3.10 - CONFIGURAÇÃO ATUAL        ║");
+      Print("║       RISKMANAGER v3.11 - CONFIGURAÇÃO ATUAL        ║");
       Print("╚══════════════════════════════════════════════════════╝");
       Print("");
       
