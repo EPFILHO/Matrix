@@ -2,13 +2,12 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                                   Versão 1.12 - Claude Parte 016 |
+//|                                   Versão 1.12 - Claude Parte 017 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
 #property version   "1.12"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
-#property description "Logging Refatorado - Logger v3.00"
 
 //+------------------------------------------------------------------+
 //| INCLUDES - ORDEM IMPORTANTE                                      |
@@ -186,12 +185,12 @@ int OnInit()
      {
       g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG", "═══════════════════════════════════════════════════════");
       g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG", "🎯 PARTIAL TAKE PROFIT - CONFIGURAÇÃO:");
-      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG", 
-         StringFormat("   TP1: %.1f%% @ %d pts", inp_PartialTP1_Percent, inp_PartialTP1_Distance));
-      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG", 
-         StringFormat("   TP2: %.1f%% @ %d pts", inp_PartialTP2_Percent, inp_PartialTP2_Distance));
-      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG", 
-         StringFormat("   TP3: %.1f%% (restante - trailing)", tp3_percent));
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
+                   StringFormat("   TP1: %.1f%% @ %d pts", inp_PartialTP1_Percent, inp_PartialTP1_Distance));
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
+                   StringFormat("   TP2: %.1f%% @ %d pts", inp_PartialTP2_Percent, inp_PartialTP2_Distance));
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
+                   StringFormat("   TP3: %.1f%% (restante - trailing)", tp3_percent));
       g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG", "═══════════════════════════════════════════════════════");
      }
 
@@ -211,20 +210,20 @@ int OnInit()
          inp_FixedTP,
          inp_TP_ATRMultiplier,
          inp_TP_CompensateSpread,
-// Trailing 
+// Trailing
          inp_TrailingType,
          inp_TrailingStart,
          inp_TrailingStep,
          inp_TrailingATRStart,
          inp_TrailingATRStep,
          inp_Trailing_CompensateSpread,
-// Breakeven 
+// Breakeven
          inp_BEType,
          inp_BEActivation,
          inp_BEOffset,
          inp_BE_ATRActivation,
          inp_BE_ATROffset,
-// 🎯 PARTIAL TP 
+// 🎯 PARTIAL TP
          inp_UsePartialTP,
          true,
          inp_PartialTP1_Percent,
@@ -276,16 +275,16 @@ int OnInit()
      }
 
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "TradeManager inicializado com sucesso!");
-   
+
 // ═══════════════════════════════════════════════════════════════
-   // ETAPA 4.5: RESSINCRONIZAR POSIÇÕES EXISTENTES
-   // ═══════════════════════════════════════════════════════════════
+// ETAPA 4.5: RESSINCRONIZAR POSIÇÕES EXISTENTES
+// ═══════════════════════════════════════════════════════════════
    int syncedPositions = g_tradeManager.ResyncExistingPositions();
    if(syncedPositions > 0)
-   {
-      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", 
-         "🔄 " + IntegerToString(syncedPositions) + " posição(ões) ressincronizada(s)");
-   }
+     {
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT",
+                   "🔄 " + IntegerToString(syncedPositions) + " posição(ões) ressincronizada(s)");
+     }
 
 // ═══════════════════════════════════════════════════════════════
 // ETAPA 5: INICIALIZAR SIGNAL MANAGER
@@ -361,8 +360,8 @@ int OnInit()
          return INIT_FAILED;
         }
 
-      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", 
-         "MACrossStrategy criada e registrada - Prioridade: " + IntegerToString(inp_MACrossPriority));
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT",
+                   "MACrossStrategy criada e registrada - Prioridade: " + IntegerToString(inp_MACrossPriority));
      }
    else
      {
@@ -416,8 +415,8 @@ int OnInit()
          return INIT_FAILED;
         }
 
-      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", 
-         "RSIStrategy criada e registrada - Prioridade: " + IntegerToString(inp_RSIPriority));
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT",
+                   "RSIStrategy criada e registrada - Prioridade: " + IntegerToString(inp_RSIPriority));
      }
    else
      {
@@ -542,7 +541,7 @@ int OnInit()
    Print("════════════════════════════════════════════════════════════════");
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
-   
+
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.12 - PRONTO PARA OPERAR!");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Símbolo: " + _Symbol);
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
@@ -562,8 +561,8 @@ void OnDeinit(const int reason)
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT", "════════════════════════════════════════════════════════════════");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT", "            EPBOT MATRIX - FINALIZANDO...                      ");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT", "════════════════════════════════════════════════════════════════");
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT", 
-      "Motivo: " + IntegerToString(reason) + " - " + GetDeinitReasonText(reason));
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT",
+                "Motivo: " + IntegerToString(reason) + " - " + GetDeinitReasonText(reason));
 
 // Salvar relatório diário antes de finalizar
    if(g_logger != NULL && g_logger.GetDailyTrades() > 0)
@@ -658,8 +657,8 @@ void OnTick()
    if(isNewBar)
      {
       g_lastBarTime = currentBarTime;
-      g_logger.Log(LOG_DEBUG, THROTTLE_CANDLE, "TICK", 
-         "🕐 Novo candle detectado: " + TimeToString(currentBarTime));
+      g_logger.Log(LOG_DEBUG, THROTTLE_CANDLE, "TICK",
+                   "🕐 Novo candle detectado: " + TimeToString(currentBarTime));
      }
 
 // Detectar mudança de dia (para reset diário e relatório)
@@ -671,8 +670,8 @@ void OnTick()
      {
       // Novo dia detectado - gerar relatório do dia anterior
       g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAY", "═══════════════════════════════════════════════════════════════");
-      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAY", 
-         "📅 NOVO DIA DETECTADO - " + TimeToString(TimeCurrent(), TIME_DATE));
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAY",
+                   "📅 NOVO DIA DETECTADO - " + TimeToString(TimeCurrent(), TIME_DATE));
       g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAY", "═══════════════════════════════════════════════════════════════");
 
       // Gerar relatório final do dia anterior (se houve trades)
@@ -710,9 +709,9 @@ void OnTick()
 
    for(int i = PositionsTotal() - 1; i >= 0; i--)
      {
-      if(PositionGetSymbol(i) != _Symbol) 
+      if(PositionGetSymbol(i) != _Symbol)
          continue;
-      
+
       if(PositionGetInteger(POSITION_MAGIC) == inp_MagicNumber)
         {
          hasMyPosition = true;
@@ -750,9 +749,9 @@ void OnTick()
                   bool isWin = (positionProfit > 0);
                   g_blockers.UpdateAfterTrade(isWin, positionProfit);
 
-                  g_logger.Log(LOG_TRADE, THROTTLE_NONE, "CLOSE", 
-                     "📊 Posição #" + IntegerToString(lastPositionTicket) + 
-                     " fechada | P/L: $" + DoubleToString(positionProfit, 2));
+                  g_logger.Log(LOG_TRADE, THROTTLE_NONE, "CLOSE",
+                               "📊 Posição #" + IntegerToString(lastPositionTicket) +
+                               " fechada | P/L: $" + DoubleToString(positionProfit, 2));
 
                   // Gerar relatório TXT atualizado após cada trade
                   g_logger.SaveDailyReport();
@@ -784,11 +783,11 @@ void OnTick()
      {
       // Atualizar ticket da posição atual
       lastPositionTicket = myPositionTicket;
-      
+
       // Selecionar a posição específica
       if(!PositionSelectByTicket(myPositionTicket))
          return;
-      
+
       ulong  ticket = PositionGetInteger(POSITION_TICKET);
       double volume = PositionGetDouble(POSITION_VOLUME);
       ENUM_POSITION_TYPE posType = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
@@ -824,8 +823,8 @@ void OnTick()
         {
          if(closePrice <= 0)
            {
-            g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TIME_CLOSE", 
-               "[Core] Preço inválido - Continuando gerenciamento normal");
+            g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TIME_CLOSE",
+                         "[Core] Preço inválido - Continuando gerenciamento normal");
             ManageOpenPosition(ticket);
             return;
            }
@@ -853,8 +852,8 @@ void OnTick()
 
          if(!OrderSend(request, result))
            {
-            g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TIME_CLOSE", 
-               "[Core] OrderSend falhou - Erro: " + IntegerToString(GetLastError()));
+            g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TIME_CLOSE",
+                         "[Core] OrderSend falhou - Erro: " + IntegerToString(GetLastError()));
             ManageOpenPosition(ticket);
             return;
            }
@@ -871,8 +870,8 @@ void OnTick()
            }
          else
            {
-            g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TIME_CLOSE", 
-               "[Core] Fechamento falhou - Retcode: " + IntegerToString(result.retcode));
+            g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TIME_CLOSE",
+                         "[Core] Fechamento falhou - Retcode: " + IntegerToString(result.retcode));
             ManageOpenPosition(ticket);
             return;
            }
@@ -965,8 +964,8 @@ void ManageOpenPosition(ulong ticket)
    int index = g_tradeManager.GetPositionIndex(ticket);
    if(index < 0)
      {
-      g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "POSITION", 
-         "⚠️ Posição não encontrada no TradeManager - Ignorando gerenciamento");
+      g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "POSITION",
+                   "⚠️ Posição não encontrada no TradeManager - Ignorando gerenciamento");
       return;
      }
 
@@ -979,7 +978,7 @@ void ManageOpenPosition(ulong ticket)
      }
 
 // ═══════════════════════════════════════════════════════════════
-// ATIVAR TRAILING/BREAKEVEN SE NECESSÁRIO  
+// ATIVAR TRAILING/BREAKEVEN SE NECESSÁRIO
 // ═══════════════════════════════════════════════════════════════
    bool tp1Executed = g_tradeManager.IsTP1Executed(ticket);
    bool tp2Executed = g_tradeManager.IsTP2Executed(ticket);
@@ -1004,8 +1003,8 @@ void ManageOpenPosition(ulong ticket)
 
          if(OrderSend(request, result))
            {
-            g_logger.Log(LOG_TRADE, THROTTLE_TIME, "TRAILING", 
-               "✅ Trailing Stop movido para " + DoubleToString(trailing.new_sl_price, _Digits), 5);
+            g_logger.Log(LOG_TRADE, THROTTLE_TIME, "TRAILING",
+                         "✅ Trailing Stop movido para " + DoubleToString(trailing.new_sl_price, _Digits), 5);
            }
         }
      }
@@ -1032,8 +1031,8 @@ void ManageOpenPosition(ulong ticket)
 
          if(OrderSend(request, result))
            {
-            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "BREAKEVEN", 
-               "✅ Breakeven ativado em " + DoubleToString(breakeven.new_sl_price, _Digits));
+            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "BREAKEVEN",
+                         "✅ Breakeven ativado em " + DoubleToString(breakeven.new_sl_price, _Digits));
             g_tradeManager.SetBreakevenActivated(ticket, true);
            }
         }
@@ -1108,13 +1107,14 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
 
    if(signal == SIGNAL_BUY)
       orderType = ORDER_TYPE_BUY;
-   else if(signal == SIGNAL_SELL)
-      orderType = ORDER_TYPE_SELL;
    else
-     {
-      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "SIGNAL", "⚠️ Sinal inválido ignorado: " + EnumToString(signal));
-      return;
-     }
+      if(signal == SIGNAL_SELL)
+         orderType = ORDER_TYPE_SELL;
+      else
+        {
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "SIGNAL", "⚠️ Sinal inválido ignorado: " + EnumToString(signal));
+         return;
+        }
 
 // ═══════════════════════════════════════════════════════════════
 // CALCULAR PARÂMETROS DE RISCO
@@ -1126,8 +1126,8 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
    double lotSize = g_riskManager.GetLotSize();
    if(lotSize <= 0)
      {
-      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TRADE", 
-         "❌ Falha ao calcular lote - Valor inválido: " + DoubleToString(lotSize, 2));
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TRADE",
+                   "❌ Falha ao calcular lote - Valor inválido: " + DoubleToString(lotSize, 2));
       return;
      }
 
@@ -1139,12 +1139,8 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
       return;
      }
 
-// Take Profit (SE não usar Partial TP, calcula TP normal)
-   double tpPrice = 0;
-   if(!inp_UsePartialTP)
-     {
-      tpPrice = g_riskManager.CalculateTPPrice(orderType, price);
-     }
+// Take Profit (RiskManager decide se usa TP Fixo ou 0)
+   double tpPrice = g_riskManager.CalculateTPPrice(orderType, price);
 
 // ═══════════════════════════════════════════════════════════════
 // VALIDAR SL/TP CONTRA NÍVEIS MÍNIMOS DO BROKER
@@ -1211,11 +1207,11 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
 
       // 🆕 REGISTRAR CANDLE DO TRADE
       g_lastTradeBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
-      g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE", 
-         "📊 Trade executado no candle: " + TimeToString(g_lastTradeBarTime));
+      g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE",
+                   "📊 Trade executado no candle: " + TimeToString(g_lastTradeBarTime));
 
       // ═══════════════════════════════════════════════════════════════
-      // REGISTRAR POSIÇÃO NO TRADEMANAGER 
+      // REGISTRAR POSIÇÃO NO TRADEMANAGER
       // ═══════════════════════════════════════════════════════════════
       SPartialTPLevel tpLevels[];
       bool hasPartialTP = inp_UsePartialTP;
@@ -1243,14 +1239,14 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
            }
         }
 
-// ✅ USAR ORDER TICKET (que vira POSITION ticket em ordens market)
+      // ✅ USAR ORDER TICKET (que vira POSITION ticket em ordens market)
       ulong positionTicket = result.order;
-      
+
       // Verificar se a posição realmente existe
       if(!PositionSelectByTicket(positionTicket))
         {
-         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TRADE", 
-            "❌ Posição não encontrada após abertura! Order: " + IntegerToString(result.order));
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TRADE",
+                      "❌ Posição não encontrada após abertura! Order: " + IntegerToString(result.order));
          return;
         }
 
@@ -1265,8 +1261,8 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
      }
    else
      {
-      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TRADE", 
-         "⚠️ Ordem parcialmente executada - Retcode: " + IntegerToString(result.retcode));
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TRADE",
+                   "⚠️ Ordem parcialmente executada - Retcode: " + IntegerToString(result.retcode));
       g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TRADE", "   Descrição: " + result.comment);
      }
 
@@ -1349,10 +1345,11 @@ ENUM_ORDER_TYPE_FILLING GetTypeFilling(string symbol)
 
    if((filling & SYMBOL_FILLING_FOK) == SYMBOL_FILLING_FOK)
       return ORDER_FILLING_FOK;
-   else if((filling & SYMBOL_FILLING_IOC) == SYMBOL_FILLING_IOC)
-      return ORDER_FILLING_IOC;
    else
-      return ORDER_FILLING_RETURN;
+      if((filling & SYMBOL_FILLING_IOC) == SYMBOL_FILLING_IOC)
+         return ORDER_FILLING_IOC;
+      else
+         return ORDER_FILLING_RETURN;
   }
 
 //+------------------------------------------------------------------+
