@@ -2,7 +2,7 @@
 //|                                             MACrossStrategy.mqh  |
 //|                                         Copyright 2025, EP Filho |
 //|                   Estratégia de Cruzamento de MAs - EPBot Matrix |
-//|                                   Versão 2.20 - Claude Parte 016 |
+//|                                   Versão 2.20 - Claude Parte 017 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property version   "2.20"
@@ -186,6 +186,39 @@ public:
   };
 
 //+------------------------------------------------------------------+
+//| Helper: Converter ENUM_MA_METHOD para string                     |
+//+------------------------------------------------------------------+
+string MAMethodToString(ENUM_MA_METHOD method)
+  {
+   switch(method)
+     {
+      case MODE_SMA:  return "SMA";
+      case MODE_EMA:  return "EMA";
+      case MODE_SMMA: return "SMMA";
+      case MODE_LWMA: return "LWMA";
+      default:        return "Unknown";
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| Helper: Converter ENUM_APPLIED_PRICE para string                 |
+//+------------------------------------------------------------------+
+string AppliedPriceToString(ENUM_APPLIED_PRICE applied)
+  {
+   switch(applied)
+     {
+      case PRICE_CLOSE:     return "Close";
+      case PRICE_OPEN:      return "Open";
+      case PRICE_HIGH:      return "High";
+      case PRICE_LOW:       return "Low";
+      case PRICE_MEDIAN:    return "Median";
+      case PRICE_TYPICAL:   return "Typical";
+      case PRICE_WEIGHTED:  return "Weighted";
+      default:              return "Unknown";
+     }
+  }
+
+//+------------------------------------------------------------------+
 //| Construtor                                                        |
 //+------------------------------------------------------------------+
 CMACrossStrategy::CMACrossStrategy(int priority = 0) : CStrategyBase("MA Cross Strategy", priority)
@@ -365,8 +398,22 @@ bool CMACrossStrategy::Initialize()
 
    m_isInitialized = true;
 
-   string msg = "✅ [MA Cross] Inicializada - Fast: " + IntegerToString(m_fastPeriod) +
-                " Slow: " + IntegerToString(m_slowPeriod);
+   // ═══════════════════════════════════════════════════════════
+   // LOG DETALHADO DE INICIALIZAÇÃO
+   // ═══════════════════════════════════════════════════════════
+   string fastInfo = MAMethodToString(m_fastMethod) + "(" + IntegerToString(m_fastPeriod) + ")";
+   string slowInfo = MAMethodToString(m_slowMethod) + "(" + IntegerToString(m_slowPeriod) + ")";
+   
+   string msg = "✅ [MA Cross] Inicializada - Fast: " + fastInfo + " Slow: " + slowInfo;
+   
+   // Adicionar timeframes se diferentes
+   if(m_fastTimeframe != m_slowTimeframe)
+      msg += " | TF: " + EnumToString(m_fastTimeframe) + "/" + EnumToString(m_slowTimeframe);
+   
+   // Adicionar preço aplicado se diferentes
+   if(m_fastApplied != m_slowApplied)
+      msg += " | Price: " + AppliedPriceToString(m_fastApplied) + "/" + AppliedPriceToString(m_slowApplied);
+   
    if(m_logger != NULL)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
    else
