@@ -2,10 +2,10 @@
 //|                                                  TrendFilter.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                      Filtro de Tendência por MA - EPBot Matrix   |
-//|                                   Versão 2.11 - Claude Parte 017 |
+//|                                   Versão 2.15 - Claude Parte 017 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "2.11"
+#property version   "2.15"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -26,6 +26,19 @@
 // + Desabilita filtro automaticamente se dados inválidos no Initialize()
 // + Reabilita filtro automaticamente quando MA fica pronta
 // + Validação extra em ValidateSignal() para dados zerados
+//
+// NOVIDADES v2.12:
+// + CORREÇÃO CRÍTICA: Flag interna m_maReady para controle de MA pronta
+// + m_isEnabled SEMPRE true (SignalManager não pula o filtro)
+// + m_maReady controla se MA está calculada (lógica interna)
+// + ValidateSignal() verifica m_maReady ANTES de qualquer validação
+//
+// NOVIDADES v2.15:
+// + SOLUÇÃO DEFINITIVA: Padrão SmartCross (que funcionava!)
+// + Initialize() SÓ cria handle (NÃO tenta copiar buffer)
+// + ValidateSignal() SEMPRE chama UpdateIndicators() PRIMEIRO
+// + UpdateIndicators() copia dados no primeiro tick disponível
+// + RESOLVE DEADLOCK: Não bloqueia antes de tentar copiar!
 // ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
@@ -48,6 +61,11 @@ private:
    // ARRAY (buffer interno)
    // ═══════════════════════════════════════════════════════════
    double            m_ma[];
+
+   // ═══════════════════════════════════════════════════════════
+   // FLAG INTERNA - Controle de MA pronta
+   // ═══════════════════════════════════════════════════════════
+   bool              m_maReady;  // true = MA calculada e pronta
 
    // ═══════════════════════════════════════════════════════════
    // INPUT PARAMETERS (imutáveis - valores originais)
@@ -149,6 +167,7 @@ CTrendFilter::CTrendFilter() : CFilterBase("Trend Filter")
   {
    m_logger = NULL;
    m_handleMA = INVALID_HANDLE;
+   m_maReady = false;
 
    // ═══ INPUT PARAMETERS (valores padrão) ═══
    m_inputUseTrendFilter = false;
@@ -178,7 +197,7 @@ CTrendFilter::~CTrendFilter()
   }
 
 //+------------------------------------------------------------------+
-//| Configuração (v2.11)                                             |
+//| Configuração (v2.15)                                             |
 //+------------------------------------------------------------------+
 bool CTrendFilter::Setup(
    CLogger* logger,
@@ -248,7 +267,7 @@ bool CTrendFilter::Setup(
   }
 
 //+------------------------------------------------------------------+
-//| Inicialização (v2.11 - CORREÇÃO DE SEGURANÇA)                    |
+//| Inicialização (v2.15 - PADRÃO SMARTCROSS)                        |
 //+------------------------------------------------------------------+
 bool CTrendFilter::Initialize()
   {
@@ -265,6 +284,7 @@ bool CTrendFilter::Initialize()
      {
       m_isInitialized = true;
       m_isEnabled = true;
+      m_maReady = true;
       
       if(m_logger != NULL)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "WARNING", 
@@ -273,7 +293,10 @@ bool CTrendFilter::Initialize()
       return true;
      }
 
-   // Criar handle da MA (usada para ambos os filtros)
+   // ═══════════════════════════════════════════════════════════════
+   // 🆕 v2.15: PADRÃO SMARTCROSS - SÓ CRIAR HANDLE!
+   // NÃO tenta copiar buffer aqui (deixa para o primeiro tick)
+   // ═══════════════════════════════════════════════════════════════
    m_handleMA = iMA(
                    _Symbol,
                    m_maTimeframe,
@@ -294,43 +317,12 @@ bool CTrendFilter::Initialize()
       return false;
      }
 
-   // ═══════════════════════════════════════════════════════════════
-   // 🆕 v2.11: VALIDAR SE A MA TEM DADOS CALCULADOS
-   // ═══════════════════════════════════════════════════════════════
-   int calculated = BarsCalculated(m_handleMA);
-   if(calculated <= 0)
-     {
-      if(m_logger != NULL)
-        {
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "WARNING", 
-            "⚠️ [Trend Filter] MA ainda sem dados calculados");
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "WARNING", 
-            "⚠️ [Trend Filter] BLOQUEANDO trades até MA estar pronta!");
-        }
-      
-      // ✅ Marca como inicializado MAS DESABILITA até dados prontos
-      m_isInitialized = true;
-      m_isEnabled = false;  // ← DESABILITA por segurança!
-      
-      // ✅ LOG RESUMIDO (mesmo desabilitado)
-      string msg = "⚠️ [Trend Filter] Inicializado (DESABILITADO até MA pronta) | MA " + IntegerToString(m_maPeriod);
-      if(m_useTrendFilter)
-         msg += " | Direcional: ON";
-      if(m_neutralDistance > 0)
-         msg += " | Zona: ±" + DoubleToString(m_neutralDistance, 0) + " pts";
-
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
-      else
-         Print(msg);
-      
-      return true;
-     }
-
+   // ✅ Handle criado com sucesso!
    m_isInitialized = true;
    m_isEnabled = true;
+   m_maReady = false;  // Será marcada true no primeiro UpdateIndicators() bem-sucedido
 
-   // ✅ LOG RESUMIDO
+   // Log resumido
    string msg = "✅ [Trend Filter] Inicializado | MA " + IntegerToString(m_maPeriod);
    if(m_useTrendFilter)
       msg += " | Direcional: ON";
@@ -346,7 +338,7 @@ bool CTrendFilter::Initialize()
   }
 
 //+------------------------------------------------------------------+
-//| Desinicialização (v2.11)                                         |
+//| Desinicialização (v2.15)                                         |
 //+------------------------------------------------------------------+
 void CTrendFilter::Deinitialize()
   {
@@ -361,10 +353,11 @@ void CTrendFilter::Deinitialize()
      }
 
    m_isInitialized = false;
+   m_maReady = false;
   }
 
 //+------------------------------------------------------------------+
-//| Atualizar indicadores (v2.11 - REABILITA QUANDO PRONTO)          |
+//| Atualizar indicadores (v2.15)                                    |
 //+------------------------------------------------------------------+
 bool CTrendFilter::UpdateIndicators()
   {
@@ -393,14 +386,14 @@ bool CTrendFilter::UpdateIndicators()
      }
    
    // ═══════════════════════════════════════════════════════════════
-   // 🆕 v2.11: VALIDAR DADOS E REABILITAR FILTRO SE NECESSÁRIO
+   // Validar dados e marcar MA como pronta (se ainda não estiver)
    // ═══════════════════════════════════════════════════════════════
-   if(!m_isEnabled && m_ma[0] > 0 && m_ma[1] > 0)
+   if(!m_maReady && m_ma[0] > 0 && m_ma[1] > 0)
      {
-      m_isEnabled = true;
+      m_maReady = true;
       if(m_logger != NULL)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "UPDATE", 
-            "✅ [Trend Filter] MA pronta - Filtro REABILITADO!");
+            "✅ [Trend Filter] MA pronta - Filtro LIBERADO para validações!");
      }
 
    // 🔍 DEBUG: Buffer copiado (throttle por candle)
@@ -414,7 +407,7 @@ bool CTrendFilter::UpdateIndicators()
   }
 
 //+------------------------------------------------------------------+
-//| Verificar direção da tendência (v2.11)                           |
+//| Verificar direção da tendência (v2.15)                           |
 //+------------------------------------------------------------------+
 bool CTrendFilter::CheckTrendDirection(ENUM_SIGNAL_TYPE signal)
   {
@@ -461,7 +454,7 @@ bool CTrendFilter::CheckTrendDirection(ENUM_SIGNAL_TYPE signal)
   }
 
 //+------------------------------------------------------------------+
-//| Verificar zona neutra (v2.11)                                    |
+//| Verificar zona neutra (v2.15)                                    |
 //+------------------------------------------------------------------+
 bool CTrendFilter::CheckNeutralZone()
   {
@@ -497,18 +490,10 @@ bool CTrendFilter::CheckNeutralZone()
   }
 
 //+------------------------------------------------------------------+
-//| Validar sinal (v2.11 - VALIDAÇÃO EXTRA)                          |
+//| Validar sinal (v2.15 - PADRÃO SMARTCROSS)                        |
 //+------------------------------------------------------------------+
 bool CTrendFilter::ValidateSignal(ENUM_SIGNAL_TYPE signal)
   {
-   if(!m_isEnabled)
-     {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "VALIDATE", 
-            "🚫 [Trend Filter] DESABILITADO - aguardando MA ficar pronta");
-      return false;  // ← v2.11: BLOQUEIA quando desabilitado!
-     }
-
    if(signal == SIGNAL_NONE)
       return true;
 
@@ -522,26 +507,26 @@ bool CTrendFilter::ValidateSignal(ENUM_SIGNAL_TYPE signal)
       return false;
      }
 
+   // ═══════════════════════════════════════════════════════════════
+   // 🆕 v2.15: PADRÃO SMARTCROSS - SEMPRE tenta UpdateIndicators() PRIMEIRO!
+   // NÃO bloqueia antes de tentar (resolve deadlock)
+   // ═══════════════════════════════════════════════════════════════
    if(!UpdateIndicators())
      {
-      string msg = "❌ [Trend Filter] Falha ao atualizar indicadores - BLOQUEANDO por segurança";
+      string msg = "⚠️ [Trend Filter] Aguardando dados da MA - próximo tick";
       if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "VALIDATE", msg);
-      else
-         Print(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "VALIDATE", msg);
       return false;
      }
 
    // ═══════════════════════════════════════════════════════════════
-   // 🆕 v2.11: VALIDAÇÃO EXTRA - Dados da MA inválidos (zero)
+   // VALIDAÇÃO - Dados da MA inválidos (zero)
    // ═══════════════════════════════════════════════════════════════
    if(m_ma[0] == 0 || m_ma[1] == 0)
      {
-      string msg = "❌ [Trend Filter] Dados da MA inválidos (zero) - BLOQUEANDO por segurança";
+      string msg = "⚠️ [Trend Filter] Dados da MA ainda inválidos - aguardando próximo tick";
       if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "VALIDATE", msg);
-      else
-         Print(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "VALIDATE", msg);
       return false;
      }
 
@@ -557,11 +542,11 @@ bool CTrendFilter::ValidateSignal(ENUM_SIGNAL_TYPE signal)
   }
 
 // ═══════════════════════════════════════════════════════════════
-// HOT RELOAD - MÉTODOS SET QUENTES (v2.11)
+// HOT RELOAD - MÉTODOS SET QUENTES (v2.15)
 // ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
-//| HOT RELOAD - Ativar/desativar filtro direcional (v2.11)          |
+//| HOT RELOAD - Ativar/desativar filtro direcional (v2.15)          |
 //+------------------------------------------------------------------+
 bool CTrendFilter::SetTrendFilterEnabled(bool enabled)
   {
@@ -580,7 +565,7 @@ bool CTrendFilter::SetTrendFilterEnabled(bool enabled)
   }
 
 //+------------------------------------------------------------------+
-//| HOT RELOAD - Alterar distância da zona neutra (v2.11)            |
+//| HOT RELOAD - Alterar distância da zona neutra (v2.15)            |
 //+------------------------------------------------------------------+
 bool CTrendFilter::SetNeutralDistance(double distancePoints)
   {
@@ -609,11 +594,11 @@ bool CTrendFilter::SetNeutralDistance(double distancePoints)
   }
 
 // ═══════════════════════════════════════════════════════════════
-// COLD RELOAD - MÉTODOS SET FRIOS (v2.11)
+// COLD RELOAD - MÉTODOS SET FRIOS (v2.15)
 // ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
-//| COLD RELOAD - Alterar período da MA (v2.11)                      |
+//| COLD RELOAD - Alterar período da MA (v2.15)                      |
 //+------------------------------------------------------------------+
 bool CTrendFilter::SetMAPeriod(int period)
   {
@@ -647,7 +632,7 @@ bool CTrendFilter::SetMAPeriod(int period)
   }
 
 //+------------------------------------------------------------------+
-//| COLD RELOAD - Alterar método da MA (v2.11)                       |
+//| COLD RELOAD - Alterar método da MA (v2.15)                       |
 //+------------------------------------------------------------------+
 bool CTrendFilter::SetMAMethod(ENUM_MA_METHOD method)
   {
