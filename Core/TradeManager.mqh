@@ -2,10 +2,10 @@
 //|                                                 TradeManager.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|             Gerenciamento de Posições Individuais - EPBot Matrix |
-//|                                   Versão 1.10 - Claude Parte 016 |
+//|                                   Versão 1.11 - Claude Parte 017 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "1.10"
+#property version   "1.11"
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
@@ -514,26 +514,60 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
       bool tp2Hit = (m_positions[index].posType == POSITION_TYPE_BUY && currentPrice >= m_positions[index].tp2_price) ||
                     (m_positions[index].posType == POSITION_TYPE_SELL && currentPrice <= m_positions[index].tp2_price);
 
-      if(tp2Hit)
-        {
-         if(m_logger != NULL)
-           {
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════════════");
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "🎯 TP2 ATINGIDO - Posição #" + IntegerToString(ticket));
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
-               "   Preço alvo: " + DoubleToString(m_positions[index].tp2_price, _Digits));
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
-               "   Preço atual: " + DoubleToString(currentPrice, _Digits));
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
-               "   Fechando: " + DoubleToString(m_positions[index].tp2_lot, 2) + " lote(s)");
-           }
+if(tp2Hit)
+{
+   if(m_logger != NULL)
+   {
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════════════");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "🎯 TP2 ATINGIDO - Posição #" + IntegerToString(ticket));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+         "   Preço alvo: " + DoubleToString(m_positions[index].tp2_price, _Digits));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+         "   Preço atual: " + DoubleToString(currentPrice, _Digits));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+         "   Fechando: " + DoubleToString(m_positions[index].tp2_lot, 2) + " lote(s)");
+   }
 
-         if(ExecutePartialClose(ticket, m_positions[index].tp2_lot, "Partial TP2"))
-           {
-            SetTP2Executed(ticket, true);
-            if(m_logger != NULL)
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "✅ TP2 executado com sucesso!");
-           }
+   if(ExecutePartialClose(ticket, m_positions[index].tp2_lot, "Partial TP2"))
+   {
+      SetTP2Executed(ticket, true);
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "✅ TP2 executado com sucesso!");
+      
+      // ╔══════════════════════════════════════════════════════════════╗
+      // ║  🆕 v1.11 - REMOVER TP FIXO APÓS TP2 (deixa trailing livre) ║
+      // ╚══════════════════════════════════════════════════════════════╝
+      if(PositionSelectByTicket(ticket))
+      {
+         double currentTP = PositionGetDouble(POSITION_TP);
+         
+         if(currentTP > 0)  // Só tenta remover se houver TP
+         {
+            MqlTradeRequest request = {};
+            MqlTradeResult result = {};
+            
+            request.action = TRADE_ACTION_SLTP;
+            request.position = ticket;
+            request.symbol = m_symbol;
+            request.sl = PositionGetDouble(POSITION_SL);  // Mantém SL atual
+            request.tp = 0;  // Remove TP
+            request.magic = m_magicNumber;
+            
+            if(OrderSend(request, result) && result.retcode == TRADE_RETCODE_DONE)
+            {
+               if(m_logger != NULL)
+                  m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+                     "🔓 TP Fixo removido - Trailing livre para operar");
+            }
+            else
+            {
+               if(m_logger != NULL)
+                  m_logger.Log(LOG_EVENT, THROTTLE_NONE, "WARNING", 
+                     "⚠️ Não foi possível remover TP - Retcode: " + IntegerToString(result.retcode));
+            }
+         }
+      }
+   }
          else
            {
             if(m_logger != NULL)
