@@ -2,13 +2,21 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                                   Versão 1.20 - Claude Parte 018 |
+//|                                   Versão 1.21 - Claude Parte 018 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.20"
+#property version   "1.21"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.21:                                                 |
+//| 🔧 FIX CRÍTICO - Cache MT5 no Trailing Stop:                    |
+//|    - PositionGetDouble(POSITION_TP) retorna valor CACHEADO      |
+//|    - Bug: TP removido era restaurado em ticks seguidos           |
+//|    - Fix: Só lê POSITION_TP se !tp2Executed                      |
+//|    - Se tp2Executed=true, NÃO lê TP, deixa request.tp=0         |
+//|    - Elimina restauração indevida de TP após TP2                |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.20:                                                 |
 //| 🎯 CORREÇÃO FINAL - Lucro PROJETADO em Tempo Real:              |
@@ -1076,38 +1084,41 @@ if(g_riskManager.ShouldActivateTrailing(tp1Executed, tp2Executed))
 {
    STrailingResult trailing = g_riskManager.CalculateTrailing(
       posType, currentPrice, entryPrice, currentSL);
-   
+
    if(trailing.should_move)
    {
-      double currentTP = PositionGetDouble(POSITION_TP);
-      
       MqlTradeRequest request = {};
       MqlTradeResult result = {};
-      
+
       request.action = TRADE_ACTION_SLTP;
       request.position = ticket;
       request.symbol = _Symbol;
       request.sl = trailing.new_sl_price;
-      
-      // ✅ FIX: Só define TP se TP2 não foi executado
+
+      // ✅ FIX v1.21: Só LÊ TP se TP2 não foi executado (evita cache MT5)
+      double tpForLog = 0.0;
       if(!tp2Executed)
+      {
+         double currentTP = PositionGetDouble(POSITION_TP);
          request.tp = currentTP;  // Mantém TP fixo
-      // Se tp2Executed = true, request.tp fica 0 (trailing livre)
-      
+         tpForLog = currentTP;
+      }
+      // Se tp2Executed = true, request.tp fica 0 (padrão) - NÃO TOCA EM TP!
+
       if(OrderSend(request, result))
       {
-         string tpInfo = (currentTP == 0 || tp2Executed) ? " (sem TP)" : 
-                         StringFormat(" | TP: %.5f", currentTP);
-         
-         g_logger.Log(LOG_TRADE, THROTTLE_TIME, "TRAILING", 
-            StringFormat("✅ Trailing: SL %.5f → %.5f%s", 
+         string tpInfo = (tpForLog == 0) ? " (sem TP)" :
+                         StringFormat(" | TP: %.5f", tpForLog);
+
+         g_logger.Log(LOG_TRADE, THROTTLE_TIME, "TRAILING",
+            StringFormat("✅ Trailing: SL %.5f → %.5f%s",
             currentSL, trailing.new_sl_price, tpInfo), 5);
       }
       else
       {
          g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TRAILING",
-            StringFormat("❌ Falha | Pos: #%I64u | Retcode: %d (%s) | SL: %.5f | TP: %.5f", 
-            ticket, result.retcode, result.comment, trailing.new_sl_price, currentTP));
+            StringFormat("❌ Falha | Pos: #%I64u | Retcode: %d (%s) | SL: %.5f | TP: %.5f",
+            ticket, result.retcode, result.comment, trailing.new_sl_price, tpForLog));
       }
    }
 }
