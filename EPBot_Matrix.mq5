@@ -2,11 +2,11 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                                  Versão 1.18 - Claude Parte 018a |
+//|                                  Versão 1.21 - Claude Parte 018a |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.18"
+#property version   "1.21"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //+------------------------------------------------------------------+
@@ -85,7 +85,7 @@ bool g_tradingAllowed = true;  // Controle geral de trading
 int OnInit()
   {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.18 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v1.21 - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
 
 // ═══════════════════════════════════════════════════════════════
@@ -562,7 +562,7 @@ int OnInit()
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
 
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.18 - PRONTO PARA OPERAR!");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.21 - PRONTO PARA OPERAR!");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Símbolo: " + _Symbol);
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
@@ -1017,8 +1017,6 @@ if(g_riskManager.ShouldActivateTrailing(tp1Executed, tp2Executed))
    
    if(trailing.should_move)
    {
-      double currentTP = PositionGetDouble(POSITION_TP);
-      
       MqlTradeRequest request = {};
       MqlTradeResult result = {};
       
@@ -1027,15 +1025,20 @@ if(g_riskManager.ShouldActivateTrailing(tp1Executed, tp2Executed))
       request.symbol = _Symbol;
       request.sl = trailing.new_sl_price;
       
-      // ✅ FIX: Só define TP se TP2 não foi executado
+      // ✅ FIX v1.21: Só LÊ TP se TP2 não foi executado
+      double tpForLog = 0.0;
       if(!tp2Executed)
-         request.tp = currentTP;  // Mantém TP fixo
-      // Se tp2Executed = true, request.tp fica 0 (trailing livre)
+      {
+         double currentTP = PositionGetDouble(POSITION_TP);
+         request.tp = currentTP;
+         tpForLog = currentTP;
+      }
+      // Se tp2Executed = true, request.tp fica 0 (padrão)
       
       if(OrderSend(request, result))
       {
-         string tpInfo = (currentTP == 0 || tp2Executed) ? " (sem TP)" : 
-                         StringFormat(" | TP: %.5f", currentTP);
+         string tpInfo = (tpForLog == 0) ? " (sem TP)" : 
+                         StringFormat(" | TP: %.5f", tpForLog);
          
          g_logger.Log(LOG_TRADE, THROTTLE_TIME, "TRAILING", 
             StringFormat("✅ Trailing: SL %.5f → %.5f%s", 
@@ -1045,7 +1048,7 @@ if(g_riskManager.ShouldActivateTrailing(tp1Executed, tp2Executed))
       {
          g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TRAILING",
             StringFormat("❌ Falha | Pos: #%I64u | Retcode: %d (%s) | SL: %.5f | TP: %.5f", 
-            ticket, result.retcode, result.comment, trailing.new_sl_price, currentTP));
+            ticket, result.retcode, result.comment, trailing.new_sl_price, tpForLog));
       }
    }
 }
@@ -1425,5 +1428,5 @@ string GetDeinitReasonText(int reason)
   }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.18                                   |
+//| FIM DO EA - EPBOT MATRIX v1.21                                   |
 //+------------------------------------------------------------------+
