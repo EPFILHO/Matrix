@@ -2,12 +2,19 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                                   Versão 3.00 - Claude Parte 016 |
+//|                                   Versão 3.01 - Claude Parte 018 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "3.00"
+#property version   "3.01"
 #property strict
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.01:
+// 🚨 CORREÇÃO CRÍTICA - Proteção de Risco:
+//    - Novo método ShouldCloseByDailyLimit()
+//    - Fecha posições IMEDIATAMENTE ao atingir limite diário
+//    - Verifica ganho/perda máxima DURANTE posição aberta
+//    - Antes só verificava ANTES de abrir nova posição (BUG!)
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.00:
 // ✅ REFATORAÇÃO COMPLETA DE LOGGING:
@@ -302,6 +309,7 @@ public:
    bool              CanTradeDirection(int orderType, string &blockReason);
    bool              ShouldCloseOnEndTime(ulong positionTicket);
    bool              ShouldCloseBeforeSessionEnd(ulong positionTicket);
+   bool              ShouldCloseByDailyLimit(double dailyProfit, string &closeReason);
 
    // ═══════════════════════════════════════════════════════════════
    // MÉTODOS DE ATUALIZAÇÃO DE ESTADO
@@ -1463,6 +1471,93 @@ bool CBlockers::ShouldCloseBeforeSessionEnd(ulong positionTicket)
         }
 
       return true;
+     }
+
+   return false;
+  }
+
+//+------------------------------------------------------------------+
+//| Verifica se deve fechar posição por limite diário atingido       |
+//| ✅ NOVO v3.01: Fecha IMEDIATAMENTE ao atingir limite             |
+//+------------------------------------------------------------------+
+bool CBlockers::ShouldCloseByDailyLimit(double dailyProfit, string &closeReason)
+  {
+   closeReason = "";
+
+// Se limites diários estiverem desativados, não faz nada
+   if(!m_enableDailyLimits)
+      return false;
+
+// ═══════════════════════════════════════════════════════════════
+// VERIFICAR LIMITE DE PERDA DIÁRIA
+// ═══════════════════════════════════════════════════════════════
+   if(m_maxDailyLoss > 0 && dailyProfit <= -m_maxDailyLoss)
+     {
+      closeReason = StringFormat("LIMITE DE PERDA DIÁRIA ATINGIDO: %.2f / %.2f",
+                                 dailyProfit, -m_maxDailyLoss);
+
+      if(m_logger != NULL)
+        {
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT", "════════════════════════════════════════════════════════════════");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT", "🚨 LIMITE DE PERDA DIÁRIA ATINGIDO!");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
+            StringFormat("   Lucro/Prejuízo do dia: %.2f", dailyProfit));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
+            StringFormat("   Limite configurado: %.2f", -m_maxDailyLoss));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
+            "   🛑 FECHANDO TODAS AS POSIÇÕES ABERTAS IMEDIATAMENTE");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT", "════════════════════════════════════════════════════════════════");
+        }
+      else
+        {
+         Print("🚨 [Blockers] LIMITE DE PERDA DIÁRIA ATINGIDO: ", dailyProfit, " / ", -m_maxDailyLoss);
+        }
+
+      m_currentBlocker = BLOCKER_DAILY_LOSS;
+      return true;
+     }
+
+// ═══════════════════════════════════════════════════════════════
+// VERIFICAR LIMITE DE GANHO DIÁRIO
+// ═══════════════════════════════════════════════════════════════
+   if(m_maxDailyGain > 0 && dailyProfit >= m_maxDailyGain)
+     {
+      // Se ação for STOP, fecha tudo
+      if(m_profitTargetAction == PROFIT_ACTION_STOP)
+        {
+         closeReason = StringFormat("META DE GANHO DIÁRIA ATINGIDA: %.2f / %.2f",
+                                    dailyProfit, m_maxDailyGain);
+
+         if(m_logger != NULL)
+           {
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT", "════════════════════════════════════════════════════════════════");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT", "🎯 META DE GANHO DIÁRIA ATINGIDA!");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
+               StringFormat("   Lucro do dia: %.2f", dailyProfit));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
+               StringFormat("   Meta configurada: %.2f", m_maxDailyGain));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
+               "   ✅ FECHANDO TODAS AS POSIÇÕES ABERTAS IMEDIATAMENTE");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT", "════════════════════════════════════════════════════════════════");
+           }
+         else
+           {
+            Print("🎯 [Blockers] META DE GANHO DIÁRIA ATINGIDA: ", dailyProfit, " / ", m_maxDailyGain);
+           }
+
+         m_currentBlocker = BLOCKER_DAILY_GAIN;
+         return true;
+        }
+      else // PROFIT_ACTION_ENABLE_DRAWDOWN
+        {
+         // Ativa proteção de drawdown mas NÃO fecha
+         if(!m_drawdownProtectionActive)
+           {
+            ActivateDrawdownProtection(dailyProfit);
+           }
+         // Não fecha a posição, deixa drawdown gerenciar
+         return false;
+        }
      }
 
    return false;

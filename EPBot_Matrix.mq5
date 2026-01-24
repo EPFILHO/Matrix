@@ -2,12 +2,21 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                                  Versão 1.18 - Claude Parte 018a |
+//|                                   Versão 1.19 - Claude Parte 018 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.18"
+#property version   "1.19"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
+
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.19:                                                 |
+//| 🚨 CORREÇÃO CRÍTICA - Proteção de Risco em Tempo Real:          |
+//|    - Verifica limites diários DURANTE posição aberta             |
+//|    - Fecha posição IMEDIATAMENTE ao atingir ganho/perda máxima   |
+//|    - Antes só verificava ANTES de abrir nova posição (BUG!)      |
+//|    - Integração com Blockers v3.01                               |
+//+------------------------------------------------------------------+
 
 //+------------------------------------------------------------------+
 //| INCLUDES - ORDEM IMPORTANTE                                      |
@@ -991,6 +1000,58 @@ void ManageOpenPosition(ulong ticket)
       g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "POSITION",
                    "⚠️ Posição não encontrada no TradeManager - Ignorando gerenciamento");
       return;
+     }
+
+// ═══════════════════════════════════════════════════════════════
+// 🚨 VERIFICAR LIMITES DIÁRIOS - FECHA IMEDIATAMENTE SE ATINGIDO
+// ═══════════════════════════════════════════════════════════════
+   double dailyProfit = g_logger.GetDailyProfit();
+   string closeReason = "";
+
+   if(g_blockers.ShouldCloseByDailyLimit(dailyProfit, closeReason))
+     {
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
+                   "🚨 " + closeReason);
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
+                   "   Fechando posição #" + IntegerToString((int)ticket) + " IMEDIATAMENTE");
+
+      // Monta request de fechamento
+      MqlTradeRequest request = {};
+      MqlTradeResult result = {};
+
+      request.action = TRADE_ACTION_DEAL;
+      request.position = ticket;
+      request.symbol = _Symbol;
+      request.volume = PositionGetDouble(POSITION_VOLUME);
+      request.type = (posType == POSITION_TYPE_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
+      request.price = currentPrice;
+      request.deviation = inp_Slippage;
+      request.magic = inp_MagicNumber;
+      request.comment = "Daily Limit";
+      request.type_filling = GetTypeFilling(_Symbol);
+
+      if(OrderSend(request, result))
+        {
+         if(result.retcode == TRADE_RETCODE_DONE)
+           {
+            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "DAILY_LIMIT",
+                         "✅ Posição #" + IntegerToString((int)ticket) + " fechada por limite diário");
+            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "DAILY_LIMIT",
+                         "   Preço: " + DoubleToString(result.price, _Digits));
+           }
+         else
+           {
+            g_logger.Log(LOG_ERROR, THROTTLE_NONE, "DAILY_LIMIT",
+                         "⚠️ Retcode: " + IntegerToString(result.retcode) + " - " + result.comment);
+           }
+        }
+      else
+        {
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "DAILY_LIMIT",
+                      "❌ Falha ao fechar posição - Código: " + IntegerToString(GetLastError()));
+        }
+
+      return; // ✅ SAI IMEDIATAMENTE APÓS FECHAR
      }
 
 // ═══════════════════════════════════════════════════════════════
