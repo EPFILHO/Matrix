@@ -2,11 +2,11 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                                   Versão 1.12 - Claude Parte 017 |
+//|                                  Versão 1.18 - Claude Parte 018a |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.12"
+#property version   "1.18"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //+------------------------------------------------------------------+
@@ -67,11 +67,12 @@ CTrendFilter* g_trendFilter = NULL;  // Filtro de tendência
 CRSIFilter*   g_rsiFilter   = NULL;  // Filtro RSI
 
 // ═══════════════════════════════════════════════════════════════
-// CONTROLE DE CANDLES (v1.10 - MODIFICADO!)
+// CONTROLE DE CANDLES E POSIÇÕES (CORRIGIDO!)
 // ═══════════════════════════════════════════════════════════════
-datetime g_lastBarTime = 0;       // Controle de novo candle
-datetime g_lastTradeBarTime = 0;  // 🆕 v1.10: Controle de último trade executado
-datetime g_lastExitBarTime = 0;   // 🆕 v1.10: Controle de último exit (para FCO)
+datetime g_lastBarTime = 0;          // Controle de novo candle
+datetime g_lastTradeBarTime = 0;     // Controle de último trade executado
+datetime g_lastExitBarTime = 0;      // Controle de último exit (para FCO)
+ulong    g_lastPositionTicket = 0;   // Ticket da última posição (global - sobrevive a restarts)
 
 // ═══════════════════════════════════════════════════════════════
 // VARIÁVEIS DE ESTADO
@@ -84,7 +85,7 @@ bool g_tradingAllowed = true;  // Controle geral de trading
 int OnInit()
   {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.12 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v1.18 - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
 
 // ═══════════════════════════════════════════════════════════════
@@ -112,7 +113,6 @@ int OnInit()
    if(g_blockers == NULL)
      {
       g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar Blockers!");
-      CleanupAndReturn(INIT_FAILED);
       return INIT_FAILED;
      }
 
@@ -163,7 +163,6 @@ int OnInit()
       ))
      {
       g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar Blockers!");
-      CleanupAndReturn(INIT_FAILED);
       return INIT_FAILED;
      }
 
@@ -174,7 +173,6 @@ int OnInit()
    if(g_riskManager == NULL)
      {
       g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar RiskManager!");
-      CleanupAndReturn(INIT_FAILED);
       return INIT_FAILED;
      }
 
@@ -244,11 +242,39 @@ int OnInit()
       ))
      {
       g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar RiskManager!");
-      CleanupAndReturn(INIT_FAILED);
       return INIT_FAILED;
      }
 
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "RiskManager inicializado com sucesso!");
+
+// ═══════════════════════════════════════════════════════════════
+// ETAPA 3.5: VALIDAR CONFIGURAÇÃO 
+// ═══════════════════════════════════════════════════════════════
+// ✅ BLOQUEAR: TP_ATR + Partial TP (conflito de conceito)
+   if(inp_UsePartialTP && inp_TPType == TP_ATR)
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "CONFIG", "════════════════════════════════════════════════════════════════");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "CONFIG", "❌ CONFIGURAÇÃO INVÁLIDA - CONFLITO DE CONCEITO");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "CONFIG", "");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "CONFIG", "   Partial TP usa níveis FIXOS em pontos");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "CONFIG", "   TP ATR é DINÂMICO baseado em volatilidade");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "CONFIG", "   → Combinação gera comportamento inconsistente!");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "CONFIG", "");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "CONFIG", "💡 ESCOLHA UMA DAS OPÇÕES VÁLIDAS:");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "CONFIG", "");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "CONFIG", "   1️⃣ TP FIXED + Partial TP = ✅ OK");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "CONFIG", "      → Todos os níveis fixos e conhecidos");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "CONFIG", "");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "CONFIG", "   2️⃣ TP NONE + Partial TP = ✅ OK");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "CONFIG", "      → Apenas takes parciais, sem TP principal");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "CONFIG", "");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "CONFIG", "   3️⃣ TP ATR sem Partial TP = ✅ OK");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "CONFIG", "      → TP dinâmico baseado em volatilidade");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "CONFIG", "");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "CONFIG", "════════════════════════════════════════════════════════════════");
+      
+      return INIT_FAILED;
+     }
 
 // ═══════════════════════════════════════════════════════════════
 // ETAPA 4: INICIALIZAR TRADE MANAGER
@@ -257,7 +283,6 @@ int OnInit()
    if(g_tradeManager == NULL)
      {
       g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar TradeManager!");
-      CleanupAndReturn(INIT_FAILED);
       return INIT_FAILED;
      }
 
@@ -270,7 +295,6 @@ int OnInit()
       ))
      {
       g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar TradeManager!");
-      CleanupAndReturn(INIT_FAILED);
       return INIT_FAILED;
      }
 
@@ -284,6 +308,20 @@ int OnInit()
      {
       g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT",
                    "🔄 " + IntegerToString(syncedPositions) + " posição(ões) ressincronizada(s)");
+      
+      // SINCRONIZAR g_lastPositionTicket para detectar fechamento futuro
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
+        {
+         if(PositionGetSymbol(i) == _Symbol && 
+            PositionGetInteger(POSITION_MAGIC) == inp_MagicNumber)
+           {
+            g_lastPositionTicket = PositionGetTicket(i);
+            
+            g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT",
+                        StringFormat("🔄 lastPositionTicket sincronizado: %I64u", g_lastPositionTicket));
+            break;  // Assumindo uma posição por EA
+           }
+        }
      }
 
 // ═══════════════════════════════════════════════════════════════
@@ -293,7 +331,6 @@ int OnInit()
    if(g_signalManager == NULL)
      {
       g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar SignalManager!");
-      CleanupAndReturn(INIT_FAILED);
       return INIT_FAILED;
      }
 
@@ -301,7 +338,6 @@ int OnInit()
    if(!g_signalManager.Initialize(g_logger))
      {
       g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar SignalManager!");
-      CleanupAndReturn(INIT_FAILED);
       return INIT_FAILED;
      }
 
@@ -319,7 +355,6 @@ int OnInit()
       if(g_maCrossStrategy == NULL)
         {
          g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar MACrossStrategy!");
-         CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
@@ -338,7 +373,6 @@ int OnInit()
          ))
         {
          g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar MACrossStrategy!");
-         CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
@@ -346,7 +380,6 @@ int OnInit()
       if(!g_maCrossStrategy.Initialize())
         {
          g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar MACrossStrategy!");
-         CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
@@ -356,7 +389,6 @@ int OnInit()
       if(!g_signalManager.AddStrategy(g_maCrossStrategy))
         {
          g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao registrar MACrossStrategy no SignalManager!");
-         CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
@@ -375,7 +407,6 @@ int OnInit()
       if(g_rsiStrategy == NULL)
         {
          g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar RSIStrategy!");
-         CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
@@ -393,7 +424,6 @@ int OnInit()
          ))
         {
          g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar RSIStrategy!");
-         CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
@@ -401,7 +431,6 @@ int OnInit()
       if(!g_rsiStrategy.Initialize())
         {
          g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar RSIStrategy!");
-         CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
@@ -411,7 +440,6 @@ int OnInit()
       if(!g_signalManager.AddStrategy(g_rsiStrategy))
         {
          g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao registrar RSIStrategy no SignalManager!");
-         CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
@@ -435,7 +463,6 @@ int OnInit()
       if(g_trendFilter == NULL)
         {
          g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar TrendFilter!");
-         CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
@@ -450,7 +477,6 @@ int OnInit()
          ))
         {
          g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar TrendFilter!");
-         CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
@@ -458,14 +484,12 @@ int OnInit()
       if(!g_trendFilter.Initialize())
         {
          g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar TrendFilter!");
-         CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
       if(!g_signalManager.AddFilter(g_trendFilter))
         {
          g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao registrar TrendFilter no SignalManager!");
-         CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
@@ -483,7 +507,6 @@ int OnInit()
       if(g_rsiFilter == NULL)
         {
          g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar RSIFilter!");
-         CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
@@ -502,7 +525,6 @@ int OnInit()
          ))
         {
          g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar RSIFilter!");
-         CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
@@ -510,14 +532,12 @@ int OnInit()
       if(!g_rsiFilter.Initialize())
         {
          g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar RSIFilter!");
-         CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
       if(!g_signalManager.AddFilter(g_rsiFilter))
         {
          g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao registrar RSIFilter no SignalManager!");
-         CleanupAndReturn(INIT_FAILED);
          return INIT_FAILED;
         }
 
@@ -542,7 +562,7 @@ int OnInit()
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
 
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.12 - PRONTO PARA OPERAR!");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.18 - PRONTO PARA OPERAR!");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Símbolo: " + _Symbol);
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
@@ -558,17 +578,21 @@ int OnInit()
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason)
   {
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT", "════════════════════════════════════════════════════════════════");
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT", "            EPBOT MATRIX - FINALIZANDO...                      ");
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT", "════════════════════════════════════════════════════════════════");
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT",
-                "Motivo: " + IntegerToString(reason) + " - " + GetDeinitReasonText(reason));
-
-// Salvar relatório diário antes de finalizar
-   if(g_logger != NULL && g_logger.GetDailyTrades() > 0)
+// Proteger TODOS os logs contra ponteiro NULL
+   if(g_logger != NULL)
      {
-      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT", "📄 Gerando relatório final...");
-      g_logger.SaveDailyReport();
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT", "════════════════════════════════════════════════════════════════");
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT", "            EPBOT MATRIX - FINALIZANDO...                      ");
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT", "════════════════════════════════════════════════════════════════");
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT",
+                   "Motivo: " + IntegerToString(reason) + " - " + GetDeinitReasonText(reason));
+
+      // Salvar relatório diário antes de finalizar
+      if(g_logger.GetDailyTrades() > 0)
+        {
+         g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DEINIT", "📄 Gerando relatório final...");
+         g_logger.SaveDailyReport();
+        }
      }
 
 // ═══════════════════════════════════════════════════════════════
@@ -644,7 +668,7 @@ void OnDeinit(const int reason)
   }
 
 //+------------------------------------------------------------------+
-//| FUNÇÃO PRINCIPAL - OnTick() - VERSÃO CORRIGIDA DEFINITIVA        |
+//| FUNÇÃO PRINCIPAL - OnTick()                                      |
 //+------------------------------------------------------------------+
 void OnTick()
   {
@@ -699,7 +723,7 @@ void OnTick()
 // ETAPA 1.5: DETECTAR FECHAMENTO DE POSIÇÃO (histórico)
 // ═══════════════════════════════════════════════════════════════
 
-   static ulong lastPositionTicket = 0;
+// Usar variável GLOBAL (não mais static local)
 
 // ═══════════════════════════════════════════════════════════════
 // BUSCAR POSIÇÃO DESTE EA (funciona em HEDGING e NETTING)
@@ -721,10 +745,10 @@ void OnTick()
      }
 
 // Se tinha posição e agora não tem mais = fechou!
-   if(lastPositionTicket > 0 && !hasMyPosition)
+   if(g_lastPositionTicket > 0 && !hasMyPosition)
      {
       // Buscar informação do fechamento no histórico
-      if(HistorySelectByPosition(lastPositionTicket))
+      if(HistorySelectByPosition(g_lastPositionTicket))
         {
          // Calcular profit da posição fechada
          double positionProfit = 0;
@@ -732,7 +756,7 @@ void OnTick()
          for(int i = 0; i < HistoryDealsTotal(); i++)
            {
             ulong dealTicket = HistoryDealGetTicket(i);
-            if(HistoryDealGetInteger(dealTicket, DEAL_POSITION_ID) == lastPositionTicket)
+            if(HistoryDealGetInteger(dealTicket, DEAL_POSITION_ID) == g_lastPositionTicket)
               {
                long dealEntry = HistoryDealGetInteger(dealTicket, DEAL_ENTRY);
                if(dealEntry == DEAL_ENTRY_OUT || dealEntry == DEAL_ENTRY_OUT_BY)
@@ -740,7 +764,7 @@ void OnTick()
                   positionProfit = HistoryDealGetDouble(dealTicket, DEAL_PROFIT);
 
                   // Salvar trade no Logger
-                  g_logger.SaveTrade(lastPositionTicket, positionProfit);
+                  g_logger.SaveTrade(g_lastPositionTicket, positionProfit);
 
                   // Atualizar estatísticas
                   g_logger.UpdateStats(positionProfit);
@@ -750,7 +774,7 @@ void OnTick()
                   g_blockers.UpdateAfterTrade(isWin, positionProfit);
 
                   g_logger.Log(LOG_TRADE, THROTTLE_NONE, "CLOSE",
-                               "📊 Posição #" + IntegerToString(lastPositionTicket) +
+                               "📊 Posição #" + IntegerToString(g_lastPositionTicket) +
                                " fechada | P/L: $" + DoubleToString(positionProfit, 2));
 
                   // Gerar relatório TXT atualizado após cada trade
@@ -764,7 +788,7 @@ void OnTick()
         }
 
       // Remover do TradeManager
-      g_tradeManager.UnregisterPosition(lastPositionTicket);
+      g_tradeManager.UnregisterPosition(g_lastPositionTicket);
 
       // Resetar controle de candle ao fechar posição (exceto no modo VM)
       if(inp_ExitMode != EXIT_VM)
@@ -773,7 +797,7 @@ void OnTick()
          g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "RESET", "🔄 Controle de candle resetado - pronto para novo trade");
         }
 
-      lastPositionTicket = 0;
+      g_lastPositionTicket = 0;
      }
 
 // ═══════════════════════════════════════════════════════════════
@@ -782,7 +806,7 @@ void OnTick()
    if(hasMyPosition)
      {
       // Atualizar ticket da posição atual
-      lastPositionTicket = myPositionTicket;
+      g_lastPositionTicket = myPositionTicket;
 
       // Selecionar a posição específica
       if(!PositionSelectByTicket(myPositionTicket))
@@ -986,28 +1010,45 @@ void ManageOpenPosition(ulong ticket)
 // ═══════════════════════════════════════════════════════════════
 // TRAILING STOP
 // ═══════════════════════════════════════════════════════════════
-   if(g_riskManager.ShouldActivateTrailing(tp1Executed, tp2Executed))
-     {
-      STrailingResult trailing = g_riskManager.CalculateTrailing(posType, currentPrice, entryPrice, currentSL);
-
-      if(trailing.should_move)
-        {
-         MqlTradeRequest request = {};
-         MqlTradeResult result = {};
-
-         request.action = TRADE_ACTION_SLTP;
-         request.position = ticket;
-         request.symbol = _Symbol;
-         request.sl = trailing.new_sl_price;
-         request.tp = PositionGetDouble(POSITION_TP);
-
-         if(OrderSend(request, result))
-           {
-            g_logger.Log(LOG_TRADE, THROTTLE_TIME, "TRAILING",
-                         "✅ Trailing Stop movido para " + DoubleToString(trailing.new_sl_price, _Digits), 5);
-           }
-        }
-     }
+if(g_riskManager.ShouldActivateTrailing(tp1Executed, tp2Executed))
+{
+   STrailingResult trailing = g_riskManager.CalculateTrailing(
+      posType, currentPrice, entryPrice, currentSL);
+   
+   if(trailing.should_move)
+   {
+      double currentTP = PositionGetDouble(POSITION_TP);
+      
+      MqlTradeRequest request = {};
+      MqlTradeResult result = {};
+      
+      request.action = TRADE_ACTION_SLTP;
+      request.position = ticket;
+      request.symbol = _Symbol;
+      request.sl = trailing.new_sl_price;
+      
+      // ✅ FIX: Só define TP se TP2 não foi executado
+      if(!tp2Executed)
+         request.tp = currentTP;  // Mantém TP fixo
+      // Se tp2Executed = true, request.tp fica 0 (trailing livre)
+      
+      if(OrderSend(request, result))
+      {
+         string tpInfo = (currentTP == 0 || tp2Executed) ? " (sem TP)" : 
+                         StringFormat(" | TP: %.5f", currentTP);
+         
+         g_logger.Log(LOG_TRADE, THROTTLE_TIME, "TRAILING", 
+            StringFormat("✅ Trailing: SL %.5f → %.5f%s", 
+            currentSL, trailing.new_sl_price, tpInfo), 5);
+      }
+      else
+      {
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TRAILING",
+            StringFormat("❌ Falha | Pos: #%I64u | Retcode: %d (%s) | SL: %.5f | TP: %.5f", 
+            ticket, result.retcode, result.comment, trailing.new_sl_price, currentTP));
+      }
+   }
+}
 
 // ═══════════════════════════════════════════════════════════════
 // BREAKEVEN
@@ -1093,7 +1134,7 @@ void ManageOpenPosition(ulong ticket)
   }
 
 //+------------------------------------------------------------------+
-//| EXECUTAR TRADE                                                   |
+//| EXECUTAR TRADE                                            |
 //+------------------------------------------------------------------+
 void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
   {
@@ -1200,7 +1241,7 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
    if(result.retcode == TRADE_RETCODE_DONE || result.retcode == TRADE_RETCODE_PLACED)
      {
       g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE", "✅ ORDEM EXECUTADA COM SUCESSO!");
-      g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE", "   Ticket: " + IntegerToString(result.order));
+      g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE", "   Order: " + IntegerToString(result.order));
       g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE", "   Deal: " + IntegerToString(result.deal));
       g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE", "   Volume: " + DoubleToString(result.volume, 2));
       g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE", "   Preço: " + DoubleToString(result.price, _Digits));
@@ -1209,6 +1250,77 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
       g_lastTradeBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
       g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE",
                    "📊 Trade executado no candle: " + TimeToString(g_lastTradeBarTime));
+
+      // ═══════════════════════════════════════════════════════════════
+      // ✅ CORREÇÃO  - OBTER TICKET CORRETO DA POSIÇÃO
+      // ═══════════════════════════════════════════════════════════════
+      ulong positionTicket = 0;
+      
+      // MÉTODO 1: INSTITUCIONAL - Usar DEAL_POSITION_ID
+      if(result.deal > 0)
+        {
+         // Atualizar histórico para garantir que deal está disponível
+         datetime from = TimeCurrent() - 10;
+         datetime to = TimeCurrent();
+         
+         if(HistorySelect(from, to))
+           {
+            if(HistoryDealSelect(result.deal))
+              {
+               positionTicket = HistoryDealGetInteger(result.deal, DEAL_POSITION_ID);
+               
+               g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE",
+                           StringFormat("🎯 Order: %I64u → Deal: %I64u → Position: %I64u",
+                                       result.order, result.deal, positionTicket));
+              }
+            else
+              {
+               g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "TRADE",
+                           "⚠️ Deal não encontrado na história: " + IntegerToString(result.deal));
+              }
+           }
+         else
+           {
+            g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "TRADE",
+                        "⚠️ Falha ao atualizar histórico");
+           }
+        }
+      
+      // MÉTODO 2: FALLBACK - Busca robusta por símbolo/magic/tempo
+      if(positionTicket == 0 || !PositionSelectByTicket(positionTicket))
+        {
+         g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "TRADE",
+                     "⚠️ Fallback: Buscando posição por símbolo + magic...");
+         
+         int total = PositionsTotal();
+         for(int i = 0; i < total; i++)
+           {
+            ulong ticket = PositionGetTicket(i);
+            if(ticket == 0) continue;
+            
+            if(PositionGetString(POSITION_SYMBOL) == _Symbol &&
+               PositionGetInteger(POSITION_MAGIC) == inp_MagicNumber)
+              {
+               // Verificar se foi aberta "agora" (últimos 5 segundos)
+               datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
+               if(TimeCurrent() - openTime < 5)
+                 {
+                  positionTicket = ticket;
+                  g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE",
+                              StringFormat("✅ Posição encontrada (fallback): %I64u", positionTicket));
+                  break;
+                 }
+              }
+           }
+        }
+      
+      // Validação final
+      if(positionTicket == 0 || !PositionSelectByTicket(positionTicket))
+        {
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TRADE",
+                     "❌ Posição não encontrada após abertura! Order: " + IntegerToString(result.order));
+         return;
+        }
 
       // ═══════════════════════════════════════════════════════════════
       // REGISTRAR POSIÇÃO NO TRADEMANAGER
@@ -1239,25 +1351,20 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
            }
         }
 
-      // ✅ USAR ORDER TICKET (que vira POSITION ticket em ordens market)
-      ulong positionTicket = result.order;
-
-      // Verificar se a posição realmente existe
-      if(!PositionSelectByTicket(positionTicket))
-        {
-         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TRADE",
-                      "❌ Posição não encontrada após abertura! Order: " + IntegerToString(result.order));
-         return;
-        }
-
+      // ✅ REGISTRAR COM O TICKET CORRETO
       g_tradeManager.RegisterPosition(
-         positionTicket,  // ✅ CORRETO: result.order
+         positionTicket,  // ✅ TICKET CORRETO DA POSIÇÃO
          (orderType == ORDER_TYPE_BUY) ? POSITION_TYPE_BUY : POSITION_TYPE_SELL,
          result.price,
          result.volume,
          hasPartialTP,
          tpLevels
       );
+      
+      // ATUALIZAR g_lastPositionTicket GLOBAL
+      g_lastPositionTicket = positionTicket;
+      g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "TRADE",
+                  StringFormat("🔄 g_lastPositionTicket atualizado: %I64u", g_lastPositionTicket));
      }
    else
      {
@@ -1267,73 +1374,6 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
      }
 
    g_logger.Log(LOG_SIGNAL, THROTTLE_NONE, "SIGNAL", "════════════════════════════════════════════════════════════════");
-  }
-
-//+------------------------------------------------------------------+
-//| CLEANUP E RETORNO                                                |
-//+------------------------------------------------------------------+
-void CleanupAndReturn(int returnCode)
-  {
-// Liberar filtros
-   if(g_rsiFilter != NULL)
-     {
-      delete g_rsiFilter;
-      g_rsiFilter = NULL;
-     }
-
-   if(g_trendFilter != NULL)
-     {
-      delete g_trendFilter;
-      g_trendFilter = NULL;
-     }
-
-// Liberar estratégias
-   if(g_rsiStrategy != NULL)
-     {
-      delete g_rsiStrategy;
-      g_rsiStrategy = NULL;
-     }
-
-   if(g_maCrossStrategy != NULL)
-     {
-      delete g_maCrossStrategy;
-      g_maCrossStrategy = NULL;
-     }
-
-// SignalManager
-   if(g_signalManager != NULL)
-     {
-      delete g_signalManager;
-      g_signalManager = NULL;
-     }
-
-// RiskManager
-   if(g_riskManager != NULL)
-     {
-      delete g_riskManager;
-      g_riskManager = NULL;
-     }
-
-// TradeManager
-   if(g_tradeManager != NULL)
-     {
-      delete g_tradeManager;
-      g_tradeManager = NULL;
-     }
-
-// Blockers
-   if(g_blockers != NULL)
-     {
-      delete g_blockers;
-      g_blockers = NULL;
-     }
-
-// Logger (último sempre!)
-   if(g_logger != NULL)
-     {
-      delete g_logger;
-      g_logger = NULL;
-     }
   }
 
 //+------------------------------------------------------------------+
@@ -1385,5 +1425,5 @@ string GetDeinitReasonText(int reason)
   }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.12                                   |
+//| FIM DO EA - EPBOT MATRIX v1.18                                   |
 //+------------------------------------------------------------------+
