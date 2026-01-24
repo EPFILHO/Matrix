@@ -2,20 +2,21 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                                   Versão 1.19 - Claude Parte 018 |
+//|                                   Versão 1.20 - Claude Parte 018 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.19"
+#property version   "1.20"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //+------------------------------------------------------------------+
-//| CHANGELOG v1.19:                                                 |
-//| 🚨 CORREÇÃO CRÍTICA - Proteção de Risco em Tempo Real:          |
-//|    - Verifica limites diários DURANTE posição aberta             |
-//|    - Fecha posição IMEDIATAMENTE ao atingir ganho/perda máxima   |
-//|    - Antes só verificava ANTES de abrir nova posição (BUG!)      |
-//|    - Integração com Blockers v3.01                               |
+//| CHANGELOG v1.20:                                                 |
+//| 🎯 CORREÇÃO FINAL - Lucro PROJETADO em Tempo Real:              |
+//|    - Calcula: fechados + posição flutuando + swap                |
+//|    - Fecha NO EXATO MOMENTO que atinge limite                    |
+//|    - v1.19 tinha bug: só verificava trades fechados              |
+//|    - Agora verifica lucro em tempo real A CADA TICK              |
+//|    - Integração com Blockers v3.02                               |
 //+------------------------------------------------------------------+
 
 //+------------------------------------------------------------------+
@@ -1003,12 +1004,12 @@ void ManageOpenPosition(ulong ticket)
      }
 
 // ═══════════════════════════════════════════════════════════════
-// 🚨 VERIFICAR LIMITES DIÁRIOS - FECHA IMEDIATAMENTE SE ATINGIDO
+// 🚨 VERIFICAR LIMITES DIÁRIOS (LUCRO PROJETADO EM TEMPO REAL)
 // ═══════════════════════════════════════════════════════════════
    double dailyProfit = g_logger.GetDailyProfit();
    string closeReason = "";
 
-   if(g_blockers.ShouldCloseByDailyLimit(dailyProfit, closeReason))
+   if(g_blockers.ShouldCloseByDailyLimit(ticket, dailyProfit, closeReason))
      {
       g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
                    "🚨 " + closeReason);
