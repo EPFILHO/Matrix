@@ -2,15 +2,24 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                                   Versão 1.23 - Claude Parte 019 |
+//|                                   Versão 1.24 - Claude Parte 020 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.23"
+#property version   "1.24"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //+------------------------------------------------------------------+
-//| CHANGELOG v1.23:                                                 |
+//| CHANGELOG v1.24:                                                 |
+//| 🎯 CORREÇÃO CRÍTICA - TPs Parciais no Daily Profit:             |
+//|    - Lucro de TP1/TP2 agora contabilizado em tempo real         |
+//|    - GetDailyProfit() inclui m_partialTPProfit                  |
+//|    - Limites diários (ganho/perda) consideram TPs parciais      |
+//|    - Drawdown protection considera TPs parciais realizados      |
+//|    - Logger v3.10 com AddPartialTPProfit()                      |
+//|    - TradeManager v1.20 registra lucro após cada TP parcial     |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.24:                                                 |
 //| 🛡️ VERIFICAÇÃO DE DRAWDOWN EM TEMPO REAL:                       |
 //|    - Calcula drawdown com lucro PROJETADO (fechados + aberta)   |
 //|    - Fecha NO EXATO MOMENTO que atinge limite de drawdown       |
@@ -103,7 +112,7 @@ bool g_tradingAllowed = true;  // Controle geral de trading
 int OnInit()
   {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.23 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v1.24 - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
 
 // ═══════════════════════════════════════════════════════════════
@@ -580,7 +589,7 @@ int OnInit()
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
 
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.23 - PRONTO PARA OPERAR!");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.24 - PRONTO PARA OPERAR!");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Símbolo: " + _Symbol);
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
@@ -1568,5 +1577,5 @@ string GetDeinitReasonText(int reason)
   }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.23                                   |
+//| FIM DO EA - EPBOT MATRIX v1.24                                   |
 //+------------------------------------------------------------------+

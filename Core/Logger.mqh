@@ -2,12 +2,20 @@
 //|                                                       Logger.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                                Sistema de Logging - EPBot Matrix |
-//|                                   Versão 3.00 - Claude Parte 016 |
+//|                                   Versão 3.10 - Claude Parte 020 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "3.00"
+#property version   "3.10"
 
+// ═══════════════════════════════════════════════════════════════════
+// CHANGELOG v3.10:
+// ✅ CORREÇÃO CRÍTICA: TPs parciais agora contabilizados no dailyProfit
+// ✅ Novo: m_partialTPProfit rastreia lucros de TPs parciais
+// ✅ Novo: AddPartialTPProfit() para registrar lucro de TP parcial
+// ✅ Novo: GetPartialTPProfit() para consultar lucro parcial acumulado
+// ✅ GetDailyProfit() agora inclui m_partialTPProfit
+// ✅ ResetDaily() limpa m_partialTPProfit
 // ═══════════════════════════════════════════════════════════════════
 // CHANGELOG v3.00:
 // ✅ NOVA ARQUITETURA DE LOGGING FOCADA EM TRADING
@@ -92,6 +100,7 @@ private:
    // ESTATÍSTICAS DO DIA
    // ═══════════════════════════════════════════════════════════
    double            m_dailyProfit;
+   double            m_partialTPProfit;   // 🆕 v3.10: Lucro acumulado de TPs parciais
    int               m_dailyTrades;
    int               m_dailyWins;
    int               m_dailyLosses;
@@ -158,14 +167,22 @@ public:
    void              SetDebugCooldown(int seconds);
    
    // ═══════════════════════════════════════════════════════════
+   // 🆕 v3.10: PARTIAL TP PROFIT TRACKING
+   // ═══════════════════════════════════════════════════════════
+   void              AddPartialTPProfit(double profit);
+   double            GetPartialTPProfit() { return m_partialTPProfit; }
+
+   // ═══════════════════════════════════════════════════════════
    // GETTERS
    // ═══════════════════════════════════════════════════════════
-   double            GetDailyProfit() { return m_dailyProfit; }
+   // 🆕 v3.10: Agora inclui lucro de TPs parciais para cálculo correto de limites
+   double            GetDailyProfit() { return m_dailyProfit + m_partialTPProfit; }
+   double            GetClosedTradesProfit() { return m_dailyProfit; }  // Apenas trades 100% fechados
    int               GetDailyTrades() { return m_dailyTrades; }
    int               GetDailyWins() { return m_dailyWins; }
    int               GetDailyLosses() { return m_dailyLosses; }
    int               GetDailyDraws() { return m_dailyDraws; }
-   
+
    bool              GetShowDebug() { return m_showDebug; }
    bool              GetInputShowDebug() { return m_inputShowDebug; }
    
@@ -184,15 +201,16 @@ CLogger::CLogger()
    m_inputDebugCooldown = 5;
    m_showDebug = false;
    m_debugCooldown = 5;
-   
+
    m_dailyProfit = 0;
+   m_partialTPProfit = 0;  // 🆕 v3.10
    m_dailyTrades = 0;
    m_dailyWins = 0;
    m_dailyLosses = 0;
    m_dailyDraws = 0;
    m_grossProfit = 0;
    m_grossLoss = 0;
-   
+
    ArrayResize(m_throttles, 0);
   }
 
@@ -623,6 +641,7 @@ void CLogger::LoadDailyStats()
   {
    // Reset inicial
    m_dailyProfit = 0;
+   m_partialTPProfit = 0;  // 🆕 v3.10: Reset também TPs parciais
    m_dailyTrades = 0;
    m_dailyWins = 0;
    m_dailyLosses = 0;
@@ -854,18 +873,31 @@ string CLogger::GetConfigSummary()
   }
 
 //+------------------------------------------------------------------+
+//| 🆕 v3.10: Adicionar lucro de TP parcial                          |
+//+------------------------------------------------------------------+
+void CLogger::AddPartialTPProfit(double profit)
+  {
+   m_partialTPProfit += profit;
+
+   Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
+       StringFormat("🎯 Lucro parcial registrado: $%.2f | Acumulado TPs: $%.2f | Total dia: $%.2f",
+                    profit, m_partialTPProfit, GetDailyProfit()));
+  }
+
+//+------------------------------------------------------------------+
 //| Reset diário                                                     |
 //+------------------------------------------------------------------+
 void CLogger::ResetDaily()
   {
    m_dailyProfit = 0;
+   m_partialTPProfit = 0;  // 🆕 v3.10
    m_dailyTrades = 0;
    m_dailyWins = 0;
    m_dailyLosses = 0;
    m_dailyDraws = 0;
    m_grossProfit = 0;
    m_grossLoss = 0;
-   
+
    LogInfo("📅 Estatísticas diárias resetadas");
   }
 //+------------------------------------------------------------------+
