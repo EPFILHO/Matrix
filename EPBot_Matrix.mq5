@@ -2,12 +2,30 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                                  Versão 1.21 - Claude Parte 018a |
+//|                                   Versão 1.23 - Claude Parte 019 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.21"
+#property version   "1.23"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
+
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.23:                                                 |
+//| 🛡️ VERIFICAÇÃO DE DRAWDOWN EM TEMPO REAL:                       |
+//|    - Calcula drawdown com lucro PROJETADO (fechados + aberta)   |
+//|    - Fecha NO EXATO MOMENTO que atinge limite de drawdown       |
+//|    - Atualiza pico de lucro em tempo real                       |
+//|    - Mantém coerência com verificação de limites diários        |
+//|    - Compatível com Blockers v3.04                              |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.22:                                                 |
+//| 🚨 CORREÇÃO CRÍTICA - Verificação de Limites em Tempo Real:     |
+//|    - Calcula lucro PROJETADO (fechados + posição aberta)        |
+//|    - Fecha NO EXATO MOMENTO que atinge limite diário            |
+//|    - Não deixa "dinheiro na mesa"                               |
+//|    - Compatível com Blockers v3.03                              |
+//|    - Verifica ANTES de trailing/breakeven/exit signals          |
+//+------------------------------------------------------------------+
 
 //+------------------------------------------------------------------+
 //| INCLUDES - ORDEM IMPORTANTE                                      |
@@ -85,7 +103,7 @@ bool g_tradingAllowed = true;  // Controle geral de trading
 int OnInit()
   {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.21 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v1.23 - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
 
 // ═══════════════════════════════════════════════════════════════
@@ -562,7 +580,7 @@ int OnInit()
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
 
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.21 - PRONTO PARA OPERAR!");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.23 - PRONTO PARA OPERAR!");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Símbolo: " + _Symbol);
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
@@ -994,6 +1012,128 @@ void ManageOpenPosition(ulong ticket)
      }
 
 // ═══════════════════════════════════════════════════════════════
+// 🚨 VERIFICAR LIMITES DIÁRIOS EM TEMPO REAL
+// Calcula lucro PROJETADO (fechados + aberta) e fecha NO EXATO
+// MOMENTO que atinge o limite configurado
+// ═══════════════════════════════════════════════════════════════
+   double dailyProfit = g_logger.GetDailyProfit();
+   string closeReason = "";
+
+   // ✅ Passa TICKET para calcular lucro projetado em tempo real
+   if(g_blockers.ShouldCloseByDailyLimit(ticket, dailyProfit, closeReason))
+     {
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
+                   "🚨 " + closeReason);
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
+                   "   Fechando posição #" + IntegerToString((int)ticket) + " IMEDIATAMENTE");
+
+      // Monta request de fechamento
+      MqlTradeRequest request = {};
+      MqlTradeResult result = {};
+
+      request.action = TRADE_ACTION_DEAL;
+      request.position = ticket;
+      request.symbol = _Symbol;
+      request.volume = PositionGetDouble(POSITION_VOLUME);
+      request.type = (posType == POSITION_TYPE_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
+      request.price = (posType == POSITION_TYPE_BUY) ?
+                     SymbolInfoDouble(_Symbol, SYMBOL_BID) :
+                     SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+      request.deviation = inp_Slippage;
+      request.magic = inp_MagicNumber;
+      request.comment = "Daily Limit";
+      request.type_filling = GetTypeFilling(_Symbol);
+
+      // Envia ordem
+      if(!OrderSend(request, result))
+        {
+         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "DAILY_LIMIT",
+            "❌ Erro ao fechar posição #" + IntegerToString((int)ticket) +
+            " | Código: " + IntegerToString(result.retcode) +
+            " | " + result.comment);
+        }
+      else
+        {
+         if(result.retcode == TRADE_RETCODE_DONE)
+           {
+            g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
+               "✅ Posição #" + IntegerToString((int)ticket) + " fechada por limite diário");
+            g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
+               "   Preço: " + DoubleToString(result.price, _Digits));
+           }
+         else
+           {
+            g_logger.Log(LOG_ERROR, THROTTLE_NONE, "DAILY_LIMIT",
+               "⚠️ Fechamento com retcode: " + IntegerToString(result.retcode));
+           }
+        }
+
+      return; // ✅ SAI IMEDIATAMENTE - não continua gerenciamento
+     }
+
+// ═══════════════════════════════════════════════════════════════
+// 🛡️ VERIFICAR DRAWDOWN EM TEMPO REAL
+// Calcula drawdown com lucro PROJETADO e fecha NO EXATO MOMENTO
+// que atinge o limite de drawdown configurado
+// ═══════════════════════════════════════════════════════════════
+   if(g_blockers.IsDrawdownProtectionActive())
+     {
+      string ddCloseReason = "";
+      
+      // ✅ Passa TICKET para calcular drawdown com lucro projetado
+      if(g_blockers.ShouldCloseByDrawdown(ticket, dailyProfit, ddCloseReason))
+        {
+         g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+                      "🛑 " + ddCloseReason);
+         g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+                      "   Fechando posição #" + IntegerToString((int)ticket) + " IMEDIATAMENTE");
+
+         // Monta request de fechamento
+         MqlTradeRequest request = {};
+         MqlTradeResult result = {};
+
+         request.action = TRADE_ACTION_DEAL;
+         request.position = ticket;
+         request.symbol = _Symbol;
+         request.volume = PositionGetDouble(POSITION_VOLUME);
+         request.type = (posType == POSITION_TYPE_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
+         request.price = (posType == POSITION_TYPE_BUY) ?
+                        SymbolInfoDouble(_Symbol, SYMBOL_BID) :
+                        SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+         request.deviation = inp_Slippage;
+         request.magic = inp_MagicNumber;
+         request.comment = "Drawdown Limit";
+         request.type_filling = GetTypeFilling(_Symbol);
+
+         // Envia ordem
+         if(!OrderSend(request, result))
+           {
+            g_logger.Log(LOG_ERROR, THROTTLE_NONE, "DRAWDOWN",
+               "❌ Erro ao fechar posição #" + IntegerToString((int)ticket) +
+               " | Código: " + IntegerToString(result.retcode) +
+               " | " + result.comment);
+           }
+         else
+           {
+            if(result.retcode == TRADE_RETCODE_DONE)
+              {
+               g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+                  "✅ Posição #" + IntegerToString((int)ticket) + " fechada por drawdown");
+               g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+                  "   Preço: " + DoubleToString(result.price, _Digits));
+              }
+            else
+              {
+               g_logger.Log(LOG_ERROR, THROTTLE_NONE, "DRAWDOWN",
+                  "⚠️ Fechamento com retcode: " + IntegerToString(result.retcode));
+              }
+           }
+
+         return; // ✅ SAI IMEDIATAMENTE - não continua gerenciamento
+        }
+     }
+
+// ═══════════════════════════════════════════════════════════════
 // MONITORAR PARTIAL TP (se habilitado)
 // ═══════════════════════════════════════════════════════════════
    if(inp_UsePartialTP)
@@ -1025,7 +1165,7 @@ if(g_riskManager.ShouldActivateTrailing(tp1Executed, tp2Executed))
       request.symbol = _Symbol;
       request.sl = trailing.new_sl_price;
       
-      // ✅ FIX v1.21: Só LÊ TP se TP2 não foi executado
+      // Só LÊ TP se TP2 não foi executado
       double tpForLog = 0.0;
       if(!tp2Executed)
       {
@@ -1428,5 +1568,5 @@ string GetDeinitReasonText(int reason)
   }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.21                                   |
+//| FIM DO EA - EPBOT MATRIX v1.23                                   |
 //+------------------------------------------------------------------+
