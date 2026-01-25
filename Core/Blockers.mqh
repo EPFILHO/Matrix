@@ -2,12 +2,45 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                                   Versão 3.00 - Claude Parte 016 |
+//|                                   Versão 3.04 - Claude Parte 019 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "3.00"
+#property version   "3.04"
 #property strict
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.04:
+// ✅ VERIFICAÇÃO DE DRAWDOWN EM TEMPO REAL:
+//    - Novo método ShouldCloseByDrawdown(ticket, dailyProfit, reason)
+//    - Calcula drawdown com lucro PROJETADO (fechados + aberta)
+//    - Fecha NO EXATO MOMENTO que atinge limite de drawdown
+//    - Atualiza pico de lucro em tempo real
+//    - Compatível com proteção de drawdown existente
+//    - Mantém coerência com verificação de limites diários
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.03:
+// ✅ CORREÇÃO CRÍTICA - VERIFICAÇÃO EM TEMPO REAL:
+//    - Novo método ShouldCloseByDailyLimit(ticket, dailyProfit, reason)
+//    - Calcula lucro PROJETADO (fechados + aberta + swap)
+//    - Fecha NO EXATO MOMENTO que atinge limite (não depois!)
+//    - Logs detalhados mostrando composição do lucro
+//    - Mantém compatibilidade com drawdown protection
+//    - Validação de Magic Number
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.02:
+// ✅ CORREÇÃO CRÍTICA - MERCADOS 24/7 (CRIPTO):
+//    - Detecta quando sessão retorna 00:00→00:00 (sempre aberto)
+//    - Ignora proteção de sessão para mercados 24/7
+//    - Log informativo uma única vez ao detectar
+//    - Corrige bloqueio indevido em BTC, ETH e outros ativos 24h
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.01:
+// ✅ CORREÇÃO CRÍTICA DE LOGGING SPAM:
+//    - CanTrade(): Log de sessão apenas em TRANSIÇÕES de estado
+//    - ShouldCloseOnEndTime(): Log apenas 1x por ticket
+//    - ShouldCloseBeforeSessionEnd(): Log apenas 1x por ticket
+//    - Uso de static para controle de estados
+//    - Mantém TODA funcionalidade v3.00
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.00:
 // ✅ REFATORAÇÃO COMPLETA DE LOGGING:
@@ -74,6 +107,15 @@ enum ENUM_BLOCKER_REASON
    BLOCKER_WIN_STREAK,            // Sequência de ganhos excedida
    BLOCKER_DRAWDOWN,              // Drawdown máximo atingido
    BLOCKER_DIRECTION              // Direção não permitida
+  };
+
+// ✅ NOVO v3.01: Estados de sessão para logging inteligente
+enum ENUM_SESSION_STATE
+  {
+   SESSION_BEFORE,       // Antes da sessão iniciar
+   SESSION_ACTIVE,       // Sessão ativa (operação normal)
+   SESSION_PROTECTION,   // Janela de proteção (X min antes do fim)
+   SESSION_AFTER         // Após encerramento da sessão
   };
 
 //+------------------------------------------------------------------+
@@ -302,6 +344,8 @@ public:
    bool              CanTradeDirection(int orderType, string &blockReason);
    bool              ShouldCloseOnEndTime(ulong positionTicket);
    bool              ShouldCloseBeforeSessionEnd(ulong positionTicket);
+   bool              ShouldCloseByDailyLimit(ulong positionTicket, double dailyProfit, string &closeReason);
+   bool              ShouldCloseByDrawdown(ulong positionTicket, double dailyProfit, string &closeReason);
 
    // ═══════════════════════════════════════════════════════════════
    // MÉTODOS DE ATUALIZAÇÃO DE ESTADO
@@ -534,14 +578,14 @@ bool CBlockers::Init(
      {
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "╔══════════════════════════════════════════════════════╗");
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║              VERSÃO COMPLETA v3.00                   ║");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║              VERSÃO COMPLETA v3.03                   ║");
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "╚══════════════════════════════════════════════════════╝");
      }
    else
      {
       Print("╔══════════════════════════════════════════════════════╗");
       Print("║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
-      Print("║              VERSÃO COMPLETA v3.00                   ║");
+      Print("║              VERSÃO COMPLETA v3.03                   ║");
       Print("╚══════════════════════════════════════════════════════╝");
      }
 
@@ -1098,6 +1142,7 @@ void CBlockers::SetDrawdownValue(double newValue)
 
 //+------------------------------------------------------------------+
 //| Verifica se pode operar (método principal)                       |
+//| ✅ v3.01: Logging de sessão apenas em TRANSIÇÕES de estado      |
 //+------------------------------------------------------------------+
 bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReason)
   {
@@ -1110,9 +1155,8 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
    blockReason = "";
 
 // ───────────────────────────────────────────────────────────────
-// PROTEÇÃO DE SESSÃO - BLOQUEIA:
-// 1) ANTES do fim (janela m_minutesBeforeSessionEnd)
-// 2) DEPOIS do fim da sessão (até próxima sessão)
+// ✅ v3.01: PROTEÇÃO DE SESSÃO COM THROTTLING INTELIGENTE
+// Loga apenas quando MUDA de estado
 // ───────────────────────────────────────────────────────────────
    if(m_closeBeforeSessionEnd)
      {
@@ -1121,7 +1165,6 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
 
       datetime sessionStart, sessionEnd;
 
-      // Usa sessão de negociação da corretora (trade session)
       if(SymbolInfoSessionTrade(_Symbol, (ENUM_DAY_OF_WEEK)now.day_of_week, 0,
                                 sessionStart, sessionEnd))
         {
@@ -1133,83 +1176,117 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
          int sessionStartMin   = sessionStartTime.hour * 60 + sessionStartTime.min;
          int sessionEndMin     = sessionEndTime.hour   * 60 + sessionEndTime.min;
 
-         int deltaStart = currentMinutes - sessionStartMin; // <0 antes da sessão
-         int deltaEnd   = sessionEndMin   - currentMinutes; // <0 depois da sessão
+         // ✅ v3.01: DETECTAR MERCADOS 24/7 (CRIPTO, FOREX)
+         // Se sessão retorna 00:00 → 00:00, significa "sempre aberto"
+         if(sessionStartMin == 0 && sessionEndMin == 0)
+           {
+            // Mercado 24/7 - ignorar proteção de sessão
+            static bool s_crypto24x7Logged = false;
+            if(!s_crypto24x7Logged && m_logger != NULL)
+              {
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", 
+                  "🌐 Mercado 24/7 detectado - proteção de sessão DESATIVADA para este símbolo");
+               s_crypto24x7Logged = true;
+              }
+            // Pular toda a lógica de proteção - continuar para próximas verificações
+           }
+         else
+           {
+            // ✅ Mercado com horário definido - aplicar proteção normalmente
+            int deltaStart = currentMinutes - sessionStartMin;
+            int deltaEnd   = sessionEndMin   - currentMinutes;
 
-         // 0) ANTES da sessão de negociação abrir → bloquear tudo
+            // ✅ Determinar estado atual
+            ENUM_SESSION_STATE currentState;
+         
          if(deltaStart < 0)
+            currentState = SESSION_BEFORE;
+         else if(deltaEnd < 0)
+            currentState = SESSION_AFTER;
+         else if(deltaEnd <= m_minutesBeforeSessionEnd)
+            currentState = SESSION_PROTECTION;
+         else
+            currentState = SESSION_ACTIVE;
+
+         // ✅ Variável static para controlar último estado logado
+         static ENUM_SESSION_STATE lastLoggedState = SESSION_ACTIVE;
+
+         // ✅ LOGA APENAS SE MUDOU DE ESTADO
+         if(currentState != lastLoggedState)
            {
-            m_currentBlocker = BLOCKER_TIME_FILTER;
-            blockReason = "Sessão de negociação ainda não iniciou";
+            lastLoggedState = currentState;
 
             if(m_logger != NULL)
               {
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "⏰ Sessão de negociação AINDA NÃO INICIOU");
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
-                  StringFormat("   Sessão: %02d:%02d → %02d:%02d",
-                              sessionStartTime.hour, sessionStartTime.min,
-                              sessionEndTime.hour,   sessionEndTime.min));
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
-                  StringFormat("   Horário atual: %02d:%02d", now.hour, now.min));
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "   Novas entradas bloqueadas até abertura da sessão");
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
+               switch(currentState)
+                 {
+                  case SESSION_BEFORE:
+                     m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
+                     m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "⏰ Sessão de negociação AINDA NÃO INICIOU");
+                     m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
+                        StringFormat("   Sessão: %02d:%02d → %02d:%02d",
+                                    sessionStartTime.hour, sessionStartTime.min,
+                                    sessionEndTime.hour,   sessionEndTime.min));
+                     m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "   Novas entradas bloqueadas até abertura da sessão");
+                     m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
+                     break;
+
+                  case SESSION_PROTECTION:
+                     m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
+                     m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "⏰ Proteção de Sessão ATIVADA - bloqueando novas entradas");
+                     m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
+                        StringFormat("   Sessão encerra: %02d:%02d", sessionEndTime.hour, sessionEndTime.min));
+                     m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
+                        StringFormat("   Margem segurança: %d minutos", m_minutesBeforeSessionEnd));
+                     m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
+                        StringFormat("   Faltam %d minutos para sessão encerrar", deltaEnd));
+                     m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
+                     break;
+
+                  case SESSION_AFTER:
+                     m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
+                     m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "⏰ Sessão de negociação ENCERRADA");
+                     m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
+                        StringFormat("   Sessão: %02d:%02d → %02d:%02d",
+                                    sessionStartTime.hour, sessionStartTime.min,
+                                    sessionEndTime.hour,   sessionEndTime.min));
+                     m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "   Novas entradas bloqueadas até próxima sessão");
+                     m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
+                     break;
+
+                  case SESSION_ACTIVE:
+                     // Não loga nada quando volta ao normal
+                     break;
+                 }
+              }
+           }
+
+         // ✅ BLOQUEIA se não estiver ativo
+         if(currentState != SESSION_ACTIVE)
+           {
+            m_currentBlocker = BLOCKER_TIME_FILTER;
+            
+            switch(currentState)
+              {
+               case SESSION_BEFORE:
+                  blockReason = "Sessão de negociação ainda não iniciou";
+                  break;
+               case SESSION_PROTECTION:
+                  blockReason = StringFormat("Proteção de sessão: faltam %d min (janela %d min)",
+                                           deltaEnd, m_minutesBeforeSessionEnd);
+                  break;
+               case SESSION_AFTER:
+                  blockReason = "Sessão de negociação encerrada";
+                  break;
               }
 
             return false;
            }
-
-         // 1) DENTRO da sessão, mas na janela de proteção antes do fim
-         if(deltaEnd >= 0 && deltaEnd <= m_minutesBeforeSessionEnd)
-           {
-            m_currentBlocker = BLOCKER_TIME_FILTER;
-            blockReason = StringFormat(
-                             "Proteção de sessão: faltam %d min (janela %d min)",
-                             deltaEnd, m_minutesBeforeSessionEnd
-                          );
-
-            if(m_logger != NULL)
-              {
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "⏰ Proteção de Sessão - bloqueando novas entradas");
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
-                  StringFormat("   Sessão encerra: %02d:%02d", sessionEndTime.hour, sessionEndTime.min));
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
-                  StringFormat("   Horário atual: %02d:%02d", now.hour, now.min));
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
-                  StringFormat("   Margem segurança: %d minutos", m_minutesBeforeSessionEnd));
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
-                  StringFormat("   Faltam %d minutos para sessão encerrar", deltaEnd));
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
-              }
-
-            return false;
-           }
-
-         // 2) DEPOIS do fim da sessão → bloquear até próxima sessão
-         if(deltaEnd < 0)
-           {
-            m_currentBlocker = BLOCKER_TIME_FILTER;
-            blockReason = "Sessão de negociação encerrada";
-
-            if(m_logger != NULL)
-              {
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "⏰ Sessão de negociação ENCERRADA");
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
-                  StringFormat("   Sessão encerra: %02d:%02d", sessionEndTime.hour, sessionEndTime.min));
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
-                  StringFormat("   Horário atual: %02d:%02d", now.hour, now.min));
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "   Novas entradas bloqueadas até próxima sessão");
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
-              }
-
-            return false;
-           }
+           } // Fim do else - mercado com horário definido
         }
      }
 
-// Verificações
+// Verificações restantes (sem alteração)
    if(!CheckTimeFilter())
      {
       m_currentBlocker = BLOCKER_TIME_FILTER;
@@ -1295,20 +1372,18 @@ bool CBlockers::CanTradeDirection(int orderType, string &blockReason)
   }
 
 //+------------------------------------------------------------------+
-//| PÚBLICO: Verifica se deve fechar posição por término de horário  |
-//| ✅ v3.00: Logging refatorado                                     |
+//| Verifica se deve fechar posição por término de horário           |
+//| ✅ v3.01: Logging apenas 1x por ticket                          |
 //+------------------------------------------------------------------+
 bool CBlockers::ShouldCloseOnEndTime(ulong positionTicket)
   {
-// Se filtro de horário ou fechamento no fim estiverem desativados, não faz nada
    if(!m_enableTimeFilter || !m_closeOnEndTime)
       return false;
 
-// Garante que a posição existe
    if(!PositionSelectByTicket(positionTicket))
       return false;
 
-// ✅ VALIDAR MAGIC NUMBER - CORREÇÃO CRÍTICA v2.02
+// Validar Magic Number
    long posMagic = PositionGetInteger(POSITION_MAGIC);
    if(posMagic != m_magicNumber)
      {
@@ -1328,78 +1403,60 @@ bool CBlockers::ShouldCloseOnEndTime(ulong positionTicket)
    int startMinutes   = m_startHour * 60 + m_startMinute;
    int endMinutes     = m_endHour   * 60 + m_endMinute;
 
-// ✅ CORREÇÃO: Só fecha se PASSOU do fim, não se está antes do início
+   bool shouldClose = false;
 
-// Janela normal no mesmo dia (ex.: 09:00–17:00)
+// Janela normal no mesmo dia
    if(startMinutes <= endMinutes)
      {
-      // Só fecha se passou do horário de fim
       if(currentMinutes > endMinutes)
+         shouldClose = true;
+     }
+// Janela que atravessa meia-noite
+   else
+     {
+      if(currentMinutes > endMinutes && currentMinutes < startMinutes)
+         shouldClose = true;
+     }
+
+   if(shouldClose)
+     {
+      // ✅ v3.01: Log apenas 1x por ticket usando static
+      static ulong lastLoggedTicket = 0;
+      
+      if(lastLoggedTicket != positionTicket)
         {
+         lastLoggedTicket = positionTicket;
+         
          if(m_logger != NULL)
            {
             m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE", "⏰ Término de horário de operação atingido");
             m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE",
-               "   Início: " + IntegerToString(m_startHour) + ":" + IntegerToString(m_startMinute));
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE",
-               "   Fim:    " + IntegerToString(m_endHour)   + ":" + IntegerToString(m_endMinute));
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE",
-               "   Agora:  " + IntegerToString(dt.hour)     + ":" + IntegerToString(dt.min));
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE",
-               "   Posição #" + IntegerToString((int)positionTicket) + " deve ser fechada por horário");
-           }
-         else
-           {
-            Print("⏰ [Blockers] Término de horário de operação atingido para posição #", positionTicket);
-           }
-
-         return true;
-        }
-      return false;
-     }
-// Janela que atravessa meia-noite (ex.: 22:00–02:00)
-   else
-     {
-      // Está entre fim e início = FORA da janela = deve fechar
-      if(currentMinutes > endMinutes && currentMinutes < startMinutes)
-        {
-         if(m_logger != NULL)
-           {
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE", "⏰ Fora do horário de operação (janela noturna)");
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE",
-               "   Janela: " + IntegerToString(m_startHour) + ":" + IntegerToString(m_startMinute)
-                        + " - " + IntegerToString(m_endHour) + ":" + IntegerToString(m_endMinute));
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE",
-               "   Agora:  " + IntegerToString(dt.hour) + ":" + IntegerToString(dt.min));
+               "   Horário: " + StringFormat("%02d:%02d - %02d:%02d", 
+                  m_startHour, m_startMinute, m_endHour, m_endMinute));
             m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE",
                "   Posição #" + IntegerToString((int)positionTicket) + " deve ser fechada");
            }
-         else
-           {
-            Print("⏰ [Blockers] Fora do horário noturno para posição #", positionTicket);
-           }
-
-         return true;
         }
-      return false;
+
+      return true;
      }
+
+   return false;
   }
 
 //+------------------------------------------------------------------+
 //| Verifica se deve fechar posição antes do fim da sessão           |
-//| ✅ v3.00: Logging refatorado                                     |
+//| ✅ v3.01: Logging apenas 1x por ticket                          |
 //+------------------------------------------------------------------+
 bool CBlockers::ShouldCloseBeforeSessionEnd(ulong positionTicket)
   {
-// Se proteção de sessão estiver desativada, não faz nada
    if(!m_closeBeforeSessionEnd)
       return false;
 
-// Garante que a posição existe
    if(!PositionSelectByTicket(positionTicket))
       return false;
 
-// ✅ VALIDAR MAGIC NUMBER - CORREÇÃO CRÍTICA v2.02
+// Validar Magic Number
    long posMagic = PositionGetInteger(POSITION_MAGIC);
    if(posMagic != m_magicNumber)
      {
@@ -1407,64 +1464,369 @@ bool CBlockers::ShouldCloseBeforeSessionEnd(ulong positionTicket)
          m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "SESSION_CLOSE",
             "Ignorando posição #" + IntegerToString((int)positionTicket) +
             " (Magic " + IntegerToString((int)posMagic) + " ≠ " +
-            IntegerToString(m_magicNumber) + " na proteção de sessão)");
+            IntegerToString(m_magicNumber) + ")");
       return false;
      }
 
-// Obtém horário atual
    MqlDateTime now;
    TimeToStruct(TimeCurrent(), now);
 
-// Obtém informações da sessão de negociação do SÍMBOLO ATUAL
    datetime sessionStart, sessionEnd;
 
    if(!SymbolInfoSessionTrade(_Symbol, (ENUM_DAY_OF_WEEK)now.day_of_week, 0, sessionStart, sessionEnd))
-     {
-      // Se falhar, pode ser fim de semana ou símbolo sem sessão definida
       return false;
-     }
 
-// Converte horário do fim da sessão
    MqlDateTime sessionEndTime;
    TimeToStruct(sessionEnd, sessionEndTime);
 
-// Calcula minutos até o fim da sessão
    int currentMinutes     = now.hour * 60 + now.min;
    int sessionEndMinutes  = sessionEndTime.hour * 60 + sessionEndTime.min;
 
-// Trata caso de sessão que cruza meia-noite
    if(sessionEndMinutes < currentMinutes)
       sessionEndMinutes += 24 * 60;
 
    int minutesUntilSessionEnd = sessionEndMinutes - currentMinutes;
 
-// Se faltam X minutos ou menos para o fim da sessão
    if(minutesUntilSessionEnd <= m_minutesBeforeSessionEnd && minutesUntilSessionEnd >= 0)
      {
-      if(m_logger != NULL)
+      // ✅ v3.01: Log apenas 1x por ticket usando static
+      static ulong lastLoggedTicket = 0;
+      
+      if(lastLoggedTicket != positionTicket)
         {
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE", "════════════════════════════════════════════════════════════════");
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE", "⏰ Proteção de Sessão ativada");
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE",
-            StringFormat("   Sessão encerra: %02d:%02d", sessionEndTime.hour, sessionEndTime.min));
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE",
-            StringFormat("   Horário atual: %02d:%02d", now.hour, now.min));
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE",
-            StringFormat("   Margem segurança: %d minutos", m_minutesBeforeSessionEnd));
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE",
-            StringFormat("   Faltam %d minutos para sessão encerrar", minutesUntilSessionEnd));
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE",
-            "   Posição #" + IntegerToString((int)positionTicket) + " deve ser fechada por proteção de sessão");
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE", "════════════════════════════════════════════════════════════════");
-        }
-      else
-        {
-         Print("⏰ [Blockers] Proteção de Sessão ativada para posição #", positionTicket);
+         lastLoggedTicket = positionTicket;
+         
+         if(m_logger != NULL)
+           {
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE", "════════════════════════════════════════════════════════════════");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE", "⏰ Proteção de Sessão - fechando posição existente");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE",
+               StringFormat("   Sessão encerra: %02d:%02d", sessionEndTime.hour, sessionEndTime.min));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE",
+               StringFormat("   Margem: %d min | Faltam: %d min", 
+                  m_minutesBeforeSessionEnd, minutesUntilSessionEnd));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE",
+               "   Posição #" + IntegerToString((int)positionTicket) + " deve ser fechada");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE", "════════════════════════════════════════════════════════════════");
+           }
         }
 
       return true;
      }
 
+   return false;
+  }
+
+//+------------------------------------------------------------------+
+//| Verifica se deve fechar posição por limite diário atingido       |
+//| ✅ v3.03: Calcula lucro PROJETADO (fechados + aberta)           |
+//| Fecha NO EXATO MOMENTO que atinge o limite                       |
+//+------------------------------------------------------------------+
+bool CBlockers::ShouldCloseByDailyLimit(ulong positionTicket, double dailyProfit, string &closeReason)
+  {
+   closeReason = "";
+
+// Se limites diários estiverem desativados, não faz nada
+   if(!m_enableDailyLimits)
+      return false;
+
+// ═══════════════════════════════════════════════════════════════
+// SELECIONAR POSIÇÃO E CALCULAR LUCRO PROJETADO
+// ═══════════════════════════════════════════════════════════════
+   if(!PositionSelectByTicket(positionTicket))
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DAILY_LIMIT",
+            "Erro ao selecionar posição #" + IntegerToString((int)positionTicket));
+      return false;
+     }
+
+// Validar Magic Number
+   long posMagic = PositionGetInteger(POSITION_MAGIC);
+   if(posMagic != m_magicNumber)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DAILY_LIMIT",
+            "Ignorando posição #" + IntegerToString((int)positionTicket) +
+            " (Magic " + IntegerToString((int)posMagic) + " ≠ " +
+            IntegerToString(m_magicNumber) + ")");
+      return false;
+     }
+
+// ✅ PEGA LUCRO EM TEMPO REAL DA POSIÇÃO ABERTA
+   double currentProfit = PositionGetDouble(POSITION_PROFIT);
+   double swap = PositionGetDouble(POSITION_SWAP);
+   
+// ✅ CALCULA LUCRO SE FECHAR AGORA (fechados + aberta)
+   double projectedProfit = dailyProfit + currentProfit + swap;
+
+// ═══════════════════════════════════════════════════════════════
+// VERIFICAR LIMITE DE PERDA DIÁRIA (lucro projetado)
+// ═══════════════════════════════════════════════════════════════
+   if(m_maxDailyLoss > 0 && projectedProfit <= -m_maxDailyLoss)
+     {
+      closeReason = StringFormat("LIMITE DE PERDA DIÁRIA ATINGIDO: %.2f / %.2f",
+                                projectedProfit, -m_maxDailyLoss);
+
+      if(m_logger != NULL)
+        {
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT", "════════════════════════════════════════════════════════════════");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT", "🚨 LIMITE DE PERDA DIÁRIA ATINGIDO!");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
+            "   📉 Perda projetada: $" + DoubleToString(projectedProfit, 2));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
+            "   🛑 Limite configurado: $" + DoubleToString(-m_maxDailyLoss, 2));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
+            "   📊 Composição: Fechados=$" + DoubleToString(dailyProfit, 2) +
+            " + Aberta=$" + DoubleToString(currentProfit, 2) +
+            " + Swap=$" + DoubleToString(swap, 2));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
+            "   ✅ FECHANDO POSIÇÃO IMEDIATAMENTE para proteger capital");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT", "════════════════════════════════════════════════════════════════");
+        }
+      else
+        {
+         Print("════════════════════════════════════════════════════════════════");
+         Print("🚨 LIMITE DE PERDA DIÁRIA ATINGIDO!");
+         Print("   📉 Perda projetada: $", DoubleToString(projectedProfit, 2));
+         Print("   🛑 Limite configurado: $", DoubleToString(-m_maxDailyLoss, 2));
+         Print("   ✅ FECHANDO POSIÇÃO IMEDIATAMENTE");
+         Print("════════════════════════════════════════════════════════════════");
+        }
+
+      return true;
+     }
+
+// ═══════════════════════════════════════════════════════════════
+// VERIFICAR LIMITE DE GANHO DIÁRIO (lucro projetado)
+// ═══════════════════════════════════════════════════════════════
+   if(m_maxDailyGain > 0 && projectedProfit >= m_maxDailyGain)
+     {
+      // Se ação for PARAR, fecha imediatamente
+      if(m_profitTargetAction == PROFIT_ACTION_STOP)
+        {
+         closeReason = StringFormat("META DE GANHO DIÁRIA ATINGIDA: %.2f / %.2f",
+                                   projectedProfit, m_maxDailyGain);
+
+         if(m_logger != NULL)
+           {
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT", "════════════════════════════════════════════════════════════════");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT", "🎯 META DE GANHO DIÁRIA ATINGIDA!");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
+               "   📈 Lucro projetado: $" + DoubleToString(projectedProfit, 2));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
+               "   🎯 Meta configurada: $" + DoubleToString(m_maxDailyGain, 2));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
+               "   📊 Composição: Fechados=$" + DoubleToString(dailyProfit, 2) +
+               " + Aberta=$" + DoubleToString(currentProfit, 2) +
+               " + Swap=$" + DoubleToString(swap, 2));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT",
+               "   ✅ FECHANDO POSIÇÃO IMEDIATAMENTE - Meta atingida!");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAILY_LIMIT", "════════════════════════════════════════════════════════════════");
+           }
+         else
+           {
+            Print("════════════════════════════════════════════════════════════════");
+            Print("🎯 META DE GANHO DIÁRIA ATINGIDA!");
+            Print("   📈 Lucro projetado: $", DoubleToString(projectedProfit, 2));
+            Print("   🎯 Meta configurada: $", DoubleToString(m_maxDailyGain, 2));
+            Print("   ✅ FECHANDO POSIÇÃO IMEDIATAMENTE");
+            Print("════════════════════════════════════════════════════════════════");
+           }
+
+         return true;
+        }
+      // Se ação for ATIVAR DRAWDOWN, só ativa mas NÃO fecha
+      else // PROFIT_ACTION_ENABLE_DRAWDOWN
+        {
+         // Ativa proteção de drawdown se ainda não estiver ativa
+         if(!m_drawdownProtectionActive)
+           {
+            ActivateDrawdownProtection(projectedProfit);
+           }
+
+         // Continua verificando drawdown (não fecha ainda)
+         closeReason = "";
+         return false;
+        }
+     }
+
+// ═══════════════════════════════════════════════════════════════
+// NENHUM LIMITE ATINGIDO - PODE CONTINUAR
+// ═══════════════════════════════════════════════════════════════
+   return false;
+  }
+
+//+------------------------------------------------------------------+
+//| Verifica se deve fechar posição por drawdown atingido            |
+//| ✅ v3.04: Calcula drawdown com lucro PROJETADO em tempo real    |
+//| Fecha NO EXATO MOMENTO que atinge limite de drawdown            |
+//+------------------------------------------------------------------+
+bool CBlockers::ShouldCloseByDrawdown(ulong positionTicket, double dailyProfit, string &closeReason)
+  {
+   closeReason = "";
+
+// Só funciona se proteção de drawdown estiver ATIVA
+   if(!m_drawdownProtectionActive)
+      return false;
+
+// Se já atingiu limite antes, não precisa verificar de novo
+   if(m_drawdownLimitReached)
+      return false;
+
+// ═══════════════════════════════════════════════════════════════
+// SELECIONAR POSIÇÃO E CALCULAR LUCRO PROJETADO
+// ═══════════════════════════════════════════════════════════════
+   if(!PositionSelectByTicket(positionTicket))
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DRAWDOWN",
+            "Erro ao selecionar posição #" + IntegerToString((int)positionTicket));
+      return false;
+     }
+
+// Validar Magic Number
+   long posMagic = PositionGetInteger(POSITION_MAGIC);
+   if(posMagic != m_magicNumber)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DRAWDOWN",
+            "Ignorando posição #" + IntegerToString((int)positionTicket) +
+            " (Magic " + IntegerToString((int)posMagic) + " ≠ " +
+            IntegerToString(m_magicNumber) + ")");
+      return false;
+     }
+
+// ✅ PEGA LUCRO EM TEMPO REAL DA POSIÇÃO ABERTA
+   double currentProfit = PositionGetDouble(POSITION_PROFIT);
+   double swap = PositionGetDouble(POSITION_SWAP);
+   
+// ✅ CALCULA LUCRO PROJETADO SE FECHAR AGORA
+   double projectedProfit = dailyProfit + currentProfit + swap;
+
+// ═══════════════════════════════════════════════════════════════
+// ATUALIZAR PICO DE LUCRO SE NECESSÁRIO
+// ═══════════════════════════════════════════════════════════════
+   if(projectedProfit > m_dailyPeakProfit)
+     {
+      m_dailyPeakProfit = projectedProfit;
+      
+      if(m_logger != NULL)
+         m_logger.Log(LOG_DEBUG, THROTTLE_TIME, "DRAWDOWN",
+            "🔼 Novo pico de lucro: $" + DoubleToString(m_dailyPeakProfit, 2), 60);
+     }
+
+// ═══════════════════════════════════════════════════════════════
+// CALCULAR DRAWDOWN ATUAL
+// ═══════════════════════════════════════════════════════════════
+   double currentDD = m_dailyPeakProfit - projectedProfit;
+   double ddLimit = 0;
+
+   if(m_drawdownType == DD_FINANCIAL)
+     {
+      // Drawdown financeiro (valor fixo em $)
+      ddLimit = m_drawdownValue;
+     }
+   else
+     {
+      // Drawdown percentual (% do pico)
+      ddLimit = (m_dailyPeakProfit * m_drawdownValue) / 100.0;
+     }
+
+// Log de debug a cada 60s mostrando situação atual
+   static datetime lastDebugLog = 0;
+   if(TimeCurrent() - lastDebugLog >= 60)
+     {
+      if(m_logger != NULL)
+        {
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DRAWDOWN",
+            StringFormat("📊 Drawdown: Pico=%.2f | Projetado=%.2f | DD=%.2f / %.2f",
+                        m_dailyPeakProfit, projectedProfit, currentDD, ddLimit));
+        }
+      lastDebugLog = TimeCurrent();
+     }
+
+// ═══════════════════════════════════════════════════════════════
+// VERIFICAR SE ATINGIU LIMITE DE DRAWDOWN
+// ═══════════════════════════════════════════════════════════════
+   if(currentDD >= ddLimit)
+     {
+      m_drawdownLimitReached = true;
+
+      // Montar mensagem de fechamento
+      if(m_drawdownType == DD_FINANCIAL)
+        {
+         closeReason = StringFormat("LIMITE DE DRAWDOWN ATINGIDO: %.2f / %.2f (Financeiro)",
+                                   currentDD, ddLimit);
+        }
+      else
+        {
+         double ddPercent = (currentDD / m_dailyPeakProfit) * 100.0;
+         closeReason = StringFormat("LIMITE DE DRAWDOWN ATINGIDO: %.1f%% / %.1f%%",
+                                   ddPercent, m_drawdownValue);
+        }
+
+      // Logs detalhados
+      if(m_logger != NULL)
+        {
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "════════════════════════════════════════════════════════════════");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "🛑 LIMITE DE DRAWDOWN ATINGIDO!");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+            "   📊 Pico do dia: $" + DoubleToString(m_dailyPeakProfit, 2));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+            "   💰 Lucro projetado: $" + DoubleToString(projectedProfit, 2));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+            "   📉 Drawdown atual: $" + DoubleToString(currentDD, 2));
+
+         if(m_drawdownType == DD_FINANCIAL)
+           {
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+               "   🛑 Limite: $" + DoubleToString(ddLimit, 2) + " (Financeiro)");
+           }
+         else
+           {
+            double ddPercent = (currentDD / m_dailyPeakProfit) * 100.0;
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+               StringFormat("   🛑 Limite: %.1f%% = $%.2f", m_drawdownValue, ddLimit));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+               StringFormat("   📊 DD atual: %.1f%%", ddPercent));
+           }
+
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+            "   📊 Composição: Fechados=$" + DoubleToString(dailyProfit, 2) +
+            " + Aberta=$" + DoubleToString(currentProfit, 2) +
+            " + Swap=$" + DoubleToString(swap, 2));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+            "   🛡️ LUCRO PROTEGIDO! Fechando posição IMEDIATAMENTE");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "════════════════════════════════════════════════════════════════");
+        }
+      else
+        {
+         Print("════════════════════════════════════════════════════════════════");
+         Print("🛑 LIMITE DE DRAWDOWN ATINGIDO!");
+         Print("   📊 Pico do dia: $", DoubleToString(m_dailyPeakProfit, 2));
+         Print("   💰 Lucro projetado: $", DoubleToString(projectedProfit, 2));
+         Print("   📉 Drawdown atual: $", DoubleToString(currentDD, 2));
+
+         if(m_drawdownType == DD_FINANCIAL)
+            Print("   🛑 Limite: $", DoubleToString(ddLimit, 2), " (Financeiro)");
+         else
+           {
+            double ddPercent = (currentDD / m_dailyPeakProfit) * 100.0;
+            Print("   🛑 Limite: ", DoubleToString(m_drawdownValue, 1), "% = $", DoubleToString(ddLimit, 2));
+            Print("   📊 DD atual: ", DoubleToString(ddPercent, 1), "%");
+           }
+
+         Print("   🛡️ LUCRO PROTEGIDO! Fechando posição IMEDIATAMENTE");
+         Print("════════════════════════════════════════════════════════════════");
+        }
+
+      return true;
+     }
+
+// ═══════════════════════════════════════════════════════════════
+// DRAWDOWN DENTRO DO LIMITE - PODE CONTINUAR
+// ═══════════════════════════════════════════════════════════════
    return false;
   }
 
