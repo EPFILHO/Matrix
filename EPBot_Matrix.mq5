@@ -784,9 +784,16 @@ void OnTick()
       // Buscar informação do fechamento no histórico
       if(HistorySelectByPosition(g_lastPositionTicket))
         {
-         // Calcular profit da posição fechada
-         double positionProfit = 0;
+         // ═══════════════════════════════════════════════════════════════
+         // v1.25: CORREÇÃO - Encontrar o ÚLTIMO deal de saída (fechamento final)
+         // TPs parciais já foram salvos por SavePartialTrade()
+         // Precisamos salvar apenas o deal final (SL/TP/trailing do resto)
+         // ═══════════════════════════════════════════════════════════════
+         double finalDealProfit = 0;
+         ulong  finalDealTicket = 0;
+         bool   foundFinalDeal = false;
 
+         // Iterar por TODOS os deals para encontrar o ÚLTIMO de saída
          for(int i = 0; i < HistoryDealsTotal(); i++)
            {
             ulong dealTicket = HistoryDealGetTicket(i);
@@ -795,29 +802,44 @@ void OnTick()
                long dealEntry = HistoryDealGetInteger(dealTicket, DEAL_ENTRY);
                if(dealEntry == DEAL_ENTRY_OUT || dealEntry == DEAL_ENTRY_OUT_BY)
                  {
-                  positionProfit = HistoryDealGetDouble(dealTicket, DEAL_PROFIT);
+                  string dealComment = HistoryDealGetString(dealTicket, DEAL_COMMENT);
 
-                  // Salvar trade no Logger
-                  g_logger.SaveTrade(g_lastPositionTicket, positionProfit);
+                  // Ignorar TPs parciais - já foram salvos por SavePartialTrade()
+                  if(StringFind(dealComment, "Partial") >= 0)
+                     continue;
 
-                  // Atualizar estatísticas
-                  g_logger.UpdateStats(positionProfit);
-
-                  // Registrar no Blockers
-                  bool isWin = (positionProfit > 0);
-                  g_blockers.UpdateAfterTrade(isWin, positionProfit);
-
-                  g_logger.Log(LOG_TRADE, THROTTLE_NONE, "CLOSE",
-                               "📊 Posição #" + IntegerToString(g_lastPositionTicket) +
-                               " fechada | P/L: $" + DoubleToString(positionProfit, 2));
-
-                  // Gerar relatório TXT atualizado após cada trade
-                  g_logger.SaveDailyReport();
-                  g_logger.Log(LOG_TRADE, THROTTLE_NONE, "REPORT", "📄 Relatório diário atualizado");
-
-                  break;
+                  // Este é um deal final (SL, TP fixo, trailing, etc)
+                  finalDealProfit = HistoryDealGetDouble(dealTicket, DEAL_PROFIT);
+                  finalDealTicket = dealTicket;
+                  foundFinalDeal = true;
+                  // NÃO usar break - continuar para pegar o último
                  }
               }
+           }
+
+         // Processar o deal final (se encontrado)
+         if(foundFinalDeal)
+           {
+            // Salvar trade no Logger (apenas o deal final)
+            g_logger.SaveTrade(g_lastPositionTicket, finalDealProfit);
+
+            // Atualizar estatísticas (apenas o deal final)
+            g_logger.UpdateStats(finalDealProfit);
+
+            // Registrar no Blockers
+            // Para determinar se foi win/loss, considerar o lucro TOTAL (incluindo TPs parciais)
+            double totalProfit = g_logger.GetPartialTPProfit() + finalDealProfit;
+            bool isWin = (totalProfit > 0);
+            g_blockers.UpdateAfterTrade(isWin, finalDealProfit);
+
+            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "CLOSE",
+                         "📊 Posição #" + IntegerToString(g_lastPositionTicket) +
+                         " fechada | P/L final: $" + DoubleToString(finalDealProfit, 2) +
+                         " | Total posição: $" + DoubleToString(totalProfit, 2));
+
+            // Gerar relatório TXT atualizado após cada trade
+            g_logger.SaveDailyReport();
+            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "REPORT", "📄 Relatório diário atualizado");
            }
         }
 
