@@ -6,7 +6,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.25"
+#property version   "1.26"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //+------------------------------------------------------------------+
@@ -785,15 +785,16 @@ void OnTick()
       if(HistorySelectByPosition(g_lastPositionTicket))
         {
          // ═══════════════════════════════════════════════════════════════
-         // v1.25: CORREÇÃO - Encontrar o ÚLTIMO deal de saída (fechamento final)
-         // TPs parciais já foram salvos por SavePartialTrade()
-         // Precisamos salvar apenas o deal final (SL/TP/trailing do resto)
+         // v1.26: PADRÃO OURO MQL5 - Calcular lucro total da posição
+         // somando TODOS os deals de saída diretamente do histórico
+         // Referência: https://www.mql5.com/en/forum/439334
          // ═══════════════════════════════════════════════════════════════
-         double finalDealProfit = 0;
+         double totalPositionProfit = 0;  // Soma de TODOS os deals de saída desta posição
+         double finalDealProfit = 0;      // Apenas o deal final (para salvar no CSV)
          ulong  finalDealTicket = 0;
          bool   foundFinalDeal = false;
 
-         // Iterar por TODOS os deals para encontrar o ÚLTIMO de saída
+         // Iterar por TODOS os deals desta posição
          for(int i = 0; i < HistoryDealsTotal(); i++)
            {
             ulong dealTicket = HistoryDealGetTicket(i);
@@ -802,14 +803,18 @@ void OnTick()
                long dealEntry = HistoryDealGetInteger(dealTicket, DEAL_ENTRY);
                if(dealEntry == DEAL_ENTRY_OUT || dealEntry == DEAL_ENTRY_OUT_BY)
                  {
+                  // Somar lucro de TODOS os deals de saída (parciais + final)
+                  double dealProfit = HistoryDealGetDouble(dealTicket, DEAL_PROFIT);
+                  totalPositionProfit += dealProfit;
+
                   string dealComment = HistoryDealGetString(dealTicket, DEAL_COMMENT);
 
-                  // Ignorar TPs parciais - já foram salvos por SavePartialTrade()
+                  // TPs parciais já foram salvos por SavePartialTrade()
                   if(StringFind(dealComment, "Partial") >= 0)
                      continue;
 
                   // Este é um deal final (SL, TP fixo, trailing, etc)
-                  finalDealProfit = HistoryDealGetDouble(dealTicket, DEAL_PROFIT);
+                  finalDealProfit = dealProfit;
                   finalDealTicket = dealTicket;
                   foundFinalDeal = true;
                   // NÃO usar break - continuar para pegar o último
@@ -826,16 +831,14 @@ void OnTick()
             // Atualizar estatísticas (apenas o deal final)
             g_logger.UpdateStats(finalDealProfit);
 
-            // Registrar no Blockers
-            // Para determinar se foi win/loss, considerar o lucro TOTAL (incluindo TPs parciais)
-            double totalProfit = g_logger.GetPartialTPProfit() + finalDealProfit;
-            bool isWin = (totalProfit > 0);
+            // Registrar no Blockers - usar totalPositionProfit para determinar win/loss
+            bool isWin = (totalPositionProfit > 0);
             g_blockers.UpdateAfterTrade(isWin, finalDealProfit);
 
             g_logger.Log(LOG_TRADE, THROTTLE_NONE, "CLOSE",
                          "📊 Posição #" + IntegerToString(g_lastPositionTicket) +
                          " fechada | P/L final: $" + DoubleToString(finalDealProfit, 2) +
-                         " | Total posição: $" + DoubleToString(totalProfit, 2));
+                         " | Total posição: $" + DoubleToString(totalPositionProfit, 2));
 
             // Gerar relatório TXT atualizado após cada trade
             g_logger.SaveDailyReport();
