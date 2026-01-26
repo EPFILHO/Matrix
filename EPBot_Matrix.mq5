@@ -2,13 +2,20 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                                   Versão 1.24 - Claude Parte 020 |
+//|                                   Versão 1.25 - Claude Parte 021 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.24"
+#property version   "1.25"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.25:                                                 |
+//| 📊 TPs Parciais agora salvos no CSV (3 linhas por trade):       |
+//|    - Logger v3.20 com SavePartialTrade()                        |
+//|    - TradeManager v1.21 chama SavePartialTrade() após TP1/TP2   |
+//|    - LoadDailyStats() reconhece linhas "Partial TP"             |
+//|    - Habilita ressincronização de TPs parciais ao reiniciar     |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.24:                                                 |
 //| 🎯 CORREÇÃO CRÍTICA - TPs Parciais no Daily Profit:             |
@@ -19,7 +26,7 @@
 //|    - Logger v3.10 com AddPartialTPProfit()                      |
 //|    - TradeManager v1.20 registra lucro após cada TP parcial     |
 //+------------------------------------------------------------------+
-//| CHANGELOG v1.24:                                                 |
+//| CHANGELOG v1.23:                                                 |
 //| 🛡️ VERIFICAÇÃO DE DRAWDOWN EM TEMPO REAL:                       |
 //|    - Calcula drawdown com lucro PROJETADO (fechados + aberta)   |
 //|    - Fecha NO EXATO MOMENTO que atinge limite de drawdown       |
@@ -112,7 +119,7 @@ bool g_tradingAllowed = true;  // Controle geral de trading
 int OnInit()
   {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.24 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v1.25 - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
 
 // ═══════════════════════════════════════════════════════════════
@@ -1577,5 +1584,5 @@ string GetDeinitReasonText(int reason)
   }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.24                                   |
+//| FIM DO EA - EPBOT MATRIX v1.25                                   |
 //+------------------------------------------------------------------+

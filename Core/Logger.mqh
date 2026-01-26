@@ -2,12 +2,18 @@
 //|                                                       Logger.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                                Sistema de Logging - EPBot Matrix |
-//|                                   Versão 3.10 - Claude Parte 020 |
+//|                                   Versão 3.20 - Claude Parte 021 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "3.10"
+#property version   "3.20"
 
+// ═══════════════════════════════════════════════════════════════════
+// CHANGELOG v3.20:
+// ✅ Novo: SavePartialTrade() salva cada TP parcial imediatamente no CSV
+// ✅ Ajustado: LoadDailyStats() reconhece linhas "Partial TP" e acumula
+//    em m_partialTPProfit (não conta como trade separado)
+// ✅ Habilita ressincronização de TPs parciais ao reiniciar EA
 // ═══════════════════════════════════════════════════════════════════
 // CHANGELOG v3.10:
 // ✅ CORREÇÃO CRÍTICA: TPs parciais agora contabilizados no dailyProfit
@@ -151,6 +157,9 @@ public:
    // TRADES
    // ═══════════════════════════════════════════════════════════
    void              SaveTrade(ulong positionId, double profit);
+   void              SavePartialTrade(ulong positionId, ulong dealTicket, string tradeType,
+                                      double entryPrice, double exitPrice, double volume,
+                                      double profit, string motivo);  // 🆕 v3.20
    void              UpdateStats(double profit);
    
    // ═══════════════════════════════════════════════════════════
@@ -595,9 +604,81 @@ void CLogger::SaveTrade(ulong positionId, double profit)
    
    FileWriteString(fileHandle, csvLine + "\n");
    FileClose(fileHandle);
-   
-   LogInfo(StringFormat("📊 Trade salvo: #%llu | %s | %dmin | %.2f", 
+
+   LogInfo(StringFormat("📊 Trade salvo: #%llu | %s | %dmin | %.2f",
                         positionTicket, tradeType, durationMinutes, totalProfit));
+  }
+
+//+------------------------------------------------------------------+
+//| 🆕 v3.20: Salvar TP parcial imediatamente no CSV                 |
+//+------------------------------------------------------------------+
+void CLogger::SavePartialTrade(ulong positionId, ulong dealTicket, string tradeType,
+                               double entryPrice, double exitPrice, double volume,
+                               double profit, string motivo)
+  {
+   // Verificar se arquivo existe (criar header se novo)
+   bool fileExists = false;
+   int testHandle = FileOpen(m_csvFileName, FILE_READ | FILE_CSV);
+   if(testHandle != INVALID_HANDLE)
+     {
+      fileExists = true;
+      FileClose(testHandle);
+     }
+
+   // Abrir arquivo para escrita
+   int fileHandle = FileOpen(m_csvFileName, FILE_READ | FILE_WRITE | FILE_CSV);
+   if(fileHandle == INVALID_HANDLE)
+     {
+      LogError("Erro ao abrir CSV para TP parcial: " + IntegerToString(GetLastError()));
+      return;
+     }
+
+   // Escrever header se arquivo novo
+   if(!fileExists)
+     {
+      string header = "Data,Hora,Ticket,Tipo,Entrada,Saida,Volume,SL,TP,Profit,Swap,Comissao,Total,Spread,DuracaoMin,Motivo,Origem";
+      FileWriteString(fileHandle, header + "\n");
+     }
+
+   // Ir para o final do arquivo
+   FileSeek(fileHandle, 0, SEEK_END);
+
+   // Formatar data e hora atual
+   MqlDateTime dt;
+   TimeToStruct(TimeCurrent(), dt);
+   string tradeDate = StringFormat("%04d-%02d-%02d", dt.year, dt.mon, dt.day);
+   string tradeTime = StringFormat("%02d:%02d:%02d", dt.hour, dt.min, dt.sec);
+
+   // Dados simplificados para TP parcial
+   int spreadPoints = (int)SymbolInfoInteger(m_symbol, SYMBOL_SPREAD);
+
+   // Escrever linha CSV
+   // Nota: SL, TP, Swap, Comissao, DuracaoMin são 0 para parciais (não aplicável)
+   string csvLine = StringFormat("%s,%s,%llu,%s,%.5f,%.5f,%.2f,%.5f,%.5f,%.2f,%.2f,%.2f,%.2f,%d,%d,%s,%s",
+                                 tradeDate,
+                                 tradeTime,
+                                 positionId,          // Ticket da posição (não do deal)
+                                 tradeType,
+                                 entryPrice,
+                                 exitPrice,
+                                 volume,
+                                 0.0,                 // SL (não aplicável)
+                                 0.0,                 // TP (não aplicável)
+                                 profit,
+                                 0.0,                 // Swap (não aplicável)
+                                 0.0,                 // Comissão (não aplicável)
+                                 profit,              // Total = Profit para parciais
+                                 spreadPoints,
+                                 0,                   // Duração (não aplicável)
+                                 motivo,              // "Partial TP1" ou "Partial TP2"
+                                 "EA"
+                                );
+
+   FileWriteString(fileHandle, csvLine + "\n");
+   FileClose(fileHandle);
+
+   LogInfo(StringFormat("📊 TP Parcial salvo: #%llu | %s | %.2f lotes | $%.2f | %s",
+                        positionId, tradeType, volume, profit, motivo));
   }
 
 //+------------------------------------------------------------------+
@@ -635,92 +716,112 @@ void CLogger::UpdateStats(double profit)
   }
 
 //+------------------------------------------------------------------+
-//| Carregar estatísticas                                            |
+//| Carregar estatísticas (v3.20 - reconhece TPs parciais)           |
 //+------------------------------------------------------------------+
 void CLogger::LoadDailyStats()
   {
    // Reset inicial
    m_dailyProfit = 0;
-   m_partialTPProfit = 0;  // 🆕 v3.10: Reset também TPs parciais
+   m_partialTPProfit = 0;
    m_dailyTrades = 0;
    m_dailyWins = 0;
    m_dailyLosses = 0;
    m_dailyDraws = 0;
    m_grossProfit = 0;
    m_grossLoss = 0;
-   
+
    // Tentar abrir CSV
    int fileHandle = FileOpen(m_csvFileName, FILE_READ | FILE_CSV);
-   
+
    if(fileHandle == INVALID_HANDLE)
      {
       LogInfo("📂 CSV não encontrado - primeira execução do dia");
       return;
      }
-   
+
    // Ler header
    string header = FileReadString(fileHandle);
-   
+
    // Data de hoje
    MqlDateTime dt;
    TimeToStruct(TimeCurrent(), dt);
    string today = StringFormat("%04d-%02d-%02d", dt.year, dt.mon, dt.day);
-   
+
    int tradesCarregados = 0;
-   
+   int parciaisCarregados = 0;
+
    // Ler linha por linha
    while(!FileIsEnding(fileHandle))
      {
       string line = FileReadString(fileHandle);
-      
+
       if(line == "" || StringLen(line) < 10)
          continue;
-      
+
       string campos[];
       int numCampos = StringSplit(line, ',', campos);
-      
-      if(numCampos < 13)
+
+      if(numCampos < 16)  // Precisa ter campo Motivo (índice 15)
          continue;
-      
+
       string tradeDate = campos[0];
-      
+
       // Só processa trades de hoje
       if(tradeDate != today)
          continue;
-      
+
       // Extrair dados
       double profit = StringToDouble(campos[9]);
-      
-      m_dailyTrades++;
-      m_dailyProfit += profit;
-      
-      // Classificar (breakeven tratado como empate)
-      bool isBreakeven = (MathAbs(profit) < 0.01);
-      
-      if(isBreakeven)
+      string motivo = campos[15];
+
+      // ═══════════════════════════════════════════════════════════════
+      // 🆕 v3.20: Detectar se é TP parcial pelo campo Motivo
+      // ═══════════════════════════════════════════════════════════════
+      bool isPartialTP = (StringFind(motivo, "Partial") >= 0);
+
+      if(isPartialTP)
         {
-         m_dailyDraws++;
-        }
-      else if(profit > 0)
-        {
-         m_dailyWins++;
-         m_grossProfit += profit;
+         // TP Parcial: acumula em m_partialTPProfit, NÃO conta como trade
+         m_partialTPProfit += profit;
+         parciaisCarregados++;
         }
       else
         {
-         m_dailyLosses++;
-         m_grossLoss += MathAbs(profit);
+         // Trade completo: lógica original
+         m_dailyTrades++;
+         m_dailyProfit += profit;
+
+         // Classificar (breakeven tratado como empate)
+         bool isBreakeven = (MathAbs(profit) < 0.01);
+
+         if(isBreakeven)
+           {
+            m_dailyDraws++;
+           }
+         else if(profit > 0)
+           {
+            m_dailyWins++;
+            m_grossProfit += profit;
+           }
+         else
+           {
+            m_dailyLosses++;
+            m_grossLoss += MathAbs(profit);
+           }
+
+         tradesCarregados++;
         }
-      
-      tradesCarregados++;
      }
-   
+
    FileClose(fileHandle);
-   
-   if(tradesCarregados > 0)
+
+   if(tradesCarregados > 0 || parciaisCarregados > 0)
      {
       LogInfo(StringFormat("📊 Carregados: %d trades | P/L: $%.2f | %dW/%dL/%dE",
                           m_dailyTrades, m_dailyProfit, m_dailyWins, m_dailyLosses, m_dailyDraws));
+      if(parciaisCarregados > 0)
+         LogInfo(StringFormat("📊 TPs Parciais: %d | Lucro parcial: $%.2f | Total dia: $%.2f",
+                             parciaisCarregados, m_partialTPProfit, GetDailyProfit()));
      }
   }
 
