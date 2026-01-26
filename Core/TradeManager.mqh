@@ -2,10 +2,10 @@
 //|                                                 TradeManager.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|             Gerenciamento de Posições Individuais - EPBot Matrix |
-//|                                   Versão 1.11 - Claude Parte 017 |
+//|                     Versão 1.20 - Claude Parte 019 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "1.11"
+#property version   "1.20"
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
@@ -14,7 +14,7 @@
 #include "RiskManager.mqh"
 
 // ═══════════════════════════════════════════════════════════════════
-// ARQUITETURA TRADEMANAGER v1.02:
+// ARQUITETURA TRADEMANAGER v1.20:
 // - Rastreia CADA posição individualmente com seu próprio estado
 // - Gerencia Breakeven por posição (não global)
 // - Gerencia Trailing por posição (não global)
@@ -22,6 +22,14 @@
 // - Hot Reload completo (Input + Working variables)
 // - Integração total com Logger e RiskManager
 // - ReSync
+//
+// NOVIDADES v1.20:
+// + CORREÇÃO CRÍTICA: Lucro de TPs parciais agora é registrado no Logger
+// + Após cada TP parcial, calcula lucro e chama Logger.AddPartialTPProfit()
+// + Garante que limites diários considerem lucros parciais realizados
+//
+// NOVIDADES v1.11:
+// + Remove TP Fixo após TP2 (deixa trailing livre)
 //
 // NOVIDADES v1.10:
 // + Migração para Logger v3.00 (5 níveis + throttle inteligente)
@@ -489,11 +497,43 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
                "   Fechando: " + DoubleToString(m_positions[index].tp1_lot, 2) + " lote(s)");
            }
 
-         if(ExecutePartialClose(ticket, m_positions[index].tp1_lot, "Partial TP1"))
+         // 🆕 v1.20: Guardar preço atual ANTES de fechar para calcular lucro
+         double priceBeforeClose = currentPrice;
+         double lotToClose = m_positions[index].tp1_lot;
+
+         if(ExecutePartialClose(ticket, lotToClose, "Partial TP1"))
            {
             SetTP1Executed(ticket, true);
             if(m_logger != NULL)
                m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "✅ TP1 executado com sucesso!");
+
+            // ═══════════════════════════════════════════════════════════════
+            // 🆕 v1.20: REGISTRAR LUCRO DO TP PARCIAL NO LOGGER
+            // Calcula lucro aproximado do TP parcial executado
+            // ═══════════════════════════════════════════════════════════════
+            if(m_logger != NULL)
+              {
+               double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
+               double tickValue = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_VALUE);
+               double tickSize = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_SIZE);
+               double openPrice = m_positions[index].openPrice;
+
+               double priceDiff = 0;
+               if(m_positions[index].posType == POSITION_TYPE_BUY)
+                  priceDiff = priceBeforeClose - openPrice;
+               else
+                  priceDiff = openPrice - priceBeforeClose;
+
+               // Calcular lucro: (diferença de preço / tick size) * tick value * lote
+               double partialProfit = (priceDiff / tickSize) * tickValue * lotToClose;
+
+               // Registrar no Logger para contabilizar no dailyProfit
+               m_logger.AddPartialTPProfit(partialProfit);
+
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
+                  StringFormat("   💰 Lucro TP1: $%.2f (%.2f lotes @ %.2f pts)",
+                              partialProfit, lotToClose, priceDiff / point));
+              }
            }
          else
            {
@@ -514,60 +554,92 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
       bool tp2Hit = (m_positions[index].posType == POSITION_TYPE_BUY && currentPrice >= m_positions[index].tp2_price) ||
                     (m_positions[index].posType == POSITION_TYPE_SELL && currentPrice <= m_positions[index].tp2_price);
 
-if(tp2Hit)
-{
-   if(m_logger != NULL)
-   {
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════════════");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "🎯 TP2 ATINGIDO - Posição #" + IntegerToString(ticket));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
-         "   Preço alvo: " + DoubleToString(m_positions[index].tp2_price, _Digits));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
-         "   Preço atual: " + DoubleToString(currentPrice, _Digits));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
-         "   Fechando: " + DoubleToString(m_positions[index].tp2_lot, 2) + " lote(s)");
-   }
+      if(tp2Hit)
+        {
+         if(m_logger != NULL)
+           {
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════════════");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "🎯 TP2 ATINGIDO - Posição #" + IntegerToString(ticket));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+               "   Preço alvo: " + DoubleToString(m_positions[index].tp2_price, _Digits));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+               "   Preço atual: " + DoubleToString(currentPrice, _Digits));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+               "   Fechando: " + DoubleToString(m_positions[index].tp2_lot, 2) + " lote(s)");
+           }
 
-   if(ExecutePartialClose(ticket, m_positions[index].tp2_lot, "Partial TP2"))
-   {
-      SetTP2Executed(ticket, true);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "✅ TP2 executado com sucesso!");
-      
-      // ╔══════════════════════════════════════════════════════════════╗
-      // ║  🆕 v1.11 - REMOVER TP FIXO APÓS TP2 (deixa trailing livre) ║
-      // ╚══════════════════════════════════════════════════════════════╝
-      if(PositionSelectByTicket(ticket))
-      {
-         double currentTP = PositionGetDouble(POSITION_TP);
-         
-         if(currentTP > 0)  // Só tenta remover se houver TP
-         {
-            MqlTradeRequest request = {};
-            MqlTradeResult result = {};
-            
-            request.action = TRADE_ACTION_SLTP;
-            request.position = ticket;
-            request.symbol = m_symbol;
-            request.sl = PositionGetDouble(POSITION_SL);  // Mantém SL atual
-            request.tp = 0;  // Remove TP
-            request.magic = m_magicNumber;
-            
-            if(OrderSend(request, result) && result.retcode == TRADE_RETCODE_DONE)
-            {
-               if(m_logger != NULL)
-                  m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
-                     "🔓 TP Fixo removido - Trailing livre para operar");
-            }
-            else
-            {
-               if(m_logger != NULL)
-                  m_logger.Log(LOG_EVENT, THROTTLE_NONE, "WARNING", 
-                     "⚠️ Não foi possível remover TP - Retcode: " + IntegerToString(result.retcode));
-            }
-         }
-      }
-   }
+         // 🆕 v1.20: Guardar preço atual ANTES de fechar para calcular lucro
+         double priceBeforeClose = currentPrice;
+         double lotToClose = m_positions[index].tp2_lot;
+
+         if(ExecutePartialClose(ticket, lotToClose, "Partial TP2"))
+           {
+            SetTP2Executed(ticket, true);
+            if(m_logger != NULL)
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "✅ TP2 executado com sucesso!");
+
+            // ═══════════════════════════════════════════════════════════════
+            // 🆕 v1.20: REGISTRAR LUCRO DO TP PARCIAL NO LOGGER
+            // Calcula lucro aproximado do TP parcial executado
+            // ═══════════════════════════════════════════════════════════════
+            if(m_logger != NULL)
+              {
+               double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
+               double tickValue = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_VALUE);
+               double tickSize = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_SIZE);
+               double openPrice = m_positions[index].openPrice;
+
+               double priceDiff = 0;
+               if(m_positions[index].posType == POSITION_TYPE_BUY)
+                  priceDiff = priceBeforeClose - openPrice;
+               else
+                  priceDiff = openPrice - priceBeforeClose;
+
+               // Calcular lucro: (diferença de preço / tick size) * tick value * lote
+               double partialProfit = (priceDiff / tickSize) * tickValue * lotToClose;
+
+               // Registrar no Logger para contabilizar no dailyProfit
+               m_logger.AddPartialTPProfit(partialProfit);
+
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
+                  StringFormat("   💰 Lucro TP2: $%.2f (%.2f lotes @ %.2f pts)",
+                              partialProfit, lotToClose, priceDiff / point));
+              }
+
+            // ╔══════════════════════════════════════════════════════════════╗
+            // ║  🆕 v1.11 - REMOVER TP FIXO APÓS TP2 (deixa trailing livre) ║
+            // ╚══════════════════════════════════════════════════════════════╝
+            if(PositionSelectByTicket(ticket))
+              {
+               double currentTP = PositionGetDouble(POSITION_TP);
+
+               if(currentTP > 0)  // Só tenta remover se houver TP
+                 {
+                  MqlTradeRequest request = {};
+                  MqlTradeResult result = {};
+
+                  request.action = TRADE_ACTION_SLTP;
+                  request.position = ticket;
+                  request.symbol = m_symbol;
+                  request.sl = PositionGetDouble(POSITION_SL);  // Mantém SL atual
+                  request.tp = 0;  // Remove TP
+                  request.magic = m_magicNumber;
+
+                  if(OrderSend(request, result) && result.retcode == TRADE_RETCODE_DONE)
+                    {
+                     if(m_logger != NULL)
+                        m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+                           "🔓 TP Fixo removido - Trailing livre para operar");
+                    }
+                  else
+                    {
+                     if(m_logger != NULL)
+                        m_logger.Log(LOG_EVENT, THROTTLE_NONE, "WARNING",
+                           "⚠️ Não foi possível remover TP - Retcode: " + IntegerToString(result.retcode));
+                    }
+                 }
+              }
+           }
          else
            {
             if(m_logger != NULL)
