@@ -2,12 +2,17 @@
 //|                                                       Logger.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                                Sistema de Logging - EPBot Matrix |
-//|                                   Versão 3.20 - Claude Parte 021 |
+//|                                   Versão 3.21 - Claude Parte 024 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "3.20"
+#property version   "3.21"
 
+// ═══════════════════════════════════════════════════════════════════
+// CHANGELOG v3.21:
+// ✅ Fix: AddPartialTPProfit() agora atualiza m_grossProfit
+// ✅ Fix: SaveDailyReport() usa GetDailyProfit() para incluir TPs parciais
+// ✅ Relatório diário agora mostra valores corretos (igual MT5)
 // ═══════════════════════════════════════════════════════════════════
 // CHANGELOG v3.20:
 // ✅ Novo: SavePartialTrade() salva cada TP parcial imediatamente no CSV
@@ -783,6 +788,11 @@ void CLogger::LoadDailyStats()
         {
          // TP Parcial: acumula em m_partialTPProfit, NÃO conta como trade
          m_partialTPProfit += profit;
+
+         // 🆕 v3.21: Também atualizar m_grossProfit para relatórios corretos
+         if(profit > 0)
+            m_grossProfit += profit;
+
          parciaisCarregados++;
         }
       else
@@ -844,9 +854,10 @@ void CLogger::SaveDailyReport()
      }
    
    string date = StringFormat("%02d.%02d.%04d", dt.day, dt.mon, dt.year);
+   double totalDailyProfit = GetDailyProfit();  // 🆕 v3.21: Usa GetDailyProfit() para incluir TPs parciais
    double winRate = (m_dailyTrades > 0) ? (m_dailyWins * 100.0 / m_dailyTrades) : 0;
    double profitFactor = (m_grossLoss > 0) ? (m_grossProfit / m_grossLoss) : 0;
-   double avgTrade = (m_dailyTrades > 0) ? (m_dailyProfit / m_dailyTrades) : 0;
+   double avgTrade = (m_dailyTrades > 0) ? (totalDailyProfit / m_dailyTrades) : 0;
    double avgWin = (m_dailyWins > 0) ? (m_grossProfit / m_dailyWins) : 0;
    double avgLoss = (m_dailyLosses > 0) ? (m_grossLoss / m_dailyLosses) : 0;
    double payoffRatio = (avgLoss > 0) ? (avgWin / avgLoss) : 0;
@@ -889,9 +900,9 @@ void CLogger::SaveDailyReport()
    
    // Resultado Financeiro
    FileWriteString(fileHandle, "💰 RESULTADO FINANCEIRO\n\n");
-   FileWriteString(fileHandle, "  L/P Bruto:        $" + DoubleToString(m_dailyProfit, 2) + "\n");
+   FileWriteString(fileHandle, "  L/P Bruto:        $" + DoubleToString(totalDailyProfit, 2) + "\n");
    FileWriteString(fileHandle, "  ──────────────────────────────────────\n");
-   FileWriteString(fileHandle, "  L/P Líquido:      $" + DoubleToString(m_dailyProfit, 2) + "\n\n");
+   FileWriteString(fileHandle, "  L/P Líquido:      $" + DoubleToString(totalDailyProfit, 2) + "\n\n");
    
    FileWriteString(fileHandle, "========================================================\n\n");
    
@@ -979,6 +990,10 @@ string CLogger::GetConfigSummary()
 void CLogger::AddPartialTPProfit(double profit)
   {
    m_partialTPProfit += profit;
+
+   // 🆕 v3.21: Atualizar m_grossProfit para relatórios corretos
+   if(profit > 0)
+      m_grossProfit += profit;
 
    Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
        StringFormat("🎯 Lucro parcial registrado: $%.2f | Acumulado TPs: $%.2f | Total dia: $%.2f",
