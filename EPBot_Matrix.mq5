@@ -2,13 +2,29 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                                   Versão 1.23 - Claude Parte 019 |
+//|                     Versão 1.26 - Claude Parte 020 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.23"
+#property version   "1.26"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.25:                                                 |
+//| 📊 TPs Parciais agora salvos no CSV (3 linhas por trade):       |
+//|    - Logger v3.20 com SavePartialTrade()                        |
+//|    - TradeManager v1.21 chama SavePartialTrade() após TP1/TP2   |
+//|    - LoadDailyStats() reconhece linhas "Partial TP"             |
+//|    - Habilita ressincronização de TPs parciais ao reiniciar     |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.24:                                                 |
+//| 🎯 CORREÇÃO CRÍTICA - TPs Parciais no Daily Profit:             |
+//|    - Lucro de TP1/TP2 agora contabilizado em tempo real         |
+//|    - GetDailyProfit() inclui m_partialTPProfit                  |
+//|    - Limites diários (ganho/perda) consideram TPs parciais      |
+//|    - Drawdown protection considera TPs parciais realizados      |
+//|    - Logger v3.10 com AddPartialTPProfit()                      |
+//|    - TradeManager v1.20 registra lucro após cada TP parcial     |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.23:                                                 |
 //| 🛡️ VERIFICAÇÃO DE DRAWDOWN EM TEMPO REAL:                       |
@@ -103,7 +119,7 @@ bool g_tradingAllowed = true;  // Controle geral de trading
 int OnInit()
   {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.23 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v1.26 - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
 
 // ═══════════════════════════════════════════════════════════════
@@ -580,7 +596,7 @@ int OnInit()
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
 
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.23 - PRONTO PARA OPERAR!");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.26 - PRONTO PARA OPERAR!");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Símbolo: " + _Symbol);
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
@@ -768,9 +784,17 @@ void OnTick()
       // Buscar informação do fechamento no histórico
       if(HistorySelectByPosition(g_lastPositionTicket))
         {
-         // Calcular profit da posição fechada
-         double positionProfit = 0;
+         // ═══════════════════════════════════════════════════════════════
+         // v1.26: PADRÃO OURO MQL5 - Calcular lucro total da posição
+         // somando TODOS os deals de saída diretamente do histórico
+         // Referência: https://www.mql5.com/en/forum/439334
+         // ═══════════════════════════════════════════════════════════════
+         double totalPositionProfit = 0;  // Soma de TODOS os deals de saída desta posição
+         double finalDealProfit = 0;      // Apenas o deal final (para salvar no CSV)
+         ulong  finalDealTicket = 0;
+         bool   foundFinalDeal = false;
 
+         // Iterar por TODOS os deals desta posição
          for(int i = 0; i < HistoryDealsTotal(); i++)
            {
             ulong dealTicket = HistoryDealGetTicket(i);
@@ -779,29 +803,46 @@ void OnTick()
                long dealEntry = HistoryDealGetInteger(dealTicket, DEAL_ENTRY);
                if(dealEntry == DEAL_ENTRY_OUT || dealEntry == DEAL_ENTRY_OUT_BY)
                  {
-                  positionProfit = HistoryDealGetDouble(dealTicket, DEAL_PROFIT);
+                  // Somar lucro de TODOS os deals de saída (parciais + final)
+                  double dealProfit = HistoryDealGetDouble(dealTicket, DEAL_PROFIT);
+                  totalPositionProfit += dealProfit;
 
-                  // Salvar trade no Logger
-                  g_logger.SaveTrade(g_lastPositionTicket, positionProfit);
+                  string dealComment = HistoryDealGetString(dealTicket, DEAL_COMMENT);
 
-                  // Atualizar estatísticas
-                  g_logger.UpdateStats(positionProfit);
+                  // TPs parciais já foram salvos por SavePartialTrade()
+                  if(StringFind(dealComment, "Partial") >= 0)
+                     continue;
 
-                  // Registrar no Blockers
-                  bool isWin = (positionProfit > 0);
-                  g_blockers.UpdateAfterTrade(isWin, positionProfit);
-
-                  g_logger.Log(LOG_TRADE, THROTTLE_NONE, "CLOSE",
-                               "📊 Posição #" + IntegerToString(g_lastPositionTicket) +
-                               " fechada | P/L: $" + DoubleToString(positionProfit, 2));
-
-                  // Gerar relatório TXT atualizado após cada trade
-                  g_logger.SaveDailyReport();
-                  g_logger.Log(LOG_TRADE, THROTTLE_NONE, "REPORT", "📄 Relatório diário atualizado");
-
-                  break;
+                  // Este é um deal final (SL, TP fixo, trailing, etc)
+                  finalDealProfit = dealProfit;
+                  finalDealTicket = dealTicket;
+                  foundFinalDeal = true;
+                  // NÃO usar break - continuar para pegar o último
                  }
               }
+           }
+
+         // Processar o deal final (se encontrado)
+         if(foundFinalDeal)
+           {
+            // Salvar trade no Logger (apenas o deal final)
+            g_logger.SaveTrade(g_lastPositionTicket, finalDealProfit);
+
+            // Atualizar estatísticas (apenas o deal final)
+            g_logger.UpdateStats(finalDealProfit);
+
+            // Registrar no Blockers - usar totalPositionProfit para determinar win/loss
+            bool isWin = (totalPositionProfit > 0);
+            g_blockers.UpdateAfterTrade(isWin, finalDealProfit);
+
+            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "CLOSE",
+                         "📊 Posição #" + IntegerToString(g_lastPositionTicket) +
+                         " fechada | P/L final: $" + DoubleToString(finalDealProfit, 2) +
+                         " | Total posição: $" + DoubleToString(totalPositionProfit, 2));
+
+            // Gerar relatório TXT atualizado após cada trade
+            g_logger.SaveDailyReport();
+            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "REPORT", "📄 Relatório diário atualizado");
            }
         }
 
@@ -1568,5 +1609,5 @@ string GetDeinitReasonText(int reason)
   }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.23                                   |
+//| FIM DO EA - EPBOT MATRIX v1.26                                   |
 //+------------------------------------------------------------------+
