@@ -2,10 +2,10 @@
 //|                                                 TradeManager.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|             Gerenciamento de Posições Individuais - EPBot Matrix |
-//|                     Versão 1.20 - Claude Parte 019 (Claude Code) |
+//|                     Versão 1.21 - Claude Parte 020 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "1.20"
+#property version   "1.21"
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
@@ -14,7 +14,7 @@
 #include "RiskManager.mqh"
 
 // ═══════════════════════════════════════════════════════════════════
-// ARQUITETURA TRADEMANAGER v1.20:
+// ARQUITETURA TRADEMANAGER v1.21:
 // - Rastreia CADA posição individualmente com seu próprio estado
 // - Gerencia Breakeven por posição (não global)
 // - Gerencia Trailing por posição (não global)
@@ -22,6 +22,11 @@
 // - Hot Reload completo (Input + Working variables)
 // - Integração total com Logger e RiskManager
 // - ReSync
+//
+// NOVIDADES v1.21:
+// + Chama Logger.SavePartialTrade() após cada TP parcial executado
+// + TPs parciais agora salvos no CSV imediatamente (3 linhas por trade)
+// + Habilita ressincronização ao reiniciar EA
 //
 // NOVIDADES v1.20:
 // + CORREÇÃO CRÍTICA: Lucro de TPs parciais agora é registrado no Logger
@@ -530,6 +535,11 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
                // Registrar no Logger para contabilizar no dailyProfit
                m_logger.AddPartialTPProfit(partialProfit);
 
+               // 🆕 v1.21: Salvar TP parcial no CSV imediatamente
+               string tradeType = (m_positions[index].posType == POSITION_TYPE_BUY) ? "BUY" : "SELL";
+               m_logger.SavePartialTrade(ticket, 0, tradeType, openPrice, priceBeforeClose,
+                                         lotToClose, partialProfit, "Partial TP1");
+
                m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
                   StringFormat("   💰 Lucro TP1: $%.2f (%.2f lotes @ %.2f pts)",
                               partialProfit, lotToClose, priceDiff / point));
@@ -600,6 +610,11 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
 
                // Registrar no Logger para contabilizar no dailyProfit
                m_logger.AddPartialTPProfit(partialProfit);
+
+               // 🆕 v1.21: Salvar TP parcial no CSV imediatamente
+               string tradeType = (m_positions[index].posType == POSITION_TYPE_BUY) ? "BUY" : "SELL";
+               m_logger.SavePartialTrade(ticket, 0, tradeType, openPrice, priceBeforeClose,
+                                         lotToClose, partialProfit, "Partial TP2");
 
                m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
                   StringFormat("   💰 Lucro TP2: $%.2f (%.2f lotes @ %.2f pts)",
