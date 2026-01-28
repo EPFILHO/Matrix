@@ -2,15 +2,22 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.26 - Claude Parte 020 (Claude Code) |
+//|                     Versão 1.27 - Claude Parte 021 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.26"
+#property version   "1.27"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //+------------------------------------------------------------------+
-//| CHANGELOG v1.25:                                                 |
+//| CHANGELOG v1.27:                                                 |
+//| 🎯 CORREÇÃO: TPs Parciais agora usam valores REAIS do deal:     |
+//|    - TradeManager v1.22 busca DEAL_PROFIT/DEAL_PRICE do histórico|
+//|    - Elimina discrepâncias por slippage em mercados voláteis    |
+//|    - Logger v3.22 compatível com novos valores reais            |
+//|    - Fallback para estimativa se deal não encontrado            |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.26:                                                 |
 //| 📊 TPs Parciais agora salvos no CSV (3 linhas por trade):       |
 //|    - Logger v3.20 com SavePartialTrade()                        |
 //|    - TradeManager v1.21 chama SavePartialTrade() após TP1/TP2   |
@@ -119,7 +126,7 @@ bool g_tradingAllowed = true;  // Controle geral de trading
 int OnInit()
   {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.26 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v1.27 - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
 
 // ═══════════════════════════════════════════════════════════════
@@ -596,7 +603,7 @@ int OnInit()
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
 
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.26 - PRONTO PARA OPERAR!");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.27 - PRONTO PARA OPERAR!");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Símbolo: " + _Symbol);
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
@@ -1609,5 +1616,5 @@ string GetDeinitReasonText(int reason)
   }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.26                                   |
+//| FIM DO EA - EPBOT MATRIX v1.27                                   |
 //+------------------------------------------------------------------+

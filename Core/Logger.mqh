@@ -2,12 +2,17 @@
 //|                                                       Logger.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                                Sistema de Logging - EPBot Matrix |
-//|                     Versão 3.21 - Claude Parte 020 (Claude Code) |
+//|                     Versão 3.22 - Claude Parte 021 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "3.21"
+#property version   "3.22"
 
+// ═══════════════════════════════════════════════════════════════════
+// CHANGELOG v3.22:
+// ✅ Compatível com TradeManager v1.22 que agora passa valores REAIS
+// ✅ SavePartialTrade() agora recebe valores REAIS do deal (não estimados)
+// ✅ Elimina discrepâncias por slippage em mercados voláteis
 // ═══════════════════════════════════════════════════════════════════
 // CHANGELOG v3.21:
 // ✅ Fix: AddPartialTPProfit() agora atualiza m_grossProfit
