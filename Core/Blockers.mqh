@@ -332,7 +332,7 @@ public:
       int maxLossStreak, ENUM_STREAK_ACTION lossAction, int lossPauseMin,
       int maxWinStreak, ENUM_STREAK_ACTION winAction, int winPauseMin,
       // Drawdown
-      bool enableDD, ENUM_DRAWDOWN_TYPE ddType, double ddValue, double initialBalance,
+      bool enableDD, ENUM_DRAWDOWN_TYPE ddType, double ddValue,
       // Direção
       ENUM_TRADE_DIRECTION tradeDirection
    );
@@ -566,7 +566,7 @@ bool CBlockers::Init(
    bool enableStreak,
    int maxLossStreak, ENUM_STREAK_ACTION lossAction, int lossPauseMin,
    int maxWinStreak, ENUM_STREAK_ACTION winAction, int winPauseMin,
-   bool enableDD, ENUM_DRAWDOWN_TYPE ddType, double ddValue, double initialBalance,
+   bool enableDD, ENUM_DRAWDOWN_TYPE ddType, double ddValue,
    ENUM_TRADE_DIRECTION tradeDirection
 )
   {
@@ -903,18 +903,19 @@ bool CBlockers::Init(
          return false;
         }
 
-      if(initialBalance <= 0)
+      double autoBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+      if(autoBalance <= 0)
         {
          if(m_logger != NULL)
-            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Saldo inicial inválido!");
+            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Saldo da conta inválido (zero ou negativo)!");
          else
-            Print("❌ Saldo inicial inválido!");
+            Print("❌ Saldo da conta inválido (zero ou negativo)!");
          return false;
         }
 
-      m_inputInitialBalance = initialBalance;
-      m_initialBalance = initialBalance;
-      m_peakBalance = initialBalance;
+      m_inputInitialBalance = autoBalance;
+      m_initialBalance = autoBalance;
+      m_peakBalance = autoBalance;
 
       if(m_logger != NULL)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📉 Drawdown Máximo:");
@@ -929,7 +930,7 @@ bool CBlockers::Init(
       else
          Print(typeMsg);
 
-      string balMsg = "   - Saldo Inicial: $" + DoubleToString(initialBalance, 2);
+      string balMsg = "   - Saldo Inicial (auto): $" + DoubleToString(autoBalance, 2);
       if(m_logger != NULL)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", balMsg);
       else

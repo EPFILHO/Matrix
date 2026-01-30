@@ -199,7 +199,6 @@ int OnInit()
          inp_EnableDrawdown,
          inp_DrawdownType,
          inp_DrawdownValue,
-         inp_InitialBalance,
          inp_TradeDirection
       ))
      {

@@ -100,7 +100,6 @@ input group "📉 Proteção de Drawdown"
 input bool   inp_EnableDrawdown = false;          // Ativar Proteção Drawdown
 input ENUM_DRAWDOWN_TYPE inp_DrawdownType = DD_FINANCIAL;  // Tipo de Drawdown
 input double inp_DrawdownValue = 0;               // Valor do Drawdown
-input double inp_InitialBalance = 0;              // Saldo Inicial de Referência
 
 //--- 🎯 DIREÇÃO PERMITIDA
 input group "🎯 Direção Permitida"
