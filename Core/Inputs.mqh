@@ -2,11 +2,11 @@
 //|                                                       Inputs.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                   Sistema de Inputs Centralizados - EPBot Matrix |
-//|                                   Versão 1.02 - Claude Parte 016 |
+//|                                   Versão 1.03 - Claude Parte 021 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.02"
+#property version   "1.03"
 
 //+------------------------------------------------------------------+
 //| INCLUDES NECESSÁRIOS PARA ENUMS                                  |

@@ -2,10 +2,10 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                                   Versão 3.04 - Claude Parte 019 |
+//|                                   Versão 3.05 - Claude Parte 021 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "3.04"
+#property version   "3.05"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
