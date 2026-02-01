@@ -2,11 +2,11 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.29 - Claude Parte 021 (Claude Code) |
+//|                     Versão 1.30 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.29"
+#property version   "1.30"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //+------------------------------------------------------------------+
@@ -1347,6 +1347,16 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
          g_logger.Log(LOG_ERROR, THROTTLE_NONE, "SIGNAL", "⚠️ Sinal inválido ignorado: " + EnumToString(signal));
          return;
         }
+
+// ═══════════════════════════════════════════════════════════════
+// VERIFICAR FILTRO DE DIREÇÃO
+// ═══════════════════════════════════════════════════════════════
+   string dirBlockReason = "";
+   if(!g_blockers.CanTradeDirection(orderType, dirBlockReason))
+     {
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCKER", "🚫 " + dirBlockReason);
+      return;
+     }
 
 // ═══════════════════════════════════════════════════════════════
 // CALCULAR PARÂMETROS DE RISCO
