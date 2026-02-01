@@ -2,11 +2,11 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.28 - Claude Parte 021 (Claude Code) |
+//|                     Versão 1.29 - Claude Parte 021 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.28"
+#property version   "1.29"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //+------------------------------------------------------------------+
@@ -199,6 +199,7 @@ int OnInit()
          inp_EnableDrawdown,
          inp_DrawdownType,
          inp_DrawdownValue,
+         inp_DrawdownPeakMode,
          inp_TradeDirection
       ))
      {

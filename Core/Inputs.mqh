@@ -2,11 +2,11 @@
 //|                                                       Inputs.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                   Sistema de Inputs Centralizados - EPBot Matrix |
-//|                                   Versão 1.03 - Claude Parte 021 (Claude Code) |
+//|                                   Versão 1.04 - Claude Parte 021 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.03"
+#property version   "1.04"
 
 //+------------------------------------------------------------------+
 //| INCLUDES NECESSÁRIOS PARA ENUMS                                  |
@@ -100,6 +100,7 @@ input group "📉 Proteção de Drawdown"
 input bool   inp_EnableDrawdown = false;          // Ativar Proteção Drawdown
 input ENUM_DRAWDOWN_TYPE inp_DrawdownType = DD_FINANCIAL;  // Tipo de Drawdown
 input double inp_DrawdownValue = 0;               // Valor do Drawdown
+input ENUM_DRAWDOWN_PEAK_MODE inp_DrawdownPeakMode = DD_PEAK_REALIZED_ONLY;  // Modo de Cálculo do Pico
 
 //--- 🎯 DIREÇÃO PERMITIDA
 input group "🎯 Direção Permitida"
