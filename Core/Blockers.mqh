@@ -9,6 +9,26 @@
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.07:
+// ✅ Timestamp de ativação do Drawdown nos logs de fechamento:
+//    - Novo membro m_drawdownActivationTime
+//    - Log de fechamento por DD inclui horário de ativação
+//    - Informação puramente visual, sem impacto funcional
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.06:
+// ✅ Modo de Cálculo do Pico de Drawdown configurável:
+//    - Novo enum ENUM_DRAWDOWN_PEAK_MODE
+//    - DD_PEAK_REALIZED_ONLY: pico baseado apenas em trades fechados
+//    - DD_PEAK_INCLUDE_FLOATING: pico inclui P/L flutuante
+//    - ActivateDrawdownProtection() recebe closedProfit e projectedProfit
+//    - ShouldCloseByDrawdown() usa peakCandidate conforme modo
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.05:
+// ✅ Remoção de inp_InitialBalance:
+//    - Saldo inicial auto-detectado via AccountInfoDouble(ACCOUNT_BALANCE)
+//    - Init() não recebe mais parâmetro initialBalance
+//    - m_peakBalance inicializado com saldo real da conta
+// ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.04:
 // ✅ VERIFICAÇÃO DE DRAWDOWN EM TEMPO REAL:
 //    - Novo método ShouldCloseByDrawdown(ticket, dailyProfit, reason)

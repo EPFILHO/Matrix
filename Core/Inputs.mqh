@@ -8,6 +8,17 @@
 #property link      "https://github.com/EPFILHO"
 #property version   "1.04"
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v1.04:
+// ✅ Novo input inp_DrawdownPeakMode:
+//    - Permite escolher entre pico Realizado ou com Flutuante
+//    - Enum ENUM_DRAWDOWN_PEAK_MODE (definido em Blockers.mqh)
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v1.03:
+// ✅ Remoção de inp_InitialBalance:
+//    - Input manual removido (auto-detectado via AccountBalance)
+// ═══════════════════════════════════════════════════════════════
+
 //+------------------------------------------------------------------+
 //| INCLUDES NECESSÁRIOS PARA ENUMS                                  |
 //+------------------------------------------------------------------+

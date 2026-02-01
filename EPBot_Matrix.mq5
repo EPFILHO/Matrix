@@ -2,13 +2,33 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.30 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.30 - Claude Parte 021 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
 #property version   "1.30"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.30:                                                 |
+//| 🎯 CORREÇÃO: Filtro de Direção não funcionava:                   |
+//|    - CanTradeDirection() existia mas nunca era chamada            |
+//|    - Adicionada verificação em ExecuteTrade() antes do OrderSend  |
+//|    - inp_TradeDirection (SELL_ONLY/BUY_ONLY) agora respeitado    |
+//|    - Log com LOG_EVENT quando direção é bloqueada                |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.29:                                                 |
+//| 🔧 Modo de Cálculo do Pico de Drawdown configurável:            |
+//|    - Init() passa inp_DrawdownPeakMode para Blockers             |
+//|    - ActivateDrawdownProtection() recebe closedProfit e          |
+//|      projectedProfit separados                                   |
+//|    - Compatível com Blockers v3.06                               |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.28:                                                 |
+//| 🔧 Remoção de inp_InitialBalance:                                |
+//|    - Saldo inicial agora auto-detectado via AccountBalance()     |
+//|    - Removido parâmetro da chamada g_blockers.Init()             |
+//|    - Compatível com Blockers v3.05                               |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.27:                                                 |
 //| 🎯 CORREÇÃO: TPs Parciais agora usam valores REAIS do deal:     |
