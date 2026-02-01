@@ -2,10 +2,10 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                                   Versão 3.06 - Claude Parte 021 (Claude Code) |
+//|                                   Versão 3.07 - Claude Parte 021 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "3.06"
+#property version   "3.07"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -294,6 +294,7 @@ private:
    double            m_dailyPeakProfit;
    bool              m_drawdownProtectionActive;
    bool              m_drawdownLimitReached;
+   datetime          m_drawdownActivationTime;
 
    datetime          m_lastResetDate;
    ENUM_BLOCKER_REASON m_currentBlocker;
@@ -547,6 +548,7 @@ CBlockers::CBlockers()
    m_dailyPeakProfit = 0.0;
    m_drawdownProtectionActive = false;
    m_drawdownLimitReached = false;
+   m_drawdownActivationTime = 0;
 
    m_lastResetDate = TimeCurrent();
    m_currentBlocker = BLOCKER_NONE;
@@ -1002,6 +1004,7 @@ bool CBlockers::Init(
    m_dailyPeakProfit = 0.0;
    m_drawdownProtectionActive = false;
    m_drawdownLimitReached = false;
+   m_drawdownActivationTime = 0;
    m_lastResetDate = TimeCurrent();
    m_currentBlocker = BLOCKER_NONE;
 
@@ -1819,6 +1822,11 @@ bool CBlockers::ShouldCloseByDrawdown(ulong positionTicket, double dailyProfit, 
             "   📊 Composição: Fechados=$" + DoubleToString(dailyProfit, 2) +
             " + Aberta=$" + DoubleToString(currentProfit, 2) +
             " + Swap=$" + DoubleToString(swap, 2));
+
+         string modeStr = (m_drawdownPeakMode == DD_PEAK_REALIZED_ONLY) ? "realizado" : "projetado";
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+            "   🛡️ Ativado às " + TimeToString(m_drawdownActivationTime, TIME_MINUTES) +
+            " | Pico inicial (" + modeStr + "): $" + DoubleToString(m_dailyPeakProfit, 2));
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
             "   🛡️ LUCRO PROTEGIDO! Fechando posição IMEDIATAMENTE");
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "════════════════════════════════════════════════════════════════");
@@ -1840,6 +1848,9 @@ bool CBlockers::ShouldCloseByDrawdown(ulong positionTicket, double dailyProfit, 
             Print("   📊 DD atual: ", DoubleToString(ddPercent, 1), "%");
            }
 
+         string modeStr2 = (m_drawdownPeakMode == DD_PEAK_REALIZED_ONLY) ? "realizado" : "projetado";
+         Print("   🛡️ Ativado às ", TimeToString(m_drawdownActivationTime, TIME_MINUTES),
+            " | Pico inicial (", modeStr2, "): $", DoubleToString(m_dailyPeakProfit, 2));
          Print("   🛡️ LUCRO PROTEGIDO! Fechando posição IMEDIATAMENTE");
          Print("════════════════════════════════════════════════════════════════");
         }
@@ -1921,6 +1932,7 @@ void CBlockers::ActivateDrawdownProtection(double closedProfit, double projected
       return;
 
    m_drawdownProtectionActive = true;
+   m_drawdownActivationTime = TimeCurrent();
 
    // Escolher pico baseado no modo configurado
    if(m_drawdownPeakMode == DD_PEAK_REALIZED_ONLY)
@@ -1983,6 +1995,7 @@ void CBlockers::ResetDaily()
    m_dailyPeakProfit = 0.0;
    m_drawdownProtectionActive = false;
    m_drawdownLimitReached = false;
+   m_drawdownActivationTime = 0;
    m_currentBlocker = BLOCKER_NONE;
    m_lastResetDate = TimeCurrent();
 
