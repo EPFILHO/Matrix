@@ -2,11 +2,22 @@
 //|                                                       Inputs.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                   Sistema de Inputs Centralizados - EPBot Matrix |
-//|                                   Versão 1.02 - Claude Parte 016 |
+//|                     Versão 1.04 - Claude Parte 021 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.02"
+#property version   "1.04"
+
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v1.04:
+// ✅ Novo input inp_DrawdownPeakMode:
+//    - Permite escolher entre pico Realizado ou com Flutuante
+//    - Enum ENUM_DRAWDOWN_PEAK_MODE (definido em Blockers.mqh)
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v1.03:
+// ✅ Remoção de inp_InitialBalance:
+//    - Input manual removido (auto-detectado via AccountBalance)
+// ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
 //| INCLUDES NECESSÁRIOS PARA ENUMS                                  |
@@ -100,7 +111,7 @@ input group "📉 Proteção de Drawdown"
 input bool   inp_EnableDrawdown = false;          // Ativar Proteção Drawdown
 input ENUM_DRAWDOWN_TYPE inp_DrawdownType = DD_FINANCIAL;  // Tipo de Drawdown
 input double inp_DrawdownValue = 0;               // Valor do Drawdown
-input double inp_InitialBalance = 0;              // Saldo Inicial de Referência
+input ENUM_DRAWDOWN_PEAK_MODE inp_DrawdownPeakMode = DD_PEAK_REALIZED_ONLY;  // Modo de Cálculo do Pico
 
 //--- 🎯 DIREÇÃO PERMITIDA
 input group "🎯 Direção Permitida"
@@ -237,5 +248,5 @@ input group "═══════════════ 🎯 TRADE MANAGER �
 // Inputs do Trade Manager virão aqui (se necessário no futuro)
 
 //+------------------------------------------------------------------+
-//| FIM DO ARQUIVO DE INPUTS v1.01                                   |
+//| FIM DO ARQUIVO DE INPUTS v1.04                                   |
 //+------------------------------------------------------------------+
