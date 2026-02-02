@@ -2,30 +2,50 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2025, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.27 - Claude Parte 021 (Claude Code) |
+//|                     Versão 1.30 - Claude Parte 021 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.27"
+#property version   "1.30"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //+------------------------------------------------------------------+
+//| CHANGELOG v1.30:                                                 |
+//| 🎯 CORREÇÃO: Filtro de Direção não funcionava:                   |
+//|    - CanTradeDirection() existia mas nunca era chamada            |
+//|    - Adicionada verificação em ExecuteTrade() antes do OrderSend  |
+//|    - inp_TradeDirection (SELL_ONLY/BUY_ONLY) agora respeitado    |
+//|    - Log com LOG_EVENT quando direção é bloqueada                |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.29:                                                 |
+//| 🔧 Modo de Cálculo do Pico de Drawdown configurável:             |
+//|    - Init() passa inp_DrawdownPeakMode para Blockers             |
+//|    - ActivateDrawdownProtection() recebe closedProfit e          |
+//|      projectedProfit separados                                   |
+//|    - Compatível com Blockers v3.06                               |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.28:                                                 |
+//| 🔧 Remoção de inp_InitialBalance:                                |
+//|    - Saldo inicial agora auto-detectado via AccountBalance()     |
+//|    - Removido parâmetro da chamada g_blockers.Init()             |
+//|    - Compatível com Blockers v3.05                               |
+//+------------------------------------------------------------------+
 //| CHANGELOG v1.27:                                                 |
-//| 🎯 CORREÇÃO: TPs Parciais agora usam valores REAIS do deal:     |
+//| 🎯 CORREÇÃO: TPs Parciais agora usam valores REAIS do deal:      |
 //|    - TradeManager v1.22 busca DEAL_PROFIT/DEAL_PRICE do histórico|
-//|    - Elimina discrepâncias por slippage em mercados voláteis    |
-//|    - Logger v3.22 compatível com novos valores reais            |
-//|    - Fallback para estimativa se deal não encontrado            |
+//|    - Elimina discrepâncias por slippage em mercados voláteis     |
+//|    - Logger v3.22 compatível com novos valores reais             |
+//|    - Fallback para estimativa se deal não encontrado             |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.26:                                                 |
-//| 📊 TPs Parciais agora salvos no CSV (3 linhas por trade):       |
-//|    - Logger v3.20 com SavePartialTrade()                        |
-//|    - TradeManager v1.21 chama SavePartialTrade() após TP1/TP2   |
-//|    - LoadDailyStats() reconhece linhas "Partial TP"             |
-//|    - Habilita ressincronização de TPs parciais ao reiniciar     |
+//| 📊 TPs Parciais agora salvos no CSV (3 linhas por trade):        |
+//|    - Logger v3.20 com SavePartialTrade()                         |
+//|    - TradeManager v1.21 chama SavePartialTrade() após TP1/TP2    |
+//|    - LoadDailyStats() reconhece linhas "Partial TP"              |
+//|    - Habilita ressincronização de TPs parciais ao reiniciar      |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.24:                                                 |
-//| 🎯 CORREÇÃO CRÍTICA - TPs Parciais no Daily Profit:             |
+//| 🎯 CORREÇÃO CRÍTICA - TPs Parciais no Daily Profit:              |
 //|    - Lucro de TP1/TP2 agora contabilizado em tempo real         |
 //|    - GetDailyProfit() inclui m_partialTPProfit                  |
 //|    - Limites diários (ganho/perda) consideram TPs parciais      |
@@ -126,7 +146,7 @@ bool g_tradingAllowed = true;  // Controle geral de trading
 int OnInit()
   {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.27 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v1.30 - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
 
 // ═══════════════════════════════════════════════════════════════
@@ -199,7 +219,7 @@ int OnInit()
          inp_EnableDrawdown,
          inp_DrawdownType,
          inp_DrawdownValue,
-         inp_InitialBalance,
+         inp_DrawdownPeakMode,
          inp_TradeDirection
       ))
      {
@@ -603,7 +623,7 @@ int OnInit()
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
 
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.27 - PRONTO PARA OPERAR!");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.30 - PRONTO PARA OPERAR!");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Símbolo: " + _Symbol);
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
@@ -1349,6 +1369,16 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
         }
 
 // ═══════════════════════════════════════════════════════════════
+// VERIFICAR FILTRO DE DIREÇÃO
+// ═══════════════════════════════════════════════════════════════
+   string dirBlockReason = "";
+   if(!g_blockers.CanTradeDirection(orderType, dirBlockReason))
+     {
+      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCKER", "🚫 " + dirBlockReason);
+      return;
+     }
+
+// ═══════════════════════════════════════════════════════════════
 // CALCULAR PARÂMETROS DE RISCO
 // ═══════════════════════════════════════════════════════════════
 
@@ -1616,5 +1646,5 @@ string GetDeinitReasonText(int reason)
   }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.27                                   |
+//| FIM DO EA - EPBOT MATRIX v1.30                                   |
 //+------------------------------------------------------------------+
