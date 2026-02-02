@@ -2,12 +2,32 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                                   Versão 3.04 - Claude Parte 019 |
+//|                     Versão 3.07 - Claude Parte 021 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "3.04"
+#property version   "3.07"
 #property strict
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.07:
+// ✅ Timestamp de ativação do Drawdown nos logs de fechamento:
+//    - Novo membro m_drawdownActivationTime
+//    - Log de fechamento por DD inclui horário de ativação
+//    - Informação puramente visual, sem impacto funcional
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.06:
+// ✅ Modo de Cálculo do Pico de Drawdown configurável:
+//    - Novo enum ENUM_DRAWDOWN_PEAK_MODE
+//    - DD_PEAK_REALIZED_ONLY: pico baseado apenas em trades fechados
+//    - DD_PEAK_INCLUDE_FLOATING: pico inclui P/L flutuante
+//    - ActivateDrawdownProtection() recebe closedProfit e projectedProfit
+//    - ShouldCloseByDrawdown() usa peakCandidate conforme modo
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.05:
+// ✅ Remoção de inp_InitialBalance:
+//    - Saldo inicial auto-detectado via AccountInfoDouble(ACCOUNT_BALANCE)
+//    - Init() não recebe mais parâmetro initialBalance
+//    - m_peakBalance inicializado com saldo real da conta
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.04:
 // ✅ VERIFICAÇÃO DE DRAWDOWN EM TEMPO REAL:
@@ -91,6 +111,13 @@ enum ENUM_DRAWDOWN_TYPE
   {
    DD_FINANCIAL,    // Financeiro (valor fixo)
    DD_PERCENTAGE    // Percentual (% do lucro conquistado)
+  };
+
+// Modo de cálculo do pico de drawdown
+enum ENUM_DRAWDOWN_PEAK_MODE
+  {
+   DD_PEAK_REALIZED_ONLY = 0,     // Apenas Lucro Realizado (Fechados)
+   DD_PEAK_INCLUDE_FLOATING = 1   // Incluir P/L Flutuante
   };
 
 // Razão do bloqueio (para debug/log)
@@ -253,6 +280,7 @@ private:
    ENUM_DRAWDOWN_TYPE m_inputDrawdownType;
    double            m_inputDrawdownValue;
    double            m_inputInitialBalance;
+   ENUM_DRAWDOWN_PEAK_MODE m_inputDrawdownPeakMode;
 
    // ═══════════════════════════════════════════════════════════════
    // WORKING PARAMETERS - DRAWDOWN (valores usados)
@@ -262,6 +290,7 @@ private:
    double            m_drawdownValue;
    double            m_initialBalance;
    double            m_peakBalance;
+   ENUM_DRAWDOWN_PEAK_MODE m_drawdownPeakMode;
 
    // ═══════════════════════════════════════════════════════════════
    // INPUT PARAMETERS - DIREÇÃO (valor original)
@@ -285,6 +314,7 @@ private:
    double            m_dailyPeakProfit;
    bool              m_drawdownProtectionActive;
    bool              m_drawdownLimitReached;
+   datetime          m_drawdownActivationTime;
 
    datetime          m_lastResetDate;
    ENUM_BLOCKER_REASON m_currentBlocker;
@@ -332,7 +362,7 @@ public:
       int maxLossStreak, ENUM_STREAK_ACTION lossAction, int lossPauseMin,
       int maxWinStreak, ENUM_STREAK_ACTION winAction, int winPauseMin,
       // Drawdown
-      bool enableDD, ENUM_DRAWDOWN_TYPE ddType, double ddValue, double initialBalance,
+      bool enableDD, ENUM_DRAWDOWN_TYPE ddType, double ddValue, ENUM_DRAWDOWN_PEAK_MODE ddPeakMode,
       // Direção
       ENUM_TRADE_DIRECTION tradeDirection
    );
@@ -353,7 +383,7 @@ public:
    void              UpdateAfterTrade(bool isWin, double tradeProfit);
    void              UpdatePeakBalance(double currentBalance);
    void              UpdatePeakProfit(double currentProfit);
-   void              ActivateDrawdownProtection(double peakProfit);
+   void              ActivateDrawdownProtection(double closedProfit, double projectedProfit);
    void              ResetDaily();
 
    // ═══════════════════════════════════════════════════════════════
@@ -462,6 +492,7 @@ CBlockers::CBlockers()
    m_inputDrawdownType = DD_FINANCIAL;
    m_inputDrawdownValue = 0.0;
    m_inputInitialBalance = 0.0;
+   m_inputDrawdownPeakMode = DD_PEAK_REALIZED_ONLY;
 
 // Direção
    m_inputTradeDirection = DIRECTION_BOTH;
@@ -522,6 +553,7 @@ CBlockers::CBlockers()
    m_drawdownValue = 0.0;
    m_initialBalance = 0.0;
    m_peakBalance = 0.0;
+   m_drawdownPeakMode = DD_PEAK_REALIZED_ONLY;
 
 // Direção
    m_tradeDirection = DIRECTION_BOTH;
@@ -536,6 +568,7 @@ CBlockers::CBlockers()
    m_dailyPeakProfit = 0.0;
    m_drawdownProtectionActive = false;
    m_drawdownLimitReached = false;
+   m_drawdownActivationTime = 0;
 
    m_lastResetDate = TimeCurrent();
    m_currentBlocker = BLOCKER_NONE;
@@ -566,7 +599,7 @@ bool CBlockers::Init(
    bool enableStreak,
    int maxLossStreak, ENUM_STREAK_ACTION lossAction, int lossPauseMin,
    int maxWinStreak, ENUM_STREAK_ACTION winAction, int winPauseMin,
-   bool enableDD, ENUM_DRAWDOWN_TYPE ddType, double ddValue, double initialBalance,
+   bool enableDD, ENUM_DRAWDOWN_TYPE ddType, double ddValue, ENUM_DRAWDOWN_PEAK_MODE ddPeakMode,
    ENUM_TRADE_DIRECTION tradeDirection
 )
   {
@@ -888,9 +921,11 @@ bool CBlockers::Init(
    m_inputEnableDrawdown = enableDD;
    m_inputDrawdownType = ddType;
    m_inputDrawdownValue = ddValue;
+   m_inputDrawdownPeakMode = ddPeakMode;
    m_enableDrawdown = enableDD;
    m_drawdownType = ddType;
    m_drawdownValue = ddValue;
+   m_drawdownPeakMode = ddPeakMode;
 
    if(enableDD)
      {
@@ -903,18 +938,19 @@ bool CBlockers::Init(
          return false;
         }
 
-      if(initialBalance <= 0)
+      double autoBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+      if(autoBalance <= 0)
         {
          if(m_logger != NULL)
-            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Saldo inicial inválido!");
+            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Saldo da conta inválido (zero ou negativo)!");
          else
-            Print("❌ Saldo inicial inválido!");
+            Print("❌ Saldo da conta inválido (zero ou negativo)!");
          return false;
         }
 
-      m_inputInitialBalance = initialBalance;
-      m_initialBalance = initialBalance;
-      m_peakBalance = initialBalance;
+      m_inputInitialBalance = autoBalance;
+      m_initialBalance = autoBalance;
+      m_peakBalance = autoBalance;
 
       if(m_logger != NULL)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📉 Drawdown Máximo:");
@@ -929,11 +965,19 @@ bool CBlockers::Init(
       else
          Print(typeMsg);
 
-      string balMsg = "   - Saldo Inicial: $" + DoubleToString(initialBalance, 2);
+      string balMsg = "   - Saldo Inicial (auto): $" + DoubleToString(autoBalance, 2);
       if(m_logger != NULL)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", balMsg);
       else
          Print(balMsg);
+
+      string peakMsg = (ddPeakMode == DD_PEAK_REALIZED_ONLY) ?
+                        "   - Pico: Apenas Lucro Realizado (fechados)" :
+                        "   - Pico: Incluir P/L Flutuante (fechados + aberta)";
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", peakMsg);
+      else
+         Print(peakMsg);
      }
    else
      {
@@ -980,6 +1024,7 @@ bool CBlockers::Init(
    m_dailyPeakProfit = 0.0;
    m_drawdownProtectionActive = false;
    m_drawdownLimitReached = false;
+   m_drawdownActivationTime = 0;
    m_lastResetDate = TimeCurrent();
    m_currentBlocker = BLOCKER_NONE;
 
@@ -1337,7 +1382,7 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
      {
       if(!m_drawdownProtectionActive)
         {
-         ActivateDrawdownProtection(dailyProfit);
+         ActivateDrawdownProtection(dailyProfit, dailyProfit);
         }
      }
 
@@ -1642,7 +1687,7 @@ bool CBlockers::ShouldCloseByDailyLimit(ulong positionTicket, double dailyProfit
          // Ativa proteção de drawdown se ainda não estiver ativa
          if(!m_drawdownProtectionActive)
            {
-            ActivateDrawdownProtection(projectedProfit);
+            ActivateDrawdownProtection(dailyProfit, projectedProfit);
            }
 
          // Continua verificando drawdown (não fecha ainda)
@@ -1707,10 +1752,11 @@ bool CBlockers::ShouldCloseByDrawdown(ulong positionTicket, double dailyProfit, 
 // ═══════════════════════════════════════════════════════════════
 // ATUALIZAR PICO DE LUCRO SE NECESSÁRIO
 // ═══════════════════════════════════════════════════════════════
-   if(projectedProfit > m_dailyPeakProfit)
+   double peakCandidate = (m_drawdownPeakMode == DD_PEAK_REALIZED_ONLY) ? dailyProfit : projectedProfit;
+   if(peakCandidate > m_dailyPeakProfit)
      {
-      m_dailyPeakProfit = projectedProfit;
-      
+      m_dailyPeakProfit = peakCandidate;
+
       if(m_logger != NULL)
          m_logger.Log(LOG_DEBUG, THROTTLE_TIME, "DRAWDOWN",
             "🔼 Novo pico de lucro: $" + DoubleToString(m_dailyPeakProfit, 2), 60);
@@ -1796,6 +1842,11 @@ bool CBlockers::ShouldCloseByDrawdown(ulong positionTicket, double dailyProfit, 
             "   📊 Composição: Fechados=$" + DoubleToString(dailyProfit, 2) +
             " + Aberta=$" + DoubleToString(currentProfit, 2) +
             " + Swap=$" + DoubleToString(swap, 2));
+
+         string modeStr = (m_drawdownPeakMode == DD_PEAK_REALIZED_ONLY) ? "realizado" : "projetado";
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+            "   🛡️ Ativado às " + TimeToString(m_drawdownActivationTime, TIME_MINUTES) +
+            " | Pico inicial (" + modeStr + "): $" + DoubleToString(m_dailyPeakProfit, 2));
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
             "   🛡️ LUCRO PROTEGIDO! Fechando posição IMEDIATAMENTE");
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "════════════════════════════════════════════════════════════════");
@@ -1817,6 +1868,9 @@ bool CBlockers::ShouldCloseByDrawdown(ulong positionTicket, double dailyProfit, 
             Print("   📊 DD atual: ", DoubleToString(ddPercent, 1), "%");
            }
 
+         string modeStr2 = (m_drawdownPeakMode == DD_PEAK_REALIZED_ONLY) ? "realizado" : "projetado";
+         Print("   🛡️ Ativado às ", TimeToString(m_drawdownActivationTime, TIME_MINUTES),
+            " | Pico inicial (", modeStr2, "): $", DoubleToString(m_dailyPeakProfit, 2));
          Print("   🛡️ LUCRO PROTEGIDO! Fechando posição IMEDIATAMENTE");
          Print("════════════════════════════════════════════════════════════════");
         }
@@ -1892,25 +1946,38 @@ void CBlockers::UpdatePeakProfit(double currentProfit)
 //+------------------------------------------------------------------+
 //| Ativa proteção de drawdown (após atingir meta)                   |
 //+------------------------------------------------------------------+
-void CBlockers::ActivateDrawdownProtection(double peakProfit)
+void CBlockers::ActivateDrawdownProtection(double closedProfit, double projectedProfit)
   {
    if(!m_enableDrawdown)
       return;
 
    m_drawdownProtectionActive = true;
-   m_dailyPeakProfit = peakProfit;
+   m_drawdownActivationTime = TimeCurrent();
+
+   // Escolher pico baseado no modo configurado
+   if(m_drawdownPeakMode == DD_PEAK_REALIZED_ONLY)
+      m_dailyPeakProfit = closedProfit;
+   else
+      m_dailyPeakProfit = projectedProfit;
+
+   string modeStr = (m_drawdownPeakMode == DD_PEAK_REALIZED_ONLY) ? "realizado" : "projetado";
 
    if(m_logger != NULL)
      {
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "═══════════════════════════════════════════════════════");
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "🛡️ PROTEÇÃO DE DRAWDOWN ATIVADA!");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "   Pico de lucro: $" + DoubleToString(peakProfit, 2));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "   Pico de lucro (" + modeStr + "): $" + DoubleToString(m_dailyPeakProfit, 2));
+
+      if(m_drawdownPeakMode == DD_PEAK_REALIZED_ONLY)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+            "   📊 Fechados: $" + DoubleToString(closedProfit, 2) +
+            " | Projetado: $" + DoubleToString(projectedProfit, 2));
 
       if(m_drawdownType == DD_FINANCIAL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", 
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
             "   Proteção: Máx $" + DoubleToString(m_drawdownValue, 2) + " de drawdown");
       else
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", 
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
             "   Proteção: Máx " + DoubleToString(m_drawdownValue, 1) + "% de drawdown");
 
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "═══════════════════════════════════════════════════════");
@@ -1919,7 +1986,7 @@ void CBlockers::ActivateDrawdownProtection(double peakProfit)
      {
       Print("═══════════════════════════════════════════════════════");
       Print("🛡️ PROTEÇÃO DE DRAWDOWN ATIVADA!");
-      Print("   Pico de lucro: $", DoubleToString(peakProfit, 2));
+      Print("   Pico de lucro (", modeStr, "): $", DoubleToString(m_dailyPeakProfit, 2));
 
       if(m_drawdownType == DD_FINANCIAL)
          Print("   Proteção: Máx $", DoubleToString(m_drawdownValue, 2), " de drawdown");
@@ -1948,6 +2015,7 @@ void CBlockers::ResetDaily()
    m_dailyPeakProfit = 0.0;
    m_drawdownProtectionActive = false;
    m_drawdownLimitReached = false;
+   m_drawdownActivationTime = 0;
    m_currentBlocker = BLOCKER_NONE;
    m_lastResetDate = TimeCurrent();
 
@@ -2096,7 +2164,7 @@ bool CBlockers::CheckDailyLimits(int dailyTrades, double dailyProfit)
         {
          if(!m_drawdownProtectionActive)
            {
-            ActivateDrawdownProtection(dailyProfit);
+            ActivateDrawdownProtection(dailyProfit, dailyProfit);
            }
         }
      }
