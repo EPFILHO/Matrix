@@ -876,11 +876,11 @@ void OnTick()
       // Remover do TradeManager
       g_tradeManager.UnregisterPosition(g_lastPositionTicket);
 
-      // Resetar controle de candle ao fechar posição (exceto no modo VM)
+      // Bloquear re-entrada no mesmo candle ao fechar posição (exceto no modo VM)
       if(inp_ExitMode != EXIT_VM)
         {
-         g_lastTradeBarTime = 0;
-         g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "RESET", "🔄 Controle de candle resetado - pronto para novo trade");
+         g_lastTradeBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
+         g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "RESET", "🔄 Controle de candle atualizado - aguardando próximo candle para novo trade");
         }
 
       g_lastPositionTicket = 0;
