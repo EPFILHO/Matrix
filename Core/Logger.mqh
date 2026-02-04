@@ -1,14 +1,19 @@
 //+------------------------------------------------------------------+
 //|                                                       Logger.mqh |
-//|                                         Copyright 2025, EP Filho |
+//|                                         Copyright 2026, EP Filho |
 //|                                Sistema de Logging - EPBot Matrix |
-//|                     Versão 3.22 - Claude Parte 021 (Claude Code) |
+//|                     Versão 3.23 - Claude Parte 021 (Claude Code) |
 //+------------------------------------------------------------------+
-#property copyright "Copyright 2025, EP Filho"
+#property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "3.22"
+#property version   "3.23"
 
 // ═══════════════════════════════════════════════════════════════════
+// CHANGELOG v3.23:
+// ✅ Fix: Usa TimeTradeServer() para determinação de data (evita bug pré-mercado)
+// ✅ Fix: ResetDaily() agora atualiza m_txtFileName para o novo dia
+// ✅ Novo: GetReliableDate() centraliza obtenção de data confiável
+//
 // CHANGELOG v3.22:
 // ✅ Compatível com TradeManager v1.22 que agora passa valores REAIS
 // ✅ SavePartialTrade() agora recebe valores REAIS do deal (não estimados)
@@ -131,6 +136,7 @@ private:
    void              UpdateThrottle(string key, string value);
    string            GenerateThrottleKey(string context, string message);
    string            GetLevelPrefix(ENUM_LOG_LEVEL level);
+   datetime          GetReliableDate();
 
 public:
    // ═══════════════════════════════════════════════════════════
@@ -257,9 +263,9 @@ bool CLogger::Init(bool showDebug, string symbol, int magic, int debugCooldown =
    m_symbol = symbol;
    m_magicNumber = magic;
    
-   // Criar nomes de arquivos
+   // Criar nomes de arquivos (usa TimeTradeServer para data correta pré-mercado)
    MqlDateTime dt;
-   TimeToStruct(TimeCurrent(), dt);
+   TimeToStruct(GetReliableDate(), dt);
    
    m_csvFileName = StringFormat("EPBot_Matrix_TradeLog_%s_M%d_%d.csv", 
                                  m_symbol, m_magicNumber, dt.year);
@@ -428,6 +434,17 @@ string CLogger::GetLevelPrefix(ENUM_LOG_LEVEL level)
       case LOG_DEBUG:   return "🔍 [DEBUG]";
       default:          return "ℹ️ [INFO]";
      }
+  }
+
+//+------------------------------------------------------------------+
+//| Data confiável (independente de ticks recebidos)                 |
+//| TimeTradeServer() calcula o horário real do servidor mesmo       |
+//| antes do mercado abrir, diferente de TimeCurrent() que retorna   |
+//| o horário do último tick recebido (pode ser de ontem).           |
+//+------------------------------------------------------------------+
+datetime CLogger::GetReliableDate()
+  {
+   return TimeTradeServer();
   }
 
 //+------------------------------------------------------------------+
@@ -752,9 +769,9 @@ void CLogger::LoadDailyStats()
    // Ler header
    string header = FileReadString(fileHandle);
 
-   // Data de hoje
+   // Data de hoje (usa TimeTradeServer para data correta pré-mercado)
    MqlDateTime dt;
-   TimeToStruct(TimeCurrent(), dt);
+   TimeToStruct(GetReliableDate(), dt);
    string today = StringFormat("%04d-%02d-%02d", dt.year, dt.mon, dt.day);
 
    int tradesCarregados = 0;
@@ -1019,6 +1036,12 @@ void CLogger::ResetDaily()
    m_grossProfit = 0;
    m_grossLoss = 0;
 
-   LogInfo("📅 Estatísticas diárias resetadas");
+   // Atualizar nome do arquivo TXT para o novo dia
+   MqlDateTime dt;
+   TimeToStruct(GetReliableDate(), dt);
+   m_txtFileName = StringFormat("EPBot_Matrix_DailySummary_%s_M%d_%02d%02d%04d.txt",
+                                 m_symbol, m_magicNumber, dt.day, dt.mon, dt.year);
+
+   LogInfo("📅 Estatísticas diárias resetadas | Novo relatório: " + m_txtFileName);
   }
 //+------------------------------------------------------------------+
