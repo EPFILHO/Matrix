@@ -217,15 +217,19 @@ void CSignalManager::SetConflictResolution(ENUM_CONFLICT_RESOLUTION mode)
    ENUM_CONFLICT_RESOLUTION oldMode = m_conflictMode;
    m_conflictMode = mode;
 
-   string oldModeStr = (oldMode == CONFLICT_PRIORITY) ? "Prioridade" : "Cancelar";
-   string newModeStr = (mode == CONFLICT_PRIORITY) ? "Prioridade" : "Cancelar";
+   // Só logar se houve mudança real
+   if(oldMode != mode)
+     {
+      string oldModeStr = (oldMode == CONFLICT_PRIORITY) ? "Prioridade" : "Cancelar";
+      string newModeStr = (mode == CONFLICT_PRIORITY) ? "Prioridade" : "Cancelar";
 
-   string msg = "🔄 [Signal Manager] Modo de conflito alterado: " + oldModeStr + " → " + newModeStr;
+      string msg = "🔄 [Signal Manager] Modo de conflito alterado: " + oldModeStr + " → " + newModeStr;
 
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
+      else
+         Print(msg);
+     }
   }
 
 //+------------------------------------------------------------------+

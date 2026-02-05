@@ -1056,11 +1056,15 @@ void CBlockers::SetMaxSpread(int newMaxSpread)
    int oldValue = m_maxSpread;
    m_maxSpread = newMaxSpread;
 
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("Spread máximo alterado: %d → %d pontos", oldValue, newMaxSpread));
-   else
-      Print("🔄 Spread máximo alterado: ", oldValue, " → ", newMaxSpread, " pontos");
+   // Só logar se houve mudança real
+   if(oldValue != newMaxSpread)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            StringFormat("Spread máximo alterado: %d → %d pontos", oldValue, newMaxSpread));
+      else
+         Print("🔄 Spread máximo alterado: ", oldValue, " → ", newMaxSpread, " pontos");
+     }
   }
 
 //+------------------------------------------------------------------+
@@ -1071,40 +1075,44 @@ void CBlockers::SetTradeDirection(ENUM_TRADE_DIRECTION newDirection)
    ENUM_TRADE_DIRECTION oldDirection = m_tradeDirection;
    m_tradeDirection = newDirection;
 
-   string oldText = "";
-   string newText = "";
-
-   switch(oldDirection)
+   // Só logar se houve mudança real
+   if(oldDirection != newDirection)
      {
-      case DIRECTION_BOTH:
-         oldText = "AMBAS";
-         break;
-      case DIRECTION_BUY_ONLY:
-         oldText = "APENAS COMPRAS";
-         break;
-      case DIRECTION_SELL_ONLY:
-         oldText = "APENAS VENDAS";
-         break;
-     }
+      string oldText = "";
+      string newText = "";
 
-   switch(newDirection)
-     {
-      case DIRECTION_BOTH:
-         newText = "AMBAS";
-         break;
-      case DIRECTION_BUY_ONLY:
-         newText = "APENAS COMPRAS";
-         break;
-      case DIRECTION_SELL_ONLY:
-         newText = "APENAS VENDAS";
-         break;
-     }
+      switch(oldDirection)
+        {
+         case DIRECTION_BOTH:
+            oldText = "AMBAS";
+            break;
+         case DIRECTION_BUY_ONLY:
+            oldText = "APENAS COMPRAS";
+            break;
+         case DIRECTION_SELL_ONLY:
+            oldText = "APENAS VENDAS";
+            break;
+        }
 
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("Direção alterada: %s → %s", oldText, newText));
-   else
-      Print("🔄 Direção alterada: ", oldText, " → ", newText);
+      switch(newDirection)
+        {
+         case DIRECTION_BOTH:
+            newText = "AMBAS";
+            break;
+         case DIRECTION_BUY_ONLY:
+            newText = "APENAS COMPRAS";
+            break;
+         case DIRECTION_SELL_ONLY:
+            newText = "APENAS VENDAS";
+            break;
+        }
+
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            StringFormat("Direção alterada: %s → %s", oldText, newText));
+      else
+         Print("🔄 Direção alterada: ", oldText, " → ", newText);
+     }
   }
 
 //+------------------------------------------------------------------+
@@ -1112,26 +1120,35 @@ void CBlockers::SetTradeDirection(ENUM_TRADE_DIRECTION newDirection)
 //+------------------------------------------------------------------+
 void CBlockers::SetDailyLimits(int maxTrades, double maxLoss, double maxGain, ENUM_PROFIT_TARGET_ACTION action)
   {
+   int oldMaxTrades = m_maxDailyTrades;
+   double oldMaxLoss = m_maxDailyLoss;
+   double oldMaxGain = m_maxDailyGain;
+   ENUM_PROFIT_TARGET_ACTION oldAction = m_profitTargetAction;
+
    m_maxDailyTrades = maxTrades;
    m_maxDailyLoss = MathAbs(maxLoss);
    m_maxDailyGain = MathAbs(maxGain);
    m_profitTargetAction = action;
 
-   if(m_logger != NULL)
+   // Só logar se houve mudança real
+   if(oldMaxTrades != maxTrades || oldMaxLoss != m_maxDailyLoss || oldMaxGain != m_maxDailyGain || oldAction != action)
      {
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "Limites diários alterados:");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "   • Max Trades: " + IntegerToString(maxTrades));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "   • Max Loss: $" + DoubleToString(m_maxDailyLoss, 2));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "   • Max Gain: $" + DoubleToString(m_maxDailyGain, 2));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "   • Ação: " + (action == PROFIT_ACTION_STOP ? "PARAR" : "ATIVAR DD"));
-     }
-   else
-     {
-      Print("🔄 Limites diários alterados:");
-      Print("   • Max Trades: ", maxTrades);
-      Print("   • Max Loss: $", DoubleToString(m_maxDailyLoss, 2));
-      Print("   • Max Gain: $", DoubleToString(m_maxDailyGain, 2));
-      Print("   • Ação: ", action == PROFIT_ACTION_STOP ? "PARAR" : "ATIVAR DD");
+      if(m_logger != NULL)
+        {
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "Limites diários alterados:");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "   • Max Trades: " + IntegerToString(maxTrades));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "   • Max Loss: $" + DoubleToString(m_maxDailyLoss, 2));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "   • Max Gain: $" + DoubleToString(m_maxDailyGain, 2));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "   • Ação: " + (action == PROFIT_ACTION_STOP ? "PARAR" : "ATIVAR DD"));
+        }
+      else
+        {
+         Print("🔄 Limites diários alterados:");
+         Print("   • Max Trades: ", maxTrades);
+         Print("   • Max Loss: $", DoubleToString(m_maxDailyLoss, 2));
+         Print("   • Max Gain: $", DoubleToString(m_maxDailyGain, 2));
+         Print("   • Ação: ", action == PROFIT_ACTION_STOP ? "PARAR" : "ATIVAR DD");
+        }
      }
   }
 
@@ -1141,6 +1158,13 @@ void CBlockers::SetDailyLimits(int maxTrades, double maxLoss, double maxGain, EN
 void CBlockers::SetStreakLimits(int maxLoss, ENUM_STREAK_ACTION lossAction, int lossPause,
                                 int maxWin, ENUM_STREAK_ACTION winAction, int winPause)
   {
+   int oldMaxLoss = m_maxLossStreak;
+   ENUM_STREAK_ACTION oldLossAction = m_lossStreakAction;
+   int oldLossPause = m_lossPauseMinutes;
+   int oldMaxWin = m_maxWinStreak;
+   ENUM_STREAK_ACTION oldWinAction = m_winStreakAction;
+   int oldWinPause = m_winPauseMinutes;
+
    m_maxLossStreak = maxLoss;
    m_lossStreakAction = lossAction;
    m_lossPauseMinutes = lossPause;
@@ -1148,23 +1172,28 @@ void CBlockers::SetStreakLimits(int maxLoss, ENUM_STREAK_ACTION lossAction, int 
    m_winStreakAction = winAction;
    m_winPauseMinutes = winPause;
 
-   if(m_logger != NULL)
+   // Só logar se houve mudança real
+   if(oldMaxLoss != maxLoss || oldLossAction != lossAction || oldLossPause != lossPause ||
+      oldMaxWin != maxWin || oldWinAction != winAction || oldWinPause != winPause)
      {
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "Limites de streak alterados:");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "   • Loss: Max " + IntegerToString(maxLoss));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", 
-         "     └─ " + (lossAction == STREAK_PAUSE ? "Pausar " + IntegerToString(lossPause) + " min" : "Parar dia"));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "   • Win: Max " + IntegerToString(maxWin));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", 
-         "     └─ " + (winAction == STREAK_PAUSE ? "Pausar " + IntegerToString(winPause) + " min" : "Parar dia"));
-     }
-   else
-     {
-      Print("🔄 Limites de streak alterados:");
-      Print("   • Loss: Max ", maxLoss);
-      Print("     └─ ", lossAction == STREAK_PAUSE ? "Pausar " + IntegerToString(lossPause) + " min" : "Parar dia");
-      Print("   • Win: Max ", maxWin);
-      Print("     └─ ", winAction == STREAK_PAUSE ? "Pausar " + IntegerToString(winPause) + " min" : "Parar dia");
+      if(m_logger != NULL)
+        {
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "Limites de streak alterados:");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "   • Loss: Max " + IntegerToString(maxLoss));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            "     └─ " + (lossAction == STREAK_PAUSE ? "Pausar " + IntegerToString(lossPause) + " min" : "Parar dia"));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "   • Win: Max " + IntegerToString(maxWin));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            "     └─ " + (winAction == STREAK_PAUSE ? "Pausar " + IntegerToString(winPause) + " min" : "Parar dia"));
+        }
+      else
+        {
+         Print("🔄 Limites de streak alterados:");
+         Print("   • Loss: Max ", maxLoss);
+         Print("     └─ ", lossAction == STREAK_PAUSE ? "Pausar " + IntegerToString(lossPause) + " min" : "Parar dia");
+         Print("   • Win: Max ", maxWin);
+         Print("     └─ ", winAction == STREAK_PAUSE ? "Pausar " + IntegerToString(winPause) + " min" : "Parar dia");
+        }
      }
   }
 
@@ -1176,13 +1205,17 @@ void CBlockers::SetDrawdownValue(double newValue)
    double oldValue = m_drawdownValue;
    m_drawdownValue = newValue;
 
-   string typeText = (m_drawdownType == DD_FINANCIAL) ? "$" : "%";
+   // Só logar se houve mudança real
+   if(oldValue != newValue)
+     {
+      string typeText = (m_drawdownType == DD_FINANCIAL) ? "$" : "%";
 
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("Drawdown alterado: %s%.2f → %s%.2f", typeText, oldValue, typeText, newValue));
-   else
-      Print("🔄 Drawdown alterado: ", typeText, oldValue, " → ", typeText, newValue);
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            StringFormat("Drawdown alterado: %s%.2f → %s%.2f", typeText, oldValue, typeText, newValue));
+      else
+         Print("🔄 Drawdown alterado: ", typeText, oldValue, " → ", typeText, newValue);
+     }
   }
 
 //+------------------------------------------------------------------+
