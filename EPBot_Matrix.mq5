@@ -1,16 +1,17 @@
 //+------------------------------------------------------------------+
 //|                                                 EPBot_Matrix.mq5 |
-//|                                         Copyright 2025, EP Filho |
+//|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
 //|                     Versão 1.30 - Claude Parte 021 (Claude Code) |
 //+------------------------------------------------------------------+
-#property copyright "Copyright 2025, EP Filho"
+#property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
 #property version   "1.30"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.30:                                                 |
+//| 🎯 CORREÇÃO: Entrada no mesmo CANDLE                             |
 //| 🎯 CORREÇÃO: Filtro de Direção não funcionava:                   |
 //|    - CanTradeDirection() existia mas nunca era chamada            |
 //|    - Adicionada verificação em ExecuteTrade() antes do OrderSend  |
@@ -876,11 +877,11 @@ void OnTick()
       // Remover do TradeManager
       g_tradeManager.UnregisterPosition(g_lastPositionTicket);
 
-      // Resetar controle de candle ao fechar posição (exceto no modo VM)
+      // Bloquear re-entrada no mesmo candle ao fechar posição (exceto no modo VM)
       if(inp_ExitMode != EXIT_VM)
         {
-         g_lastTradeBarTime = 0;
-         g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "RESET", "🔄 Controle de candle resetado - pronto para novo trade");
+         g_lastTradeBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
+         g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "RESET", "🔄 Controle de candle atualizado - aguardando próximo candle para novo trade");
         }
 
       g_lastPositionTicket = 0;
