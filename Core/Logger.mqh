@@ -2,13 +2,18 @@
 //|                                                       Logger.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                                Sistema de Logging - EPBot Matrix |
-//|                     Versão 3.23 - Claude Parte 021 (Claude Code) |
+//|                     Versão 3.24 - Claude Parte 021 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "3.23"
+#property version   "3.24"
 
 // ═══════════════════════════════════════════════════════════════════
+// CHANGELOG v3.24:
+// ✅ Fix: SaveDailyReport() agora extrai data do nome do arquivo
+// ✅ Corrige bug onde relatório do dia anterior mostrava data do dia atual
+// ✅ Rodapé usa dtNow separado para timestamp de geração
+//
 // CHANGELOG v3.23:
 // ✅ Fix: Usa TimeTradeServer() para determinação de data (evita bug pré-mercado)
 // ✅ Fix: ResetDaily() agora atualiza m_txtFileName para o novo dia
@@ -863,19 +868,43 @@ void CLogger::LoadDailyStats()
 void CLogger::SaveDailyReport()
   {
    LogDebug("SaveDailyReport - Gerando relatório TXT");
-   
-   MqlDateTime dt;
-   TimeToStruct(TimeCurrent(), dt);
-   
+
+   // Extrair data do nome do arquivo (formato: ...DDMMYYYY.txt)
+   // Isso garante que o relatório use a data correta mesmo na virada de dia
+   string date = "";
+   int lastUnderscore = StringFind(m_txtFileName, "_", StringLen(m_txtFileName) - 15);
+   if(lastUnderscore > 0)
+     {
+      string datePart = StringSubstr(m_txtFileName, lastUnderscore + 1, 8); // DDMMYYYY
+      if(StringLen(datePart) == 8)
+        {
+         string dd = StringSubstr(datePart, 0, 2);
+         string mm = StringSubstr(datePart, 2, 2);
+         string yyyy = StringSubstr(datePart, 4, 4);
+         date = dd + "." + mm + "." + yyyy;
+        }
+     }
+
+   // Fallback para data atual se não conseguiu extrair
+   if(date == "")
+     {
+      MqlDateTime dt;
+      TimeToStruct(GetReliableDate(), dt);
+      date = StringFormat("%02d.%02d.%04d", dt.day, dt.mon, dt.year);
+     }
+
+   // Data/hora atual para o rodapé
+   MqlDateTime dtNow;
+   TimeToStruct(TimeCurrent(), dtNow);
+
    int fileHandle = FileOpen(m_txtFileName, FILE_WRITE | FILE_TXT);
-   
+
    if(fileHandle == INVALID_HANDLE)
      {
       LogError("Erro ao criar relatório TXT: " + IntegerToString(GetLastError()));
       return;
      }
-   
-   string date = StringFormat("%02d.%02d.%04d", dt.day, dt.mon, dt.year);
+
    double totalDailyProfit = GetDailyProfit();  // 🆕 v3.21: Usa GetDailyProfit() para incluir TPs parciais
    double winRate = (m_dailyTrades > 0) ? (m_dailyWins * 100.0 / m_dailyTrades) : 0;
    double profitFactor = (m_grossLoss > 0) ? (m_grossProfit / m_grossLoss) : 0;
@@ -977,7 +1006,7 @@ void CLogger::SaveDailyReport()
    // Rodapé
    FileWriteString(fileHandle, "✅ FIM DO RELATÓRIO\n");
    string footerDate = StringFormat("%02d.%02d.%04d %02d:%02d:%02d",
-                                    dt.day, dt.mon, dt.year, dt.hour, dt.min, dt.sec);
+                                    dtNow.day, dtNow.mon, dtNow.year, dtNow.hour, dtNow.min, dtNow.sec);
    FileWriteString(fileHandle, "Arquivo gerado em: " + footerDate + "\n");
    
    FileClose(fileHandle);
