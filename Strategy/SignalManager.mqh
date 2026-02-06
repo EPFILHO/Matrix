@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
 //|                                               SignalManager.mqh  |
-//|                                         Copyright 2025, EP Filho |
+//|                                         Copyright 2026, EP Filho |
 //|                   Gerenciador de Sinais e Filtros - EPBot Matrix |
-//|                                   Versão 2.10 - Claude Parte 016 |
+//|                                   Versão 2.11 - Claude Parte 021 |
 //+------------------------------------------------------------------+
-#property copyright "Copyright 2025, EP Filho"
-#property version   "2.10"
+#property copyright "Copyright 2026, EP Filho"
+#property version   "2.11"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════

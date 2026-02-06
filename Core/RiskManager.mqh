@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
 //|                                                  RiskManager.mqh |
-//|                                         Copyright 2025, EP Filho |
+//|                                         Copyright 2026, EP Filho |
 //|                       Sistema de Cálculo de Risco - EPBot Matrix |
-//|                                   Versão 3.11 - Claude Parte 017 |
+//|                                   Versão 3.12 - Claude Parte 021 |
 //+------------------------------------------------------------------+
-#property copyright "Copyright 2025, EP Filho"
-#property version   "3.11" 
+#property copyright "Copyright 2026, EP Filho"
+#property version   "3.12" 
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
