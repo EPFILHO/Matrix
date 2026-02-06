@@ -16,6 +16,10 @@
 #include "Base/FilterBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.11:
+// + Fix: SetConflictResolution() só loga quando há mudança real
+// + Evita logs redundantes "Prioridade → Prioridade" na inicialização
+// ═══════════════════════════════════════════════════════════════
 // NOVIDADES v2.10:
 // + Migração para Logger v3.00 (5 níveis + throttle inteligente)
 // + Todas as mensagens classificadas (ERROR/EVENT/INFO)

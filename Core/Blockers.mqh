@@ -9,6 +9,12 @@
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.08:
+// ✅ Fix: Funções Hot Reload só logam quando há mudança real
+//    - SetMaxSpread, SetTradeDirection, SetDailyLimits,
+//      SetStreakLimits, SetDrawdownValue
+//    - Evita logs redundantes na inicialização/recarregamento
+// ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.07:
 // ✅ Timestamp de ativação do Drawdown nos logs de fechamento:
 //    - Novo membro m_drawdownActivationTime

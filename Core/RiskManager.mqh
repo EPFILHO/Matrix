@@ -41,6 +41,10 @@
 // + TP FALLBACK: Quando Partial TP ativo, usa TP Fixo como proteção
 // + Protege contra falha de conexão/PC desligado
 // + TP será removido pelo TradeManager após TP2
+//
+// NOVIDADES v3.12:
+// + Fix: Funções Hot Reload só logam quando há mudança real nos valores
+// + Evita logs redundantes na inicialização/recarregamento
 // ═══════════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
