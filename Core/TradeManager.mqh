@@ -559,10 +559,19 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
                   double tickValue = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_VALUE);
                   double tickSize = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_SIZE);
 
-                  double priceDiff = (m_positions[index].posType == POSITION_TYPE_BUY) ?
-                                     (currentPrice - openPrice) : (openPrice - currentPrice);
+                  if(tickSize <= 0 || tickValue <= 0)
+                    {
+                     m_logger.Log(LOG_ERROR, THROTTLE_NONE, "PARTIAL_TP",
+                        "⚠️ tickSize ou tickValue inválido - usando profit da posição como fallback");
+                     realProfit = PositionGetDouble(POSITION_PROFIT) * (lotToClose / PositionGetDouble(POSITION_VOLUME));
+                    }
+                  else
+                    {
+                     double priceDiff = (m_positions[index].posType == POSITION_TYPE_BUY) ?
+                                        (currentPrice - openPrice) : (openPrice - currentPrice);
 
-                  realProfit = (priceDiff / tickSize) * tickValue * lotToClose;
+                     realProfit = (priceDiff / tickSize) * tickValue * lotToClose;
+                    }
                   realExitPrice = currentPrice;
                   realVolume = lotToClose;
                  }
@@ -658,10 +667,19 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
                   double tickValue = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_VALUE);
                   double tickSize = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_SIZE);
 
-                  double priceDiff = (m_positions[index].posType == POSITION_TYPE_BUY) ?
-                                     (currentPrice - openPrice) : (openPrice - currentPrice);
+                  if(tickSize <= 0 || tickValue <= 0)
+                    {
+                     m_logger.Log(LOG_ERROR, THROTTLE_NONE, "PARTIAL_TP",
+                        "⚠️ tickSize ou tickValue inválido - usando profit da posição como fallback");
+                     realProfit = PositionGetDouble(POSITION_PROFIT) * (lotToClose / PositionGetDouble(POSITION_VOLUME));
+                    }
+                  else
+                    {
+                     double priceDiff = (m_positions[index].posType == POSITION_TYPE_BUY) ?
+                                        (currentPrice - openPrice) : (openPrice - currentPrice);
 
-                  realProfit = (priceDiff / tickSize) * tickValue * lotToClose;
+                     realProfit = (priceDiff / tickSize) * tickValue * lotToClose;
+                    }
                   realExitPrice = currentPrice;
                   realVolume = lotToClose;
                  }

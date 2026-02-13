@@ -374,7 +374,7 @@ bool CTrendFilter::UpdateIndicators()
      }
 
    int copied = CopyBuffer(m_handleMA, 0, 0, 3, m_ma);
-   if(copied <= 0)
+   if(copied != 3)
      {
       int error = GetLastError();
       string msg = "❌ [Trend Filter] Erro ao copiar buffer MA - Código: " + IntegerToString(error);
@@ -468,6 +468,9 @@ bool CTrendFilter::CheckNeutralZone()
    double pointValue = _Point;
    if(_Digits == 3 || _Digits == 5)
       pointValue *= 10;
+
+   if(pointValue <= 0)
+      return true;
 
    double distanceInPoints = distance / pointValue;
 

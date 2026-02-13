@@ -458,7 +458,7 @@ bool CMACrossStrategy::UpdateIndicators()
      }
 
    int copiedFast = CopyBuffer(m_handleMAFast, 0, 0, 3, m_maFast);
-   if(copiedFast <= 0)
+   if(copiedFast != 3)
      {
       int error = GetLastError();
       string msg = "[MA Cross] Erro ao copiar buffer MA rápida. Código: " + IntegerToString(error);
@@ -470,7 +470,7 @@ bool CMACrossStrategy::UpdateIndicators()
      }
 
    int copiedSlow = CopyBuffer(m_handleMASlow, 0, 0, 3, m_maSlow);
-   if(copiedSlow <= 0)
+   if(copiedSlow != 3)
      {
       int error = GetLastError();
       string msg = "[MA Cross] Erro ao copiar buffer MA lenta. Código: " + IntegerToString(error);
@@ -532,6 +532,8 @@ ENUM_SIGNAL_TYPE CMACrossStrategy::GetSignal()
 // Detectar cruzamento entre candles [2] e [1]
    ENUM_SIGNAL_TYPE crossSignal = DetectCross();
    datetime crossBarTime = iTime(_Symbol, m_fastTimeframe, 1);
+   if(crossBarTime == 0)
+      return SIGNAL_NONE;
 
 // Novo cruzamento detectado?
    if(crossSignal != SIGNAL_NONE)
@@ -764,7 +766,7 @@ bool CMACrossStrategy::SetMATimeframes(ENUM_TIMEFRAMES fastTF, ENUM_TIMEFRAMES s
 //+------------------------------------------------------------------+
 double CMACrossStrategy::GetMAFast(int shift = 0)
   {
-   if(!m_isInitialized || shift >= ArraySize(m_maFast))
+   if(!m_isInitialized || shift < 0 || shift >= ArraySize(m_maFast))
       return 0.0;
 
    return m_maFast[shift];
@@ -775,7 +777,7 @@ double CMACrossStrategy::GetMAFast(int shift = 0)
 //+------------------------------------------------------------------+
 double CMACrossStrategy::GetMASlow(int shift = 0)
   {
-   if(!m_isInitialized || shift >= ArraySize(m_maSlow))
+   if(!m_isInitialized || shift < 0 || shift >= ArraySize(m_maSlow))
       return 0.0;
 
    return m_maSlow[shift];

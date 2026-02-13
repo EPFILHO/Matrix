@@ -611,14 +611,14 @@ bool CBlockers::Init(
      {
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "╔══════════════════════════════════════════════════════╗");
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║              VERSÃO COMPLETA v3.03                   ║");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║              VERSÃO COMPLETA v3.07                   ║");
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "╚══════════════════════════════════════════════════════╝");
      }
    else
      {
       Print("╔══════════════════════════════════════════════════════╗");
       Print("║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
-      Print("║              VERSÃO COMPLETA v3.03                   ║");
+      Print("║              VERSÃO COMPLETA v3.07                   ║");
       Print("╚══════════════════════════════════════════════════════╝");
      }
 
@@ -1349,7 +1349,7 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
    if(!CheckSpreadFilter())
      {
       m_currentBlocker = BLOCKER_SPREAD;
-      long spread = SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
+      int spread = (int)SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
       blockReason = StringFormat("Spread alto (%d > %d)", spread, m_maxSpread);
       return false;
      }
