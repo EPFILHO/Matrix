@@ -2,12 +2,16 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.07 - Claude Parte 021 (Claude Code) |
+//|                     Versão 3.08 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "3.07"
+#property version   "3.08"
 #property strict
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.08:
+// ✅ Correção de versão no banner Init (v3.03 → v3.08)
+// ✅ Tipo de spread corrigido de long para int (consistência com %d)
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.07:
 // ✅ Timestamp de ativação do Drawdown nos logs de fechamento:
@@ -611,14 +615,14 @@ bool CBlockers::Init(
      {
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "╔══════════════════════════════════════════════════════╗");
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║              VERSÃO COMPLETA v3.07                   ║");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║              VERSÃO COMPLETA v3.08                   ║");
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "╚══════════════════════════════════════════════════════╝");
      }
    else
      {
       Print("╔══════════════════════════════════════════════════════╗");
       Print("║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
-      Print("║              VERSÃO COMPLETA v3.07                   ║");
+      Print("║              VERSÃO COMPLETA v3.08                   ║");
       Print("╚══════════════════════════════════════════════════════╝");
      }
 

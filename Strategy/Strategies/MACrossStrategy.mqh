@@ -2,10 +2,10 @@
 //|                                             MACrossStrategy.mqh  |
 //|                                         Copyright 2025, EP Filho |
 //|                   Estratégia de Cruzamento de MAs - EPBot Matrix |
-//|                                   Versão 2.20 - Claude Parte 017 |
+//|                     Versão 2.21 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "2.20"
+#property version   "2.21"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -14,6 +14,11 @@
 #include "../../Core/Logger.mqh"
 #include "../Base/StrategyBase.mqh"
 
+// ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.21:
+// + CopyBuffer agora valida quantidade exata (!= 3) em vez de <= 0
+// + Validação de iTime() retornando 0 antes de usar crossBarTime
+// + Bounds check negativo em GetMAFast() e GetMASlow() (shift < 0)
 // ═══════════════════════════════════════════════════════════════
 // NOVIDADES v2.20:
 // + Migração para Logger v3.00 (5 níveis + throttle inteligente)

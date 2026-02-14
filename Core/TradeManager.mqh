@@ -2,10 +2,10 @@
 //|                                                 TradeManager.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|             Gerenciamento de Posições Individuais - EPBot Matrix |
-//|                     Versão 1.22 - Claude Parte 021 (Claude Code) |
+//|                     Versão 1.23 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "1.22"
+#property version   "1.23"
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
@@ -14,7 +14,7 @@
 #include "RiskManager.mqh"
 
 // ═══════════════════════════════════════════════════════════════════
-// ARQUITETURA TRADEMANAGER v1.22:
+// ARQUITETURA TRADEMANAGER v1.23:
 // - Rastreia CADA posição individualmente com seu próprio estado
 // - Gerencia Breakeven por posição (não global)
 // - Gerencia Trailing por posição (não global)
@@ -22,6 +22,12 @@
 // - Hot Reload completo (Input + Working variables)
 // - Integração total com Logger e RiskManager
 // - ReSync
+//
+// NOVIDADES v1.23:
+// + CORREÇÃO: Proteção contra divisão por zero em tickSize/tickValue
+//   no cálculo de profit estimado dos TPs parciais (TP1 e TP2)
+// + Fallback: usa PositionGetDouble(POSITION_PROFIT) proporcional ao lote
+// + Previne crash do EA em símbolos com dados de tick inválidos
 //
 // NOVIDADES v1.22:
 // + CORREÇÃO: TPs parciais agora usam valores REAIS do deal (não estimados)

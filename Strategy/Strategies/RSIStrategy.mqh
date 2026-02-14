@@ -2,10 +2,10 @@
 //|                                                 RSIStrategy.mqh  |
 //|                                         Copyright 2025, EP Filho |
 //|                                    Estratégia RSI - EPBot Matrix |
-//|                                   Versão 2.10 - Claude Parte 016 |
+//|                     Versão 2.11 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "2.10"
+#property version   "2.11"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -14,6 +14,10 @@
 #include "../../Core/Logger.mqh"
 #include "../Base/StrategyBase.mqh"
 
+// ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.11:
+// + CopyBuffer agora valida quantidade exata (!= count) em vez de <= 0
+// + Garante que buffer RSI tem exatamente os dados solicitados
 // ═══════════════════════════════════════════════════════════════
 // NOVIDADES v2.10:
 // + Migração para Logger v3.00 (5 níveis + throttle inteligente)
