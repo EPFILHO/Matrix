@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
 //|                                               SignalManager.mqh  |
-//|                                         Copyright 2025, EP Filho |
+//|                                         Copyright 2026, EP Filho |
 //|                   Gerenciador de Sinais e Filtros - EPBot Matrix |
-//|                                   Versão 2.10 - Claude Parte 016 |
+//|                                   Versão 2.11 - Claude Parte 021 |
 //+------------------------------------------------------------------+
-#property copyright "Copyright 2025, EP Filho"
-#property version   "2.10"
+#property copyright "Copyright 2026, EP Filho"
+#property version   "2.11"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,10 @@
 #include "Base/StrategyBase.mqh"
 #include "Base/FilterBase.mqh"
 
+// ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.11:
+// + Fix: SetConflictResolution() só loga quando há mudança real
+// + Evita logs redundantes "Prioridade → Prioridade" na inicialização
 // ═══════════════════════════════════════════════════════════════
 // NOVIDADES v2.10:
 // + Migração para Logger v3.00 (5 níveis + throttle inteligente)
@@ -217,15 +221,19 @@ void CSignalManager::SetConflictResolution(ENUM_CONFLICT_RESOLUTION mode)
    ENUM_CONFLICT_RESOLUTION oldMode = m_conflictMode;
    m_conflictMode = mode;
 
-   string oldModeStr = (oldMode == CONFLICT_PRIORITY) ? "Prioridade" : "Cancelar";
-   string newModeStr = (mode == CONFLICT_PRIORITY) ? "Prioridade" : "Cancelar";
+   // Só logar se houve mudança real
+   if(oldMode != mode)
+     {
+      string oldModeStr = (oldMode == CONFLICT_PRIORITY) ? "Prioridade" : "Cancelar";
+      string newModeStr = (mode == CONFLICT_PRIORITY) ? "Prioridade" : "Cancelar";
 
-   string msg = "🔄 [Signal Manager] Modo de conflito alterado: " + oldModeStr + " → " + newModeStr;
+      string msg = "🔄 [Signal Manager] Modo de conflito alterado: " + oldModeStr + " → " + newModeStr;
 
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
+      else
+         Print(msg);
+     }
   }
 
 //+------------------------------------------------------------------+
@@ -839,14 +847,14 @@ ENUM_SIGNAL_TYPE CSignalManager::GetSignal()
   }
 
 //+------------------------------------------------------------------+
-//| Imprimir status do Signal Manager (v2.10)                        |
+//| Imprimir status do Signal Manager (v2.11)                        |
 //+------------------------------------------------------------------+
 void CSignalManager::PrintStatus()
   {
    if(m_logger != NULL)
      {
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════");
-      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "📊 [Signal Manager v2.10] Status");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "📊 [Signal Manager v2.11] Status");
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════");
 
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "🎯 Estratégias (" + IntegerToString(m_strategyCount) + "):");
@@ -881,7 +889,7 @@ void CSignalManager::PrintStatus()
    else
      {
       Print("═══════════════════════════════════════════════════════");
-      Print("📊 [Signal Manager v2.10] Status");
+      Print("📊 [Signal Manager v2.11] Status");
       Print("═══════════════════════════════════════════════════════");
 
       Print("🎯 Estratégias (", m_strategyCount, "):");
