@@ -847,14 +847,14 @@ ENUM_SIGNAL_TYPE CSignalManager::GetSignal()
   }
 
 //+------------------------------------------------------------------+
-//| Imprimir status do Signal Manager (v2.10)                        |
+//| Imprimir status do Signal Manager (v2.11)                        |
 //+------------------------------------------------------------------+
 void CSignalManager::PrintStatus()
   {
    if(m_logger != NULL)
      {
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════");
-      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "📊 [Signal Manager v2.10] Status");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "📊 [Signal Manager v2.11] Status");
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════");
 
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "🎯 Estratégias (" + IntegerToString(m_strategyCount) + "):");
@@ -889,7 +889,7 @@ void CSignalManager::PrintStatus()
    else
      {
       Print("═══════════════════════════════════════════════════════");
-      Print("📊 [Signal Manager v2.10] Status");
+      Print("📊 [Signal Manager v2.11] Status");
       Print("═══════════════════════════════════════════════════════");
 
       Print("🎯 Estratégias (", m_strategyCount, "):");
