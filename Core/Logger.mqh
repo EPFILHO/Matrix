@@ -1,14 +1,24 @@
 //+------------------------------------------------------------------+
 //|                                                       Logger.mqh |
-//|                                         Copyright 2025, EP Filho |
+//|                                         Copyright 2026, EP Filho |
 //|                                Sistema de Logging - EPBot Matrix |
-//|                     Versão 3.22 - Claude Parte 021 (Claude Code) |
+//|                     Versão 3.24 - Claude Parte 021 (Claude Code) |
 //+------------------------------------------------------------------+
-#property copyright "Copyright 2025, EP Filho"
+#property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "3.22"
+#property version   "3.24"
 
 // ═══════════════════════════════════════════════════════════════════
+// CHANGELOG v3.24:
+// ✅ Fix: SaveDailyReport() agora extrai data do nome do arquivo
+// ✅ Corrige bug onde relatório do dia anterior mostrava data do dia atual
+// ✅ Rodapé usa dtNow separado para timestamp de geração
+//
+// CHANGELOG v3.23:
+// ✅ Fix: Usa TimeTradeServer() para determinação de data (evita bug pré-mercado)
+// ✅ Fix: ResetDaily() agora atualiza m_txtFileName para o novo dia
+// ✅ Novo: GetReliableDate() centraliza obtenção de data confiável
+//
 // CHANGELOG v3.22:
 // ✅ Compatível com TradeManager v1.22 que agora passa valores REAIS
 // ✅ SavePartialTrade() agora recebe valores REAIS do deal (não estimados)
@@ -131,6 +141,7 @@ private:
    void              UpdateThrottle(string key, string value);
    string            GenerateThrottleKey(string context, string message);
    string            GetLevelPrefix(ENUM_LOG_LEVEL level);
+   datetime          GetReliableDate();
 
 public:
    // ═══════════════════════════════════════════════════════════
@@ -257,9 +268,9 @@ bool CLogger::Init(bool showDebug, string symbol, int magic, int debugCooldown =
    m_symbol = symbol;
    m_magicNumber = magic;
    
-   // Criar nomes de arquivos
+   // Criar nomes de arquivos (usa TimeTradeServer para data correta pré-mercado)
    MqlDateTime dt;
-   TimeToStruct(TimeCurrent(), dt);
+   TimeToStruct(GetReliableDate(), dt);
    
    m_csvFileName = StringFormat("EPBot_Matrix_TradeLog_%s_M%d_%d.csv", 
                                  m_symbol, m_magicNumber, dt.year);
@@ -428,6 +439,17 @@ string CLogger::GetLevelPrefix(ENUM_LOG_LEVEL level)
       case LOG_DEBUG:   return "🔍 [DEBUG]";
       default:          return "ℹ️ [INFO]";
      }
+  }
+
+//+------------------------------------------------------------------+
+//| Data confiável (independente de ticks recebidos)                 |
+//| TimeTradeServer() calcula o horário real do servidor mesmo       |
+//| antes do mercado abrir, diferente de TimeCurrent() que retorna   |
+//| o horário do último tick recebido (pode ser de ontem).           |
+//+------------------------------------------------------------------+
+datetime CLogger::GetReliableDate()
+  {
+   return TimeTradeServer();
   }
 
 //+------------------------------------------------------------------+
@@ -752,9 +774,9 @@ void CLogger::LoadDailyStats()
    // Ler header
    string header = FileReadString(fileHandle);
 
-   // Data de hoje
+   // Data de hoje (usa TimeTradeServer para data correta pré-mercado)
    MqlDateTime dt;
-   TimeToStruct(TimeCurrent(), dt);
+   TimeToStruct(GetReliableDate(), dt);
    string today = StringFormat("%04d-%02d-%02d", dt.year, dt.mon, dt.day);
 
    int tradesCarregados = 0;
@@ -846,19 +868,43 @@ void CLogger::LoadDailyStats()
 void CLogger::SaveDailyReport()
   {
    LogDebug("SaveDailyReport - Gerando relatório TXT");
-   
-   MqlDateTime dt;
-   TimeToStruct(TimeCurrent(), dt);
-   
+
+   // Extrair data do nome do arquivo (formato: ...DDMMYYYY.txt)
+   // Isso garante que o relatório use a data correta mesmo na virada de dia
+   string date = "";
+   int lastUnderscore = StringFind(m_txtFileName, "_", StringLen(m_txtFileName) - 15);
+   if(lastUnderscore > 0)
+     {
+      string datePart = StringSubstr(m_txtFileName, lastUnderscore + 1, 8); // DDMMYYYY
+      if(StringLen(datePart) == 8)
+        {
+         string dd = StringSubstr(datePart, 0, 2);
+         string mm = StringSubstr(datePart, 2, 2);
+         string yyyy = StringSubstr(datePart, 4, 4);
+         date = dd + "." + mm + "." + yyyy;
+        }
+     }
+
+   // Fallback para data atual se não conseguiu extrair
+   if(date == "")
+     {
+      MqlDateTime dt;
+      TimeToStruct(GetReliableDate(), dt);
+      date = StringFormat("%02d.%02d.%04d", dt.day, dt.mon, dt.year);
+     }
+
+   // Data/hora atual para o rodapé
+   MqlDateTime dtNow;
+   TimeToStruct(TimeCurrent(), dtNow);
+
    int fileHandle = FileOpen(m_txtFileName, FILE_WRITE | FILE_TXT);
-   
+
    if(fileHandle == INVALID_HANDLE)
      {
       LogError("Erro ao criar relatório TXT: " + IntegerToString(GetLastError()));
       return;
      }
-   
-   string date = StringFormat("%02d.%02d.%04d", dt.day, dt.mon, dt.year);
+
    double totalDailyProfit = GetDailyProfit();  // 🆕 v3.21: Usa GetDailyProfit() para incluir TPs parciais
    double winRate = (m_dailyTrades > 0) ? (m_dailyWins * 100.0 / m_dailyTrades) : 0;
    double profitFactor = (m_grossLoss > 0) ? (m_grossProfit / m_grossLoss) : 0;
@@ -960,7 +1006,7 @@ void CLogger::SaveDailyReport()
    // Rodapé
    FileWriteString(fileHandle, "✅ FIM DO RELATÓRIO\n");
    string footerDate = StringFormat("%02d.%02d.%04d %02d:%02d:%02d",
-                                    dt.day, dt.mon, dt.year, dt.hour, dt.min, dt.sec);
+                                    dtNow.day, dtNow.mon, dtNow.year, dtNow.hour, dtNow.min, dtNow.sec);
    FileWriteString(fileHandle, "Arquivo gerado em: " + footerDate + "\n");
    
    FileClose(fileHandle);
@@ -1019,6 +1065,12 @@ void CLogger::ResetDaily()
    m_grossProfit = 0;
    m_grossLoss = 0;
 
-   LogInfo("📅 Estatísticas diárias resetadas");
+   // Atualizar nome do arquivo TXT para o novo dia
+   MqlDateTime dt;
+   TimeToStruct(GetReliableDate(), dt);
+   m_txtFileName = StringFormat("EPBot_Matrix_DailySummary_%s_M%d_%02d%02d%04d.txt",
+                                 m_symbol, m_magicNumber, dt.day, dt.mon, dt.year);
+
+   LogInfo("📅 Estatísticas diárias resetadas | Novo relatório: " + m_txtFileName);
   }
 //+------------------------------------------------------------------+
