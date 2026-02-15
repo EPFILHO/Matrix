@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
 //|                                                  RiskManager.mqh |
-//|                                         Copyright 2025, EP Filho |
+//|                                         Copyright 2026, EP Filho |
 //|                       Sistema de Cálculo de Risco - EPBot Matrix |
-//|                                   Versão 3.11 - Claude Parte 017 |
+//|                                   Versão 3.12 - Claude Parte 021 |
 //+------------------------------------------------------------------+
-#property copyright "Copyright 2025, EP Filho"
-#property version   "3.11" 
+#property copyright "Copyright 2026, EP Filho"
+#property version   "3.12" 
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
@@ -41,6 +41,10 @@
 // + TP FALLBACK: Quando Partial TP ativo, usa TP Fixo como proteção
 // + Protege contra falha de conexão/PC desligado
 // + TP será removido pelo TradeManager após TP2
+//
+// NOVIDADES v3.12:
+// + Fix: Funções Hot Reload só logam quando há mudança real nos valores
+// + Evita logs redundantes na inicialização/recarregamento
 // ═══════════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
@@ -744,12 +748,16 @@ void CRiskManager::SetLotSize(double newLotSize)
   {
    double oldValue = m_lotSize;
    m_lotSize = newLotSize;
-   
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("🔄 Lote alterado: %.2f → %.2f", oldValue, newLotSize));
-   else
-      Print("🔄 Lote alterado: ", oldValue, " → ", newLotSize);
+
+   // Só logar se houve mudança real
+   if(oldValue != newLotSize)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            StringFormat("🔄 Lote alterado: %.2f → %.2f", oldValue, newLotSize));
+      else
+         Print("🔄 Lote alterado: ", oldValue, " → ", newLotSize);
+     }
   }
 
 //+------------------------------------------------------------------+
@@ -759,12 +767,16 @@ void CRiskManager::SetFixedSL(int newSL)
   {
    int oldValue = m_fixedSL;
    m_fixedSL = newSL;
-   
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("🔄 SL fixo alterado: %d → %d pts", oldValue, newSL));
-   else
-      Print("🔄 SL fixo alterado: ", oldValue, " → ", newSL, " pts");
+
+   // Só logar se houve mudança real
+   if(oldValue != newSL)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            StringFormat("🔄 SL fixo alterado: %d → %d pts", oldValue, newSL));
+      else
+         Print("🔄 SL fixo alterado: ", oldValue, " → ", newSL, " pts");
+     }
   }
 
 //+------------------------------------------------------------------+
@@ -774,12 +786,16 @@ void CRiskManager::SetFixedTP(int newTP)
   {
    int oldValue = m_fixedTP;
    m_fixedTP = newTP;
-   
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("🔄 TP fixo alterado: %d → %d pts", oldValue, newTP));
-   else
-      Print("🔄 TP fixo alterado: ", oldValue, " → ", newTP, " pts");
+
+   // Só logar se houve mudança real
+   if(oldValue != newTP)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            StringFormat("🔄 TP fixo alterado: %d → %d pts", oldValue, newTP));
+      else
+         Print("🔄 TP fixo alterado: ", oldValue, " → ", newTP, " pts");
+     }
   }
 
 //+------------------------------------------------------------------+
@@ -789,12 +805,16 @@ void CRiskManager::SetSLATRMultiplier(double newMult)
   {
    double oldValue = m_slATRMultiplier;
    m_slATRMultiplier = newMult;
-   
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("🔄 SL ATR mult alterado: %.1f → %.1f×", oldValue, newMult));
-   else
-      Print("🔄 SL ATR mult alterado: ", oldValue, " → ", newMult, "×");
+
+   // Só logar se houve mudança real
+   if(oldValue != newMult)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            StringFormat("🔄 SL ATR mult alterado: %.1f → %.1f×", oldValue, newMult));
+      else
+         Print("🔄 SL ATR mult alterado: ", oldValue, " → ", newMult, "×");
+     }
   }
 
 //+------------------------------------------------------------------+
@@ -804,12 +824,16 @@ void CRiskManager::SetTPATRMultiplier(double newMult)
   {
    double oldValue = m_tpATRMultiplier;
    m_tpATRMultiplier = newMult;
-   
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("🔄 TP ATR mult alterado: %.1f → %.1f×", oldValue, newMult));
-   else
-      Print("🔄 TP ATR mult alterado: ", oldValue, " → ", newMult, "×");
+
+   // Só logar se houve mudança real
+   if(oldValue != newMult)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            StringFormat("🔄 TP ATR mult alterado: %.1f → %.1f×", oldValue, newMult));
+      else
+         Print("🔄 TP ATR mult alterado: ", oldValue, " → ", newMult, "×");
+     }
   }
 
 //+------------------------------------------------------------------+
@@ -821,20 +845,24 @@ void CRiskManager::SetTrailingParams(int start, int step)
    int oldStep = m_trailingStep;
    m_trailingStart = start;
    m_trailingStep = step;
-   
-   if(m_logger != NULL)
+
+   // Só logar se houve mudança real
+   if(oldStart != start || oldStep != step)
      {
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "🔄 Trailing fixo alterado:");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("   • Start: %d → %d pts", oldStart, start));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("   • Step: %d → %d pts", oldStep, step));
-     }
-   else
-     {
-      Print("🔄 Trailing fixo alterado:");
-      Print("   • Start: ", oldStart, " → ", start, " pts");
-      Print("   • Step: ", oldStep, " → ", step, " pts");
+      if(m_logger != NULL)
+        {
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "🔄 Trailing fixo alterado:");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            StringFormat("   • Start: %d → %d pts", oldStart, start));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            StringFormat("   • Step: %d → %d pts", oldStep, step));
+        }
+      else
+        {
+         Print("🔄 Trailing fixo alterado:");
+         Print("   • Start: ", oldStart, " → ", start, " pts");
+         Print("   • Step: ", oldStep, " → ", step, " pts");
+        }
      }
   }
 
@@ -847,20 +875,24 @@ void CRiskManager::SetTrailingATRParams(double start, double step)
    double oldStep = m_trailingATRStep;
    m_trailingATRStart = start;
    m_trailingATRStep = step;
-   
-   if(m_logger != NULL)
+
+   // Só logar se houve mudança real
+   if(oldStart != start || oldStep != step)
      {
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "🔄 Trailing ATR alterado:");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("   • Start: %.1f → %.1f× ATR", oldStart, start));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("   • Step: %.1f → %.1f× ATR", oldStep, step));
-     }
-   else
-     {
-      Print("🔄 Trailing ATR alterado:");
-      Print("   • Start: ", oldStart, " → ", start, "× ATR");
-      Print("   • Step: ", oldStep, " → ", step, "× ATR");
+      if(m_logger != NULL)
+        {
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "🔄 Trailing ATR alterado:");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            StringFormat("   • Start: %.1f → %.1f× ATR", oldStart, start));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            StringFormat("   • Step: %.1f → %.1f× ATR", oldStep, step));
+        }
+      else
+        {
+         Print("🔄 Trailing ATR alterado:");
+         Print("   • Start: ", oldStart, " → ", start, "× ATR");
+         Print("   • Step: ", oldStep, " → ", step, "× ATR");
+        }
      }
   }
 
@@ -873,20 +905,24 @@ void CRiskManager::SetBreakevenParams(int activation, int offset)
    int oldOffset = m_beOffset;
    m_beActivation = activation;
    m_beOffset = offset;
-   
-   if(m_logger != NULL)
+
+   // Só logar se houve mudança real
+   if(oldActivation != activation || oldOffset != offset)
      {
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "🔄 Breakeven fixo alterado:");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("   • Ativação: %d → %d pts", oldActivation, activation));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("   • Offset: %d → %d pts", oldOffset, offset));
-     }
-   else
-     {
-      Print("🔄 Breakeven fixo alterado:");
-      Print("   • Ativação: ", oldActivation, " → ", activation, " pts");
-      Print("   • Offset: ", oldOffset, " → ", offset, " pts");
+      if(m_logger != NULL)
+        {
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "🔄 Breakeven fixo alterado:");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            StringFormat("   • Ativação: %d → %d pts", oldActivation, activation));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            StringFormat("   • Offset: %d → %d pts", oldOffset, offset));
+        }
+      else
+        {
+         Print("🔄 Breakeven fixo alterado:");
+         Print("   • Ativação: ", oldActivation, " → ", activation, " pts");
+         Print("   • Offset: ", oldOffset, " → ", offset, " pts");
+        }
      }
   }
 
@@ -899,20 +935,24 @@ void CRiskManager::SetBreakevenATRParams(double activation, double offset)
    double oldOffset = m_beATROffset;
    m_beATRActivation = activation;
    m_beATROffset = offset;
-   
-   if(m_logger != NULL)
+
+   // Só logar se houve mudança real
+   if(oldActivation != activation || oldOffset != offset)
      {
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "🔄 Breakeven ATR alterado:");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("   • Ativação: %.2f → %.2f× ATR", oldActivation, activation));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("   • Offset: %.2f → %.2f× ATR", oldOffset, offset));
-     }
-   else
-     {
-      Print("🔄 Breakeven ATR alterado:");
-      Print("   • Ativação: ", oldActivation, " → ", activation, "× ATR");
-      Print("   • Offset: ", oldOffset, " → ", offset, "× ATR");
+      if(m_logger != NULL)
+        {
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "🔄 Breakeven ATR alterado:");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            StringFormat("   • Ativação: %.2f → %.2f× ATR", oldActivation, activation));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            StringFormat("   • Offset: %.2f → %.2f× ATR", oldOffset, offset));
+        }
+      else
+        {
+         Print("🔄 Breakeven ATR alterado:");
+         Print("   • Ativação: ", oldActivation, " → ", activation, "× ATR");
+         Print("   • Offset: ", oldOffset, " → ", offset, "× ATR");
+        }
      }
   }
 
@@ -921,26 +961,33 @@ void CRiskManager::SetBreakevenATRParams(double activation, double offset)
 //+------------------------------------------------------------------+
 void CRiskManager::SetPartialTP1(bool enable, double percent, int distance)
   {
+   bool oldEnable = m_tp1_enable;
+   double oldPercent = m_tp1_percent;
+   int oldDistance = m_tp1_distance;
    m_tp1_enable = enable;
    m_tp1_percent = percent;
    m_tp1_distance = distance;
-   
-   if(m_logger != NULL)
+
+   // Só logar se houve mudança real
+   if(oldEnable != enable || oldPercent != percent || oldDistance != distance)
      {
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "🔄 TP1 parcial alterado:");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         "   • Ativo: " + (enable ? "SIM" : "NÃO"));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("   • Percentual: %.1f%%", percent));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("   • Distância: %d pts", distance));
-     }
-   else
-     {
-      Print("🔄 TP1 parcial alterado:");
-      Print("   • Ativo: ", enable ? "SIM" : "NÃO");
-      Print("   • Percentual: ", percent, "%");
-      Print("   • Distância: ", distance, " pts");
+      if(m_logger != NULL)
+        {
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "🔄 TP1 parcial alterado:");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            "   • Ativo: " + (enable ? "SIM" : "NÃO"));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            StringFormat("   • Percentual: %.1f%%", percent));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            StringFormat("   • Distância: %d pts", distance));
+        }
+      else
+        {
+         Print("🔄 TP1 parcial alterado:");
+         Print("   • Ativo: ", enable ? "SIM" : "NÃO");
+         Print("   • Percentual: ", percent, "%");
+         Print("   • Distância: ", distance, " pts");
+        }
      }
   }
 
@@ -949,26 +996,33 @@ void CRiskManager::SetPartialTP1(bool enable, double percent, int distance)
 //+------------------------------------------------------------------+
 void CRiskManager::SetPartialTP2(bool enable, double percent, int distance)
   {
+   bool oldEnable = m_tp2_enable;
+   double oldPercent = m_tp2_percent;
+   int oldDistance = m_tp2_distance;
    m_tp2_enable = enable;
    m_tp2_percent = percent;
    m_tp2_distance = distance;
-   
-   if(m_logger != NULL)
+
+   // Só logar se houve mudança real
+   if(oldEnable != enable || oldPercent != percent || oldDistance != distance)
      {
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "🔄 TP2 parcial alterado:");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         "   • Ativo: " + (enable ? "SIM" : "NÃO"));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("   • Percentual: %.1f%%", percent));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("   • Distância: %d pts", distance));
-     }
-   else
-     {
-      Print("🔄 TP2 parcial alterado:");
-      Print("   • Ativo: ", enable ? "SIM" : "NÃO");
-      Print("   • Percentual: ", percent, "%");
-      Print("   • Distância: ", distance, " pts");
+      if(m_logger != NULL)
+        {
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "🔄 TP2 parcial alterado:");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            "   • Ativo: " + (enable ? "SIM" : "NÃO"));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            StringFormat("   • Percentual: %.1f%%", percent));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            StringFormat("   • Distância: %d pts", distance));
+        }
+      else
+        {
+         Print("🔄 TP2 parcial alterado:");
+         Print("   • Ativo: ", enable ? "SIM" : "NÃO");
+         Print("   • Percentual: ", percent, "%");
+         Print("   • Distância: ", distance, " pts");
+        }
      }
   }
 
@@ -1746,7 +1800,7 @@ void CRiskManager::PrintConfiguration()
    if(m_logger != NULL)
      {
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "╔══════════════════════════════════════════════════════╗");
-      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "║       RISKMANAGER v3.11 - CONFIGURAÇÃO ATUAL        ║");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "║       RISKMANAGER v3.12 - CONFIGURAÇÃO ATUAL        ║");
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "╚══════════════════════════════════════════════════════╝");
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "");
       
@@ -1785,7 +1839,7 @@ void CRiskManager::PrintConfiguration()
    else
      {
       Print("╔══════════════════════════════════════════════════════╗");
-      Print("║       RISKMANAGER v3.11 - CONFIGURAÇÃO ATUAL        ║");
+      Print("║       RISKMANAGER v3.12 - CONFIGURAÇÃO ATUAL        ║");
       Print("╚══════════════════════════════════════════════════════╝");
       Print("");
       
