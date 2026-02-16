@@ -321,9 +321,9 @@ bool CRSIFilter::LoadRSIValues(int count)
    if(m_rsi_handle == INVALID_HANDLE)
       return false;
    
-   if(CopyBuffer(m_rsi_handle, 0, 0, count, m_rsi_buffer) <= 0)
+   if(CopyBuffer(m_rsi_handle, 0, 0, count, m_rsi_buffer) < count)
    {
-      string msg = "[" + m_filterName + "] Erro ao copiar buffer RSI";
+      string msg = "[" + m_filterName + "] Erro ao copiar buffer RSI (solicitados: " + IntegerToString(count) + ")";
       if(m_logger != NULL)
          m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER", msg);
       else

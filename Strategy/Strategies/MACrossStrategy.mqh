@@ -458,10 +458,10 @@ bool CMACrossStrategy::UpdateIndicators()
      }
 
    int copiedFast = CopyBuffer(m_handleMAFast, 0, 0, 3, m_maFast);
-   if(copiedFast <= 0)
+   if(copiedFast < 3)
      {
       int error = GetLastError();
-      string msg = "[MA Cross] Erro ao copiar buffer MA rápida. Código: " + IntegerToString(error);
+      string msg = "[MA Cross] Erro ao copiar buffer MA rápida (copiados: " + IntegerToString(copiedFast) + "/3). Código: " + IntegerToString(error);
       if(m_logger != NULL)
          m_logger.Log(LOG_ERROR, THROTTLE_NONE, "UPDATE", msg);
       else
@@ -470,10 +470,10 @@ bool CMACrossStrategy::UpdateIndicators()
      }
 
    int copiedSlow = CopyBuffer(m_handleMASlow, 0, 0, 3, m_maSlow);
-   if(copiedSlow <= 0)
+   if(copiedSlow < 3)
      {
       int error = GetLastError();
-      string msg = "[MA Cross] Erro ao copiar buffer MA lenta. Código: " + IntegerToString(error);
+      string msg = "[MA Cross] Erro ao copiar buffer MA lenta (copiados: " + IntegerToString(copiedSlow) + "/3). Código: " + IntegerToString(error);
       if(m_logger != NULL)
          m_logger.Log(LOG_ERROR, THROTTLE_NONE, "UPDATE", msg);
       else

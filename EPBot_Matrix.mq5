@@ -897,7 +897,11 @@ void OnTick()
 
       // Selecionar a posição específica
       if(!PositionSelectByTicket(myPositionTicket))
+        {
+         g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "POSITION",
+            "⚠️ Falha ao selecionar posição #" + IntegerToString((int)myPositionTicket));
          return;
+        }
 
       ulong  ticket = PositionGetInteger(POSITION_TICKET);
       double volume = PositionGetDouble(POSITION_VOLUME);
@@ -1482,7 +1486,7 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
       if(result.deal > 0)
         {
          // Atualizar histórico para garantir que deal está disponível
-         datetime from = TimeCurrent() - 10;
+         datetime from = TimeCurrent() - 60;
          datetime to = TimeCurrent();
          
          if(HistorySelect(from, to))

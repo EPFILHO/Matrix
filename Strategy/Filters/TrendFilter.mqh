@@ -374,10 +374,11 @@ bool CTrendFilter::UpdateIndicators()
      }
 
    int copied = CopyBuffer(m_handleMA, 0, 0, 3, m_ma);
-   if(copied <= 0)
+   if(copied < 3)
      {
+      m_maReady = false;
       int error = GetLastError();
-      string msg = "❌ [Trend Filter] Erro ao copiar buffer MA - Código: " + IntegerToString(error);
+      string msg = "❌ [Trend Filter] Erro ao copiar buffer MA (copiados: " + IntegerToString(copied) + "/3) - Código: " + IntegerToString(error);
       if(m_logger != NULL)
          m_logger.Log(LOG_ERROR, THROTTLE_NONE, "UPDATE", msg);
       else

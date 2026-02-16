@@ -719,7 +719,7 @@ ENUM_SIGNAL_TYPE CSignalManager::ResolveConflict(ENUM_SIGNAL_TYPE &signals[], in
    ENUM_SIGNAL_TYPE winningSignal = SIGNAL_NONE;
    string winningStrategy = "";
 
-   for(int i = 0; i < m_strategyCount; i++)
+   for(int i = 0; i < count; i++)
      {
       if(m_strategies[i].enabled &&
          m_strategies[i].strategy != NULL &&
