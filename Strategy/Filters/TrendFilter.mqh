@@ -2,10 +2,10 @@
 //|                                                  TrendFilter.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                      Filtro de Tendência por MA - EPBot Matrix   |
-//|                                   Versão 2.15 - Claude Parte 017 |
+//|                                   Versão 2.16 - Claude Parte 022 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "2.15"
+#property version   "2.16"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -14,6 +14,11 @@
 #include "../../Core/Logger.mqh"
 #include "../Base/FilterBase.mqh"
 
+// ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.16:
+// + Fix: CopyBuffer validação alterada de <= 0 para < 3
+// + Fix: m_maReady resetado para false quando CopyBuffer falha
+//   (evita uso de dados antigos se indicador ficar temporariamente indisponível)
 // ═══════════════════════════════════════════════════════════════
 // NOVIDADES v2.10:
 // + Migração para Logger v3.00 (5 níveis + throttle inteligente)

@@ -2,10 +2,10 @@
 //|                                                    RSIFilter.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                                        Filtro RSI - EPBot Matrix |
-//|                                   Versão 1.10 - Claude Parte 016 |
+//|                                   Versão 1.11 - Claude Parte 022 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "1.10"
+#property version   "1.11"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -14,6 +14,10 @@
 #include "../../Core/Logger.mqh"
 #include "../Base/FilterBase.mqh"
 
+// ═══════════════════════════════════════════════════════════════
+// NOVIDADES v1.11:
+// + Fix: CopyBuffer validação alterada de <= 0 para < count
+//   (previne acesso fora dos limites se indicador retorna dados incompletos)
 // ═══════════════════════════════════════════════════════════════
 // NOVIDADES v1.10:
 // + Migração para Logger v3.00 (5 níveis + throttle inteligente)

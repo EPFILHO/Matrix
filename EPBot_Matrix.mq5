@@ -2,13 +2,19 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.30 - Claude Parte 021 (Claude Code) |
+//|                     Versão 1.31 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.30"
+#property version   "1.31"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.31:                                                 |
+//| 🎯 CORREÇÃO: Revisão completa de bugs (Claude Code):             |
+//|    - CopyBuffer: validação alterada de <= 0 para < count         |
+//|    - HistorySelect: janela ampliada de 10s para 60s              |
+//|    - Log adicionado quando PositionSelectByTicket falha           |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.30:                                                 |
 //| 🎯 CORREÇÃO: Entrada no mesmo CANDLE                             |

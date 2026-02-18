@@ -2,10 +2,10 @@
 //|                                               SignalManager.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                   Gerenciador de Sinais e Filtros - EPBot Matrix |
-//|                                   Versão 2.11 - Claude Parte 021 |
+//|                                   Versão 2.12 - Claude Parte 022 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.11"
+#property version   "2.12"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,10 @@
 #include "Base/StrategyBase.mqh"
 #include "Base/FilterBase.mqh"
 
+// ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.12:
+// + Fix: ResolveConflict() agora usa parâmetro 'count' no loop de
+//   CONFLICT_PRIORITY (antes usava m_strategyCount incorretamente)
 // ═══════════════════════════════════════════════════════════════
 // NOVIDADES v2.11:
 // + Fix: SetConflictResolution() só loga quando há mudança real

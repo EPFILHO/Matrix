@@ -2,10 +2,10 @@
 //|                                             MACrossStrategy.mqh  |
 //|                                         Copyright 2025, EP Filho |
 //|                   Estratégia de Cruzamento de MAs - EPBot Matrix |
-//|                                   Versão 2.20 - Claude Parte 017 |
+//|                                   Versão 2.21 - Claude Parte 022 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
-#property version   "2.20"
+#property version   "2.21"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -14,6 +14,10 @@
 #include "../../Core/Logger.mqh"
 #include "../Base/StrategyBase.mqh"
 
+// ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.21:
+// + Fix: CopyBuffer validação alterada de <= 0 para < 3
+//   (previne acesso fora dos limites se indicador retorna dados incompletos)
 // ═══════════════════════════════════════════════════════════════
 // NOVIDADES v2.20:
 // + Migração para Logger v3.00 (5 níveis + throttle inteligente)
