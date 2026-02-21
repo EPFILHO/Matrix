@@ -2,14 +2,20 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.00 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.01 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.00"
+#property version   "1.01"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
-// NOVIDADES v1.00:
+// CHANGELOG
+// ═══════════════════════════════════════════════════════════════
+// v1.01 (2026-02-21):
+// + Autocontido: adiciona #include das dependências do projeto
+//   (Core, Strategy, Filters) — compilável standalone
+//
+// v1.00:
 // + Painel GUI com 4 abas (STATUS, RESULTADOS, ESTRATEGIAS, CONFIG)
 // + Tema escuro com cores semânticas (verde/vermelho/laranja)
 // + Atualização por timer (1.5s) — apenas aba ativa
