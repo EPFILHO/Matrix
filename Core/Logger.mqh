@@ -212,6 +212,8 @@ public:
    int               GetDailyWins() { return m_dailyWins; }
    int               GetDailyLosses() { return m_dailyLosses; }
    int               GetDailyDraws() { return m_dailyDraws; }
+   double            GetGrossProfit() { return m_grossProfit; }
+   double            GetGrossLoss() { return m_grossLoss; }
 
    bool              GetShowDebug() { return m_showDebug; }
    bool              GetInputShowDebug() { return m_inputShowDebug; }

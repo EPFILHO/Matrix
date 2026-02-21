@@ -2,13 +2,20 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.31 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.32 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.31"
+#property version   "1.32"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.32:                                                 |
+//| 🖥️ PAINEL GUI (Claude Code):                                     |
+//|    - Novo módulo GUI/Panel.mqh com 4 abas                        |
+//|    - Integração: include, global, OnInit, OnDeinit, OnChartEvent |
+//|    - Timer 1.5s para atualização seletiva da aba ativa           |
+//|    - Input inp_ShowPanel para habilitar/desabilitar               |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.31:                                                 |
 //| 🎯 CORREÇÃO: Revisão completa de bugs (Claude Code):             |
@@ -109,6 +116,9 @@
 // #include "Strategy/Filters/RSIFilter.mqh"           // ✅ Já incluído
 #include "Strategy/Filters/TrendFilter.mqh"
 
+// 5️⃣ GUI (painel opcional)
+#include "GUI/Panel.mqh"
+
 //+------------------------------------------------------------------+
 //| VARIÁVEIS GLOBAIS - INSTÂNCIAS DOS MÓDULOS                       |
 //+------------------------------------------------------------------+
@@ -135,6 +145,11 @@ CTrendFilter* g_trendFilter = NULL;  // Filtro de tendência
 CRSIFilter*   g_rsiFilter   = NULL;  // Filtro RSI
 
 // ═══════════════════════════════════════════════════════════════
+// GUI (painel opcional)
+// ═══════════════════════════════════════════════════════════════
+CEPBotPanel*  g_panel       = NULL;  // Painel GUI com abas
+
+// ═══════════════════════════════════════════════════════════════
 // CONTROLE DE CANDLES E POSIÇÕES (CORRIGIDO!)
 // ═══════════════════════════════════════════════════════════════
 datetime g_lastBarTime = 0;          // Controle de novo candle
@@ -153,7 +168,7 @@ bool g_tradingAllowed = true;  // Controle geral de trading
 int OnInit()
   {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.30 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v1.32 - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
 
 // ═══════════════════════════════════════════════════════════════
@@ -624,13 +639,42 @@ int OnInit()
    g_lastBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
 
 // ═══════════════════════════════════════════════════════════════
+// ETAPA 9: PAINEL GUI (opcional)
+// ═══════════════════════════════════════════════════════════════
+   if(inp_ShowPanel && !MQLInfoInteger(MQL_TESTER))
+     {
+      g_panel = new CEPBotPanel();
+      if(g_panel != NULL)
+        {
+         g_panel.Init(g_logger, g_blockers, g_riskManager, g_tradeManager,
+                      g_signalManager, g_maCrossStrategy, g_rsiStrategy,
+                      g_trendFilter, g_rsiFilter, inp_MagicNumber, _Symbol);
+
+         int chartWidth = (int)ChartGetInteger(0, CHART_WIDTH_IN_PIXELS);
+         int x1 = chartWidth - PANEL_WIDTH - 10;
+         if(!g_panel.CreatePanel(0, "EPBotMatrix_Panel", 0, x1, 20, x1 + PANEL_WIDTH, 20 + PANEL_HEIGHT))
+           {
+            g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar painel GUI");
+            delete g_panel;
+            g_panel = NULL;
+           }
+         else
+           {
+            g_panel.Run();
+            EventSetMillisecondTimer(1500);
+            g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "Painel GUI criado com sucesso");
+           }
+        }
+     }
+
+// ═══════════════════════════════════════════════════════════════
 // SUCESSO!
 // ═══════════════════════════════════════════════════════════════
    Print("════════════════════════════════════════════════════════════════");
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
 
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.30 - PRONTO PARA OPERAR!");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.32 - PRONTO PARA OPERAR!");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Símbolo: " + _Symbol);
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
@@ -666,6 +710,15 @@ void OnDeinit(const int reason)
 // ═══════════════════════════════════════════════════════════════
 // LIMPEZA SEGURA - Ordem inversa da inicialização
 // ═══════════════════════════════════════════════════════════════
+
+// ETAPA 0: Destruir painel GUI (ANTES dos módulos)
+   if(g_panel != NULL)
+     {
+      g_panel.Destroy(reason);
+      delete g_panel;
+      g_panel = NULL;
+     }
+   EventKillTimer();
 
 // ETAPA 1: Desinicializar SignalManager ANTES de deletar strategies/filters
 //          (enquanto os ponteiros ainda são válidos)
@@ -1657,5 +1710,24 @@ string GetDeinitReasonText(int reason)
   }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.30                                   |
+//| EVENTO DE GRÁFICO — encaminha para o painel GUI                  |
+//+------------------------------------------------------------------+
+void OnChartEvent(const int id, const long &lparam,
+                  const double &dparam, const string &sparam)
+  {
+   if(g_panel != NULL)
+      g_panel.ChartEvent(id, lparam, dparam, sparam);
+  }
+
+//+------------------------------------------------------------------+
+//| TIMER — atualiza o painel GUI                                     |
+//+------------------------------------------------------------------+
+void OnTimer()
+  {
+   if(g_panel != NULL)
+      g_panel.Update();
+  }
+
+//+------------------------------------------------------------------+
+//| FIM DO EA - EPBOT MATRIX v1.32                                   |
 //+------------------------------------------------------------------+

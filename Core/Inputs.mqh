@@ -2,12 +2,17 @@
 //|                                                       Inputs.mqh |
 //|                                         Copyright 2025, EP Filho |
 //|                   Sistema de Inputs Centralizados - EPBot Matrix |
-//|                     Versão 1.04 - Claude Parte 021 (Claude Code) |
+//|                     Versão 1.05 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.04"
+#property version   "1.05"
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v1.05:
+// ✅ Novo input inp_ShowPanel (Seção 008 - Painel GUI):
+//    - Controla exibição do painel GUI no gráfico
+//    - Default: true (painel visível)
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v1.04:
 // ✅ Novo input inp_DrawdownPeakMode:
@@ -248,5 +253,11 @@ input group "═══════════════ 🎯 TRADE MANAGER �
 // Inputs do Trade Manager virão aqui (se necessário no futuro)
 
 //+------------------------------------------------------------------+
-//| FIM DO ARQUIVO DE INPUTS v1.04                                   |
+//| SEÇÃO 008 - PAINEL GUI                                            |
+//+------------------------------------------------------------------+
+input group "═══════════════ 🖥️ PAINEL GUI ═══════════════"
+input bool inp_ShowPanel = true;                     // Mostrar Painel no Gráfico
+
+//+------------------------------------------------------------------+
+//| FIM DO ARQUIVO DE INPUTS v1.05                                   |
 //+------------------------------------------------------------------+
