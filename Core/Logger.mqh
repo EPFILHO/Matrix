@@ -2,13 +2,17 @@
 //|                                                       Logger.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                                Sistema de Logging - EPBot Matrix |
-//|                     Versão 3.24 - Claude Parte 021 (Claude Code) |
+//|                     Versão 3.25 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "3.24"
+#property version   "3.25"
 
 // ═══════════════════════════════════════════════════════════════════
+// CHANGELOG v3.25:
+// ✅ Novos getters públicos GetGrossProfit() e GetGrossLoss():
+//    - Necessários para cálculo de Profit Factor e Payoff no Painel GUI
+//
 // CHANGELOG v3.24:
 // ✅ Fix: SaveDailyReport() agora extrai data do nome do arquivo
 // ✅ Corrige bug onde relatório do dia anterior mostrava data do dia atual
