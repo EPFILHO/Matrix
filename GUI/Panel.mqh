@@ -2,15 +2,19 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.01 - Claude Parte 023 (Claude Code) |
+//|                     Versão 1.02 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.01"
+#property version   "1.02"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.02 (2026-02-21):
+// + Adiciona #include de Inputs.mqh (resolve inp_MagicNumber,
+//   inp_TradeComment, inp_LotSize undeclared)
+//
 // v1.01 (2026-02-21):
 // + Autocontido: adiciona #include das dependências do projeto
 //   (Core, Strategy, Filters) — compilável standalone
@@ -29,6 +33,7 @@
 #include <Controls\Edit.mqh>
 
 // Dependências do projeto (autocontido — compilável standalone)
+#include "../Core/Inputs.mqh"
 #include "../Core/Logger.mqh"
 #include "../Core/Blockers.mqh"
 #include "../Core/RiskManager.mqh"
