@@ -2,15 +2,21 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.02 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.03 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.02"
+#property version   "1.03"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.03 (2026-02-21):
+// + Esconde botão X (m_button_close.Hide()) — previne fechar EA
+// + Substitui todos CEdit de valor por CLabel — controle total
+//   de cor, sem dependência do tema do SO, visual mais limpo
+// + Melhora contraste: valores em branco, chaves em cinza médio
+//
 // v1.02 (2026-02-21):
 // + Adiciona #include de Inputs.mqh (resolve inp_MagicNumber,
 //   inp_TradeComment, inp_LotSize undeclared)
@@ -30,7 +36,6 @@
 #include <Controls\Dialog.mqh>
 #include <Controls\Button.mqh>
 #include <Controls\Label.mqh>
-#include <Controls\Edit.mqh>
 
 // Dependências do projeto (autocontido — compilável standalone)
 #include "../Core/Inputs.mqh"
@@ -63,19 +68,17 @@
 // ═══════════════════════════════════════════════════════════════
 // CORES — TEMA ESCURO
 // ═══════════════════════════════════════════════════════════════
-#define CLR_TAB_ACTIVE       C'70,130,180'
-#define CLR_TAB_INACTIVE     C'55,55,55'
+#define CLR_TAB_ACTIVE       C'50,120,200'
+#define CLR_TAB_INACTIVE     C'70,70,70'
 #define CLR_TAB_TXT_ACT      clrWhite
-#define CLR_TAB_TXT_INACT    C'160,160,160'
-#define CLR_LABEL            C'180,180,180'
+#define CLR_TAB_TXT_INACT    C'190,190,190'
+#define CLR_LABEL            C'150,150,150'
 #define CLR_VALUE            clrWhite
-#define CLR_POSITIVE         C'0,200,80'
-#define CLR_NEGATIVE         C'220,60,60'
-#define CLR_WARNING          C'255,180,0'
-#define CLR_NEUTRAL          C'120,120,120'
-#define CLR_HEADER           C'100,180,255'
-#define CLR_EDIT_BG          C'38,38,38'
-#define CLR_EDIT_BORDER      C'50,50,50'
+#define CLR_POSITIVE         C'0,210,90'
+#define CLR_NEGATIVE         C'230,70,70'
+#define CLR_WARNING          C'255,190,0'
+#define CLR_NEUTRAL          C'170,170,170'
+#define CLR_HEADER           C'120,190,255'
 
 // ═══════════════════════════════════════════════════════════════
 // PREFIXO DE OBJETOS (evita colisão)
@@ -125,109 +128,109 @@ private:
    // ABA 0: STATUS
    // ════════════════════════════════════════
    CLabel  m_s_hdr1;
-   CLabel  m_s_lTrading;       CEdit   m_s_eTrading;
-   CLabel  m_s_lBlocker;       CEdit   m_s_eBlocker;
-   CLabel  m_s_lSpread;        CEdit   m_s_eSpread;
-   CLabel  m_s_lTime;          CEdit   m_s_eTime;
+   CLabel  m_s_lTrading;       CLabel  m_s_eTrading;
+   CLabel  m_s_lBlocker;       CLabel  m_s_eBlocker;
+   CLabel  m_s_lSpread;        CLabel  m_s_eSpread;
+   CLabel  m_s_lTime;          CLabel  m_s_eTime;
 
    CLabel  m_s_hdr2;
-   CLabel  m_s_lHasPos;        CEdit   m_s_eHasPos;
-   CLabel  m_s_lTicket;        CEdit   m_s_eTicket;
-   CLabel  m_s_lPosType;       CEdit   m_s_ePosType;
-   CLabel  m_s_lPosProfit;     CEdit   m_s_ePosProfit;
-   CLabel  m_s_lBE;            CEdit   m_s_eBE;
-   CLabel  m_s_lTrail;         CEdit   m_s_eTrail;
-   CLabel  m_s_lPartial;       CEdit   m_s_ePartial;
+   CLabel  m_s_lHasPos;        CLabel  m_s_eHasPos;
+   CLabel  m_s_lTicket;        CLabel  m_s_eTicket;
+   CLabel  m_s_lPosType;       CLabel  m_s_ePosType;
+   CLabel  m_s_lPosProfit;     CLabel  m_s_ePosProfit;
+   CLabel  m_s_lBE;            CLabel  m_s_eBE;
+   CLabel  m_s_lTrail;         CLabel  m_s_eTrail;
+   CLabel  m_s_lPartial;       CLabel  m_s_ePartial;
 
    CLabel  m_s_hdr3;
-   CLabel  m_s_lSignal;        CEdit   m_s_eSignal;
-   CLabel  m_s_lBlocked;       CEdit   m_s_eBlocked;
+   CLabel  m_s_lSignal;        CLabel  m_s_eSignal;
+   CLabel  m_s_lBlocked;       CLabel  m_s_eBlocked;
 
    // ════════════════════════════════════════
    // ABA 1: RESULTADOS
    // ════════════════════════════════════════
    CLabel  m_r_hdr1;
-   CLabel  m_r_lProfit;        CEdit   m_r_eProfit;
-   CLabel  m_r_lClosed;        CEdit   m_r_eClosed;
-   CLabel  m_r_lPartial;       CEdit   m_r_ePartial;
+   CLabel  m_r_lProfit;        CLabel  m_r_eProfit;
+   CLabel  m_r_lClosed;        CLabel  m_r_eClosed;
+   CLabel  m_r_lPartial;       CLabel  m_r_ePartial;
 
    CLabel  m_r_hdr2;
-   CLabel  m_r_lTrades;        CEdit   m_r_eTrades;
-   CLabel  m_r_lWins;          CEdit   m_r_eWins;
-   CLabel  m_r_lLosses;        CEdit   m_r_eLosses;
-   CLabel  m_r_lDraws;         CEdit   m_r_eDraws;
+   CLabel  m_r_lTrades;        CLabel  m_r_eTrades;
+   CLabel  m_r_lWins;          CLabel  m_r_eWins;
+   CLabel  m_r_lLosses;        CLabel  m_r_eLosses;
+   CLabel  m_r_lDraws;         CLabel  m_r_eDraws;
 
    CLabel  m_r_hdr3;
-   CLabel  m_r_lWinRate;       CEdit   m_r_eWinRate;
-   CLabel  m_r_lPayoff;        CEdit   m_r_ePayoff;
-   CLabel  m_r_lPF;            CEdit   m_r_ePF;
+   CLabel  m_r_lWinRate;       CLabel  m_r_eWinRate;
+   CLabel  m_r_lPayoff;        CLabel  m_r_ePayoff;
+   CLabel  m_r_lPF;            CLabel  m_r_ePF;
 
    CLabel  m_r_hdr4;
-   CLabel  m_r_lDD;            CEdit   m_r_eDD;
-   CLabel  m_r_lPeak;          CEdit   m_r_ePeak;
-   CLabel  m_r_lLossStrk;      CEdit   m_r_eLossStrk;
-   CLabel  m_r_lWinStrk;       CEdit   m_r_eWinStrk;
+   CLabel  m_r_lDD;            CLabel  m_r_eDD;
+   CLabel  m_r_lPeak;          CLabel  m_r_ePeak;
+   CLabel  m_r_lLossStrk;      CLabel  m_r_eLossStrk;
+   CLabel  m_r_lWinStrk;       CLabel  m_r_eWinStrk;
 
    // ════════════════════════════════════════
    // ABA 2: ESTRATEGIAS
    // ════════════════════════════════════════
    CLabel  m_e_hdr1;
-   CLabel  m_e_lStratCnt;      CEdit   m_e_eStratCnt;
-   CLabel  m_e_lFiltCnt;       CEdit   m_e_eFiltCnt;
-   CLabel  m_e_lConflict;      CEdit   m_e_eConflict;
+   CLabel  m_e_lStratCnt;      CLabel  m_e_eStratCnt;
+   CLabel  m_e_lFiltCnt;       CLabel  m_e_eFiltCnt;
+   CLabel  m_e_lConflict;      CLabel  m_e_eConflict;
 
    CLabel  m_e_hdr2;
-   CLabel  m_e_lMAStatus;      CEdit   m_e_eMAStatus;
-   CLabel  m_e_lMAFast;        CEdit   m_e_eMAFast;
-   CLabel  m_e_lMASlow;        CEdit   m_e_eMASlow;
-   CLabel  m_e_lMACross;       CEdit   m_e_eMACross;
-   CLabel  m_e_lMACandles;     CEdit   m_e_eMACandles;
-   CLabel  m_e_lMAEntry;       CEdit   m_e_eMAEntry;
-   CLabel  m_e_lMAExit;        CEdit   m_e_eMAExit;
+   CLabel  m_e_lMAStatus;      CLabel  m_e_eMAStatus;
+   CLabel  m_e_lMAFast;        CLabel  m_e_eMAFast;
+   CLabel  m_e_lMASlow;        CLabel  m_e_eMASlow;
+   CLabel  m_e_lMACross;       CLabel  m_e_eMACross;
+   CLabel  m_e_lMACandles;     CLabel  m_e_eMACandles;
+   CLabel  m_e_lMAEntry;       CLabel  m_e_eMAEntry;
+   CLabel  m_e_lMAExit;        CLabel  m_e_eMAExit;
 
    CLabel  m_e_hdr3;
-   CLabel  m_e_lRSIStatus;     CEdit   m_e_eRSIStatus;
-   CLabel  m_e_lRSICurr;       CEdit   m_e_eRSICurr;
-   CLabel  m_e_lRSIMode;       CEdit   m_e_eRSIMode;
-   CLabel  m_e_lRSILevels;     CEdit   m_e_eRSILevels;
+   CLabel  m_e_lRSIStatus;     CLabel  m_e_eRSIStatus;
+   CLabel  m_e_lRSICurr;       CLabel  m_e_eRSICurr;
+   CLabel  m_e_lRSIMode;       CLabel  m_e_eRSIMode;
+   CLabel  m_e_lRSILevels;     CLabel  m_e_eRSILevels;
 
    CLabel  m_e_hdr4;
-   CLabel  m_e_lTrendSt;       CEdit   m_e_eTrendSt;
-   CLabel  m_e_lTrendMA;       CEdit   m_e_eTrendMA;
-   CLabel  m_e_lTrendDist;     CEdit   m_e_eTrendDist;
+   CLabel  m_e_lTrendSt;       CLabel  m_e_eTrendSt;
+   CLabel  m_e_lTrendMA;       CLabel  m_e_eTrendMA;
+   CLabel  m_e_lTrendDist;     CLabel  m_e_eTrendDist;
 
    CLabel  m_e_hdr5;
-   CLabel  m_e_lRFiltSt;       CEdit   m_e_eRFiltSt;
-   CLabel  m_e_lRFiltRSI;      CEdit   m_e_eRFiltRSI;
-   CLabel  m_e_lRFiltMode;     CEdit   m_e_eRFiltMode;
+   CLabel  m_e_lRFiltSt;       CLabel  m_e_eRFiltSt;
+   CLabel  m_e_lRFiltRSI;      CLabel  m_e_eRFiltRSI;
+   CLabel  m_e_lRFiltMode;     CLabel  m_e_eRFiltMode;
 
    // ════════════════════════════════════════
    // ABA 3: CONFIG
    // ════════════════════════════════════════
    CLabel  m_c_hdr1;
-   CLabel  m_c_lMagic;         CEdit   m_c_eMagic;
-   CLabel  m_c_lComment;       CEdit   m_c_eComment;
-   CLabel  m_c_lLot;           CEdit   m_c_eLot;
+   CLabel  m_c_lMagic;         CLabel  m_c_eMagic;
+   CLabel  m_c_lComment;       CLabel  m_c_eComment;
+   CLabel  m_c_lLot;           CLabel  m_c_eLot;
 
    CLabel  m_c_hdr2;
-   CLabel  m_c_lSL;            CEdit   m_c_eSL;
-   CLabel  m_c_lTP;            CEdit   m_c_eTP;
-   CLabel  m_c_lTrail;         CEdit   m_c_eTrail;
-   CLabel  m_c_lBE;            CEdit   m_c_eBE;
-   CLabel  m_c_lPTP;           CEdit   m_c_ePTP;
+   CLabel  m_c_lSL;            CLabel  m_c_eSL;
+   CLabel  m_c_lTP;            CLabel  m_c_eTP;
+   CLabel  m_c_lTrail;         CLabel  m_c_eTrail;
+   CLabel  m_c_lBE;            CLabel  m_c_eBE;
+   CLabel  m_c_lPTP;           CLabel  m_c_ePTP;
 
    CLabel  m_c_hdr3;
-   CLabel  m_c_lTimeF;         CEdit   m_c_eTimeF;
-   CLabel  m_c_lMaxSpr;        CEdit   m_c_eMaxSpr;
-   CLabel  m_c_lDaily;         CEdit   m_c_eDaily;
-   CLabel  m_c_lStreak;        CEdit   m_c_eStreak;
-   CLabel  m_c_lDrawdown;      CEdit   m_c_eDrawdown;
-   CLabel  m_c_lDirection;     CEdit   m_c_eDirection;
+   CLabel  m_c_lTimeF;         CLabel  m_c_eTimeF;
+   CLabel  m_c_lMaxSpr;        CLabel  m_c_eMaxSpr;
+   CLabel  m_c_lDaily;         CLabel  m_c_eDaily;
+   CLabel  m_c_lStreak;        CLabel  m_c_eStreak;
+   CLabel  m_c_lDrawdown;      CLabel  m_c_eDrawdown;
+   CLabel  m_c_lDirection;     CLabel  m_c_eDirection;
 
    // ── Helpers privados ──
-   bool              CreateLV(CLabel &lbl, CEdit &edt, string ln, string en, string lt, int y);
+   bool              CreateLV(CLabel &lbl, CLabel &val, string ln, string en, string lt, int y);
    bool              CreateHdr(CLabel &lbl, string name, string text, int y);
-   void              SetEV(CEdit &edt, string value, color clr = CLR_VALUE);
+   void              SetEV(CLabel &val, string value, color clr = CLR_VALUE);
 
    bool              CreateTabButtons(void);
    bool              CreateTabStatus(void);
@@ -319,6 +322,8 @@ bool CEPBotPanel::CreatePanel(long chart, string name, int subwin,
    if(!Create(chart, name, subwin, x1, y1, x2, y2))
       return false;
 
+   m_button_close.Hide();   // X escondido — fecha apenas via OnDeinit do EA
+
    if(!CreateTabButtons())   return false;
    if(!CreateTabStatus())    return false;
    if(!CreateTabResultados()) return false;
@@ -333,7 +338,7 @@ bool CEPBotPanel::CreatePanel(long chart, string name, int subwin,
 //+------------------------------------------------------------------+
 //| HELPERS: CreateLV (Label + Value Edit), CreateHdr, SetEV          |
 //+------------------------------------------------------------------+
-bool CEPBotPanel::CreateLV(CLabel &lbl, CEdit &edt,
+bool CEPBotPanel::CreateLV(CLabel &lbl, CLabel &val,
                            string ln, string en, string lt, int y)
   {
    if(!lbl.Create(m_chart_id, PFX + ln, m_subwin,
@@ -345,16 +350,13 @@ bool CEPBotPanel::CreateLV(CLabel &lbl, CEdit &edt,
    if(!Add(lbl))
       return false;
 
-   if(!edt.Create(m_chart_id, PFX + en, m_subwin,
+   if(!val.Create(m_chart_id, PFX + en, m_subwin,
                   COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + PANEL_GAP_Y))
       return false;
-   edt.Text("--");
-   edt.ReadOnly(true);
-   edt.Color(CLR_VALUE);
-   edt.ColorBackground(CLR_EDIT_BG);
-   edt.ColorBorder(CLR_EDIT_BORDER);
-   edt.FontSize(8);
-   if(!Add(edt))
+   val.Text("--");
+   val.Color(CLR_VALUE);
+   val.FontSize(8);
+   if(!Add(val))
       return false;
 
    return true;
@@ -373,10 +375,10 @@ bool CEPBotPanel::CreateHdr(CLabel &lbl, string name, string text, int y)
    return true;
   }
 
-void CEPBotPanel::SetEV(CEdit &edt, string value, color clr)
+void CEPBotPanel::SetEV(CLabel &val, string value, color clr)
   {
-   edt.Text(value);
-   edt.Color(clr);
+   val.Text(value);
+   val.Color(clr);
   }
 
 //+------------------------------------------------------------------+
