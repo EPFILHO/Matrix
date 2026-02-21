@@ -1,10 +1,10 @@
 //+------------------------------------------------------------------+
 //|                                                  TrendFilter.mqh |
-//|                                         Copyright 2025, EP Filho |
+//|                                         Copyright 2026, EP Filho |
 //|                      Filtro de Tendência por MA - EPBot Matrix   |
 //|                                   Versão 2.16 - Claude Parte 022 |
 //+------------------------------------------------------------------+
-#property copyright "Copyright 2025, EP Filho"
+#property copyright "Copyright 2026, EP Filho"
 #property version   "2.16"
 #property strict
 

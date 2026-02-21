@@ -1,10 +1,10 @@
 //+------------------------------------------------------------------+
 //|                                                       Inputs.mqh |
-//|                                         Copyright 2025, EP Filho |
+//|                                         Copyright 2026, EP Filho |
 //|                   Sistema de Inputs Centralizados - EPBot Matrix |
 //|                     Versão 1.05 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
-#property copyright "Copyright 2025, EP Filho"
+#property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
 #property version   "1.05"
 

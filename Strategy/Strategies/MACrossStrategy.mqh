@@ -1,10 +1,10 @@
 //+------------------------------------------------------------------+
 //|                                             MACrossStrategy.mqh  |
-//|                                         Copyright 2025, EP Filho |
+//|                                         Copyright 2026, EP Filho |
 //|                   Estratégia de Cruzamento de MAs - EPBot Matrix |
 //|                                   Versão 2.21 - Claude Parte 022 |
 //+------------------------------------------------------------------+
-#property copyright "Copyright 2025, EP Filho"
+#property copyright "Copyright 2026, EP Filho"
 #property version   "2.21"
 #property strict
 

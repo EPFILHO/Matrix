@@ -1,10 +1,10 @@
 //+------------------------------------------------------------------+
 //|                                                 TradeManager.mqh |
-//|                                         Copyright 2025, EP Filho |
+//|                                         Copyright 2026, EP Filho |
 //|             Gerenciamento de Posições Individuais - EPBot Matrix |
 //|                     Versão 1.22 - Claude Parte 021 (Claude Code) |
 //+------------------------------------------------------------------+
-#property copyright "Copyright 2025, EP Filho"
+#property copyright "Copyright 2026, EP Filho"
 #property version   "1.22"
 
 // ═══════════════════════════════════════════════════════════════════
