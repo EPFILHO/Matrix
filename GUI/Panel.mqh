@@ -22,6 +22,17 @@
 #include <Controls\Label.mqh>
 #include <Controls\Edit.mqh>
 
+// Dependências do projeto (autocontido — compilável standalone)
+#include "../Core/Logger.mqh"
+#include "../Core/Blockers.mqh"
+#include "../Core/RiskManager.mqh"
+#include "../Core/TradeManager.mqh"
+#include "../Strategy/SignalManager.mqh"
+#include "../Strategy/Strategies/MACrossStrategy.mqh"
+#include "../Strategy/Strategies/RSIStrategy.mqh"
+#include "../Strategy/Filters/TrendFilter.mqh"
+#include "../Strategy/Filters/RSIFilter.mqh"
+
 // ═══════════════════════════════════════════════════════════════
 // DIMENSÕES E LAYOUT
 // ═══════════════════════════════════════════════════════════════
