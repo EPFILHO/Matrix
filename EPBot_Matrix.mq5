@@ -12,9 +12,11 @@
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.32:                                                 |
 //| 🖥️ PAINEL GUI (Claude Code):                                     |
-//|    - Novo módulo GUI/Panel.mqh com 4 abas                        |
+//|    - Novo módulo GUI/Panel.mqh (v1.08) com 5 abas               |
 //|    - Integração: include, global, OnInit, OnDeinit, OnChartEvent |
 //|    - Timer 1.5s para atualização seletiva da aba ativa           |
+//|    - Proteção de mouse: MouseProtection() desabilita             |
+//|      CHART_DRAG_TRADE_LEVELS quando cursor sobre o painel        |
 //|    - Input inp_ShowPanel para habilitar/desabilitar               |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.31:                                                 |
