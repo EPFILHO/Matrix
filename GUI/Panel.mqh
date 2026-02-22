@@ -2,15 +2,19 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.08 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.09 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.08"
+#property version   "1.09"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.09 (2026-02-22):
+// + MouseProtection() também desabilita CHART_MOUSE_SCROLL,
+//   impedindo rolar/deslocar o gráfico quando cursor sobre o painel.
+//
 // v1.08 (2026-02-22):
 // + Proteção de mouse: MouseProtection() desabilita
 //   CHART_DRAG_TRADE_LEVELS quando o cursor está sobre o painel,
@@ -144,8 +148,9 @@ private:
    int                m_magicNumber;
    string             m_symbol;
 
-   // ── Proteção de mouse (impede arrastar SL/TP sob o painel) ──
+   // ── Proteção de mouse (impede arrastar SL/TP e scroll sob o painel) ──
    bool               m_origDragTrade;
+   bool               m_origMouseScroll;
    bool               m_mouseOverPanel;
 
    // ── Botões de aba ──
@@ -326,7 +331,7 @@ CEPBotPanel::CEPBotPanel(void)
      m_maCross(NULL), m_rsiStrategy(NULL),
      m_trendFilter(NULL), m_rsiFilter(NULL),
      m_magicNumber(0), m_symbol(""),
-     m_origDragTrade(true), m_mouseOverPanel(false)
+     m_origDragTrade(true), m_origMouseScroll(true), m_mouseOverPanel(false)
   {
   }
 
@@ -334,6 +339,7 @@ CEPBotPanel::~CEPBotPanel(void)
   {
    // Restaura configuração original do gráfico
    ChartSetInteger(0, CHART_DRAG_TRADE_LEVELS, m_origDragTrade);
+   ChartSetInteger(0, CHART_MOUSE_SCROLL, m_origMouseScroll);
   }
 
 //+------------------------------------------------------------------+
@@ -376,7 +382,8 @@ bool CEPBotPanel::CreatePanel(long chart, string name, int subwin,
    if(!CreateTabConfig())     return false;
 
    // Salva estado original do gráfico e habilita tracking de mouse
-   m_origDragTrade = (bool)ChartGetInteger(chart, CHART_DRAG_TRADE_LEVELS);
+   m_origDragTrade  = (bool)ChartGetInteger(chart, CHART_DRAG_TRADE_LEVELS);
+   m_origMouseScroll = (bool)ChartGetInteger(chart, CHART_MOUSE_SCROLL);
    ChartSetInteger(chart, CHART_EVENT_MOUSE_MOVE, true);
 
    PopulateConfig();
@@ -907,8 +914,8 @@ void CEPBotPanel::Update(void)
   }
 
 //+------------------------------------------------------------------+
-//| MouseProtection — desabilita arrasto de SL/TP quando mouse sobre  |
-//| o painel; restaura quando sai. Chamado de OnChartEvent().         |
+//| MouseProtection — desabilita arrasto de SL/TP e scroll quando     |
+//| mouse sobre o painel; restaura quando sai. Chamado OnChartEvent().|
 //+------------------------------------------------------------------+
 void CEPBotPanel::MouseProtection(const int x, const int y)
   {
@@ -916,14 +923,16 @@ void CEPBotPanel::MouseProtection(const int x, const int y)
 
    if(inside && !m_mouseOverPanel)
      {
-      // Mouse entrou no painel — desabilita arrasto de trade levels
+      // Mouse entrou no painel — desabilita arrasto e scroll
       ChartSetInteger(0, CHART_DRAG_TRADE_LEVELS, false);
+      ChartSetInteger(0, CHART_MOUSE_SCROLL, false);
       m_mouseOverPanel = true;
      }
    else if(!inside && m_mouseOverPanel)
      {
       // Mouse saiu do painel — restaura estado original
       ChartSetInteger(0, CHART_DRAG_TRADE_LEVELS, m_origDragTrade);
+      ChartSetInteger(0, CHART_MOUSE_SCROLL, m_origMouseScroll);
       m_mouseOverPanel = false;
      }
   }
