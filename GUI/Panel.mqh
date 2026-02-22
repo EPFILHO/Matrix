@@ -14,8 +14,9 @@
 // v1.05 (2026-02-22):
 // + Nova aba FILTROS (5 abas: STATUS/RESULT./ESTRAT./FILTROS/CONFIG)
 // + Cores: labels preto, headers azul escuro (fundo claro do SO)
-// + Fix encavalamento: OnEvent manual com ReapplyTabVisibility
-//   após maximize/restore do CAppDialog
+// + Fix encavalamento: OnEvent manual + ReapplyTabVisibility
+//   (apenas Hide abas inativas, nunca força Show)
+// + Fix minimize/maximize: evita labels "soltos" no gráfico
 //
 // v1.04 (2026-02-22):
 // + Fix: Sobrescreve CreateButtonClose() em vez de acessar
@@ -476,12 +477,17 @@ bool CEPBotPanel::OnEvent(const int id, const long &lparam,
   }
 
 //+------------------------------------------------------------------+
-//| ReapplyTabVisibility — garante que só a aba ativa está visível    |
+//| ReapplyTabVisibility — esconde abas inativas após evento do pai   |
+//| NOTA: nunca chama Show() — quem mostra é o Maximize() do pai     |
+//| Isso previne labels "soltos" quando o diálogo está minimizado     |
 //+------------------------------------------------------------------+
 void CEPBotPanel::ReapplyTabVisibility(void)
   {
    for(int t = 0; t < TAB_COUNT; t++)
-      SetTabVis((ENUM_PANEL_TAB)t, (t == (int)m_activeTab));
+     {
+      if(t != (int)m_activeTab)
+         SetTabVis((ENUM_PANEL_TAB)t, false);
+     }
   }
 
 // Handlers de clique das abas
