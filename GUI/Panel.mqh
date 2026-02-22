@@ -488,14 +488,12 @@ bool CEPBotPanel::OnEvent(const int id, const long &lparam,
 
    // Bloqueio de mouse: consume eventos de mouse sobre o painel
    // Previne dragging acidental de linhas de SL/TP ou objetos do gráfico
-   if(id == CHARTEVENT_MOUSE)
+   if(id == CHARTEVENT_MOUSE_MOVE)
      {
-      // lparam = X, dparam = Y (coordenadas do mouse em pixels do gráfico)
       int mouseX = (int)lparam;
       int mouseY = (int)dparam;
 
-      // Verifica se mouse está dentro dos limites do painel
-      if(mouseX >= m_x1 && mouseX <= m_x2 && mouseY >= m_y1 && mouseY <= m_y2)
+      if(mouseX >= Left() && mouseX <= Right() && mouseY >= Top() && mouseY <= Bottom())
         {
          return true;  // Consome o evento, impede propagação para drawing objects
         }
