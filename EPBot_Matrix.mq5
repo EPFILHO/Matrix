@@ -1716,7 +1716,13 @@ void OnChartEvent(const int id, const long &lparam,
                   const double &dparam, const string &sparam)
   {
    if(g_panel != NULL)
+     {
       g_panel.ChartEvent(id, lparam, dparam, sparam);
+
+      // Proteção: desabilita arrasto de SL/TP quando mouse sobre o painel
+      if(id == CHARTEVENT_MOUSE_MOVE)
+         g_panel.MouseProtection((int)lparam, (int)dparam);
+     }
   }
 
 //+------------------------------------------------------------------+

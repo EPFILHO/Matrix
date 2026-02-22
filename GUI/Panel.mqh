@@ -12,9 +12,10 @@
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
 // v1.08 (2026-02-22):
-// + Bloqueio de mouse: eventos CHARTEVENT_MOUSE sobre o painel
-//   são consumidos, impedindo dragging acidental de linhas de
-//   SL/TP ou objetos do gráfico MT5
+// + Proteção de mouse: MouseProtection() desabilita
+//   CHART_DRAG_TRADE_LEVELS quando o cursor está sobre o painel,
+//   impedindo arrastar linhas de SL/TP acidentalmente.
+//   Restaura ao sair do painel ou ao destruir o objeto.
 //
 // v1.07 (2026-02-22):
 // + Seção financeira: Ganhos / Perdas / P/L Total (substitui
@@ -142,6 +143,10 @@ private:
    ENUM_PANEL_TAB     m_activeTab;
    int                m_magicNumber;
    string             m_symbol;
+
+   // ── Proteção de mouse (impede arrastar SL/TP sob o painel) ──
+   bool               m_origDragTrade;
+   bool               m_mouseOverPanel;
 
    // ── Botões de aba ──
    CButton            m_btnTab0;
@@ -305,6 +310,7 @@ public:
    bool              CreatePanel(long chart, string name, int subwin,
                                  int x1, int y1, int x2, int y2);
    void              Update(void);
+   void              MouseProtection(const int x, const int y);
 
    virtual bool      OnEvent(const int id, const long &lparam,
                              const double &dparam, const string &sparam);
@@ -319,12 +325,15 @@ CEPBotPanel::CEPBotPanel(void)
      m_tradeManager(NULL), m_signalManager(NULL),
      m_maCross(NULL), m_rsiStrategy(NULL),
      m_trendFilter(NULL), m_rsiFilter(NULL),
-     m_magicNumber(0), m_symbol("")
+     m_magicNumber(0), m_symbol(""),
+     m_origDragTrade(true), m_mouseOverPanel(false)
   {
   }
 
 CEPBotPanel::~CEPBotPanel(void)
   {
+   // Restaura configuração original do gráfico
+   ChartSetInteger(0, CHART_DRAG_TRADE_LEVELS, m_origDragTrade);
   }
 
 //+------------------------------------------------------------------+
@@ -365,6 +374,10 @@ bool CEPBotPanel::CreatePanel(long chart, string name, int subwin,
    if(!CreateTabEstrategias()) return false;
    if(!CreateTabFiltros())    return false;
    if(!CreateTabConfig())     return false;
+
+   // Salva estado original do gráfico e habilita tracking de mouse
+   m_origDragTrade = (bool)ChartGetInteger(chart, CHART_DRAG_TRADE_LEVELS);
+   ChartSetInteger(chart, CHART_EVENT_MOUSE_MOVE, true);
 
    PopulateConfig();
    ShowTab(TAB_STATUS);
@@ -485,19 +498,6 @@ bool CEPBotPanel::OnEvent(const int id, const long &lparam,
    // Fix encavalamento: após maximize/restore, reaplica visibilidade
    if(result)
       ReapplyTabVisibility();
-
-   // Bloqueio de mouse: consume eventos de mouse sobre o painel
-   // Previne dragging acidental de linhas de SL/TP ou objetos do gráfico
-   if(id == CHARTEVENT_MOUSE_MOVE)
-     {
-      int mouseX = (int)lparam;
-      int mouseY = (int)dparam;
-
-      if(mouseX >= Left() && mouseX <= Right() && mouseY >= Top() && mouseY <= Bottom())
-        {
-         return true;  // Consome o evento, impede propagação para drawing objects
-        }
-     }
 
    return result;
   }
@@ -903,6 +903,28 @@ void CEPBotPanel::Update(void)
       case TAB_ESTRATEGIAS: UpdateEstrategias();  break;
       case TAB_FILTROS:     UpdateFiltros();      break;
       case TAB_CONFIG:      /* estático */        break;
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| MouseProtection — desabilita arrasto de SL/TP quando mouse sobre  |
+//| o painel; restaura quando sai. Chamado de OnChartEvent().         |
+//+------------------------------------------------------------------+
+void CEPBotPanel::MouseProtection(const int x, const int y)
+  {
+   bool inside = (x >= Left() && x <= Right() && y >= Top() && y <= Bottom());
+
+   if(inside && !m_mouseOverPanel)
+     {
+      // Mouse entrou no painel — desabilita arrasto de trade levels
+      ChartSetInteger(0, CHART_DRAG_TRADE_LEVELS, false);
+      m_mouseOverPanel = true;
+     }
+   else if(!inside && m_mouseOverPanel)
+     {
+      // Mouse saiu do painel — restaura estado original
+      ChartSetInteger(0, CHART_DRAG_TRADE_LEVELS, m_origDragTrade);
+      m_mouseOverPanel = false;
      }
   }
 
