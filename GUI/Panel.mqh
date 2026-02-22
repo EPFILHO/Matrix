@@ -2,17 +2,20 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.03 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.04 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.03"
+#property version   "1.04"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.04 (2026-02-22):
+// + Fix: Sobrescreve CreateButtonClose() em vez de acessar
+//   m_button_close (private em CDialog) — elimina botão X
+//
 // v1.03 (2026-02-21):
-// + Esconde botão X (m_button_close.Hide()) — previne fechar EA
 // + Substitui todos CEdit de valor por CLabel — controle total
 //   de cor, sem dependência do tema do SO, visual mais limpo
 // + Melhora contraste: valores em branco, chaves em cinza médio
@@ -255,6 +258,10 @@ private:
    void              OnClickTab2(void);
    void              OnClickTab3(void);
 
+protected:
+   // Override: não criar botão X — painel não pode ser fechado pelo usuário
+   virtual bool      CreateButtonClose(void) { return true; }
+
 public:
                      CEPBotPanel(void);
                     ~CEPBotPanel(void);
@@ -321,8 +328,6 @@ bool CEPBotPanel::CreatePanel(long chart, string name, int subwin,
   {
    if(!Create(chart, name, subwin, x1, y1, x2, y2))
       return false;
-
-   m_button_close.Hide();   // X escondido — fecha apenas via OnDeinit do EA
 
    if(!CreateTabButtons())   return false;
    if(!CreateTabStatus())    return false;
