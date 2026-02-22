@@ -2,15 +2,21 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.04 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.05 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.04"
+#property version   "1.05"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.05 (2026-02-22):
+// + Nova aba FILTROS (5 abas: STATUS/RESULT./ESTRAT./FILTROS/CONFIG)
+// + Cores: labels preto, headers azul escuro (fundo claro do SO)
+// + Fix encavalamento: OnEvent manual com ReapplyTabVisibility
+//   após maximize/restore do CAppDialog
+//
 // v1.04 (2026-02-22):
 // + Fix: Sobrescreve CreateButtonClose() em vez de acessar
 //   m_button_close (private em CDialog) — elimina botão X
@@ -69,19 +75,19 @@
 #define TAB_BTN_H            22
 
 // ═══════════════════════════════════════════════════════════════
-// CORES — TEMA ESCURO
+// CORES
 // ═══════════════════════════════════════════════════════════════
 #define CLR_TAB_ACTIVE       C'50,120,200'
 #define CLR_TAB_INACTIVE     C'70,70,70'
 #define CLR_TAB_TXT_ACT      clrWhite
 #define CLR_TAB_TXT_INACT    C'190,190,190'
-#define CLR_LABEL            C'150,150,150'
-#define CLR_VALUE            clrWhite
-#define CLR_POSITIVE         C'0,210,90'
-#define CLR_NEGATIVE         C'230,70,70'
-#define CLR_WARNING          C'255,190,0'
-#define CLR_NEUTRAL          C'170,170,170'
-#define CLR_HEADER           C'120,190,255'
+#define CLR_LABEL            clrBlack
+#define CLR_VALUE            clrBlack
+#define CLR_POSITIVE         C'0,160,70'
+#define CLR_NEGATIVE         C'200,50,50'
+#define CLR_WARNING          C'200,140,0'
+#define CLR_NEUTRAL          C'100,100,100'
+#define CLR_HEADER           C'0,50,160'
 
 // ═══════════════════════════════════════════════════════════════
 // PREFIXO DE OBJETOS (evita colisão)
@@ -96,8 +102,10 @@ enum ENUM_PANEL_TAB
    TAB_STATUS = 0,
    TAB_RESULTADOS = 1,
    TAB_ESTRATEGIAS = 2,
-   TAB_CONFIG = 3
+   TAB_FILTROS = 3,
+   TAB_CONFIG = 4
   };
+#define TAB_COUNT 5
 
 //+------------------------------------------------------------------+
 //| Classe principal do painel                                        |
@@ -126,6 +134,7 @@ private:
    CButton            m_btnTab1;
    CButton            m_btnTab2;
    CButton            m_btnTab3;
+   CButton            m_btnTab4;
 
    // ════════════════════════════════════════
    // ABA 0: STATUS
@@ -197,18 +206,21 @@ private:
    CLabel  m_e_lRSIMode;       CLabel  m_e_eRSIMode;
    CLabel  m_e_lRSILevels;     CLabel  m_e_eRSILevels;
 
-   CLabel  m_e_hdr4;
-   CLabel  m_e_lTrendSt;       CLabel  m_e_eTrendSt;
-   CLabel  m_e_lTrendMA;       CLabel  m_e_eTrendMA;
-   CLabel  m_e_lTrendDist;     CLabel  m_e_eTrendDist;
+   // ════════════════════════════════════════
+   // ABA 3: FILTROS
+   // ════════════════════════════════════════
+   CLabel  m_f_hdr1;
+   CLabel  m_f_lTrendSt;       CLabel  m_f_eTrendSt;
+   CLabel  m_f_lTrendMA;       CLabel  m_f_eTrendMA;
+   CLabel  m_f_lTrendDist;     CLabel  m_f_eTrendDist;
 
-   CLabel  m_e_hdr5;
-   CLabel  m_e_lRFiltSt;       CLabel  m_e_eRFiltSt;
-   CLabel  m_e_lRFiltRSI;      CLabel  m_e_eRFiltRSI;
-   CLabel  m_e_lRFiltMode;     CLabel  m_e_eRFiltMode;
+   CLabel  m_f_hdr2;
+   CLabel  m_f_lRFiltSt;       CLabel  m_f_eRFiltSt;
+   CLabel  m_f_lRFiltRSI;      CLabel  m_f_eRFiltRSI;
+   CLabel  m_f_lRFiltMode;     CLabel  m_f_eRFiltMode;
 
    // ════════════════════════════════════════
-   // ABA 3: CONFIG
+   // ABA 4: CONFIG
    // ════════════════════════════════════════
    CLabel  m_c_hdr1;
    CLabel  m_c_lMagic;         CLabel  m_c_eMagic;
@@ -239,6 +251,7 @@ private:
    bool              CreateTabStatus(void);
    bool              CreateTabResultados(void);
    bool              CreateTabEstrategias(void);
+   bool              CreateTabFiltros(void);
    bool              CreateTabConfig(void);
 
    void              ShowTab(ENUM_PANEL_TAB tab);
@@ -248,15 +261,18 @@ private:
    void              UpdateStatus(void);
    void              UpdateResultados(void);
    void              UpdateEstrategias(void);
+   void              UpdateFiltros(void);
    void              PopulateConfig(void);
+   void              ReapplyTabVisibility(void);
 
    string            BlockerToStr(ENUM_BLOCKER_REASON r);
 
-   // Handlers de clique das abas (usados pelo EVENT_MAP)
+   // Handlers de clique das abas
    void              OnClickTab0(void);
    void              OnClickTab1(void);
    void              OnClickTab2(void);
    void              OnClickTab3(void);
+   void              OnClickTab4(void);
 
 protected:
    // Override: não criar botão X — painel não pode ser fechado pelo usuário
@@ -329,11 +345,12 @@ bool CEPBotPanel::CreatePanel(long chart, string name, int subwin,
    if(!Create(chart, name, subwin, x1, y1, x2, y2))
       return false;
 
-   if(!CreateTabButtons())   return false;
-   if(!CreateTabStatus())    return false;
+   if(!CreateTabButtons())    return false;
+   if(!CreateTabStatus())     return false;
    if(!CreateTabResultados()) return false;
    if(!CreateTabEstrategias()) return false;
-   if(!CreateTabConfig())    return false;
+   if(!CreateTabFiltros())    return false;
+   if(!CreateTabConfig())     return false;
 
    PopulateConfig();
    ShowTab(TAB_STATUS);
@@ -391,55 +408,88 @@ void CEPBotPanel::SetEV(CLabel &val, string value, color clr)
 //+------------------------------------------------------------------+
 bool CEPBotPanel::CreateTabButtons(void)
   {
-   int w = (PANEL_WIDTH - 30) / 4;
+   int w = (PANEL_WIDTH - 30) / TAB_COUNT;
    int y1 = 3, y2 = 3 + TAB_BTN_H;
 
    if(!m_btnTab0.Create(m_chart_id, PFX + "tab0", m_subwin, 5, y1, 5 + w, y2))
       return false;
    m_btnTab0.Text("STATUS");
-   m_btnTab0.FontSize(8);
+   m_btnTab0.FontSize(7);
    if(!Add(m_btnTab0))
       return false;
 
-   if(!m_btnTab1.Create(m_chart_id, PFX + "tab1", m_subwin, 5 + w + 2, y1, 5 + w * 2 + 2, y2))
+   if(!m_btnTab1.Create(m_chart_id, PFX + "tab1", m_subwin, 5 + (w + 2), y1, 5 + w * 2 + 2, y2))
       return false;
-   m_btnTab1.Text("RESULTADOS");
-   m_btnTab1.FontSize(8);
+   m_btnTab1.Text("RESULT.");
+   m_btnTab1.FontSize(7);
    if(!Add(m_btnTab1))
       return false;
 
    if(!m_btnTab2.Create(m_chart_id, PFX + "tab2", m_subwin, 5 + (w + 2) * 2, y1, 5 + w * 3 + 4, y2))
       return false;
-   m_btnTab2.Text("ESTRATEGIAS");
+   m_btnTab2.Text("ESTRAT.");
    m_btnTab2.FontSize(7);
    if(!Add(m_btnTab2))
       return false;
 
    if(!m_btnTab3.Create(m_chart_id, PFX + "tab3", m_subwin, 5 + (w + 2) * 3, y1, 5 + w * 4 + 6, y2))
       return false;
-   m_btnTab3.Text("CONFIG");
-   m_btnTab3.FontSize(8);
+   m_btnTab3.Text("FILTROS");
+   m_btnTab3.FontSize(7);
    if(!Add(m_btnTab3))
+      return false;
+
+   if(!m_btnTab4.Create(m_chart_id, PFX + "tab4", m_subwin, 5 + (w + 2) * 4, y1, 5 + w * 5 + 8, y2))
+      return false;
+   m_btnTab4.Text("CONFIG");
+   m_btnTab4.FontSize(7);
+   if(!Add(m_btnTab4))
       return false;
 
    return true;
   }
 
 //+------------------------------------------------------------------+
-//| EVENT MAP                                                         |
+//| OnEvent — manual (substitui EVENT_MAP para fix de encavalamento)  |
 //+------------------------------------------------------------------+
-EVENT_MAP_BEGIN(CEPBotPanel)
-ON_EVENT(ON_CLICK, m_btnTab0, OnClickTab0)
-ON_EVENT(ON_CLICK, m_btnTab1, OnClickTab1)
-ON_EVENT(ON_CLICK, m_btnTab2, OnClickTab2)
-ON_EVENT(ON_CLICK, m_btnTab3, OnClickTab3)
-EVENT_MAP_END(CAppDialog)
+bool CEPBotPanel::OnEvent(const int id, const long &lparam,
+                           const double &dparam, const string &sparam)
+  {
+   // Clique nas abas
+   if(id == (CHARTEVENT_CUSTOM + ON_CLICK))
+     {
+      if(lparam == m_btnTab0.Id()) { OnClickTab0(); return true; }
+      if(lparam == m_btnTab1.Id()) { OnClickTab1(); return true; }
+      if(lparam == m_btnTab2.Id()) { OnClickTab2(); return true; }
+      if(lparam == m_btnTab3.Id()) { OnClickTab3(); return true; }
+      if(lparam == m_btnTab4.Id()) { OnClickTab4(); return true; }
+     }
 
-// Handlers de clique das abas (declarados inline fora da classe via define)
+   // Forward ao pai (minimize/maximize/drag)
+   bool result = CAppDialog::OnEvent(id, lparam, dparam, sparam);
+
+   // Fix encavalamento: após maximize/restore, reaplica visibilidade
+   if(result)
+      ReapplyTabVisibility();
+
+   return result;
+  }
+
+//+------------------------------------------------------------------+
+//| ReapplyTabVisibility — garante que só a aba ativa está visível    |
+//+------------------------------------------------------------------+
+void CEPBotPanel::ReapplyTabVisibility(void)
+  {
+   for(int t = 0; t < TAB_COUNT; t++)
+      SetTabVis((ENUM_PANEL_TAB)t, (t == (int)m_activeTab));
+  }
+
+// Handlers de clique das abas
 void CEPBotPanel::OnClickTab0(void) { ShowTab(TAB_STATUS); }
 void CEPBotPanel::OnClickTab1(void) { ShowTab(TAB_RESULTADOS); }
 void CEPBotPanel::OnClickTab2(void) { ShowTab(TAB_ESTRATEGIAS); }
-void CEPBotPanel::OnClickTab3(void) { ShowTab(TAB_CONFIG); }
+void CEPBotPanel::OnClickTab3(void) { ShowTab(TAB_FILTROS); }
+void CEPBotPanel::OnClickTab4(void) { ShowTab(TAB_CONFIG); }
 
 //+------------------------------------------------------------------+
 //| ABA 0: STATUS — Criar controles                                   |
@@ -577,29 +627,38 @@ bool CEPBotPanel::CreateTabEstrategias(void)
    y += PANEL_GAP_Y;
    if(!CreateLV(m_e_lRSILevels, m_e_eRSILevels, "e_lRL", "e_eRL", "Niveis:", y)) return false;
 
-   y += PANEL_GAP_Y + PANEL_GAP_SECTION;
-   if(!CreateHdr(m_e_hdr4, "e_h4", "TREND FILTER", y)) return false;
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| ABA 3: FILTROS — Criar controles                                  |
+//+------------------------------------------------------------------+
+bool CEPBotPanel::CreateTabFiltros(void)
+  {
+   int y = CONTENT_TOP;
+
+   if(!CreateHdr(m_f_hdr1, "f_h1", "TREND FILTER", y)) return false;
    y += PANEL_GAP_Y + 2;
-   if(!CreateLV(m_e_lTrendSt, m_e_eTrendSt, "e_lTS", "e_eTS", "Status:", y)) return false;
+   if(!CreateLV(m_f_lTrendSt, m_f_eTrendSt, "f_lTS", "f_eTS", "Status:", y)) return false;
    y += PANEL_GAP_Y;
-   if(!CreateLV(m_e_lTrendMA, m_e_eTrendMA, "e_lTM", "e_eTM", "MA Tendencia:", y)) return false;
+   if(!CreateLV(m_f_lTrendMA, m_f_eTrendMA, "f_lTM", "f_eTM", "MA Tendencia:", y)) return false;
    y += PANEL_GAP_Y;
-   if(!CreateLV(m_e_lTrendDist, m_e_eTrendDist, "e_lTD", "e_eTD", "Distancia:", y)) return false;
+   if(!CreateLV(m_f_lTrendDist, m_f_eTrendDist, "f_lTD", "f_eTD", "Distancia:", y)) return false;
 
    y += PANEL_GAP_Y + PANEL_GAP_SECTION;
-   if(!CreateHdr(m_e_hdr5, "e_h5", "RSI FILTER", y)) return false;
+   if(!CreateHdr(m_f_hdr2, "f_h2", "RSI FILTER", y)) return false;
    y += PANEL_GAP_Y + 2;
-   if(!CreateLV(m_e_lRFiltSt, m_e_eRFiltSt, "e_lFS", "e_eFS", "Status:", y)) return false;
+   if(!CreateLV(m_f_lRFiltSt, m_f_eRFiltSt, "f_lFS", "f_eFS", "Status:", y)) return false;
    y += PANEL_GAP_Y;
-   if(!CreateLV(m_e_lRFiltRSI, m_e_eRFiltRSI, "e_lFR", "e_eFR", "RSI Atual:", y)) return false;
+   if(!CreateLV(m_f_lRFiltRSI, m_f_eRFiltRSI, "f_lFR", "f_eFR", "RSI Atual:", y)) return false;
    y += PANEL_GAP_Y;
-   if(!CreateLV(m_e_lRFiltMode, m_e_eRFiltMode, "e_lFM", "e_eFM", "Modo:", y)) return false;
+   if(!CreateLV(m_f_lRFiltMode, m_f_eRFiltMode, "f_lFM", "f_eFM", "Modo:", y)) return false;
 
    return true;
   }
 
 //+------------------------------------------------------------------+
-//| ABA 3: CONFIG — Criar controles (valores estáticos)               |
+//| ABA 4: CONFIG — Criar controles (valores estáticos)               |
 //+------------------------------------------------------------------+
 bool CEPBotPanel::CreateTabConfig(void)
   {
@@ -649,23 +708,18 @@ bool CEPBotPanel::CreateTabConfig(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::ShowTab(ENUM_PANEL_TAB tab)
   {
-   // Esconder todas
-   SetTabVis(TAB_STATUS, false);
-   SetTabVis(TAB_RESULTADOS, false);
-   SetTabVis(TAB_ESTRATEGIAS, false);
-   SetTabVis(TAB_CONFIG, false);
-
-   // Mostrar a selecionada
+   // Esconder todas, mostrar a selecionada
    m_activeTab = tab;
-   SetTabVis(tab, true);
+   ReapplyTabVisibility();
    UpdateTabStyles();
 
    // Atualizar dados imediatamente
    switch(tab)
      {
-      case TAB_STATUS:      UpdateStatus();      break;
+      case TAB_STATUS:      UpdateStatus();       break;
       case TAB_RESULTADOS:  UpdateResultados();   break;
       case TAB_ESTRATEGIAS: UpdateEstrategias();  break;
+      case TAB_FILTROS:     UpdateFiltros();      break;
       case TAB_CONFIG:      /* estático */        break;
      }
    ChartRedraw();
@@ -736,11 +790,7 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
                     m_e_lMAEntry.Show(); m_e_eMAEntry.Show(); m_e_lMAExit.Show(); m_e_eMAExit.Show();
                     m_e_hdr3.Show(); m_e_lRSIStatus.Show(); m_e_eRSIStatus.Show();
                     m_e_lRSICurr.Show(); m_e_eRSICurr.Show(); m_e_lRSIMode.Show(); m_e_eRSIMode.Show();
-                    m_e_lRSILevels.Show(); m_e_eRSILevels.Show();
-                    m_e_hdr4.Show(); m_e_lTrendSt.Show(); m_e_eTrendSt.Show();
-                    m_e_lTrendMA.Show(); m_e_eTrendMA.Show(); m_e_lTrendDist.Show(); m_e_eTrendDist.Show();
-                    m_e_hdr5.Show(); m_e_lRFiltSt.Show(); m_e_eRFiltSt.Show();
-                    m_e_lRFiltRSI.Show(); m_e_eRFiltRSI.Show(); m_e_lRFiltMode.Show(); m_e_eRFiltMode.Show(); }
+                    m_e_lRSILevels.Show(); m_e_eRSILevels.Show(); }
          else    { m_e_hdr1.Hide(); m_e_lStratCnt.Hide(); m_e_eStratCnt.Hide();
                     m_e_lFiltCnt.Hide(); m_e_eFiltCnt.Hide(); m_e_lConflict.Hide(); m_e_eConflict.Hide();
                     m_e_hdr2.Hide(); m_e_lMAStatus.Hide(); m_e_eMAStatus.Hide();
@@ -749,11 +799,19 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
                     m_e_lMAEntry.Hide(); m_e_eMAEntry.Hide(); m_e_lMAExit.Hide(); m_e_eMAExit.Hide();
                     m_e_hdr3.Hide(); m_e_lRSIStatus.Hide(); m_e_eRSIStatus.Hide();
                     m_e_lRSICurr.Hide(); m_e_eRSICurr.Hide(); m_e_lRSIMode.Hide(); m_e_eRSIMode.Hide();
-                    m_e_lRSILevels.Hide(); m_e_eRSILevels.Hide();
-                    m_e_hdr4.Hide(); m_e_lTrendSt.Hide(); m_e_eTrendSt.Hide();
-                    m_e_lTrendMA.Hide(); m_e_eTrendMA.Hide(); m_e_lTrendDist.Hide(); m_e_eTrendDist.Hide();
-                    m_e_hdr5.Hide(); m_e_lRFiltSt.Hide(); m_e_eRFiltSt.Hide();
-                    m_e_lRFiltRSI.Hide(); m_e_eRFiltRSI.Hide(); m_e_lRFiltMode.Hide(); m_e_eRFiltMode.Hide(); }
+                    m_e_lRSILevels.Hide(); m_e_eRSILevels.Hide(); }
+         break;
+        }
+      case TAB_FILTROS:
+        {
+         if(vis) { m_f_hdr1.Show(); m_f_lTrendSt.Show(); m_f_eTrendSt.Show();
+                    m_f_lTrendMA.Show(); m_f_eTrendMA.Show(); m_f_lTrendDist.Show(); m_f_eTrendDist.Show();
+                    m_f_hdr2.Show(); m_f_lRFiltSt.Show(); m_f_eRFiltSt.Show();
+                    m_f_lRFiltRSI.Show(); m_f_eRFiltRSI.Show(); m_f_lRFiltMode.Show(); m_f_eRFiltMode.Show(); }
+         else    { m_f_hdr1.Hide(); m_f_lTrendSt.Hide(); m_f_eTrendSt.Hide();
+                    m_f_lTrendMA.Hide(); m_f_eTrendMA.Hide(); m_f_lTrendDist.Hide(); m_f_eTrendDist.Hide();
+                    m_f_hdr2.Hide(); m_f_lRFiltSt.Hide(); m_f_eRFiltSt.Hide();
+                    m_f_lRFiltRSI.Hide(); m_f_eRFiltRSI.Hide(); m_f_lRFiltMode.Hide(); m_f_eRFiltMode.Hide(); }
          break;
         }
       case TAB_CONFIG:
@@ -791,12 +849,14 @@ void CEPBotPanel::UpdateTabStyles(void)
    m_btnTab0.ColorBackground((m_activeTab == TAB_STATUS)      ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
    m_btnTab1.ColorBackground((m_activeTab == TAB_RESULTADOS)  ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
    m_btnTab2.ColorBackground((m_activeTab == TAB_ESTRATEGIAS) ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
-   m_btnTab3.ColorBackground((m_activeTab == TAB_CONFIG)      ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
+   m_btnTab3.ColorBackground((m_activeTab == TAB_FILTROS)     ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
+   m_btnTab4.ColorBackground((m_activeTab == TAB_CONFIG)      ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
 
    m_btnTab0.Color((m_activeTab == TAB_STATUS)      ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
    m_btnTab1.Color((m_activeTab == TAB_RESULTADOS)  ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
    m_btnTab2.Color((m_activeTab == TAB_ESTRATEGIAS) ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
-   m_btnTab3.Color((m_activeTab == TAB_CONFIG)      ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
+   m_btnTab3.Color((m_activeTab == TAB_FILTROS)     ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
+   m_btnTab4.Color((m_activeTab == TAB_CONFIG)      ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
   }
 
 //+------------------------------------------------------------------+
@@ -806,9 +866,10 @@ void CEPBotPanel::Update(void)
   {
    switch(m_activeTab)
      {
-      case TAB_STATUS:      UpdateStatus();      break;
+      case TAB_STATUS:      UpdateStatus();       break;
       case TAB_RESULTADOS:  UpdateResultados();   break;
       case TAB_ESTRATEGIAS: UpdateEstrategias();  break;
+      case TAB_FILTROS:     UpdateFiltros();      break;
       case TAB_CONFIG:      /* estático */        break;
      }
   }
@@ -1044,40 +1105,46 @@ void CEPBotPanel::UpdateEstrategias(void)
       SetEV(m_e_eRSIMode, "--", CLR_NEUTRAL);
       SetEV(m_e_eRSILevels, "--", CLR_NEUTRAL);
      }
+  }
 
+//+------------------------------------------------------------------+
+//| UpdateFiltros — aba 3                                             |
+//+------------------------------------------------------------------+
+void CEPBotPanel::UpdateFiltros(void)
+  {
 // ── Trend Filter ──
    if(m_trendFilter != NULL && m_trendFilter.IsInitialized())
      {
-      SetEV(m_e_eTrendSt, m_trendFilter.IsTrendFilterActive() ? "Ativo" : "Inativo",
+      SetEV(m_f_eTrendSt, m_trendFilter.IsTrendFilterActive() ? "Ativo" : "Inativo",
             m_trendFilter.IsTrendFilterActive() ? CLR_POSITIVE : CLR_NEUTRAL);
-      SetEV(m_e_eTrendMA, DoubleToString(m_trendFilter.GetMA(), _Digits), CLR_VALUE);
-      SetEV(m_e_eTrendDist, DoubleToString(m_trendFilter.GetDistanceFromMA(), 1) + " pts", CLR_VALUE);
+      SetEV(m_f_eTrendMA, DoubleToString(m_trendFilter.GetMA(), _Digits), CLR_VALUE);
+      SetEV(m_f_eTrendDist, DoubleToString(m_trendFilter.GetDistanceFromMA(), 1) + " pts", CLR_VALUE);
      }
    else
      {
-      SetEV(m_e_eTrendSt, "Inativo", CLR_NEUTRAL);
-      SetEV(m_e_eTrendMA, "--", CLR_NEUTRAL);
-      SetEV(m_e_eTrendDist, "--", CLR_NEUTRAL);
+      SetEV(m_f_eTrendSt, "Inativo", CLR_NEUTRAL);
+      SetEV(m_f_eTrendMA, "--", CLR_NEUTRAL);
+      SetEV(m_f_eTrendDist, "--", CLR_NEUTRAL);
      }
 
 // ── RSI Filter ──
    if(m_rsiFilter != NULL && m_rsiFilter.IsInitialized())
      {
-      SetEV(m_e_eRFiltSt, m_rsiFilter.IsEnabled() ? "Ativo" : "Desabilitado",
+      SetEV(m_f_eRFiltSt, m_rsiFilter.IsEnabled() ? "Ativo" : "Desabilitado",
             m_rsiFilter.IsEnabled() ? CLR_POSITIVE : CLR_NEUTRAL);
-      SetEV(m_e_eRFiltRSI, DoubleToString(m_rsiFilter.GetCurrentRSI(), 1), CLR_VALUE);
-      SetEV(m_e_eRFiltMode, m_rsiFilter.GetFilterModeText(), CLR_VALUE);
+      SetEV(m_f_eRFiltRSI, DoubleToString(m_rsiFilter.GetCurrentRSI(), 1), CLR_VALUE);
+      SetEV(m_f_eRFiltMode, m_rsiFilter.GetFilterModeText(), CLR_VALUE);
      }
    else
      {
-      SetEV(m_e_eRFiltSt, "Inativo", CLR_NEUTRAL);
-      SetEV(m_e_eRFiltRSI, "--", CLR_NEUTRAL);
-      SetEV(m_e_eRFiltMode, "--", CLR_NEUTRAL);
+      SetEV(m_f_eRFiltSt, "Inativo", CLR_NEUTRAL);
+      SetEV(m_f_eRFiltRSI, "--", CLR_NEUTRAL);
+      SetEV(m_f_eRFiltMode, "--", CLR_NEUTRAL);
      }
   }
 
 //+------------------------------------------------------------------+
-//| PopulateConfig — aba 3 (chamado uma vez)                          |
+//| PopulateConfig — aba 4 (chamado uma vez)                          |
 //+------------------------------------------------------------------+
 void CEPBotPanel::PopulateConfig(void)
   {
