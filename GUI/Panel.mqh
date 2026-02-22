@@ -2,15 +2,19 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.05 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.06 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.05"
+#property version   "1.06"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.06 (2026-02-22):
+// + Fix troca de abas: ShowTab() agora chama SetTabVis(tab,true)
+//   explicitamente após ReapplyTabVisibility (que só esconde)
+//
 // v1.05 (2026-02-22):
 // + Nova aba FILTROS (5 abas: STATUS/RESULT./ESTRAT./FILTROS/CONFIG)
 // + Cores: labels preto, headers azul escuro (fundo claro do SO)
@@ -714,9 +718,9 @@ bool CEPBotPanel::CreateTabConfig(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::ShowTab(ENUM_PANEL_TAB tab)
   {
-   // Esconder todas, mostrar a selecionada
    m_activeTab = tab;
-   ReapplyTabVisibility();
+   ReapplyTabVisibility();       // esconde abas inativas
+   SetTabVis(tab, true);         // mostra a aba ativa explicitamente
    UpdateTabStyles();
 
    // Atualizar dados imediatamente
