@@ -2,15 +2,20 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.07 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.08 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.07"
+#property version   "1.08"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.08 (2026-02-22):
+// + Bloqueio de mouse: eventos CHARTEVENT_MOUSE sobre o painel
+//   são consumidos, impedindo dragging acidental de linhas de
+//   SL/TP ou objetos do gráfico MT5
+//
 // v1.07 (2026-02-22):
 // + Seção financeira: Ganhos / Perdas / P/L Total (substitui
 //   P/L Trades Fechados e P/L TPs Parciais — dados imprecisos)
@@ -480,6 +485,21 @@ bool CEPBotPanel::OnEvent(const int id, const long &lparam,
    // Fix encavalamento: após maximize/restore, reaplica visibilidade
    if(result)
       ReapplyTabVisibility();
+
+   // Bloqueio de mouse: consume eventos de mouse sobre o painel
+   // Previne dragging acidental de linhas de SL/TP ou objetos do gráfico
+   if(id == CHARTEVENT_MOUSE)
+     {
+      // lparam = X, dparam = Y (coordenadas do mouse em pixels do gráfico)
+      int mouseX = (int)lparam;
+      int mouseY = (int)dparam;
+
+      // Verifica se mouse está dentro dos limites do painel
+      if(mouseX >= m_x1 && mouseX <= m_x2 && mouseY >= m_y1 && mouseY <= m_y2)
+        {
+         return true;  // Consome o evento, impede propagação para drawing objects
+        }
+     }
 
    return result;
   }
