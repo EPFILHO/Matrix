@@ -2,15 +2,19 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.06 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.07 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.06"
+#property version   "1.07"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.07 (2026-02-22):
+// + Seção financeira: Ganhos / Perdas / P/L Total (substitui
+//   P/L Trades Fechados e P/L TPs Parciais — dados imprecisos)
+//
 // v1.06 (2026-02-22):
 // + Fix troca de abas: ShowTab() agora chama SetTabVis(tab,true)
 //   explicitamente após ReapplyTabVisibility (que só esconde)
@@ -168,8 +172,8 @@ private:
    // ════════════════════════════════════════
    CLabel  m_r_hdr1;
    CLabel  m_r_lProfit;        CLabel  m_r_eProfit;
-   CLabel  m_r_lClosed;        CLabel  m_r_eClosed;
-   CLabel  m_r_lPartial;       CLabel  m_r_ePartial;
+   CLabel  m_r_lGains;        CLabel  m_r_eGains;
+   CLabel  m_r_lTotalLoss;       CLabel  m_r_eTotalLoss;
 
    CLabel  m_r_hdr2;
    CLabel  m_r_lTrades;        CLabel  m_r_eTrades;
@@ -554,11 +558,11 @@ bool CEPBotPanel::CreateTabResultados(void)
 
    if(!CreateHdr(m_r_hdr1, "r_h1", "RESULTADO FINANCEIRO", y)) return false;
    y += PANEL_GAP_Y + 2;
+   if(!CreateLV(m_r_lGains, m_r_eGains, "r_lGn", "r_eGn", "Ganhos:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLV(m_r_lTotalLoss, m_r_eTotalLoss, "r_lTL", "r_eTL", "Perdas:", y)) return false;
+   y += PANEL_GAP_Y;
    if(!CreateLV(m_r_lProfit, m_r_eProfit, "r_lPr", "r_ePr", "P/L Total Dia:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_r_lClosed, m_r_eClosed, "r_lCl", "r_eCl", "P/L Trades Fechados:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_r_lPartial, m_r_ePartial, "r_lPt", "r_ePt", "P/L TPs Parciais:", y)) return false;
 
    y += PANEL_GAP_Y + PANEL_GAP_SECTION;
    if(!CreateHdr(m_r_hdr2, "r_h2", "TRADES DO DIA", y)) return false;
@@ -767,7 +771,7 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
       case TAB_RESULTADOS:
         {
          if(vis) { m_r_hdr1.Show(); m_r_lProfit.Show(); m_r_eProfit.Show();
-                    m_r_lClosed.Show(); m_r_eClosed.Show(); m_r_lPartial.Show(); m_r_ePartial.Show();
+                    m_r_lGains.Show(); m_r_eGains.Show(); m_r_lTotalLoss.Show(); m_r_eTotalLoss.Show();
                     m_r_hdr2.Show(); m_r_lTrades.Show(); m_r_eTrades.Show();
                     m_r_lWins.Show(); m_r_eWins.Show(); m_r_lLosses.Show(); m_r_eLosses.Show();
                     m_r_lDraws.Show(); m_r_eDraws.Show();
@@ -778,7 +782,7 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
                     m_r_lLossStrk.Show(); m_r_eLossStrk.Show();
                     m_r_lWinStrk.Show(); m_r_eWinStrk.Show(); }
          else    { m_r_hdr1.Hide(); m_r_lProfit.Hide(); m_r_eProfit.Hide();
-                    m_r_lClosed.Hide(); m_r_eClosed.Hide(); m_r_lPartial.Hide(); m_r_ePartial.Hide();
+                    m_r_lGains.Hide(); m_r_eGains.Hide(); m_r_lTotalLoss.Hide(); m_r_eTotalLoss.Hide();
                     m_r_hdr2.Hide(); m_r_lTrades.Hide(); m_r_eTrades.Hide();
                     m_r_lWins.Hide(); m_r_eWins.Hide(); m_r_lLosses.Hide(); m_r_eLosses.Hide();
                     m_r_lDraws.Hide(); m_r_eDraws.Hide();
@@ -1000,16 +1004,16 @@ void CEPBotPanel::UpdateResultados(void)
       return;
 
 // ── Financeiro ──
+   double grossP = m_logger.GetGrossProfit();
+   double grossL = m_logger.GetGrossLoss();
    double totalProfit = m_logger.GetDailyProfit();
-   double closedProfit = m_logger.GetClosedTradesProfit();
-   double partialProfit = m_logger.GetPartialTPProfit();
 
+   SetEV(m_r_eGains, "+$" + DoubleToString(grossP, 2),
+         (grossP > 0.01) ? CLR_POSITIVE : CLR_VALUE);
+   SetEV(m_r_eTotalLoss, "-$" + DoubleToString(grossL, 2),
+         (grossL > 0.01) ? CLR_NEGATIVE : CLR_VALUE);
    SetEV(m_r_eProfit, "$" + DoubleToString(totalProfit, 2),
          (totalProfit > 0.01) ? CLR_POSITIVE : (totalProfit < -0.01) ? CLR_NEGATIVE : CLR_VALUE);
-   SetEV(m_r_eClosed, "$" + DoubleToString(closedProfit, 2),
-         (closedProfit > 0.01) ? CLR_POSITIVE : (closedProfit < -0.01) ? CLR_NEGATIVE : CLR_VALUE);
-   SetEV(m_r_ePartial, "$" + DoubleToString(partialProfit, 2),
-         (partialProfit > 0.01) ? CLR_POSITIVE : CLR_NEUTRAL);
 
 // ── Trades ──
    int trades = m_logger.GetDailyTrades();
@@ -1024,8 +1028,6 @@ void CEPBotPanel::UpdateResultados(void)
 
 // ── Métricas ──
    double winRate = (wins + losses > 0) ? (double)wins / (wins + losses) * 100.0 : 0;
-   double grossP = m_logger.GetGrossProfit();
-   double grossL = m_logger.GetGrossLoss();
    double avgWin  = (wins > 0) ? grossP / wins : 0;
    double avgLoss = (losses > 0) ? grossL / losses : 0;
    double payoff = (avgLoss > 0) ? avgWin / avgLoss : 0;
