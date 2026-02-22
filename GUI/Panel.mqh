@@ -2,15 +2,25 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.09 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.10 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.09"
+#property version   "1.10"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.10 (2026-02-22):
+// + HOT RELOAD: aba CONFIG redesenhada com campos editáveis
+//   - 3 sub-páginas: RISCO | BLOQUEIOS | OUTROS
+//   - CEdit para valores numéricos, CButton para toggles/cycles
+//   - Botão APLICAR chama setters hot-reload nos módulos
+//   - Campos condicionais (só aparecem se feature está ativa)
+// + PARTIÇÃO: código dividido em 5 arquivos por aba
+//   - Panel.mqh (core hub), PanelTabStatus/Resultados/Estrategias/
+//     Filtros/Config.mqh (implementações por aba)
+//
 // v1.09 (2026-02-22):
 // + MouseProtection() também desabilita CHART_MOUSE_SCROLL,
 //   impedindo rolar/deslocar o gráfico quando cursor sobre o painel.
@@ -64,6 +74,7 @@
 #include <Controls\Dialog.mqh>
 #include <Controls\Button.mqh>
 #include <Controls\Label.mqh>
+#include <Controls\Edit.mqh>
 
 // Dependências do projeto (autocontido — compilável standalone)
 #include "../Core/Inputs.mqh"
@@ -93,6 +104,10 @@
 #define CONTENT_TOP          32
 #define TAB_BTN_H            22
 
+// Layout CONFIG sub-páginas
+#define CFG_CONTENT_Y        (CONTENT_TOP + TAB_BTN_H + 6)
+#define CFG_APPLY_Y          420
+
 // ═══════════════════════════════════════════════════════════════
 // CORES
 // ═══════════════════════════════════════════════════════════════
@@ -114,7 +129,7 @@
 #define PFX "EPBM_"
 
 // ═══════════════════════════════════════════════════════════════
-// ENUM DE ABAS
+// ENUMS
 // ═══════════════════════════════════════════════════════════════
 enum ENUM_PANEL_TAB
   {
@@ -125,6 +140,14 @@ enum ENUM_PANEL_TAB
    TAB_CONFIG = 4
   };
 #define TAB_COUNT 5
+
+enum ENUM_CONFIG_PAGE
+  {
+   CFG_RISCO = 0,
+   CFG_BLOQUEIOS = 1,
+   CFG_OUTROS = 2
+  };
+#define CFG_PAGE_COUNT 3
 
 //+------------------------------------------------------------------+
 //| Classe principal do painel                                        |
@@ -145,10 +168,11 @@ private:
 
    // ── Estado ──
    ENUM_PANEL_TAB     m_activeTab;
+   ENUM_CONFIG_PAGE   m_cfgPage;
    int                m_magicNumber;
    string             m_symbol;
 
-   // ── Proteção de mouse (impede arrastar SL/TP e scroll sob o painel) ──
+   // ── Proteção de mouse ──
    bool               m_origDragTrade;
    bool               m_origMouseScroll;
    bool               m_mouseOverPanel;
@@ -187,8 +211,8 @@ private:
    // ════════════════════════════════════════
    CLabel  m_r_hdr1;
    CLabel  m_r_lProfit;        CLabel  m_r_eProfit;
-   CLabel  m_r_lGains;        CLabel  m_r_eGains;
-   CLabel  m_r_lTotalLoss;       CLabel  m_r_eTotalLoss;
+   CLabel  m_r_lGains;         CLabel  m_r_eGains;
+   CLabel  m_r_lTotalLoss;     CLabel  m_r_eTotalLoss;
 
    CLabel  m_r_hdr2;
    CLabel  m_r_lTrades;        CLabel  m_r_eTrades;
@@ -244,30 +268,71 @@ private:
    CLabel  m_f_lRFiltMode;     CLabel  m_f_eRFiltMode;
 
    // ════════════════════════════════════════
-   // ABA 4: CONFIG
+   // ABA 4: CONFIG — Hot Reload
    // ════════════════════════════════════════
-   CLabel  m_c_hdr1;
-   CLabel  m_c_lMagic;         CLabel  m_c_eMagic;
-   CLabel  m_c_lComment;       CLabel  m_c_eComment;
-   CLabel  m_c_lLot;           CLabel  m_c_eLot;
+   // Sub-page buttons
+   CButton  m_cfg_btnRisco;
+   CButton  m_cfg_btnBloq;
+   CButton  m_cfg_btnOutros;
 
-   CLabel  m_c_hdr2;
-   CLabel  m_c_lSL;            CLabel  m_c_eSL;
-   CLabel  m_c_lTP;            CLabel  m_c_eTP;
-   CLabel  m_c_lTrail;         CLabel  m_c_eTrail;
-   CLabel  m_c_lBE;            CLabel  m_c_eBE;
-   CLabel  m_c_lPTP;           CLabel  m_c_ePTP;
+   // --- Risco sub-page ---
+   CLabel   m_cr_hdr1;
+   CLabel   m_cr_lLot;    CEdit   m_cr_iLot;
+   CLabel   m_cr_lSL;     CEdit   m_cr_iSL;
+   CLabel   m_cr_lTP;     CEdit   m_cr_iTP;
+   CLabel   m_cr_lTrlSt;  CEdit   m_cr_iTrlSt;
+   CLabel   m_cr_lTrlSp;  CEdit   m_cr_iTrlSp;
+   CLabel   m_cr_lBEAct;  CEdit   m_cr_iBEAct;
+   CLabel   m_cr_lBEOff;  CEdit   m_cr_iBEOff;
+   CLabel   m_cr_hdr2;
+   CLabel   m_cr_lPTP;    CButton m_cr_bPTP;
+   CLabel   m_cr_lTP1p;   CEdit   m_cr_iTP1p;
+   CLabel   m_cr_lTP1d;   CEdit   m_cr_iTP1d;
+   CLabel   m_cr_lTP2p;   CEdit   m_cr_iTP2p;
+   CLabel   m_cr_lTP2d;   CEdit   m_cr_iTP2d;
 
-   CLabel  m_c_hdr3;
-   CLabel  m_c_lTimeF;         CLabel  m_c_eTimeF;
-   CLabel  m_c_lMaxSpr;        CLabel  m_c_eMaxSpr;
-   CLabel  m_c_lDaily;         CLabel  m_c_eDaily;
-   CLabel  m_c_lStreak;        CLabel  m_c_eStreak;
-   CLabel  m_c_lDrawdown;      CLabel  m_c_eDrawdown;
-   CLabel  m_c_lDirection;     CLabel  m_c_eDirection;
+   // --- Bloqueios sub-page ---
+   CLabel   m_cb_hdr1;
+   CLabel   m_cb_lSpr;    CEdit   m_cb_iSpr;
+   CLabel   m_cb_lDir;    CButton m_cb_bDir;
+   CLabel   m_cb_hdr2;
+   CLabel   m_cb_lTrd;    CEdit   m_cb_iTrd;
+   CLabel   m_cb_lLoss;   CEdit   m_cb_iLoss;
+   CLabel   m_cb_lGain;   CEdit   m_cb_iGain;
+   CLabel   m_cb_hdr3;
+   CLabel   m_cb_lLStr;   CEdit   m_cb_iLStr;
+   CLabel   m_cb_lWStr;   CEdit   m_cb_iWStr;
+   CLabel   m_cb_lDD;     CEdit   m_cb_iDD;
+
+   // --- Outros sub-page ---
+   CLabel   m_co_hdr1;
+   CLabel   m_co_lSlip;   CEdit   m_co_iSlip;
+   CLabel   m_co_lConfl;  CButton m_co_bConfl;
+   CLabel   m_co_lDbg;    CButton m_co_bDbg;
+   CLabel   m_co_lDbgCd;  CEdit   m_co_iDbgCd;
+
+   // APLICAR + status
+   CButton  m_cfg_btnApply;
+   CLabel   m_cfg_status;
+
+   // Feature flags (definidos em CreateTabConfig)
+   bool     m_cfg_hasTP;
+   bool     m_cfg_hasTrailing;
+   bool     m_cfg_hasBE;
+   bool     m_cfg_hasDailyLimits;
+   bool     m_cfg_hasStreak;
+   bool     m_cfg_hasDrawdown;
+
+   // Estado dos toggles/cycles
+   ENUM_TRADE_DIRECTION     m_cur_direction;
+   ENUM_CONFLICT_RESOLUTION m_cur_conflict;
+   bool                     m_cur_debug;
+   bool                     m_cur_partialTP;
 
    // ── Helpers privados ──
    bool              CreateLV(CLabel &lbl, CLabel &val, string ln, string en, string lt, int y);
+   bool              CreateLI(CLabel &lbl, CEdit &inp, string ln, string en, string lt, int y);
+   bool              CreateLB(CLabel &lbl, CButton &btn, string ln, string bn, string lt, int y);
    bool              CreateHdr(CLabel &lbl, string name, string text, int y);
    void              SetEV(CLabel &val, string value, color clr = CLR_VALUE);
 
@@ -291,15 +356,28 @@ private:
 
    string            BlockerToStr(ENUM_BLOCKER_REASON r);
 
-   // Handlers de clique das abas
+   // CONFIG sub-pages
+   void              ShowCfgPage(ENUM_CONFIG_PAGE page);
+   void              SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis);
+   void              UpdateCfgBtnStyles(void);
+   void              ApplyConfig(void);
+
+   // Handlers de clique
    void              OnClickTab0(void);
    void              OnClickTab1(void);
    void              OnClickTab2(void);
    void              OnClickTab3(void);
    void              OnClickTab4(void);
+   void              OnClickCfgRisco(void);
+   void              OnClickCfgBloq(void);
+   void              OnClickCfgOutros(void);
+   void              OnClickApply(void);
+   void              OnClickDirection(void);
+   void              OnClickConflict(void);
+   void              OnClickDebug(void);
+   void              OnClickPartialTP(void);
 
 protected:
-   // Override: não criar botão X — painel não pode ser fechado pelo usuário
    virtual bool      CreateButtonClose(void) { return true; }
 
 public:
@@ -325,19 +403,22 @@ public:
 //| Construtor / Destrutor                                            |
 //+------------------------------------------------------------------+
 CEPBotPanel::CEPBotPanel(void)
-   : m_activeTab(TAB_STATUS),
+   : m_activeTab(TAB_STATUS), m_cfgPage(CFG_RISCO),
      m_logger(NULL), m_blockers(NULL), m_riskManager(NULL),
      m_tradeManager(NULL), m_signalManager(NULL),
      m_maCross(NULL), m_rsiStrategy(NULL),
      m_trendFilter(NULL), m_rsiFilter(NULL),
      m_magicNumber(0), m_symbol(""),
-     m_origDragTrade(true), m_origMouseScroll(true), m_mouseOverPanel(false)
+     m_origDragTrade(true), m_origMouseScroll(true), m_mouseOverPanel(false),
+     m_cfg_hasTP(false), m_cfg_hasTrailing(false), m_cfg_hasBE(false),
+     m_cfg_hasDailyLimits(false), m_cfg_hasStreak(false), m_cfg_hasDrawdown(false),
+     m_cur_direction(DIRECTION_BOTH), m_cur_conflict(CONFLICT_PRIORITY),
+     m_cur_debug(false), m_cur_partialTP(false)
   {
   }
 
 CEPBotPanel::~CEPBotPanel(void)
   {
-   // Restaura configuração original do gráfico
    ChartSetInteger(0, CHART_DRAG_TRADE_LEVELS, m_origDragTrade);
    ChartSetInteger(0, CHART_MOUSE_SCROLL, m_origMouseScroll);
   }
@@ -381,7 +462,6 @@ bool CEPBotPanel::CreatePanel(long chart, string name, int subwin,
    if(!CreateTabFiltros())    return false;
    if(!CreateTabConfig())     return false;
 
-   // Salva estado original do gráfico e habilita tracking de mouse
    m_origDragTrade  = (bool)ChartGetInteger(chart, CHART_DRAG_TRADE_LEVELS);
    m_origMouseScroll = (bool)ChartGetInteger(chart, CHART_MOUSE_SCROLL);
    ChartSetInteger(chart, CHART_EVENT_MOUSE_MOVE, true);
@@ -392,7 +472,7 @@ bool CEPBotPanel::CreatePanel(long chart, string name, int subwin,
   }
 
 //+------------------------------------------------------------------+
-//| HELPERS: CreateLV (Label + Value Edit), CreateHdr, SetEV          |
+//| HELPERS: CreateLV, CreateHdr, SetEV                               |
 //+------------------------------------------------------------------+
 bool CEPBotPanel::CreateLV(CLabel &lbl, CLabel &val,
                            string ln, string en, string lt, int y)
@@ -489,20 +569,32 @@ bool CEPBotPanel::CreateTabButtons(void)
 bool CEPBotPanel::OnEvent(const int id, const long &lparam,
                            const double &dparam, const string &sparam)
   {
-   // Clique nas abas
    if(id == (CHARTEVENT_CUSTOM + ON_CLICK))
      {
+      // Abas principais
       if(lparam == m_btnTab0.Id()) { OnClickTab0(); return true; }
       if(lparam == m_btnTab1.Id()) { OnClickTab1(); return true; }
       if(lparam == m_btnTab2.Id()) { OnClickTab2(); return true; }
       if(lparam == m_btnTab3.Id()) { OnClickTab3(); return true; }
       if(lparam == m_btnTab4.Id()) { OnClickTab4(); return true; }
+
+      // CONFIG: sub-páginas
+      if(lparam == m_cfg_btnRisco.Id())  { OnClickCfgRisco();  return true; }
+      if(lparam == m_cfg_btnBloq.Id())   { OnClickCfgBloq();   return true; }
+      if(lparam == m_cfg_btnOutros.Id()) { OnClickCfgOutros(); return true; }
+
+      // CONFIG: APLICAR
+      if(lparam == m_cfg_btnApply.Id())  { OnClickApply(); return true; }
+
+      // CONFIG: toggles/cycles
+      if(lparam == m_cb_bDir.Id())       { OnClickDirection(); return true; }
+      if(lparam == m_co_bConfl.Id())     { OnClickConflict();  return true; }
+      if(lparam == m_co_bDbg.Id())       { OnClickDebug();     return true; }
+      if(lparam == m_cr_bPTP.Id())       { OnClickPartialTP(); return true; }
      }
 
-   // Forward ao pai (minimize/maximize/drag)
    bool result = CAppDialog::OnEvent(id, lparam, dparam, sparam);
 
-   // Fix encavalamento: após maximize/restore, reaplica visibilidade
    if(result)
       ReapplyTabVisibility();
 
@@ -510,9 +602,7 @@ bool CEPBotPanel::OnEvent(const int id, const long &lparam,
   }
 
 //+------------------------------------------------------------------+
-//| ReapplyTabVisibility — esconde abas inativas após evento do pai   |
-//| NOTA: nunca chama Show() — quem mostra é o Maximize() do pai     |
-//| Isso previne labels "soltos" quando o diálogo está minimizado     |
+//| ReapplyTabVisibility                                               |
 //+------------------------------------------------------------------+
 void CEPBotPanel::ReapplyTabVisibility(void)
   {
@@ -531,235 +621,22 @@ void CEPBotPanel::OnClickTab3(void) { ShowTab(TAB_FILTROS); }
 void CEPBotPanel::OnClickTab4(void) { ShowTab(TAB_CONFIG); }
 
 //+------------------------------------------------------------------+
-//| ABA 0: STATUS — Criar controles                                   |
-//+------------------------------------------------------------------+
-bool CEPBotPanel::CreateTabStatus(void)
-  {
-   int y = CONTENT_TOP;
-
-   if(!CreateHdr(m_s_hdr1, "s_h1", "ESTADO DO SISTEMA", y)) return false;
-   y += PANEL_GAP_Y + 2;
-   if(!CreateLV(m_s_lTrading, m_s_eTrading, "s_lTr", "s_eTr", "Trading:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_s_lBlocker, m_s_eBlocker, "s_lBl", "s_eBl", "Bloqueador:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_s_lSpread, m_s_eSpread, "s_lSp", "s_eSp", "Spread:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_s_lTime, m_s_eTime, "s_lTm", "s_eTm", "Horario:", y)) return false;
-
-   y += PANEL_GAP_Y + PANEL_GAP_SECTION;
-   if(!CreateHdr(m_s_hdr2, "s_h2", "POSICAO", y)) return false;
-   y += PANEL_GAP_Y + 2;
-   if(!CreateLV(m_s_lHasPos, m_s_eHasPos, "s_lHP", "s_eHP", "Posicao Aberta:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_s_lTicket, m_s_eTicket, "s_lTk", "s_eTk", "Ticket:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_s_lPosType, m_s_ePosType, "s_lPT", "s_ePT", "Tipo:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_s_lPosProfit, m_s_ePosProfit, "s_lPP", "s_ePP", "P/L Flutuante:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_s_lBE, m_s_eBE, "s_lBE", "s_eBE", "Breakeven:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_s_lTrail, m_s_eTrail, "s_lTl", "s_eTl", "Trailing:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_s_lPartial, m_s_ePartial, "s_lPt", "s_ePt", "Partial TP:", y)) return false;
-
-   y += PANEL_GAP_Y + PANEL_GAP_SECTION;
-   if(!CreateHdr(m_s_hdr3, "s_h3", "SINAIS", y)) return false;
-   y += PANEL_GAP_Y + 2;
-   if(!CreateLV(m_s_lSignal, m_s_eSignal, "s_lSg", "s_eSg", "Ultimo Sinal:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_s_lBlocked, m_s_eBlocked, "s_lBk", "s_eBk", "Bloqueado por:", y)) return false;
-
-   return true;
-  }
-
-//+------------------------------------------------------------------+
-//| ABA 1: RESULTADOS — Criar controles                               |
-//+------------------------------------------------------------------+
-bool CEPBotPanel::CreateTabResultados(void)
-  {
-   int y = CONTENT_TOP;
-
-   if(!CreateHdr(m_r_hdr1, "r_h1", "RESULTADO FINANCEIRO", y)) return false;
-   y += PANEL_GAP_Y + 2;
-   if(!CreateLV(m_r_lGains, m_r_eGains, "r_lGn", "r_eGn", "Ganhos:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_r_lTotalLoss, m_r_eTotalLoss, "r_lTL", "r_eTL", "Perdas:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_r_lProfit, m_r_eProfit, "r_lPr", "r_ePr", "P/L Total Dia:", y)) return false;
-
-   y += PANEL_GAP_Y + PANEL_GAP_SECTION;
-   if(!CreateHdr(m_r_hdr2, "r_h2", "TRADES DO DIA", y)) return false;
-   y += PANEL_GAP_Y + 2;
-   if(!CreateLV(m_r_lTrades, m_r_eTrades, "r_lTd", "r_eTd", "Total Trades:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_r_lWins, m_r_eWins, "r_lWn", "r_eWn", "Ganhos:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_r_lLosses, m_r_eLosses, "r_lLs", "r_eLs", "Perdas:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_r_lDraws, m_r_eDraws, "r_lDr", "r_eDr", "Empates:", y)) return false;
-
-   y += PANEL_GAP_Y + PANEL_GAP_SECTION;
-   if(!CreateHdr(m_r_hdr3, "r_h3", "METRICAS", y)) return false;
-   y += PANEL_GAP_Y + 2;
-   if(!CreateLV(m_r_lWinRate, m_r_eWinRate, "r_lWR", "r_eWR", "Win Rate:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_r_lPayoff, m_r_ePayoff, "r_lPO", "r_ePO", "Payoff Ratio:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_r_lPF, m_r_ePF, "r_lPF", "r_ePF", "Profit Factor:", y)) return false;
-
-   y += PANEL_GAP_Y + PANEL_GAP_SECTION;
-   if(!CreateHdr(m_r_hdr4, "r_h4", "PROTECAO", y)) return false;
-   y += PANEL_GAP_Y + 2;
-   if(!CreateLV(m_r_lDD, m_r_eDD, "r_lDD", "r_eDD", "Drawdown Atual:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_r_lPeak, m_r_ePeak, "r_lPk", "r_ePk", "Pico Lucro Dia:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_r_lLossStrk, m_r_eLossStrk, "r_lLS", "r_eLS", "Seq. Perdas:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_r_lWinStrk, m_r_eWinStrk, "r_lWS", "r_eWS", "Seq. Ganhos:", y)) return false;
-
-   return true;
-  }
-
-//+------------------------------------------------------------------+
-//| ABA 2: ESTRATEGIAS — Criar controles                              |
-//+------------------------------------------------------------------+
-bool CEPBotPanel::CreateTabEstrategias(void)
-  {
-   int y = CONTENT_TOP;
-
-   if(!CreateHdr(m_e_hdr1, "e_h1", "SIGNAL MANAGER", y)) return false;
-   y += PANEL_GAP_Y + 2;
-   if(!CreateLV(m_e_lStratCnt, m_e_eStratCnt, "e_lSC", "e_eSC", "Estrategias:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_e_lFiltCnt, m_e_eFiltCnt, "e_lFC", "e_eFC", "Filtros:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_e_lConflict, m_e_eConflict, "e_lCf", "e_eCf", "Modo Conflito:", y)) return false;
-
-   y += PANEL_GAP_Y + PANEL_GAP_SECTION;
-   if(!CreateHdr(m_e_hdr2, "e_h2", "MA CROSS STRATEGY", y)) return false;
-   y += PANEL_GAP_Y + 2;
-   if(!CreateLV(m_e_lMAStatus, m_e_eMAStatus, "e_lMS", "e_eMS", "Status:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_e_lMAFast, m_e_eMAFast, "e_lMF", "e_eMF", "MA Rapida:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_e_lMASlow, m_e_eMASlow, "e_lML", "e_eML", "MA Lenta:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_e_lMACross, m_e_eMACross, "e_lMC", "e_eMC", "Ultimo Cruz.:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_e_lMACandles, m_e_eMACandles, "e_lMN", "e_eMN", "Candles Apos:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_e_lMAEntry, m_e_eMAEntry, "e_lME", "e_eME", "Entrada:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_e_lMAExit, m_e_eMAExit, "e_lMX", "e_eMX", "Saida:", y)) return false;
-
-   y += PANEL_GAP_Y + PANEL_GAP_SECTION;
-   if(!CreateHdr(m_e_hdr3, "e_h3", "RSI STRATEGY", y)) return false;
-   y += PANEL_GAP_Y + 2;
-   if(!CreateLV(m_e_lRSIStatus, m_e_eRSIStatus, "e_lRS", "e_eRS", "Status:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_e_lRSICurr, m_e_eRSICurr, "e_lRC", "e_eRC", "RSI Atual:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_e_lRSIMode, m_e_eRSIMode, "e_lRM", "e_eRM", "Modo:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_e_lRSILevels, m_e_eRSILevels, "e_lRL", "e_eRL", "Niveis:", y)) return false;
-
-   return true;
-  }
-
-//+------------------------------------------------------------------+
-//| ABA 3: FILTROS — Criar controles                                  |
-//+------------------------------------------------------------------+
-bool CEPBotPanel::CreateTabFiltros(void)
-  {
-   int y = CONTENT_TOP;
-
-   if(!CreateHdr(m_f_hdr1, "f_h1", "TREND FILTER", y)) return false;
-   y += PANEL_GAP_Y + 2;
-   if(!CreateLV(m_f_lTrendSt, m_f_eTrendSt, "f_lTS", "f_eTS", "Status:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_f_lTrendMA, m_f_eTrendMA, "f_lTM", "f_eTM", "MA Tendencia:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_f_lTrendDist, m_f_eTrendDist, "f_lTD", "f_eTD", "Distancia:", y)) return false;
-
-   y += PANEL_GAP_Y + PANEL_GAP_SECTION;
-   if(!CreateHdr(m_f_hdr2, "f_h2", "RSI FILTER", y)) return false;
-   y += PANEL_GAP_Y + 2;
-   if(!CreateLV(m_f_lRFiltSt, m_f_eRFiltSt, "f_lFS", "f_eFS", "Status:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_f_lRFiltRSI, m_f_eRFiltRSI, "f_lFR", "f_eFR", "RSI Atual:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_f_lRFiltMode, m_f_eRFiltMode, "f_lFM", "f_eFM", "Modo:", y)) return false;
-
-   return true;
-  }
-
-//+------------------------------------------------------------------+
-//| ABA 4: CONFIG — Criar controles (valores estáticos)               |
-//+------------------------------------------------------------------+
-bool CEPBotPanel::CreateTabConfig(void)
-  {
-   int y = CONTENT_TOP;
-
-   if(!CreateHdr(m_c_hdr1, "c_h1", "GERAL", y)) return false;
-   y += PANEL_GAP_Y + 2;
-   if(!CreateLV(m_c_lMagic, m_c_eMagic, "c_lMg", "c_eMg", "Magic Number:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_c_lComment, m_c_eComment, "c_lCm", "c_eCm", "Comentario:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_c_lLot, m_c_eLot, "c_lLt", "c_eLt", "Lote:", y)) return false;
-
-   y += PANEL_GAP_Y + PANEL_GAP_SECTION;
-   if(!CreateHdr(m_c_hdr2, "c_h2", "RISCO", y)) return false;
-   y += PANEL_GAP_Y + 2;
-   if(!CreateLV(m_c_lSL, m_c_eSL, "c_lSL", "c_eSL", "Stop Loss:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_c_lTP, m_c_eTP, "c_lTP", "c_eTP", "Take Profit:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_c_lTrail, m_c_eTrail, "c_lTl", "c_eTl", "Trailing:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_c_lBE, m_c_eBE, "c_lBE", "c_eBE", "Breakeven:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_c_lPTP, m_c_ePTP, "c_lPT", "c_ePT", "Partial TP:", y)) return false;
-
-   y += PANEL_GAP_Y + PANEL_GAP_SECTION;
-   if(!CreateHdr(m_c_hdr3, "c_h3", "BLOQUEIOS", y)) return false;
-   y += PANEL_GAP_Y + 2;
-   if(!CreateLV(m_c_lTimeF, m_c_eTimeF, "c_lTF", "c_eTF", "Horario:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_c_lMaxSpr, m_c_eMaxSpr, "c_lMS", "c_eMS2", "Max Spread:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_c_lDaily, m_c_eDaily, "c_lDy", "c_eDy", "Limites Diarios:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_c_lStreak, m_c_eStreak, "c_lSk", "c_eSk", "Streaks:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_c_lDrawdown, m_c_eDrawdown, "c_lDd", "c_eDd", "Drawdown:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_c_lDirection, m_c_eDirection, "c_lDr", "c_eDr", "Direcao:", y)) return false;
-
-   return true;
-  }
-
-//+------------------------------------------------------------------+
 //| ShowTab — alterna a visibilidade das abas                         |
 //+------------------------------------------------------------------+
 void CEPBotPanel::ShowTab(ENUM_PANEL_TAB tab)
   {
    m_activeTab = tab;
-   ReapplyTabVisibility();       // esconde abas inativas
-   SetTabVis(tab, true);         // mostra a aba ativa explicitamente
+   ReapplyTabVisibility();
+   SetTabVis(tab, true);
    UpdateTabStyles();
 
-   // Atualizar dados imediatamente
    switch(tab)
      {
       case TAB_STATUS:      UpdateStatus();       break;
       case TAB_RESULTADOS:  UpdateResultados();   break;
       case TAB_ESTRATEGIAS: UpdateEstrategias();  break;
       case TAB_FILTROS:     UpdateFiltros();      break;
-      case TAB_CONFIG:      /* estático */        break;
+      case TAB_CONFIG:      /* user-editable */   break;
      }
    ChartRedraw();
   }
@@ -855,26 +732,22 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
         }
       case TAB_CONFIG:
         {
-         if(vis) { m_c_hdr1.Show(); m_c_lMagic.Show(); m_c_eMagic.Show();
-                    m_c_lComment.Show(); m_c_eComment.Show(); m_c_lLot.Show(); m_c_eLot.Show();
-                    m_c_hdr2.Show(); m_c_lSL.Show(); m_c_eSL.Show();
-                    m_c_lTP.Show(); m_c_eTP.Show(); m_c_lTrail.Show(); m_c_eTrail.Show();
-                    m_c_lBE.Show(); m_c_eBE.Show(); m_c_lPTP.Show(); m_c_ePTP.Show();
-                    m_c_hdr3.Show(); m_c_lTimeF.Show(); m_c_eTimeF.Show();
-                    m_c_lMaxSpr.Show(); m_c_eMaxSpr.Show(); m_c_lDaily.Show(); m_c_eDaily.Show();
-                    m_c_lStreak.Show(); m_c_eStreak.Show();
-                    m_c_lDrawdown.Show(); m_c_eDrawdown.Show();
-                    m_c_lDirection.Show(); m_c_eDirection.Show(); }
-         else    { m_c_hdr1.Hide(); m_c_lMagic.Hide(); m_c_eMagic.Hide();
-                    m_c_lComment.Hide(); m_c_eComment.Hide(); m_c_lLot.Hide(); m_c_eLot.Hide();
-                    m_c_hdr2.Hide(); m_c_lSL.Hide(); m_c_eSL.Hide();
-                    m_c_lTP.Hide(); m_c_eTP.Hide(); m_c_lTrail.Hide(); m_c_eTrail.Hide();
-                    m_c_lBE.Hide(); m_c_eBE.Hide(); m_c_lPTP.Hide(); m_c_ePTP.Hide();
-                    m_c_hdr3.Hide(); m_c_lTimeF.Hide(); m_c_eTimeF.Hide();
-                    m_c_lMaxSpr.Hide(); m_c_eMaxSpr.Hide(); m_c_lDaily.Hide(); m_c_eDaily.Hide();
-                    m_c_lStreak.Hide(); m_c_eStreak.Hide();
-                    m_c_lDrawdown.Hide(); m_c_eDrawdown.Hide();
-                    m_c_lDirection.Hide(); m_c_eDirection.Hide(); }
+         if(vis)
+           {
+            // Sub-page buttons + apply + status
+            m_cfg_btnRisco.Show(); m_cfg_btnBloq.Show(); m_cfg_btnOutros.Show();
+            m_cfg_btnApply.Show(); m_cfg_status.Show();
+            // Show active sub-page
+            ShowCfgPage(m_cfgPage);
+           }
+         else
+           {
+            m_cfg_btnRisco.Hide(); m_cfg_btnBloq.Hide(); m_cfg_btnOutros.Hide();
+            m_cfg_btnApply.Hide(); m_cfg_status.Hide();
+            SetCfgPageVis(CFG_RISCO, false);
+            SetCfgPageVis(CFG_BLOQUEIOS, false);
+            SetCfgPageVis(CFG_OUTROS, false);
+           }
          break;
         }
      }
@@ -909,13 +782,12 @@ void CEPBotPanel::Update(void)
       case TAB_RESULTADOS:  UpdateResultados();   break;
       case TAB_ESTRATEGIAS: UpdateEstrategias();  break;
       case TAB_FILTROS:     UpdateFiltros();      break;
-      case TAB_CONFIG:      /* estático */        break;
+      case TAB_CONFIG:      /* user-editable */   break;
      }
   }
 
 //+------------------------------------------------------------------+
-//| MouseProtection — desabilita arrasto de SL/TP e scroll quando     |
-//| mouse sobre o painel; restaura quando sai. Chamado OnChartEvent().|
+//| MouseProtection — desabilita arrasto e scroll sobre o painel      |
 //+------------------------------------------------------------------+
 void CEPBotPanel::MouseProtection(const int x, const int y)
   {
@@ -923,356 +795,25 @@ void CEPBotPanel::MouseProtection(const int x, const int y)
 
    if(inside && !m_mouseOverPanel)
      {
-      // Mouse entrou no painel — desabilita arrasto e scroll
       ChartSetInteger(0, CHART_DRAG_TRADE_LEVELS, false);
       ChartSetInteger(0, CHART_MOUSE_SCROLL, false);
       m_mouseOverPanel = true;
      }
    else if(!inside && m_mouseOverPanel)
      {
-      // Mouse saiu do painel — restaura estado original
       ChartSetInteger(0, CHART_DRAG_TRADE_LEVELS, m_origDragTrade);
       ChartSetInteger(0, CHART_MOUSE_SCROLL, m_origMouseScroll);
       m_mouseOverPanel = false;
      }
   }
 
-//+------------------------------------------------------------------+
-//| UpdateStatus — aba 0                                              |
-//+------------------------------------------------------------------+
-void CEPBotPanel::UpdateStatus(void)
-  {
-// ── Estado do Sistema ──
-   if(m_blockers != NULL)
-     {
-      string blockReason = "";
-      bool blocked = !m_blockers.CanTrade(
-                        (m_logger != NULL) ? m_logger.GetDailyTrades() : 0,
-                        (m_logger != NULL) ? m_logger.GetDailyProfit() : 0,
-                        blockReason);
-
-      SetEV(m_s_eTrading, blocked ? "BLOQUEADO" : "Permitido",
-            blocked ? CLR_NEGATIVE : CLR_POSITIVE);
-      SetEV(m_s_eBlocker, blocked ? BlockerToStr(m_blockers.GetActiveBlocker()) : "Nenhum",
-            blocked ? CLR_WARNING : CLR_NEUTRAL);
-
-      int spread = (int)SymbolInfoInteger(m_symbol, SYMBOL_SPREAD);
-      int maxSpr = m_blockers.GetMaxSpread();
-      string sprTxt = IntegerToString(spread) + (maxSpr > 0 ? " / Max: " + IntegerToString(maxSpr) : "");
-      SetEV(m_s_eSpread, sprTxt, (maxSpr > 0 && spread > maxSpr) ? CLR_NEGATIVE : CLR_VALUE);
-
-      MqlDateTime tm;
-      TimeCurrent(tm);
-      SetEV(m_s_eTime, StringFormat("%02d:%02d:%02d", tm.hour, tm.min, tm.sec), CLR_VALUE);
-     }
-   else
-     {
-      SetEV(m_s_eTrading, "N/A", CLR_NEUTRAL);
-      SetEV(m_s_eBlocker, "N/A", CLR_NEUTRAL);
-      SetEV(m_s_eSpread, "N/A", CLR_NEUTRAL);
-      SetEV(m_s_eTime, "N/A", CLR_NEUTRAL);
-     }
-
-// ── Posição ──
-   bool hasPos = false;
-   ulong posTicket = 0;
-   for(int i = PositionsTotal() - 1; i >= 0; i--)
-     {
-      if(PositionGetSymbol(i) != m_symbol)
-         continue;
-      if(PositionGetInteger(POSITION_MAGIC) != m_magicNumber)
-         continue;
-      hasPos = true;
-      posTicket = PositionGetTicket(i);
-      break;
-     }
-
-   if(hasPos && PositionSelectByTicket(posTicket))
-     {
-      ENUM_POSITION_TYPE pt = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
-      double profit = PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP);
-
-      SetEV(m_s_eHasPos, "Sim", CLR_POSITIVE);
-      SetEV(m_s_eTicket, "#" + IntegerToString((long)posTicket), CLR_VALUE);
-      SetEV(m_s_ePosType, (pt == POSITION_TYPE_BUY) ? "BUY" : "SELL",
-            (pt == POSITION_TYPE_BUY) ? CLR_POSITIVE : CLR_NEGATIVE);
-      SetEV(m_s_ePosProfit, "$" + DoubleToString(profit, 2),
-            (profit > 0.01) ? CLR_POSITIVE : (profit < -0.01) ? CLR_NEGATIVE : CLR_VALUE);
-
-      if(m_tradeManager != NULL)
-        {
-         SetEV(m_s_eBE, m_tradeManager.IsBreakevenActivated(posTicket) ? "Ativado" : "Pendente",
-               m_tradeManager.IsBreakevenActivated(posTicket) ? CLR_POSITIVE : CLR_NEUTRAL);
-         SetEV(m_s_eTrail, m_tradeManager.IsTrailingActive(posTicket) ? "Ativo" : "Inativo",
-               m_tradeManager.IsTrailingActive(posTicket) ? CLR_POSITIVE : CLR_NEUTRAL);
-
-         bool tp1 = m_tradeManager.IsTP1Executed(posTicket);
-         bool tp2 = m_tradeManager.IsTP2Executed(posTicket);
-         string tpTxt = tp1 ? (tp2 ? "TP1+TP2 OK" : "TP1 OK") : "Pendente";
-         SetEV(m_s_ePartial, tpTxt, tp1 ? CLR_POSITIVE : CLR_NEUTRAL);
-        }
-      else
-        {
-         SetEV(m_s_eBE, "--", CLR_NEUTRAL);
-         SetEV(m_s_eTrail, "--", CLR_NEUTRAL);
-         SetEV(m_s_ePartial, "--", CLR_NEUTRAL);
-        }
-     }
-   else
-     {
-      SetEV(m_s_eHasPos, "Nao", CLR_NEUTRAL);
-      SetEV(m_s_eTicket, "--", CLR_NEUTRAL);
-      SetEV(m_s_ePosType, "--", CLR_NEUTRAL);
-      SetEV(m_s_ePosProfit, "--", CLR_NEUTRAL);
-      SetEV(m_s_eBE, "--", CLR_NEUTRAL);
-      SetEV(m_s_eTrail, "--", CLR_NEUTRAL);
-      SetEV(m_s_ePartial, "--", CLR_NEUTRAL);
-     }
-
-// ── Sinais ──
-   if(m_signalManager != NULL)
-     {
-      string src = m_signalManager.GetLastSignalSource();
-      string blk = m_signalManager.GetLastBlockedBy();
-      SetEV(m_s_eSignal, (src != "") ? src : "Nenhum", (src != "") ? CLR_VALUE : CLR_NEUTRAL);
-      SetEV(m_s_eBlocked, (blk != "") ? blk : "Nenhum", (blk != "") ? CLR_WARNING : CLR_NEUTRAL);
-     }
-   else
-     {
-      SetEV(m_s_eSignal, "N/A", CLR_NEUTRAL);
-      SetEV(m_s_eBlocked, "N/A", CLR_NEUTRAL);
-     }
-  }
-
-//+------------------------------------------------------------------+
-//| UpdateResultados — aba 1                                          |
-//+------------------------------------------------------------------+
-void CEPBotPanel::UpdateResultados(void)
-  {
-   if(m_logger == NULL)
-      return;
-
-// ── Financeiro ──
-   double grossP = m_logger.GetGrossProfit();
-   double grossL = m_logger.GetGrossLoss();
-   double totalProfit = m_logger.GetDailyProfit();
-
-   SetEV(m_r_eGains, "+$" + DoubleToString(grossP, 2),
-         (grossP > 0.01) ? CLR_POSITIVE : CLR_VALUE);
-   SetEV(m_r_eTotalLoss, "-$" + DoubleToString(grossL, 2),
-         (grossL > 0.01) ? CLR_NEGATIVE : CLR_VALUE);
-   SetEV(m_r_eProfit, "$" + DoubleToString(totalProfit, 2),
-         (totalProfit > 0.01) ? CLR_POSITIVE : (totalProfit < -0.01) ? CLR_NEGATIVE : CLR_VALUE);
-
-// ── Trades ──
-   int trades = m_logger.GetDailyTrades();
-   int wins   = m_logger.GetDailyWins();
-   int losses = m_logger.GetDailyLosses();
-   int draws  = m_logger.GetDailyDraws();
-
-   SetEV(m_r_eTrades, IntegerToString(trades), CLR_VALUE);
-   SetEV(m_r_eWins, IntegerToString(wins), CLR_POSITIVE);
-   SetEV(m_r_eLosses, IntegerToString(losses), (losses > 0) ? CLR_NEGATIVE : CLR_VALUE);
-   SetEV(m_r_eDraws, IntegerToString(draws), CLR_NEUTRAL);
-
-// ── Métricas ──
-   double winRate = (wins + losses > 0) ? (double)wins / (wins + losses) * 100.0 : 0;
-   double avgWin  = (wins > 0) ? grossP / wins : 0;
-   double avgLoss = (losses > 0) ? grossL / losses : 0;
-   double payoff = (avgLoss > 0) ? avgWin / avgLoss : 0;
-   double pf = (grossL > 0) ? grossP / grossL : 0;
-
-   SetEV(m_r_eWinRate, DoubleToString(winRate, 1) + "%",
-         (winRate >= 50) ? CLR_POSITIVE : (winRate >= 30) ? CLR_WARNING : CLR_NEGATIVE);
-   SetEV(m_r_ePayoff, DoubleToString(payoff, 2),
-         (payoff >= 1.5) ? CLR_POSITIVE : (payoff >= 1.0) ? CLR_WARNING : CLR_NEUTRAL);
-   SetEV(m_r_ePF, (grossL > 0) ? DoubleToString(pf, 2) : (grossP > 0) ? "INF" : "0.00",
-         (pf >= 1.5) ? CLR_POSITIVE : (pf >= 1.0) ? CLR_WARNING : CLR_NEGATIVE);
-
-// ── Proteção ──
-   if(m_blockers != NULL)
-     {
-      double dd = m_blockers.GetCurrentDrawdown();
-      double peak = m_blockers.GetDailyPeakProfit();
-      int lossStrk = m_blockers.GetCurrentLossStreak();
-      int winStrk  = m_blockers.GetCurrentWinStreak();
-
-      SetEV(m_r_eDD, DoubleToString(dd, 2) + "%",
-            (dd == 0) ? CLR_POSITIVE : (dd > 50) ? CLR_NEGATIVE : CLR_WARNING);
-      SetEV(m_r_ePeak, "$" + DoubleToString(peak, 2), CLR_VALUE);
-      SetEV(m_r_eLossStrk, IntegerToString(lossStrk), (lossStrk >= 3) ? CLR_NEGATIVE : CLR_VALUE);
-      SetEV(m_r_eWinStrk, IntegerToString(winStrk), (winStrk >= 3) ? CLR_POSITIVE : CLR_VALUE);
-     }
-  }
-
-//+------------------------------------------------------------------+
-//| UpdateEstrategias — aba 2                                         |
-//+------------------------------------------------------------------+
-void CEPBotPanel::UpdateEstrategias(void)
-  {
-// ── Signal Manager ──
-   if(m_signalManager != NULL)
-     {
-      SetEV(m_e_eStratCnt, IntegerToString(m_signalManager.GetStrategyCount()), CLR_VALUE);
-      SetEV(m_e_eFiltCnt, IntegerToString(m_signalManager.GetFilterCount()), CLR_VALUE);
-      string cm = (m_signalManager.GetConflictMode() == CONFLICT_PRIORITY) ? "Prioridade" : "Cancelar";
-      SetEV(m_e_eConflict, cm, CLR_VALUE);
-     }
-
-// ── MA Cross ──
-   if(m_maCross != NULL && m_maCross.IsInitialized())
-     {
-      SetEV(m_e_eMAStatus, "Ativo (P:" + IntegerToString(m_maCross.GetPriority()) + ")", CLR_POSITIVE);
-      SetEV(m_e_eMAFast, DoubleToString(m_maCross.GetMAFast(), _Digits), CLR_VALUE);
-      SetEV(m_e_eMASlow, DoubleToString(m_maCross.GetMASlow(), _Digits), CLR_VALUE);
-
-      ENUM_SIGNAL_TYPE lastCross = m_maCross.GetLastCross();
-      string crossTxt = (lastCross == SIGNAL_BUY) ? "BUY" : (lastCross == SIGNAL_SELL) ? "SELL" : "Nenhum";
-      color crossClr = (lastCross == SIGNAL_BUY) ? CLR_POSITIVE : (lastCross == SIGNAL_SELL) ? CLR_NEGATIVE : CLR_NEUTRAL;
-      SetEV(m_e_eMACross, crossTxt, crossClr);
-      SetEV(m_e_eMACandles, IntegerToString(m_maCross.GetCandlesAfterCross()), CLR_VALUE);
-
-      string entryTxt = (m_maCross.GetEntryMode() == ENTRY_NEXT_CANDLE) ? "Next Candle" : "2nd Candle";
-      SetEV(m_e_eMAEntry, entryTxt, CLR_VALUE);
-
-      ENUM_EXIT_MODE em = m_maCross.GetExitMode();
-      string exitTxt = (em == EXIT_FCO) ? "FCO" : (em == EXIT_VM) ? "VM" : "TP/SL";
-      SetEV(m_e_eMAExit, exitTxt, CLR_VALUE);
-     }
-   else
-     {
-      SetEV(m_e_eMAStatus, "Inativo", CLR_NEUTRAL);
-      SetEV(m_e_eMAFast, "--", CLR_NEUTRAL);
-      SetEV(m_e_eMASlow, "--", CLR_NEUTRAL);
-      SetEV(m_e_eMACross, "--", CLR_NEUTRAL);
-      SetEV(m_e_eMACandles, "--", CLR_NEUTRAL);
-      SetEV(m_e_eMAEntry, "--", CLR_NEUTRAL);
-      SetEV(m_e_eMAExit, "--", CLR_NEUTRAL);
-     }
-
-// ── RSI Strategy ──
-   if(m_rsiStrategy != NULL && m_rsiStrategy.IsInitialized())
-     {
-      SetEV(m_e_eRSIStatus, "Ativo (P:" + IntegerToString(m_rsiStrategy.GetPriority()) + ")", CLR_POSITIVE);
-      SetEV(m_e_eRSICurr, DoubleToString(m_rsiStrategy.GetCurrentRSI(), 1), CLR_VALUE);
-      SetEV(m_e_eRSIMode, m_rsiStrategy.GetSignalModeText(), CLR_VALUE);
-      SetEV(m_e_eRSILevels, DoubleToString(m_rsiStrategy.GetOversold(), 0) + " / " +
-            DoubleToString(m_rsiStrategy.GetOverbought(), 0), CLR_VALUE);
-     }
-   else
-     {
-      SetEV(m_e_eRSIStatus, "Inativo", CLR_NEUTRAL);
-      SetEV(m_e_eRSICurr, "--", CLR_NEUTRAL);
-      SetEV(m_e_eRSIMode, "--", CLR_NEUTRAL);
-      SetEV(m_e_eRSILevels, "--", CLR_NEUTRAL);
-     }
-  }
-
-//+------------------------------------------------------------------+
-//| UpdateFiltros — aba 3                                             |
-//+------------------------------------------------------------------+
-void CEPBotPanel::UpdateFiltros(void)
-  {
-// ── Trend Filter ──
-   if(m_trendFilter != NULL && m_trendFilter.IsInitialized())
-     {
-      SetEV(m_f_eTrendSt, m_trendFilter.IsTrendFilterActive() ? "Ativo" : "Inativo",
-            m_trendFilter.IsTrendFilterActive() ? CLR_POSITIVE : CLR_NEUTRAL);
-      SetEV(m_f_eTrendMA, DoubleToString(m_trendFilter.GetMA(), _Digits), CLR_VALUE);
-      SetEV(m_f_eTrendDist, DoubleToString(m_trendFilter.GetDistanceFromMA(), 1) + " pts", CLR_VALUE);
-     }
-   else
-     {
-      SetEV(m_f_eTrendSt, "Inativo", CLR_NEUTRAL);
-      SetEV(m_f_eTrendMA, "--", CLR_NEUTRAL);
-      SetEV(m_f_eTrendDist, "--", CLR_NEUTRAL);
-     }
-
-// ── RSI Filter ──
-   if(m_rsiFilter != NULL && m_rsiFilter.IsInitialized())
-     {
-      SetEV(m_f_eRFiltSt, m_rsiFilter.IsEnabled() ? "Ativo" : "Desabilitado",
-            m_rsiFilter.IsEnabled() ? CLR_POSITIVE : CLR_NEUTRAL);
-      SetEV(m_f_eRFiltRSI, DoubleToString(m_rsiFilter.GetCurrentRSI(), 1), CLR_VALUE);
-      SetEV(m_f_eRFiltMode, m_rsiFilter.GetFilterModeText(), CLR_VALUE);
-     }
-   else
-     {
-      SetEV(m_f_eRFiltSt, "Inativo", CLR_NEUTRAL);
-      SetEV(m_f_eRFiltRSI, "--", CLR_NEUTRAL);
-      SetEV(m_f_eRFiltMode, "--", CLR_NEUTRAL);
-     }
-  }
-
-//+------------------------------------------------------------------+
-//| PopulateConfig — aba 4 (chamado uma vez)                          |
-//+------------------------------------------------------------------+
-void CEPBotPanel::PopulateConfig(void)
-  {
-// ── Geral ──
-   SetEV(m_c_eMagic, IntegerToString(inp_MagicNumber), CLR_VALUE);
-   SetEV(m_c_eComment, inp_TradeComment, CLR_VALUE);
-   SetEV(m_c_eLot, DoubleToString(inp_LotSize, 2), CLR_VALUE);
-
-// ── Risco ──
-   string slType = (inp_SLType == SL_FIXED) ? "Fixo" : (inp_SLType == SL_ATR) ? "ATR" : "Range";
-   SetEV(m_c_eSL, slType + ": " + IntegerToString(inp_FixedSL) + " pts", CLR_VALUE);
-
-   string tpType = (inp_TPType == TP_FIXED) ? "Fixo" : (inp_TPType == TP_ATR) ? "ATR" : "Sem TP";
-   SetEV(m_c_eTP, tpType + ": " + IntegerToString(inp_FixedTP), CLR_VALUE);
-
-   bool useTrail = (inp_TrailingActivation != TRAILING_NEVER);
-   SetEV(m_c_eTrail, useTrail ? "Ativo" : "Desab.", useTrail ? CLR_POSITIVE : CLR_NEUTRAL);
-   bool useBE = (inp_BEActivationMode != BE_NEVER);
-   SetEV(m_c_eBE, useBE ? "Ativo" : "Desab.", useBE ? CLR_POSITIVE : CLR_NEUTRAL);
-   SetEV(m_c_ePTP, inp_UsePartialTP ? "Ativo" : "Desab.", inp_UsePartialTP ? CLR_POSITIVE : CLR_NEUTRAL);
-
-// ── Bloqueios ──
-   if(inp_EnableTimeFilter)
-      SetEV(m_c_eTimeF, StringFormat("%02d:%02d - %02d:%02d",
-            inp_StartHour, inp_StartMinute, inp_EndHour, inp_EndMinute), CLR_VALUE);
-   else
-      SetEV(m_c_eTimeF, "Desab.", CLR_NEUTRAL);
-
-   SetEV(m_c_eMaxSpr, (inp_MaxSpread > 0) ? IntegerToString(inp_MaxSpread) : "Sem limite", CLR_VALUE);
-
-   if(inp_EnableDailyLimits)
-      SetEV(m_c_eDaily, IntegerToString(inp_MaxDailyTrades) + " trades | -$" +
-            DoubleToString(inp_MaxDailyLoss, 0) + " / +$" + DoubleToString(inp_MaxDailyGain, 0), CLR_VALUE);
-   else
-      SetEV(m_c_eDaily, "Desab.", CLR_NEUTRAL);
-
-   SetEV(m_c_eStreak, inp_EnableStreakControl ? "Ativo" : "Desab.",
-         inp_EnableStreakControl ? CLR_POSITIVE : CLR_NEUTRAL);
-
-   SetEV(m_c_eDrawdown, inp_EnableDrawdown ? "Ativo" : "Desab.",
-         inp_EnableDrawdown ? CLR_POSITIVE : CLR_NEUTRAL);
-
-   string dir = (inp_TradeDirection == DIRECTION_BOTH) ? "Ambos" :
-                (inp_TradeDirection == DIRECTION_BUY_ONLY) ? "Apenas BUY" : "Apenas SELL";
-   SetEV(m_c_eDirection, dir, CLR_VALUE);
-  }
-
-//+------------------------------------------------------------------+
-//| BlockerToStr — converte enum para texto legível                   |
-//+------------------------------------------------------------------+
-string CEPBotPanel::BlockerToStr(ENUM_BLOCKER_REASON r)
-  {
-   switch(r)
-     {
-      case BLOCKER_NONE:         return "Nenhum";
-      case BLOCKER_TIME_FILTER:  return "Fora do horario";
-      case BLOCKER_NEWS_FILTER:  return "Volatilidade";
-      case BLOCKER_SPREAD:       return "Spread alto";
-      case BLOCKER_DAILY_TRADES: return "Limite trades";
-      case BLOCKER_DAILY_LOSS:   return "Perda maxima";
-      case BLOCKER_DAILY_GAIN:   return "Ganho maximo";
-      case BLOCKER_LOSS_STREAK:  return "Seq. perdas";
-      case BLOCKER_WIN_STREAK:   return "Seq. ganhos";
-      case BLOCKER_DRAWDOWN:     return "Drawdown";
-      case BLOCKER_DIRECTION:    return "Direcao bloq.";
-      default:                   return "Desconhecido";
-     }
-  }
+// ═══════════════════════════════════════════════════════════════
+// IMPLEMENTAÇÕES DAS ABAS (arquivos separados por manutenção)
+// ═══════════════════════════════════════════════════════════════
+#include "PanelTabStatus.mqh"
+#include "PanelTabResultados.mqh"
+#include "PanelTabEstrategias.mqh"
+#include "PanelTabFiltros.mqh"
+#include "PanelTabConfig.mqh"
 
 //+------------------------------------------------------------------+
