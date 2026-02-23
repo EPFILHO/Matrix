@@ -45,6 +45,17 @@
 // NOVIDADES v3.12:
 // + Fix: Funções Hot Reload só logam quando há mudança real nos valores
 // + Evita logs redundantes na inicialização/recarregamento
+//
+// NOVIDADES v3.13:
+// + SetATRPeriod, SetRangePeriod hot reload setters
+// + SetSLCompensateSpread, SetTPCompensateSpread, SetTrailingCompensateSpread
+// + 5 novos setters para campos expandidos da aba RISCO do painel
+//
+// NOVIDADES v3.14:
+// + SetSLType(ENUM_SL_TYPE) — troca tipo SL em runtime (FIXO/ATR/RANGE)
+// + SetTPType(ENUM_TP_TYPE) — troca tipo TP em runtime (NENHUM/FIXO/ATR)
+// + SetRangeMultiplier(double) — altera multiplicador Range em runtime
+// + Criação automática de handle ATR quando tipo muda para ATR
 // ═══════════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+

@@ -10,6 +10,28 @@
 // Sub-páginas: RISCO | BLOQUEIOS | OUTROS
 // Campos CEdit editáveis + botões de toggle/cycle
 // Botão APLICAR chama setters hot-reload nos módulos
+//
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG
+// ═══════════════════════════════════════════════════════════════
+// v1.12 (2026-02-23):
+// + SL Type cycle button (FIXO → ATR → RANGE) com label/valor dinâmico
+// + TP Type cycle button (NENHUM → FIXO → ATR) com show/hide dinâmico
+// + Campos TP, ATR Period, Range Period, Comp Spread TP sempre criados
+//   (visibilidade controlada dinamicamente pelos type selectors)
+// + ApplyRisco() atualizado: chama SetSLType/SetTPType/SetRangeMultiplier
+//
+// v1.11 (2026-02-23):
+// + FIX: ChartRedraw() nos handlers de toggle
+// + Campos expandidos RISCO: ATR Period, Range Period, Compensar Spread
+// + ApplyRisco() chama 5 novos setters no RiskManager
+//
+// v1.10 (2026-02-22):
+// + Versão inicial — extraído de Panel.mqh
+// + 3 sub-páginas: RISCO | BLOQUEIOS | OUTROS
+// + CEdit para valores numéricos, CButton para toggles/cycles
+// + Botão APLICAR com hot reload
+// ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
 //| Helper: CreateLI — Label + CEdit (input editável)                 |
