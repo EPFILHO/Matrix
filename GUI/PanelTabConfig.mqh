@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.11 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.12 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -117,21 +117,21 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLI(m_cr_lLot, m_cr_iLot, "cr_lLt", "cr_iLt", "Lote:", y)) return false;
    y += PANEL_GAP_Y;
 
-// SL — label adapta ao tipo
-   string slLabel = (inp_SLType == SL_FIXED) ? "SL (Fixo pts):" :
-                    (inp_SLType == SL_ATR)   ? "SL (ATR x):" : "SL (Range x):";
-   if(!CreateLI(m_cr_lSL, m_cr_iSL, "cr_lSL", "cr_iSL", slLabel, y)) return false;
+// SL Type cycle button + SL value field
+   if(!CreateLB(m_cr_lSLT, m_cr_bSLT, "cr_lST", "cr_bST", "Tipo SL:", y)) return false;
+   y += PANEL_GAP_Y + 2;
+
+   if(!CreateLI(m_cr_lSL, m_cr_iSL, "cr_lSL", "cr_iSL", "SL (Fixo pts):", y)) return false;
    y += PANEL_GAP_Y;
 
-// TP — condicional
-   if(m_cfg_hasTP)
-     {
-      string tpLabel = (inp_TPType == TP_FIXED) ? "TP (Fixo pts):" : "TP (ATR x):";
-      if(!CreateLI(m_cr_lTP, m_cr_iTP, "cr_lTP", "cr_iTP", tpLabel, y)) return false;
-      y += PANEL_GAP_Y;
-     }
+// TP Type cycle button + TP value field (SEMPRE criados)
+   if(!CreateLB(m_cr_lTPT, m_cr_bTPT, "cr_lTT", "cr_bTT", "Tipo TP:", y)) return false;
+   y += PANEL_GAP_Y + 2;
 
-// Trailing — condicional
+   if(!CreateLI(m_cr_lTP, m_cr_iTP, "cr_lTP", "cr_iTP", "TP (Fixo pts):", y)) return false;
+   y += PANEL_GAP_Y;
+
+// Trailing — condicional (tipo não alterável ainda)
    if(m_cfg_hasTrailing)
      {
       string trSuffix = (inp_TrailingType == TRAILING_FIXED) ? " (pts):" : " (ATR x):";
@@ -141,7 +141,7 @@ bool CEPBotPanel::CreateTabConfig(void)
       y += PANEL_GAP_Y;
      }
 
-// BE — condicional
+// BE — condicional (tipo não alterável ainda)
    if(m_cfg_hasBE)
      {
       string beSuffix = (inp_BEType == BE_FIXED) ? " (pts):" : " (ATR x):";
@@ -166,31 +166,22 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLI(m_cr_lTP2d, m_cr_iTP2d, "cr_l2d", "cr_i2d", "TP2 Dist (pts):", y)) return false;
    y += PANEL_GAP_Y;
 
-// Seção CONFIGURACAO (ATR, Range, Spread Compensation)
+// Seção CONFIGURACAO (ATR, Range, Spread Compensation — SEMPRE criados)
    y += PANEL_GAP_SECTION;
    if(!CreateHdr(m_cr_hdr3, "cr_h3", "CONFIGURACAO", y)) return false;
    y += PANEL_GAP_Y + 2;
 
-   if(m_cfg_hasATR)
-     {
-      if(!CreateLI(m_cr_lATRp, m_cr_iATRp, "cr_lAP", "cr_iAP", "ATR Period:", y)) return false;
-      y += PANEL_GAP_Y;
-     }
+   if(!CreateLI(m_cr_lATRp, m_cr_iATRp, "cr_lAP", "cr_iAP", "ATR Period:", y)) return false;
+   y += PANEL_GAP_Y;
 
-   if(m_cfg_hasRange)
-     {
-      if(!CreateLI(m_cr_lRngP, m_cr_iRngP, "cr_lRP", "cr_iRP", "Range Period:", y)) return false;
-      y += PANEL_GAP_Y;
-     }
+   if(!CreateLI(m_cr_lRngP, m_cr_iRngP, "cr_lRP", "cr_iRP", "Range Period:", y)) return false;
+   y += PANEL_GAP_Y;
 
    if(!CreateLB(m_cr_lCSL, m_cr_bCSL, "cr_lCS", "cr_bCS", "Compen. Spread SL:", y)) return false;
    y += PANEL_GAP_Y + 2;
 
-   if(m_cfg_hasTP)
-     {
-      if(!CreateLB(m_cr_lCTP, m_cr_bCTP, "cr_lCT", "cr_bCT", "Compen. Spread TP:", y)) return false;
-      y += PANEL_GAP_Y + 2;
-     }
+   if(!CreateLB(m_cr_lCTP, m_cr_bCTP, "cr_lCT", "cr_bCT", "Compen. Spread TP:", y)) return false;
+   y += PANEL_GAP_Y + 2;
 
    if(m_cfg_hasTrailing)
      {
@@ -288,25 +279,54 @@ bool CEPBotPanel::CreateTabConfig(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::PopulateConfig(void)
   {
-// ── Estado dos toggles ──
+// ── Estado dos toggles/cycles ──
    m_cur_direction = inp_TradeDirection;
    m_cur_conflict  = inp_ConflictMode;
+   m_cur_slType    = inp_SLType;
+   m_cur_tpType    = inp_TPType;
    m_cur_debug     = inp_ShowDebugLogs;
    m_cur_partialTP = inp_UsePartialTP;
+
+// ── Recalcular flags dinâmicos ──
+   m_cfg_hasTP    = (m_cur_tpType != TP_NONE);
+   m_cfg_hasATR   = (m_cur_slType == SL_ATR || m_cur_tpType == TP_ATR ||
+                     inp_TrailingType == TRAILING_ATR || inp_BEType == BE_ATR);
+   m_cfg_hasRange = (m_cur_slType == SL_RANGE);
 
 // ── Risco ──
    m_cr_iLot.Text(DoubleToString(inp_LotSize, 2));
 
-   if(inp_SLType == SL_FIXED)
+// SL Type button
+   string slTypeTxt = (m_cur_slType == SL_FIXED) ? "FIXO" :
+                      (m_cur_slType == SL_ATR)   ? "ATR"  : "RANGE";
+   m_cr_bSLT.Text(slTypeTxt);
+   m_cr_bSLT.ColorBackground(C'50,80,140');
+   m_cr_bSLT.Color(clrWhite);
+
+// SL value + label
+   string slLabel = (m_cur_slType == SL_FIXED) ? "SL (Fixo pts):" :
+                    (m_cur_slType == SL_ATR)   ? "SL (ATR x):" : "SL (Range x):";
+   m_cr_lSL.Text(slLabel);
+   if(m_cur_slType == SL_FIXED)
       m_cr_iSL.Text(IntegerToString(inp_FixedSL));
-   else if(inp_SLType == SL_ATR)
+   else if(m_cur_slType == SL_ATR)
       m_cr_iSL.Text(DoubleToString(inp_SL_ATRMultiplier, 1));
    else
       m_cr_iSL.Text(DoubleToString(inp_RangeMultiplier, 1));
 
+// TP Type button
+   string tpTypeTxt = (m_cur_tpType == TP_NONE)  ? "NENHUM" :
+                      (m_cur_tpType == TP_FIXED) ? "FIXO"   : "ATR";
+   m_cr_bTPT.Text(tpTypeTxt);
+   m_cr_bTPT.ColorBackground(C'50,80,140');
+   m_cr_bTPT.Color(clrWhite);
+
+// TP value + label
    if(m_cfg_hasTP)
      {
-      if(inp_TPType == TP_FIXED)
+      string tpLabel = (m_cur_tpType == TP_FIXED) ? "TP (Fixo pts):" : "TP (ATR x):";
+      m_cr_lTP.Text(tpLabel);
+      if(m_cur_tpType == TP_FIXED)
          m_cr_iTP.Text(IntegerToString(inp_FixedTP));
       else
          m_cr_iTP.Text(DoubleToString(inp_TP_ATRMultiplier, 1));
@@ -349,24 +369,19 @@ void CEPBotPanel::PopulateConfig(void)
    m_cr_iTP2p.Text(DoubleToString(inp_PartialTP2_Percent, 1));
    m_cr_iTP2d.Text(IntegerToString(inp_PartialTP2_Distance));
 
-// Configuração (ATR, Range, Spread Comp)
-   if(m_cfg_hasATR)
-      m_cr_iATRp.Text(IntegerToString(inp_ATRPeriod));
-   if(m_cfg_hasRange)
-      m_cr_iRngP.Text(IntegerToString(inp_RangePeriod));
+// Configuração (ATR, Range, Spread Comp — sempre populados)
+   m_cr_iATRp.Text(IntegerToString(inp_ATRPeriod));
+   m_cr_iRngP.Text(IntegerToString(inp_RangePeriod));
 
    m_cur_compSL = inp_SL_CompensateSpread;
    m_cr_bCSL.Text(m_cur_compSL ? "ON" : "OFF");
    m_cr_bCSL.ColorBackground(m_cur_compSL ? C'30,120,70' : C'120,50,50');
    m_cr_bCSL.Color(clrWhite);
 
-   if(m_cfg_hasTP)
-     {
-      m_cur_compTP = inp_TP_CompensateSpread;
-      m_cr_bCTP.Text(m_cur_compTP ? "ON" : "OFF");
-      m_cr_bCTP.ColorBackground(m_cur_compTP ? C'30,120,70' : C'120,50,50');
-      m_cr_bCTP.Color(clrWhite);
-     }
+   m_cur_compTP = inp_TP_CompensateSpread;
+   m_cr_bCTP.Text(m_cur_compTP ? "ON" : "OFF");
+   m_cr_bCTP.ColorBackground(m_cur_compTP ? C'30,120,70' : C'120,50,50');
+   m_cr_bCTP.Color(clrWhite);
 
    if(m_cfg_hasTrailing)
      {
@@ -444,8 +459,11 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
          if(vis)
            {
             m_cr_hdr1.Show(); m_cr_lLot.Show(); m_cr_iLot.Show();
+            m_cr_lSLT.Show(); m_cr_bSLT.Show();
             m_cr_lSL.Show(); m_cr_iSL.Show();
+            m_cr_lTPT.Show(); m_cr_bTPT.Show();
             if(m_cfg_hasTP) { m_cr_lTP.Show(); m_cr_iTP.Show(); }
+            else            { m_cr_lTP.Hide(); m_cr_iTP.Hide(); }
             if(m_cfg_hasTrailing) { m_cr_lTrlSt.Show(); m_cr_iTrlSt.Show();
                                     m_cr_lTrlSp.Show(); m_cr_iTrlSp.Show(); }
             if(m_cfg_hasBE) { m_cr_lBEAct.Show(); m_cr_iBEAct.Show();
@@ -455,15 +473,20 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_cr_lTP2p.Show(); m_cr_iTP2p.Show(); m_cr_lTP2d.Show(); m_cr_iTP2d.Show();
             m_cr_hdr3.Show(); m_cr_lCSL.Show(); m_cr_bCSL.Show();
             if(m_cfg_hasATR)    { m_cr_lATRp.Show(); m_cr_iATRp.Show(); }
+            else                { m_cr_lATRp.Hide(); m_cr_iATRp.Hide(); }
             if(m_cfg_hasRange)  { m_cr_lRngP.Show(); m_cr_iRngP.Show(); }
+            else                { m_cr_lRngP.Hide(); m_cr_iRngP.Hide(); }
             if(m_cfg_hasTP)     { m_cr_lCTP.Show(); m_cr_bCTP.Show(); }
+            else                { m_cr_lCTP.Hide(); m_cr_bCTP.Hide(); }
             if(m_cfg_hasTrailing) { m_cr_lCTrl.Show(); m_cr_bCTrl.Show(); }
            }
          else
            {
             m_cr_hdr1.Hide(); m_cr_lLot.Hide(); m_cr_iLot.Hide();
+            m_cr_lSLT.Hide(); m_cr_bSLT.Hide();
             m_cr_lSL.Hide(); m_cr_iSL.Hide();
-            if(m_cfg_hasTP) { m_cr_lTP.Hide(); m_cr_iTP.Hide(); }
+            m_cr_lTPT.Hide(); m_cr_bTPT.Hide();
+            m_cr_lTP.Hide(); m_cr_iTP.Hide();
             if(m_cfg_hasTrailing) { m_cr_lTrlSt.Hide(); m_cr_iTrlSt.Hide();
                                     m_cr_lTrlSp.Hide(); m_cr_iTrlSp.Hide(); }
             if(m_cfg_hasBE) { m_cr_lBEAct.Hide(); m_cr_iBEAct.Hide();
@@ -472,9 +495,9 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_cr_lTP1p.Hide(); m_cr_iTP1p.Hide(); m_cr_lTP1d.Hide(); m_cr_iTP1d.Hide();
             m_cr_lTP2p.Hide(); m_cr_iTP2p.Hide(); m_cr_lTP2d.Hide(); m_cr_iTP2d.Hide();
             m_cr_hdr3.Hide(); m_cr_lCSL.Hide(); m_cr_bCSL.Hide();
-            if(m_cfg_hasATR)    { m_cr_lATRp.Hide(); m_cr_iATRp.Hide(); }
-            if(m_cfg_hasRange)  { m_cr_lRngP.Hide(); m_cr_iRngP.Hide(); }
-            if(m_cfg_hasTP)     { m_cr_lCTP.Hide(); m_cr_bCTP.Hide(); }
+            m_cr_lATRp.Hide(); m_cr_iATRp.Hide();
+            m_cr_lRngP.Hide(); m_cr_iRngP.Hide();
+            m_cr_lCTP.Hide(); m_cr_bCTP.Hide();
             if(m_cfg_hasTrailing) { m_cr_lCTrl.Hide(); m_cr_bCTrl.Hide(); }
            }
          break;
@@ -591,6 +614,95 @@ void CEPBotPanel::OnClickPartialTP(void)
   }
 
 //+------------------------------------------------------------------+
+//| OnClickSLType — ciclo: FIXED → ATR → RANGE → FIXED               |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickSLType(void)
+  {
+   if(m_cur_slType == SL_FIXED)
+      m_cur_slType = SL_ATR;
+   else if(m_cur_slType == SL_ATR)
+      m_cur_slType = SL_RANGE;
+   else
+      m_cur_slType = SL_FIXED;
+
+// Atualizar botão
+   string typeTxt = (m_cur_slType == SL_FIXED) ? "FIXO" :
+                    (m_cur_slType == SL_ATR)   ? "ATR"  : "RANGE";
+   m_cr_bSLT.Text(typeTxt);
+
+// Atualizar label + valor do SL
+   string slLabel = (m_cur_slType == SL_FIXED) ? "SL (Fixo pts):" :
+                    (m_cur_slType == SL_ATR)   ? "SL (ATR x):" : "SL (Range x):";
+   m_cr_lSL.Text(slLabel);
+
+   if(m_cur_slType == SL_FIXED)
+      m_cr_iSL.Text(IntegerToString(inp_FixedSL));
+   else if(m_cur_slType == SL_ATR)
+      m_cr_iSL.Text(DoubleToString(inp_SL_ATRMultiplier, 1));
+   else
+      m_cr_iSL.Text(DoubleToString(inp_RangeMultiplier, 1));
+
+// Recalcular flags dinâmicos e atualizar visibilidade
+   m_cfg_hasATR   = (m_cur_slType == SL_ATR || m_cur_tpType == TP_ATR ||
+                     inp_TrailingType == TRAILING_ATR || inp_BEType == BE_ATR);
+   m_cfg_hasRange = (m_cur_slType == SL_RANGE);
+
+   if(m_cfg_hasATR) { m_cr_lATRp.Show(); m_cr_iATRp.Show(); }
+   else             { m_cr_lATRp.Hide(); m_cr_iATRp.Hide(); }
+   if(m_cfg_hasRange) { m_cr_lRngP.Show(); m_cr_iRngP.Show(); }
+   else               { m_cr_lRngP.Hide(); m_cr_iRngP.Hide(); }
+
+   ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
+//| OnClickTPType — ciclo: NONE → FIXED → ATR → NONE                  |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickTPType(void)
+  {
+   if(m_cur_tpType == TP_NONE)
+      m_cur_tpType = TP_FIXED;
+   else if(m_cur_tpType == TP_FIXED)
+      m_cur_tpType = TP_ATR;
+   else
+      m_cur_tpType = TP_NONE;
+
+// Atualizar botão
+   string typeTxt = (m_cur_tpType == TP_NONE)  ? "NENHUM" :
+                    (m_cur_tpType == TP_FIXED) ? "FIXO"   : "ATR";
+   m_cr_bTPT.Text(typeTxt);
+
+// Recalcular flags
+   m_cfg_hasTP  = (m_cur_tpType != TP_NONE);
+   m_cfg_hasATR = (m_cur_slType == SL_ATR || m_cur_tpType == TP_ATR ||
+                   inp_TrailingType == TRAILING_ATR || inp_BEType == BE_ATR);
+
+// TP value field
+   if(m_cfg_hasTP)
+     {
+      string tpLabel = (m_cur_tpType == TP_FIXED) ? "TP (Fixo pts):" : "TP (ATR x):";
+      m_cr_lTP.Text(tpLabel);
+      if(m_cur_tpType == TP_FIXED)
+         m_cr_iTP.Text(IntegerToString(inp_FixedTP));
+      else
+         m_cr_iTP.Text(DoubleToString(inp_TP_ATRMultiplier, 1));
+      m_cr_lTP.Show(); m_cr_iTP.Show();
+      m_cr_lCTP.Show(); m_cr_bCTP.Show();
+     }
+   else
+     {
+      m_cr_lTP.Hide(); m_cr_iTP.Hide();
+      m_cr_lCTP.Hide(); m_cr_bCTP.Hide();
+     }
+
+// ATR Period visibility
+   if(m_cfg_hasATR) { m_cr_lATRp.Show(); m_cr_iATRp.Show(); }
+   else             { m_cr_lATRp.Hide(); m_cr_iATRp.Hide(); }
+
+   ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
 //| OnClickApply — valida campos e chama setters hot-reload            |
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickApply(void)
@@ -617,27 +729,39 @@ void CEPBotPanel::ApplyConfig(void)
       else
          errors++;
 
-      // SL
-      if(inp_SLType == SL_FIXED)
+      // SL Type
+      m_riskManager.SetSLType(m_cur_slType);
+
+      // SL Value (baseado no tipo ATUAL, não no inp_*)
+      if(m_cur_slType == SL_FIXED)
         {
          int sl = (int)StringToInteger(m_cr_iSL.Text());
          if(sl >= 0) m_riskManager.SetFixedSL(sl); else errors++;
         }
-      else if(inp_SLType == SL_ATR)
+      else if(m_cur_slType == SL_ATR)
         {
          double mult = StringToDouble(m_cr_iSL.Text());
          if(mult > 0) m_riskManager.SetSLATRMultiplier(mult); else errors++;
         }
+      // SL_RANGE: o valor é o multiplicador de range
+      else if(m_cur_slType == SL_RANGE)
+        {
+         double mult = StringToDouble(m_cr_iSL.Text());
+         if(mult > 0) m_riskManager.SetRangeMultiplier(mult); else errors++;
+        }
 
-      // TP
+      // TP Type
+      m_riskManager.SetTPType(m_cur_tpType);
+
+      // TP Value
       if(m_cfg_hasTP)
         {
-         if(inp_TPType == TP_FIXED)
+         if(m_cur_tpType == TP_FIXED)
            {
             int tp = (int)StringToInteger(m_cr_iTP.Text());
             if(tp >= 0) m_riskManager.SetFixedTP(tp); else errors++;
            }
-         else
+         else if(m_cur_tpType == TP_ATR)
            {
             double mult = StringToDouble(m_cr_iTP.Text());
             if(mult > 0) m_riskManager.SetTPATRMultiplier(mult); else errors++;
@@ -700,14 +824,14 @@ void CEPBotPanel::ApplyConfig(void)
       int    tp2d = (int)StringToInteger(m_cr_iTP2d.Text());
       m_riskManager.SetPartialTP2((tp2p > 0 && tp2d > 0), tp2p, tp2d);
 
-      // ATR Period
+      // ATR Period (sempre aplicar se visível)
       if(m_cfg_hasATR)
         {
          int atrP = (int)StringToInteger(m_cr_iATRp.Text());
          if(atrP >= 1) m_riskManager.SetATRPeriod(atrP); else errors++;
         }
 
-      // Range Period
+      // Range Period (sempre aplicar se visível)
       if(m_cfg_hasRange)
         {
          int rngP = (int)StringToInteger(m_cr_iRngP.Text());

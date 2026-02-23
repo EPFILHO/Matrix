@@ -2,10 +2,10 @@
 //|                                                  RiskManager.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                       Sistema de Cálculo de Risco - EPBot Matrix |
-//|                  Versão 3.13 - Claude Parte 022 (Claude Code)    |
+//|                  Versão 3.14 - Claude Parte 023 (Claude Code)    |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.13"
+#property version   "3.14"
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
@@ -419,6 +419,9 @@ public:
    void              SetPartialTP1(bool enable, double percent, int distance);
    void              SetPartialTP2(bool enable, double percent, int distance);
    void              SetUsePartialTP(bool enable);
+   void              SetSLType(ENUM_SL_TYPE type);
+   void              SetTPType(ENUM_TP_TYPE type);
+   void              SetRangeMultiplier(double mult);
    void              SetATRPeriod(int period);
    void              SetRangePeriod(int period);
    void              SetSLCompensateSpread(bool enable);
@@ -1044,6 +1047,52 @@ void CRiskManager::SetUsePartialTP(bool enable)
          "🔄 Partial TP: " + (enable ? "ATIVADO" : "DESATIVADO"));
    else
       Print("🔄 Partial TP: ", enable ? "ATIVADO" : "DESATIVADO");
+  }
+
+void CRiskManager::SetSLType(ENUM_SL_TYPE type)
+  {
+   ENUM_SL_TYPE oldType = m_slType;
+   m_slType = type;
+
+   // Criar handle ATR se necessário e não existe
+   if(type == SL_ATR && m_handleATR == INVALID_HANDLE)
+     {
+      m_handleATR = iATR(m_symbol, PERIOD_CURRENT, m_atrPeriod);
+      if(m_handleATR == INVALID_HANDLE && m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "Falha ao criar handle ATR para SL");
+     }
+
+   if(oldType != type && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 SL Type: " + EnumToString(oldType) + " → " + EnumToString(type));
+  }
+
+void CRiskManager::SetTPType(ENUM_TP_TYPE type)
+  {
+   ENUM_TP_TYPE oldType = m_tpType;
+   m_tpType = type;
+
+   // Criar handle ATR se necessário e não existe
+   if(type == TP_ATR && m_handleATR == INVALID_HANDLE)
+     {
+      m_handleATR = iATR(m_symbol, PERIOD_CURRENT, m_atrPeriod);
+      if(m_handleATR == INVALID_HANDLE && m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "Falha ao criar handle ATR para TP");
+     }
+
+   if(oldType != type && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 TP Type: " + EnumToString(oldType) + " → " + EnumToString(type));
+  }
+
+void CRiskManager::SetRangeMultiplier(double mult)
+  {
+   double oldValue = m_rangeMultiplier;
+   m_rangeMultiplier = mult;
+
+   if(oldValue != mult && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 Range Mult alterado: %.1f → %.1f×", oldValue, mult));
   }
 
 void CRiskManager::SetATRPeriod(int period)

@@ -2,15 +2,23 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.11 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.12 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.11"
+#property version   "1.12"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.12 (2026-02-23):
+// + SL Type cycle button (FIXO → ATR → RANGE) com label/valor dinâmico
+// + TP Type cycle button (NENHUM → FIXO → ATR) com show/hide dinâmico
+// + TP, ATR Period, Range Period, Comp Spread TP agora SEMPRE criados
+//   (visibilidade controlada dinamicamente pelos type selectors)
+// + SetSLType, SetTPType, SetRangeMultiplier em RiskManager (v3.14)
+// + PANEL_HEIGHT 540→600, CFG_APPLY_Y 420→520
+//
 // v1.11 (2026-02-23):
 // + FIX: ChartRedraw() nos handlers de toggle (Direção não atualizava)
 // + FIX: encavalamento sub-páginas CONFIG (ReapplyTabVisibility)
@@ -98,7 +106,7 @@
 // DIMENSÕES E LAYOUT
 // ═══════════════════════════════════════════════════════════════
 #define PANEL_WIDTH          430
-#define PANEL_HEIGHT         540
+#define PANEL_HEIGHT         600
 
 #define PANEL_GAP_Y          18
 #define PANEL_GAP_SECTION    8
@@ -112,7 +120,7 @@
 
 // Layout CONFIG sub-páginas
 #define CFG_CONTENT_Y        (CONTENT_TOP + TAB_BTN_H + 6)
-#define CFG_APPLY_Y          420
+#define CFG_APPLY_Y          520
 
 // ═══════════════════════════════════════════════════════════════
 // CORES
@@ -284,7 +292,9 @@ private:
    // --- Risco sub-page ---
    CLabel   m_cr_hdr1;
    CLabel   m_cr_lLot;    CEdit   m_cr_iLot;
+   CLabel   m_cr_lSLT;    CButton m_cr_bSLT;    // SL Type cycle
    CLabel   m_cr_lSL;     CEdit   m_cr_iSL;
+   CLabel   m_cr_lTPT;    CButton m_cr_bTPT;    // TP Type cycle
    CLabel   m_cr_lTP;     CEdit   m_cr_iTP;
    CLabel   m_cr_lTrlSt;  CEdit   m_cr_iTrlSt;
    CLabel   m_cr_lTrlSp;  CEdit   m_cr_iTrlSp;
@@ -340,6 +350,8 @@ private:
    // Estado dos toggles/cycles
    ENUM_TRADE_DIRECTION     m_cur_direction;
    ENUM_CONFLICT_RESOLUTION m_cur_conflict;
+   ENUM_SL_TYPE             m_cur_slType;
+   ENUM_TP_TYPE             m_cur_tpType;
    bool                     m_cur_debug;
    bool                     m_cur_partialTP;
    bool                     m_cur_compSL;
@@ -393,6 +405,8 @@ private:
    void              OnClickConflict(void);
    void              OnClickDebug(void);
    void              OnClickPartialTP(void);
+   void              OnClickSLType(void);
+   void              OnClickTPType(void);
    void              OnClickCompSL(void);
    void              OnClickCompTP(void);
    void              OnClickCompTrail(void);
@@ -434,6 +448,7 @@ CEPBotPanel::CEPBotPanel(void)
      m_cfg_hasDailyLimits(false), m_cfg_hasStreak(false), m_cfg_hasDrawdown(false),
      m_cfg_hasATR(false), m_cfg_hasRange(false),
      m_cur_direction(DIRECTION_BOTH), m_cur_conflict(CONFLICT_PRIORITY),
+     m_cur_slType(SL_FIXED), m_cur_tpType(TP_NONE),
      m_cur_debug(false), m_cur_partialTP(false),
      m_cur_compSL(false), m_cur_compTP(false), m_cur_compTrail(false)
   {
@@ -612,6 +627,8 @@ bool CEPBotPanel::OnEvent(const int id, const long &lparam,
       if(lparam == m_cb_bDir.Id())       { OnClickDirection(); return true; }
       if(lparam == m_co_bConfl.Id())     { OnClickConflict();  return true; }
       if(lparam == m_co_bDbg.Id())       { OnClickDebug();     return true; }
+      if(lparam == m_cr_bSLT.Id())       { OnClickSLType();    return true; }
+      if(lparam == m_cr_bTPT.Id())       { OnClickTPType();    return true; }
       if(lparam == m_cr_bPTP.Id())       { OnClickPartialTP(); return true; }
       if(lparam == m_cr_bCSL.Id())       { OnClickCompSL();    return true; }
       if(lparam == m_cr_bCTP.Id())       { OnClickCompTP();    return true; }
