@@ -2,6 +2,7 @@
 //|                                          PanelTabResultados.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: RESULTADOS — Create + Update                  |
+//|                     Versão 1.11 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba RESULTADOS.
 // Incluído por Panel.mqh — NÃO incluir diretamente.

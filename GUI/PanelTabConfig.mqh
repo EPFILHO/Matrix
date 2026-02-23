@@ -2,6 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
+//|                     Versão 1.11 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -163,6 +164,7 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLI(m_cr_lTP2p, m_cr_iTP2p, "cr_l2p", "cr_i2p", "TP2 %:", y)) return false;
    y += PANEL_GAP_Y;
    if(!CreateLI(m_cr_lTP2d, m_cr_iTP2d, "cr_l2d", "cr_i2d", "TP2 Dist (pts):", y)) return false;
+   y += PANEL_GAP_Y;
 
 // Seção CONFIGURACAO (ATR, Range, Spread Compensation)
    y += PANEL_GAP_SECTION;

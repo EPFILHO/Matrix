@@ -2,6 +2,7 @@
 //|                                            PanelTabFiltros.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: FILTROS — Create + Update                     |
+//|                     Versão 1.11 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba FILTROS.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
