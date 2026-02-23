@@ -419,7 +419,12 @@ public:
    void              SetPartialTP1(bool enable, double percent, int distance);
    void              SetPartialTP2(bool enable, double percent, int distance);
    void              SetUsePartialTP(bool enable);
-   
+   void              SetATRPeriod(int period);
+   void              SetRangePeriod(int period);
+   void              SetSLCompensateSpread(bool enable);
+   void              SetTPCompensateSpread(bool enable);
+   void              SetTrailingCompensateSpread(bool enable);
+
    // ═══════════════════════════════════════════════════════════════
    // GETTERS DE CONFIGURAÇÃO (Working values)
    // ═══════════════════════════════════════════════════════════════
@@ -1039,6 +1044,46 @@ void CRiskManager::SetUsePartialTP(bool enable)
          "🔄 Partial TP: " + (enable ? "ATIVADO" : "DESATIVADO"));
    else
       Print("🔄 Partial TP: ", enable ? "ATIVADO" : "DESATIVADO");
+  }
+
+void CRiskManager::SetATRPeriod(int period)
+  {
+   m_atrPeriod = period;
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 ATR Period: " + IntegerToString(period));
+  }
+
+void CRiskManager::SetRangePeriod(int period)
+  {
+   m_rangePeriod = period;
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 Range Period: " + IntegerToString(period));
+  }
+
+void CRiskManager::SetSLCompensateSpread(bool enable)
+  {
+   m_slCompensateSpread = enable;
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 SL Compensar Spread: " + (enable ? "ON" : "OFF"));
+  }
+
+void CRiskManager::SetTPCompensateSpread(bool enable)
+  {
+   m_tpCompensateSpread = enable;
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 TP Compensar Spread: " + (enable ? "ON" : "OFF"));
+  }
+
+void CRiskManager::SetTrailingCompensateSpread(bool enable)
+  {
+   m_trailingCompensateSpread = enable;
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 Trailing Compensar Spread: " + (enable ? "ON" : "OFF"));
   }
 
 // ═══════════════════════════════════════════════════════════════

@@ -73,6 +73,9 @@ bool CEPBotPanel::CreateTabConfig(void)
    m_cfg_hasDailyLimits = inp_EnableDailyLimits;
    m_cfg_hasStreak     = inp_EnableStreakControl;
    m_cfg_hasDrawdown   = inp_EnableDrawdown;
+   m_cfg_hasATR        = (inp_SLType == SL_ATR || inp_TPType == TP_ATR ||
+                           inp_TrailingType == TRAILING_ATR || inp_BEType == BE_ATR);
+   m_cfg_hasRange      = (inp_SLType == SL_RANGE);
 
 // ── Botões de sub-página ──
    int sw = (PANEL_WIDTH - 40) / CFG_PAGE_COUNT;
@@ -160,6 +163,37 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLI(m_cr_lTP2p, m_cr_iTP2p, "cr_l2p", "cr_i2p", "TP2 %:", y)) return false;
    y += PANEL_GAP_Y;
    if(!CreateLI(m_cr_lTP2d, m_cr_iTP2d, "cr_l2d", "cr_i2d", "TP2 Dist (pts):", y)) return false;
+
+// Seção CONFIGURACAO (ATR, Range, Spread Compensation)
+   y += PANEL_GAP_SECTION;
+   if(!CreateHdr(m_cr_hdr3, "cr_h3", "CONFIGURACAO", y)) return false;
+   y += PANEL_GAP_Y + 2;
+
+   if(m_cfg_hasATR)
+     {
+      if(!CreateLI(m_cr_lATRp, m_cr_iATRp, "cr_lAP", "cr_iAP", "ATR Period:", y)) return false;
+      y += PANEL_GAP_Y;
+     }
+
+   if(m_cfg_hasRange)
+     {
+      if(!CreateLI(m_cr_lRngP, m_cr_iRngP, "cr_lRP", "cr_iRP", "Range Period:", y)) return false;
+      y += PANEL_GAP_Y;
+     }
+
+   if(!CreateLB(m_cr_lCSL, m_cr_bCSL, "cr_lCS", "cr_bCS", "Compen. Spread SL:", y)) return false;
+   y += PANEL_GAP_Y + 2;
+
+   if(m_cfg_hasTP)
+     {
+      if(!CreateLB(m_cr_lCTP, m_cr_bCTP, "cr_lCT", "cr_bCT", "Compen. Spread TP:", y)) return false;
+      y += PANEL_GAP_Y + 2;
+     }
+
+   if(m_cfg_hasTrailing)
+     {
+      if(!CreateLB(m_cr_lCTrl, m_cr_bCTrl, "cr_lCR", "cr_bCR", "Compen. Spread Trail:", y)) return false;
+     }
 
 // ════════════════════════════════════════════════════════════
 // SUB-PÁGINA: BLOQUEIOS
@@ -313,6 +347,33 @@ void CEPBotPanel::PopulateConfig(void)
    m_cr_iTP2p.Text(DoubleToString(inp_PartialTP2_Percent, 1));
    m_cr_iTP2d.Text(IntegerToString(inp_PartialTP2_Distance));
 
+// Configuração (ATR, Range, Spread Comp)
+   if(m_cfg_hasATR)
+      m_cr_iATRp.Text(IntegerToString(inp_ATRPeriod));
+   if(m_cfg_hasRange)
+      m_cr_iRngP.Text(IntegerToString(inp_RangePeriod));
+
+   m_cur_compSL = inp_SL_CompensateSpread;
+   m_cr_bCSL.Text(m_cur_compSL ? "ON" : "OFF");
+   m_cr_bCSL.ColorBackground(m_cur_compSL ? C'30,120,70' : C'120,50,50');
+   m_cr_bCSL.Color(clrWhite);
+
+   if(m_cfg_hasTP)
+     {
+      m_cur_compTP = inp_TP_CompensateSpread;
+      m_cr_bCTP.Text(m_cur_compTP ? "ON" : "OFF");
+      m_cr_bCTP.ColorBackground(m_cur_compTP ? C'30,120,70' : C'120,50,50');
+      m_cr_bCTP.Color(clrWhite);
+     }
+
+   if(m_cfg_hasTrailing)
+     {
+      m_cur_compTrail = inp_Trailing_CompensateSpread;
+      m_cr_bCTrl.Text(m_cur_compTrail ? "ON" : "OFF");
+      m_cr_bCTrl.ColorBackground(m_cur_compTrail ? C'30,120,70' : C'120,50,50');
+      m_cr_bCTrl.Color(clrWhite);
+     }
+
 // ── Bloqueios ──
    m_cb_iSpr.Text(IntegerToString(inp_MaxSpread));
 
@@ -390,6 +451,11 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_cr_hdr2.Show(); m_cr_lPTP.Show(); m_cr_bPTP.Show();
             m_cr_lTP1p.Show(); m_cr_iTP1p.Show(); m_cr_lTP1d.Show(); m_cr_iTP1d.Show();
             m_cr_lTP2p.Show(); m_cr_iTP2p.Show(); m_cr_lTP2d.Show(); m_cr_iTP2d.Show();
+            m_cr_hdr3.Show(); m_cr_lCSL.Show(); m_cr_bCSL.Show();
+            if(m_cfg_hasATR)    { m_cr_lATRp.Show(); m_cr_iATRp.Show(); }
+            if(m_cfg_hasRange)  { m_cr_lRngP.Show(); m_cr_iRngP.Show(); }
+            if(m_cfg_hasTP)     { m_cr_lCTP.Show(); m_cr_bCTP.Show(); }
+            if(m_cfg_hasTrailing) { m_cr_lCTrl.Show(); m_cr_bCTrl.Show(); }
            }
          else
            {
@@ -403,6 +469,11 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_cr_hdr2.Hide(); m_cr_lPTP.Hide(); m_cr_bPTP.Hide();
             m_cr_lTP1p.Hide(); m_cr_iTP1p.Hide(); m_cr_lTP1d.Hide(); m_cr_iTP1d.Hide();
             m_cr_lTP2p.Hide(); m_cr_iTP2p.Hide(); m_cr_lTP2d.Hide(); m_cr_iTP2d.Hide();
+            m_cr_hdr3.Hide(); m_cr_lCSL.Hide(); m_cr_bCSL.Hide();
+            if(m_cfg_hasATR)    { m_cr_lATRp.Hide(); m_cr_iATRp.Hide(); }
+            if(m_cfg_hasRange)  { m_cr_lRngP.Hide(); m_cr_iRngP.Hide(); }
+            if(m_cfg_hasTP)     { m_cr_lCTP.Hide(); m_cr_bCTP.Hide(); }
+            if(m_cfg_hasTrailing) { m_cr_lCTrl.Hide(); m_cr_bCTrl.Hide(); }
            }
          break;
         }
@@ -491,12 +562,14 @@ void CEPBotPanel::OnClickDirection(void)
    string txt = (m_cur_direction == DIRECTION_BOTH)     ? "AMBOS" :
                 (m_cur_direction == DIRECTION_BUY_ONLY) ? "APENAS BUY" : "APENAS SELL";
    m_cb_bDir.Text(txt);
+   ChartRedraw();
   }
 
 void CEPBotPanel::OnClickConflict(void)
   {
    m_cur_conflict = (m_cur_conflict == CONFLICT_PRIORITY) ? CONFLICT_CANCEL : CONFLICT_PRIORITY;
    m_co_bConfl.Text((m_cur_conflict == CONFLICT_PRIORITY) ? "PRIORIDADE" : "CANCELAR");
+   ChartRedraw();
   }
 
 void CEPBotPanel::OnClickDebug(void)
@@ -504,6 +577,7 @@ void CEPBotPanel::OnClickDebug(void)
    m_cur_debug = !m_cur_debug;
    m_co_bDbg.Text(m_cur_debug ? "ON" : "OFF");
    m_co_bDbg.ColorBackground(m_cur_debug ? C'30,120,70' : C'120,50,50');
+   ChartRedraw();
   }
 
 void CEPBotPanel::OnClickPartialTP(void)
@@ -511,6 +585,7 @@ void CEPBotPanel::OnClickPartialTP(void)
    m_cur_partialTP = !m_cur_partialTP;
    m_cr_bPTP.Text(m_cur_partialTP ? "ATIVO" : "DESAB.");
    m_cr_bPTP.ColorBackground(m_cur_partialTP ? C'30,120,70' : C'120,50,50');
+   ChartRedraw();
   }
 
 //+------------------------------------------------------------------+
@@ -622,6 +697,25 @@ void CEPBotPanel::ApplyConfig(void)
       double tp2p = StringToDouble(m_cr_iTP2p.Text());
       int    tp2d = (int)StringToInteger(m_cr_iTP2d.Text());
       m_riskManager.SetPartialTP2((tp2p > 0 && tp2d > 0), tp2p, tp2d);
+
+      // ATR Period
+      if(m_cfg_hasATR)
+        {
+         int atrP = (int)StringToInteger(m_cr_iATRp.Text());
+         if(atrP >= 1) m_riskManager.SetATRPeriod(atrP); else errors++;
+        }
+
+      // Range Period
+      if(m_cfg_hasRange)
+        {
+         int rngP = (int)StringToInteger(m_cr_iRngP.Text());
+         if(rngP >= 1) m_riskManager.SetRangePeriod(rngP); else errors++;
+        }
+
+      // Spread Compensation
+      m_riskManager.SetSLCompensateSpread(m_cur_compSL);
+      if(m_cfg_hasTP) m_riskManager.SetTPCompensateSpread(m_cur_compTP);
+      if(m_cfg_hasTrailing) m_riskManager.SetTrailingCompensateSpread(m_cur_compTrail);
      }
 
 // ═══════════════════════════════════════════════
@@ -703,6 +797,33 @@ void CEPBotPanel::ApplyConfig(void)
       m_cfg_status.Text(IntegerToString(errors) + " campo(s) invalido(s)");
       m_cfg_status.Color(CLR_NEGATIVE);
      }
+   ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
+//| Toggle handlers: Spread Compensation                               |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickCompSL(void)
+  {
+   m_cur_compSL = !m_cur_compSL;
+   m_cr_bCSL.Text(m_cur_compSL ? "ON" : "OFF");
+   m_cr_bCSL.ColorBackground(m_cur_compSL ? C'30,120,70' : C'120,50,50');
+   ChartRedraw();
+  }
+
+void CEPBotPanel::OnClickCompTP(void)
+  {
+   m_cur_compTP = !m_cur_compTP;
+   m_cr_bCTP.Text(m_cur_compTP ? "ON" : "OFF");
+   m_cr_bCTP.ColorBackground(m_cur_compTP ? C'30,120,70' : C'120,50,50');
+   ChartRedraw();
+  }
+
+void CEPBotPanel::OnClickCompTrail(void)
+  {
+   m_cur_compTrail = !m_cur_compTrail;
+   m_cr_bCTrl.Text(m_cur_compTrail ? "ON" : "OFF");
+   m_cr_bCTrl.ColorBackground(m_cur_compTrail ? C'30,120,70' : C'120,50,50');
    ChartRedraw();
   }
 //+------------------------------------------------------------------+

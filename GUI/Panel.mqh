@@ -2,15 +2,21 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.10 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.11 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.10"
+#property version   "1.11"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.11 (2026-02-23):
+// + FIX: ChartRedraw() nos handlers de toggle (Direção não atualizava)
+// + FIX: encavalamento sub-páginas CONFIG (ReapplyTabVisibility)
+// + RISCO expandido: ATR Period, Range Period, Compensar Spread
+//   (SL/TP/Trailing) com 5 novos setters em RiskManager
+//
 // v1.10 (2026-02-22):
 // + HOT RELOAD: aba CONFIG redesenhada com campos editáveis
 //   - 3 sub-páginas: RISCO | BLOQUEIOS | OUTROS
@@ -290,6 +296,12 @@ private:
    CLabel   m_cr_lTP1d;   CEdit   m_cr_iTP1d;
    CLabel   m_cr_lTP2p;   CEdit   m_cr_iTP2p;
    CLabel   m_cr_lTP2d;   CEdit   m_cr_iTP2d;
+   CLabel   m_cr_hdr3;    // header "CONFIGURACAO"
+   CLabel   m_cr_lATRp;   CEdit   m_cr_iATRp;
+   CLabel   m_cr_lRngP;   CEdit   m_cr_iRngP;
+   CLabel   m_cr_lCSL;    CButton m_cr_bCSL;
+   CLabel   m_cr_lCTP;    CButton m_cr_bCTP;
+   CLabel   m_cr_lCTrl;   CButton m_cr_bCTrl;
 
    // --- Bloqueios sub-page ---
    CLabel   m_cb_hdr1;
@@ -322,12 +334,17 @@ private:
    bool     m_cfg_hasDailyLimits;
    bool     m_cfg_hasStreak;
    bool     m_cfg_hasDrawdown;
+   bool     m_cfg_hasATR;       // qualquer feature usa ATR?
+   bool     m_cfg_hasRange;     // SL usa Range?
 
    // Estado dos toggles/cycles
    ENUM_TRADE_DIRECTION     m_cur_direction;
    ENUM_CONFLICT_RESOLUTION m_cur_conflict;
    bool                     m_cur_debug;
    bool                     m_cur_partialTP;
+   bool                     m_cur_compSL;
+   bool                     m_cur_compTP;
+   bool                     m_cur_compTrail;
 
    // ── Helpers privados ──
    bool              CreateLV(CLabel &lbl, CLabel &val, string ln, string en, string lt, int y);
@@ -376,6 +393,9 @@ private:
    void              OnClickConflict(void);
    void              OnClickDebug(void);
    void              OnClickPartialTP(void);
+   void              OnClickCompSL(void);
+   void              OnClickCompTP(void);
+   void              OnClickCompTrail(void);
 
 protected:
    virtual bool      CreateButtonClose(void) { return true; }
@@ -412,8 +432,10 @@ CEPBotPanel::CEPBotPanel(void)
      m_origDragTrade(true), m_origMouseScroll(true), m_mouseOverPanel(false),
      m_cfg_hasTP(false), m_cfg_hasTrailing(false), m_cfg_hasBE(false),
      m_cfg_hasDailyLimits(false), m_cfg_hasStreak(false), m_cfg_hasDrawdown(false),
+     m_cfg_hasATR(false), m_cfg_hasRange(false),
      m_cur_direction(DIRECTION_BOTH), m_cur_conflict(CONFLICT_PRIORITY),
-     m_cur_debug(false), m_cur_partialTP(false)
+     m_cur_debug(false), m_cur_partialTP(false),
+     m_cur_compSL(false), m_cur_compTP(false), m_cur_compTrail(false)
   {
   }
 
@@ -591,6 +613,9 @@ bool CEPBotPanel::OnEvent(const int id, const long &lparam,
       if(lparam == m_co_bConfl.Id())     { OnClickConflict();  return true; }
       if(lparam == m_co_bDbg.Id())       { OnClickDebug();     return true; }
       if(lparam == m_cr_bPTP.Id())       { OnClickPartialTP(); return true; }
+      if(lparam == m_cr_bCSL.Id())       { OnClickCompSL();    return true; }
+      if(lparam == m_cr_bCTP.Id())       { OnClickCompTP();    return true; }
+      if(lparam == m_cr_bCTrl.Id())      { OnClickCompTrail(); return true; }
      }
 
    bool result = CAppDialog::OnEvent(id, lparam, dparam, sparam);
@@ -610,6 +635,15 @@ void CEPBotPanel::ReapplyTabVisibility(void)
      {
       if(t != (int)m_activeTab)
          SetTabVis((ENUM_PANEL_TAB)t, false);
+     }
+// Fix encavalamento: se CONFIG ativa, re-esconder sub-páginas inativas
+   if(m_activeTab == TAB_CONFIG)
+     {
+      for(int p = 0; p < CFG_PAGE_COUNT; p++)
+        {
+         if(p != (int)m_cfgPage)
+            SetCfgPageVis((ENUM_CONFIG_PAGE)p, false);
+        }
      }
   }
 
