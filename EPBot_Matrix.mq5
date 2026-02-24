@@ -2,13 +2,20 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.35 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.36 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.35"
+#property version   "1.36"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.36:                                                 |
+//| 🖥️ PANEL v1.13 — LAYOUT RISCO DINÂMICO (Claude Code):             |
+//|    - LayoutRisco() com Move() — campos se reposicionam sem gaps   |
+//|    - ATR Period, Range Period, Comp Spread inline com SL/TP       |
+//|    - Eliminada seção CONFIGURACAO separada                         |
+//|    - Todos controles RISCO criados incondicionalmente              |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.35:                                                 |
 //| 🖥️ PANEL v1.12 — SELETORES DE TIPO SL/TP (Claude Code):          |

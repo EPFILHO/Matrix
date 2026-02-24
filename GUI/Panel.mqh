@@ -2,15 +2,23 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.12 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.13 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.12"
+#property version   "1.13"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.13 (2026-02-24):
+// + LayoutRisco() dinâmico com Move() — elimina gaps ao show/hide
+// + Campos ATR Period, Range Period, Comp Spread agora inline com SL/TP
+//   (eliminada seção CONFIGURACAO separada)
+// + Todos controles RISCO criados incondicionalmente para suportar Move()
+// + MoveRowLI/LB/Hdr helpers para reposicionamento dinâmico
+// + Removido m_cr_hdr3 (header CONFIGURACAO)
+//
 // v1.12 (2026-02-23):
 // + SL Type cycle button (FIXO → ATR → RANGE) com label/valor dinâmico
 // + TP Type cycle button (NENHUM → FIXO → ATR) com show/hide dinâmico
@@ -306,7 +314,6 @@ private:
    CLabel   m_cr_lTP1d;   CEdit   m_cr_iTP1d;
    CLabel   m_cr_lTP2p;   CEdit   m_cr_iTP2p;
    CLabel   m_cr_lTP2d;   CEdit   m_cr_iTP2d;
-   CLabel   m_cr_hdr3;    // header "CONFIGURACAO"
    CLabel   m_cr_lATRp;   CEdit   m_cr_iATRp;
    CLabel   m_cr_lRngP;   CEdit   m_cr_iRngP;
    CLabel   m_cr_lCSL;    CButton m_cr_bCSL;
@@ -390,6 +397,12 @@ private:
    void              SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis);
    void              UpdateCfgBtnStyles(void);
    void              ApplyConfig(void);
+
+   // Layout dinâmico RISCO (reposiciona controles com Move)
+   void              LayoutRisco(void);
+   void              MoveRowLI(CLabel &lbl, CEdit &inp, int abs_y);
+   void              MoveRowLB(CLabel &lbl, CButton &btn, int abs_y);
+   void              MoveRowHdr(CLabel &lbl, int abs_y);
 
    // Handlers de clique
    void              OnClickTab0(void);

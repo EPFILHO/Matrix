@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.12 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.13 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -14,6 +14,14 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.13 (2026-02-24):
+// + LayoutRisco() dinâmico com Move() — elimina gaps ao show/hide
+// + Campos ATR Period, Range Period, Comp Spread agora inline
+//   com SL/TP (eliminada seção CONFIGURACAO separada)
+// + Todos controles RISCO criados incondicionalmente
+//   (Trailing, BE, Spread Comp — mesmo se desabilitados)
+// + MoveRowLI/LB/Hdr helpers para reposicionamento
+//
 // v1.12 (2026-02-23):
 // + SL Type cycle button (FIXO → ATR → RANGE) com label/valor dinâmico
 // + TP Type cycle button (NENHUM → FIXO → ATR) com show/hide dinâmico
@@ -85,6 +93,26 @@ bool CEPBotPanel::CreateLB(CLabel &lbl, CButton &btn,
   }
 
 //+------------------------------------------------------------------+
+//| MoveRow helpers — reposiciona controles para layout dinâmico       |
+//+------------------------------------------------------------------+
+void CEPBotPanel::MoveRowHdr(CLabel &lbl, int abs_y)
+  {
+   lbl.Move(lbl.Left(), abs_y);
+  }
+
+void CEPBotPanel::MoveRowLI(CLabel &lbl, CEdit &inp, int abs_y)
+  {
+   lbl.Move(lbl.Left(), abs_y);
+   inp.Move(inp.Left(), abs_y);
+  }
+
+void CEPBotPanel::MoveRowLB(CLabel &lbl, CButton &btn, int abs_y)
+  {
+   lbl.Move(lbl.Left(), abs_y);
+   btn.Move(btn.Left(), abs_y);
+  }
+
+//+------------------------------------------------------------------+
 //| ABA 4: CONFIG — Criar todos os controles (3 sub-páginas)          |
 //+------------------------------------------------------------------+
 bool CEPBotPanel::CreateTabConfig(void)
@@ -129,7 +157,7 @@ bool CEPBotPanel::CreateTabConfig(void)
       return false;
 
 // ════════════════════════════════════════════════════════════
-// SUB-PÁGINA: RISCO
+// SUB-PÁGINA: RISCO  (todos controles criados incondicionalmente)
 // ════════════════════════════════════════════════════════════
    int y = CFG_CONTENT_Y;
 
@@ -139,41 +167,57 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLI(m_cr_lLot, m_cr_iLot, "cr_lLt", "cr_iLt", "Lote:", y)) return false;
    y += PANEL_GAP_Y;
 
-// SL Type cycle button + SL value field
+// SL Type cycle button
    if(!CreateLB(m_cr_lSLT, m_cr_bSLT, "cr_lST", "cr_bST", "Tipo SL:", y)) return false;
    y += PANEL_GAP_Y + 2;
 
+// SL value (label muda conforme tipo)
    if(!CreateLI(m_cr_lSL, m_cr_iSL, "cr_lSL", "cr_iSL", "SL (Fixo pts):", y)) return false;
    y += PANEL_GAP_Y;
 
-// TP Type cycle button + TP value field (SEMPRE criados)
+// ATR Period (visível quando qualquer feature usa ATR)
+   if(!CreateLI(m_cr_lATRp, m_cr_iATRp, "cr_lAP", "cr_iAP", "ATR Period:", y)) return false;
+   y += PANEL_GAP_Y;
+
+// Range Period (visível quando SL=RANGE)
+   if(!CreateLI(m_cr_lRngP, m_cr_iRngP, "cr_lRP", "cr_iRP", "Range Period:", y)) return false;
+   y += PANEL_GAP_Y;
+
+// Comp Spread SL
+   if(!CreateLB(m_cr_lCSL, m_cr_bCSL, "cr_lCS", "cr_bCS", "Comp. Spread SL:", y)) return false;
+   y += PANEL_GAP_Y + 2;
+
+// TP Type cycle button
    if(!CreateLB(m_cr_lTPT, m_cr_bTPT, "cr_lTT", "cr_bTT", "Tipo TP:", y)) return false;
    y += PANEL_GAP_Y + 2;
 
+// TP value (visível quando TP != NENHUM)
    if(!CreateLI(m_cr_lTP, m_cr_iTP, "cr_lTP", "cr_iTP", "TP (Fixo pts):", y)) return false;
    y += PANEL_GAP_Y;
 
-// Trailing — condicional (tipo não alterável ainda)
-   if(m_cfg_hasTrailing)
-     {
-      string trSuffix = (inp_TrailingType == TRAILING_FIXED) ? " (pts):" : " (ATR x):";
-      if(!CreateLI(m_cr_lTrlSt, m_cr_iTrlSt, "cr_lTS", "cr_iTS", "Trail Start" + trSuffix, y)) return false;
-      y += PANEL_GAP_Y;
-      if(!CreateLI(m_cr_lTrlSp, m_cr_iTrlSp, "cr_lTP2", "cr_iTP2", "Trail Step" + trSuffix, y)) return false;
-      y += PANEL_GAP_Y;
-     }
+// Comp Spread TP (visível quando TP != NENHUM)
+   if(!CreateLB(m_cr_lCTP, m_cr_bCTP, "cr_lCT", "cr_bCT", "Comp. Spread TP:", y)) return false;
+   y += PANEL_GAP_Y + 2;
 
-// BE — condicional (tipo não alterável ainda)
-   if(m_cfg_hasBE)
-     {
-      string beSuffix = (inp_BEType == BE_FIXED) ? " (pts):" : " (ATR x):";
-      if(!CreateLI(m_cr_lBEAct, m_cr_iBEAct, "cr_lBA", "cr_iBA", "BE Ativacao" + beSuffix, y)) return false;
-      y += PANEL_GAP_Y;
-      if(!CreateLI(m_cr_lBEOff, m_cr_iBEOff, "cr_lBO", "cr_iBO", "BE Offset" + beSuffix, y)) return false;
-      y += PANEL_GAP_Y;
-     }
+// Trailing (criado sempre, visível se habilitado)
+   string trSuffix = (inp_TrailingType == TRAILING_FIXED) ? " (pts):" : " (ATR x):";
+   if(!CreateLI(m_cr_lTrlSt, m_cr_iTrlSt, "cr_lTS", "cr_iTS", "Trail Start" + trSuffix, y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cr_lTrlSp, m_cr_iTrlSp, "cr_lTP2", "cr_iTP2", "Trail Step" + trSuffix, y)) return false;
+   y += PANEL_GAP_Y;
 
-// Partial TP — sempre (toggle + campos)
+// BE (criado sempre, visível se habilitado)
+   string beSuffix = (inp_BEType == BE_FIXED) ? " (pts):" : " (ATR x):";
+   if(!CreateLI(m_cr_lBEAct, m_cr_iBEAct, "cr_lBA", "cr_iBA", "BE Ativacao" + beSuffix, y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cr_lBEOff, m_cr_iBEOff, "cr_lBO", "cr_iBO", "BE Offset" + beSuffix, y)) return false;
+   y += PANEL_GAP_Y;
+
+// Comp Spread Trail (criado sempre, visível se trailing)
+   if(!CreateLB(m_cr_lCTrl, m_cr_bCTrl, "cr_lCR", "cr_bCR", "Comp. Spread Trail:", y)) return false;
+   y += PANEL_GAP_Y + 2;
+
+// Partial TP
    y += PANEL_GAP_SECTION;
    if(!CreateHdr(m_cr_hdr2, "cr_h2", "PARTIAL TP", y)) return false;
    y += PANEL_GAP_Y + 2;
@@ -187,28 +231,6 @@ bool CEPBotPanel::CreateTabConfig(void)
    y += PANEL_GAP_Y;
    if(!CreateLI(m_cr_lTP2d, m_cr_iTP2d, "cr_l2d", "cr_i2d", "TP2 Dist (pts):", y)) return false;
    y += PANEL_GAP_Y;
-
-// Seção CONFIGURACAO (ATR, Range, Spread Compensation — SEMPRE criados)
-   y += PANEL_GAP_SECTION;
-   if(!CreateHdr(m_cr_hdr3, "cr_h3", "CONFIGURACAO", y)) return false;
-   y += PANEL_GAP_Y + 2;
-
-   if(!CreateLI(m_cr_lATRp, m_cr_iATRp, "cr_lAP", "cr_iAP", "ATR Period:", y)) return false;
-   y += PANEL_GAP_Y;
-
-   if(!CreateLI(m_cr_lRngP, m_cr_iRngP, "cr_lRP", "cr_iRP", "Range Period:", y)) return false;
-   y += PANEL_GAP_Y;
-
-   if(!CreateLB(m_cr_lCSL, m_cr_bCSL, "cr_lCS", "cr_bCS", "Compen. Spread SL:", y)) return false;
-   y += PANEL_GAP_Y + 2;
-
-   if(!CreateLB(m_cr_lCTP, m_cr_bCTP, "cr_lCT", "cr_bCT", "Compen. Spread TP:", y)) return false;
-   y += PANEL_GAP_Y + 2;
-
-   if(m_cfg_hasTrailing)
-     {
-      if(!CreateLB(m_cr_lCTrl, m_cr_bCTrl, "cr_lCR", "cr_bCR", "Compen. Spread Trail:", y)) return false;
-     }
 
 // ════════════════════════════════════════════════════════════
 // SUB-PÁGINA: BLOQUEIOS
@@ -336,6 +358,16 @@ void CEPBotPanel::PopulateConfig(void)
    else
       m_cr_iSL.Text(DoubleToString(inp_RangeMultiplier, 1));
 
+// ATR Period + Range Period (sempre populados)
+   m_cr_iATRp.Text(IntegerToString(inp_ATRPeriod));
+   m_cr_iRngP.Text(IntegerToString(inp_RangePeriod));
+
+// Comp Spread SL
+   m_cur_compSL = inp_SL_CompensateSpread;
+   m_cr_bCSL.Text(m_cur_compSL ? "ON" : "OFF");
+   m_cr_bCSL.ColorBackground(m_cur_compSL ? C'30,120,70' : C'120,50,50');
+   m_cr_bCSL.Color(clrWhite);
+
 // TP Type button
    string tpTypeTxt = (m_cur_tpType == TP_NONE)  ? "NENHUM" :
                       (m_cur_tpType == TP_FIXED) ? "FIXO"   : "ATR";
@@ -354,33 +386,41 @@ void CEPBotPanel::PopulateConfig(void)
          m_cr_iTP.Text(DoubleToString(inp_TP_ATRMultiplier, 1));
      }
 
-   if(m_cfg_hasTrailing)
+// Comp Spread TP
+   m_cur_compTP = inp_TP_CompensateSpread;
+   m_cr_bCTP.Text(m_cur_compTP ? "ON" : "OFF");
+   m_cr_bCTP.ColorBackground(m_cur_compTP ? C'30,120,70' : C'120,50,50');
+   m_cr_bCTP.Color(clrWhite);
+
+// Trailing (sempre populado — controle criado incondicionalmente)
+   if(inp_TrailingType == TRAILING_FIXED)
      {
-      if(inp_TrailingType == TRAILING_FIXED)
-        {
-         m_cr_iTrlSt.Text(IntegerToString(inp_TrailingStart));
-         m_cr_iTrlSp.Text(IntegerToString(inp_TrailingStep));
-        }
-      else
-        {
-         m_cr_iTrlSt.Text(DoubleToString(inp_TrailingATRStart, 2));
-         m_cr_iTrlSp.Text(DoubleToString(inp_TrailingATRStep, 2));
-        }
+      m_cr_iTrlSt.Text(IntegerToString(inp_TrailingStart));
+      m_cr_iTrlSp.Text(IntegerToString(inp_TrailingStep));
+     }
+   else
+     {
+      m_cr_iTrlSt.Text(DoubleToString(inp_TrailingATRStart, 2));
+      m_cr_iTrlSp.Text(DoubleToString(inp_TrailingATRStep, 2));
      }
 
-   if(m_cfg_hasBE)
+// BE (sempre populado)
+   if(inp_BEType == BE_FIXED)
      {
-      if(inp_BEType == BE_FIXED)
-        {
-         m_cr_iBEAct.Text(IntegerToString(inp_BEActivation));
-         m_cr_iBEOff.Text(IntegerToString(inp_BEOffset));
-        }
-      else
-        {
-         m_cr_iBEAct.Text(DoubleToString(inp_BE_ATRActivation, 2));
-         m_cr_iBEOff.Text(DoubleToString(inp_BE_ATROffset, 2));
-        }
+      m_cr_iBEAct.Text(IntegerToString(inp_BEActivation));
+      m_cr_iBEOff.Text(IntegerToString(inp_BEOffset));
      }
+   else
+     {
+      m_cr_iBEAct.Text(DoubleToString(inp_BE_ATRActivation, 2));
+      m_cr_iBEOff.Text(DoubleToString(inp_BE_ATROffset, 2));
+     }
+
+// Comp Spread Trail
+   m_cur_compTrail = inp_Trailing_CompensateSpread;
+   m_cr_bCTrl.Text(m_cur_compTrail ? "ON" : "OFF");
+   m_cr_bCTrl.ColorBackground(m_cur_compTrail ? C'30,120,70' : C'120,50,50');
+   m_cr_bCTrl.Color(clrWhite);
 
 // Partial TP
    m_cr_bPTP.Text(m_cur_partialTP ? "ATIVO" : "DESAB.");
@@ -390,28 +430,6 @@ void CEPBotPanel::PopulateConfig(void)
    m_cr_iTP1d.Text(IntegerToString(inp_PartialTP1_Distance));
    m_cr_iTP2p.Text(DoubleToString(inp_PartialTP2_Percent, 1));
    m_cr_iTP2d.Text(IntegerToString(inp_PartialTP2_Distance));
-
-// Configuração (ATR, Range, Spread Comp — sempre populados)
-   m_cr_iATRp.Text(IntegerToString(inp_ATRPeriod));
-   m_cr_iRngP.Text(IntegerToString(inp_RangePeriod));
-
-   m_cur_compSL = inp_SL_CompensateSpread;
-   m_cr_bCSL.Text(m_cur_compSL ? "ON" : "OFF");
-   m_cr_bCSL.ColorBackground(m_cur_compSL ? C'30,120,70' : C'120,50,50');
-   m_cr_bCSL.Color(clrWhite);
-
-   m_cur_compTP = inp_TP_CompensateSpread;
-   m_cr_bCTP.Text(m_cur_compTP ? "ON" : "OFF");
-   m_cr_bCTP.ColorBackground(m_cur_compTP ? C'30,120,70' : C'120,50,50');
-   m_cr_bCTP.Color(clrWhite);
-
-   if(m_cfg_hasTrailing)
-     {
-      m_cur_compTrail = inp_Trailing_CompensateSpread;
-      m_cr_bCTrl.Text(m_cur_compTrail ? "ON" : "OFF");
-      m_cr_bCTrl.ColorBackground(m_cur_compTrail ? C'30,120,70' : C'120,50,50');
-      m_cr_bCTrl.Color(clrWhite);
-     }
 
 // ── Bloqueios ──
    m_cb_iSpr.Text(IntegerToString(inp_MaxSpread));
@@ -457,6 +475,159 @@ void CEPBotPanel::PopulateConfig(void)
   }
 
 //+------------------------------------------------------------------+
+//| LayoutRisco — reposiciona controles dinamicamente (sem gaps)       |
+//+------------------------------------------------------------------+
+void CEPBotPanel::LayoutRisco(void)
+  {
+// Referência: m_cr_hdr1 foi criado em Y relativo = CFG_CONTENT_Y
+// Seu Top() atual dá a posição absoluta do header
+   int y = m_cr_hdr1.Top();
+
+// Header GESTAO DE RISCO (já na posição correta)
+   m_cr_hdr1.Show();
+   y += PANEL_GAP_Y + 2;
+
+// Lote
+   MoveRowLI(m_cr_lLot, m_cr_iLot, y);
+   m_cr_lLot.Show(); m_cr_iLot.Show();
+   y += PANEL_GAP_Y;
+
+// Tipo SL (cycle button)
+   MoveRowLB(m_cr_lSLT, m_cr_bSLT, y);
+   m_cr_lSLT.Show(); m_cr_bSLT.Show();
+   y += PANEL_GAP_Y + 2;
+
+// SL value (sempre visível, label muda conforme tipo)
+   MoveRowLI(m_cr_lSL, m_cr_iSL, y);
+   m_cr_lSL.Show(); m_cr_iSL.Show();
+   y += PANEL_GAP_Y;
+
+// ATR Period (visível quando qualquer feature usa ATR)
+   if(m_cfg_hasATR)
+     {
+      MoveRowLI(m_cr_lATRp, m_cr_iATRp, y);
+      m_cr_lATRp.Show(); m_cr_iATRp.Show();
+      y += PANEL_GAP_Y;
+     }
+   else
+     {
+      m_cr_lATRp.Hide(); m_cr_iATRp.Hide();
+     }
+
+// Range Period (visível quando SL=RANGE)
+   if(m_cfg_hasRange)
+     {
+      MoveRowLI(m_cr_lRngP, m_cr_iRngP, y);
+      m_cr_lRngP.Show(); m_cr_iRngP.Show();
+      y += PANEL_GAP_Y;
+     }
+   else
+     {
+      m_cr_lRngP.Hide(); m_cr_iRngP.Hide();
+     }
+
+// Comp Spread SL
+   MoveRowLB(m_cr_lCSL, m_cr_bCSL, y);
+   m_cr_lCSL.Show(); m_cr_bCSL.Show();
+   y += PANEL_GAP_Y + 2;
+
+// Tipo TP (cycle button)
+   MoveRowLB(m_cr_lTPT, m_cr_bTPT, y);
+   m_cr_lTPT.Show(); m_cr_bTPT.Show();
+   y += PANEL_GAP_Y + 2;
+
+// TP value + Comp Spread TP (visíveis quando TP != NENHUM)
+   if(m_cfg_hasTP)
+     {
+      MoveRowLI(m_cr_lTP, m_cr_iTP, y);
+      m_cr_lTP.Show(); m_cr_iTP.Show();
+      y += PANEL_GAP_Y;
+
+      MoveRowLB(m_cr_lCTP, m_cr_bCTP, y);
+      m_cr_lCTP.Show(); m_cr_bCTP.Show();
+      y += PANEL_GAP_Y + 2;
+     }
+   else
+     {
+      m_cr_lTP.Hide(); m_cr_iTP.Hide();
+      m_cr_lCTP.Hide(); m_cr_bCTP.Hide();
+     }
+
+// Trailing (se habilitado)
+   if(m_cfg_hasTrailing)
+     {
+      MoveRowLI(m_cr_lTrlSt, m_cr_iTrlSt, y);
+      m_cr_lTrlSt.Show(); m_cr_iTrlSt.Show();
+      y += PANEL_GAP_Y;
+
+      MoveRowLI(m_cr_lTrlSp, m_cr_iTrlSp, y);
+      m_cr_lTrlSp.Show(); m_cr_iTrlSp.Show();
+      y += PANEL_GAP_Y;
+     }
+   else
+     {
+      m_cr_lTrlSt.Hide(); m_cr_iTrlSt.Hide();
+      m_cr_lTrlSp.Hide(); m_cr_iTrlSp.Hide();
+     }
+
+// BE (se habilitado)
+   if(m_cfg_hasBE)
+     {
+      MoveRowLI(m_cr_lBEAct, m_cr_iBEAct, y);
+      m_cr_lBEAct.Show(); m_cr_iBEAct.Show();
+      y += PANEL_GAP_Y;
+
+      MoveRowLI(m_cr_lBEOff, m_cr_iBEOff, y);
+      m_cr_lBEOff.Show(); m_cr_iBEOff.Show();
+      y += PANEL_GAP_Y;
+     }
+   else
+     {
+      m_cr_lBEAct.Hide(); m_cr_iBEAct.Hide();
+      m_cr_lBEOff.Hide(); m_cr_iBEOff.Hide();
+     }
+
+// Comp Spread Trail (se trailing habilitado)
+   if(m_cfg_hasTrailing)
+     {
+      MoveRowLB(m_cr_lCTrl, m_cr_bCTrl, y);
+      m_cr_lCTrl.Show(); m_cr_bCTrl.Show();
+      y += PANEL_GAP_Y + 2;
+     }
+   else
+     {
+      m_cr_lCTrl.Hide(); m_cr_bCTrl.Hide();
+     }
+
+// ── PARTIAL TP ──
+   y += PANEL_GAP_SECTION;
+   MoveRowHdr(m_cr_hdr2, y);
+   m_cr_hdr2.Show();
+   y += PANEL_GAP_Y + 2;
+
+   MoveRowLB(m_cr_lPTP, m_cr_bPTP, y);
+   m_cr_lPTP.Show(); m_cr_bPTP.Show();
+   y += PANEL_GAP_Y + 2;
+
+   MoveRowLI(m_cr_lTP1p, m_cr_iTP1p, y);
+   m_cr_lTP1p.Show(); m_cr_iTP1p.Show();
+   y += PANEL_GAP_Y;
+
+   MoveRowLI(m_cr_lTP1d, m_cr_iTP1d, y);
+   m_cr_lTP1d.Show(); m_cr_iTP1d.Show();
+   y += PANEL_GAP_Y;
+
+   MoveRowLI(m_cr_lTP2p, m_cr_iTP2p, y);
+   m_cr_lTP2p.Show(); m_cr_iTP2p.Show();
+   y += PANEL_GAP_Y;
+
+   MoveRowLI(m_cr_lTP2d, m_cr_iTP2d, y);
+   m_cr_lTP2d.Show(); m_cr_iTP2d.Show();
+
+   ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
 //| ShowCfgPage — alterna sub-página ativa do CONFIG                   |
 //+------------------------------------------------------------------+
 void CEPBotPanel::ShowCfgPage(ENUM_CONFIG_PAGE page)
@@ -480,47 +651,29 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
         {
          if(vis)
            {
-            m_cr_hdr1.Show(); m_cr_lLot.Show(); m_cr_iLot.Show();
-            m_cr_lSLT.Show(); m_cr_bSLT.Show();
-            m_cr_lSL.Show(); m_cr_iSL.Show();
-            m_cr_lTPT.Show(); m_cr_bTPT.Show();
-            if(m_cfg_hasTP) { m_cr_lTP.Show(); m_cr_iTP.Show(); }
-            else            { m_cr_lTP.Hide(); m_cr_iTP.Hide(); }
-            if(m_cfg_hasTrailing) { m_cr_lTrlSt.Show(); m_cr_iTrlSt.Show();
-                                    m_cr_lTrlSp.Show(); m_cr_iTrlSp.Show(); }
-            if(m_cfg_hasBE) { m_cr_lBEAct.Show(); m_cr_iBEAct.Show();
-                              m_cr_lBEOff.Show(); m_cr_iBEOff.Show(); }
-            m_cr_hdr2.Show(); m_cr_lPTP.Show(); m_cr_bPTP.Show();
-            m_cr_lTP1p.Show(); m_cr_iTP1p.Show(); m_cr_lTP1d.Show(); m_cr_iTP1d.Show();
-            m_cr_lTP2p.Show(); m_cr_iTP2p.Show(); m_cr_lTP2d.Show(); m_cr_iTP2d.Show();
-            m_cr_hdr3.Show(); m_cr_lCSL.Show(); m_cr_bCSL.Show();
-            if(m_cfg_hasATR)    { m_cr_lATRp.Show(); m_cr_iATRp.Show(); }
-            else                { m_cr_lATRp.Hide(); m_cr_iATRp.Hide(); }
-            if(m_cfg_hasRange)  { m_cr_lRngP.Show(); m_cr_iRngP.Show(); }
-            else                { m_cr_lRngP.Hide(); m_cr_iRngP.Hide(); }
-            if(m_cfg_hasTP)     { m_cr_lCTP.Show(); m_cr_bCTP.Show(); }
-            else                { m_cr_lCTP.Hide(); m_cr_bCTP.Hide(); }
-            if(m_cfg_hasTrailing) { m_cr_lCTrl.Show(); m_cr_bCTrl.Show(); }
+            // LayoutRisco() cuida de show/hide + reposicionar
+            LayoutRisco();
            }
          else
            {
+            // Esconder TODOS controles RISCO (criados incondicionalmente)
             m_cr_hdr1.Hide(); m_cr_lLot.Hide(); m_cr_iLot.Hide();
             m_cr_lSLT.Hide(); m_cr_bSLT.Hide();
             m_cr_lSL.Hide(); m_cr_iSL.Hide();
+            m_cr_lATRp.Hide(); m_cr_iATRp.Hide();
+            m_cr_lRngP.Hide(); m_cr_iRngP.Hide();
+            m_cr_lCSL.Hide(); m_cr_bCSL.Hide();
             m_cr_lTPT.Hide(); m_cr_bTPT.Hide();
             m_cr_lTP.Hide(); m_cr_iTP.Hide();
-            if(m_cfg_hasTrailing) { m_cr_lTrlSt.Hide(); m_cr_iTrlSt.Hide();
-                                    m_cr_lTrlSp.Hide(); m_cr_iTrlSp.Hide(); }
-            if(m_cfg_hasBE) { m_cr_lBEAct.Hide(); m_cr_iBEAct.Hide();
-                              m_cr_lBEOff.Hide(); m_cr_iBEOff.Hide(); }
+            m_cr_lCTP.Hide(); m_cr_bCTP.Hide();
+            m_cr_lTrlSt.Hide(); m_cr_iTrlSt.Hide();
+            m_cr_lTrlSp.Hide(); m_cr_iTrlSp.Hide();
+            m_cr_lBEAct.Hide(); m_cr_iBEAct.Hide();
+            m_cr_lBEOff.Hide(); m_cr_iBEOff.Hide();
+            m_cr_lCTrl.Hide(); m_cr_bCTrl.Hide();
             m_cr_hdr2.Hide(); m_cr_lPTP.Hide(); m_cr_bPTP.Hide();
             m_cr_lTP1p.Hide(); m_cr_iTP1p.Hide(); m_cr_lTP1d.Hide(); m_cr_iTP1d.Hide();
             m_cr_lTP2p.Hide(); m_cr_iTP2p.Hide(); m_cr_lTP2d.Hide(); m_cr_iTP2d.Hide();
-            m_cr_hdr3.Hide(); m_cr_lCSL.Hide(); m_cr_bCSL.Hide();
-            m_cr_lATRp.Hide(); m_cr_iATRp.Hide();
-            m_cr_lRngP.Hide(); m_cr_iRngP.Hide();
-            m_cr_lCTP.Hide(); m_cr_bCTP.Hide();
-            if(m_cfg_hasTrailing) { m_cr_lCTrl.Hide(); m_cr_bCTrl.Hide(); }
            }
          break;
         }
@@ -664,17 +817,12 @@ void CEPBotPanel::OnClickSLType(void)
    else
       m_cr_iSL.Text(DoubleToString(inp_RangeMultiplier, 1));
 
-// Recalcular flags dinâmicos e atualizar visibilidade
+// Recalcular flags e re-layout
    m_cfg_hasATR   = (m_cur_slType == SL_ATR || m_cur_tpType == TP_ATR ||
                      inp_TrailingType == TRAILING_ATR || inp_BEType == BE_ATR);
    m_cfg_hasRange = (m_cur_slType == SL_RANGE);
 
-   if(m_cfg_hasATR) { m_cr_lATRp.Show(); m_cr_iATRp.Show(); }
-   else             { m_cr_lATRp.Hide(); m_cr_iATRp.Hide(); }
-   if(m_cfg_hasRange) { m_cr_lRngP.Show(); m_cr_iRngP.Show(); }
-   else               { m_cr_lRngP.Hide(); m_cr_iRngP.Hide(); }
-
-   ChartRedraw();
+   LayoutRisco();
   }
 
 //+------------------------------------------------------------------+
@@ -699,7 +847,7 @@ void CEPBotPanel::OnClickTPType(void)
    m_cfg_hasATR = (m_cur_slType == SL_ATR || m_cur_tpType == TP_ATR ||
                    inp_TrailingType == TRAILING_ATR || inp_BEType == BE_ATR);
 
-// TP value field
+// TP value + label
    if(m_cfg_hasTP)
      {
       string tpLabel = (m_cur_tpType == TP_FIXED) ? "TP (Fixo pts):" : "TP (ATR x):";
@@ -708,20 +856,10 @@ void CEPBotPanel::OnClickTPType(void)
          m_cr_iTP.Text(IntegerToString(inp_FixedTP));
       else
          m_cr_iTP.Text(DoubleToString(inp_TP_ATRMultiplier, 1));
-      m_cr_lTP.Show(); m_cr_iTP.Show();
-      m_cr_lCTP.Show(); m_cr_bCTP.Show();
-     }
-   else
-     {
-      m_cr_lTP.Hide(); m_cr_iTP.Hide();
-      m_cr_lCTP.Hide(); m_cr_bCTP.Hide();
      }
 
-// ATR Period visibility
-   if(m_cfg_hasATR) { m_cr_lATRp.Show(); m_cr_iATRp.Show(); }
-   else             { m_cr_lATRp.Hide(); m_cr_iATRp.Hide(); }
-
-   ChartRedraw();
+// Re-layout (move + show/hide)
+   LayoutRisco();
   }
 
 //+------------------------------------------------------------------+
@@ -765,7 +903,6 @@ void CEPBotPanel::ApplyConfig(void)
          double mult = StringToDouble(m_cr_iSL.Text());
          if(mult > 0) m_riskManager.SetSLATRMultiplier(mult); else errors++;
         }
-      // SL_RANGE: o valor é o multiplicador de range
       else if(m_cur_slType == SL_RANGE)
         {
          double mult = StringToDouble(m_cr_iSL.Text());
@@ -846,14 +983,14 @@ void CEPBotPanel::ApplyConfig(void)
       int    tp2d = (int)StringToInteger(m_cr_iTP2d.Text());
       m_riskManager.SetPartialTP2((tp2p > 0 && tp2d > 0), tp2p, tp2d);
 
-      // ATR Period (sempre aplicar se visível)
+      // ATR Period
       if(m_cfg_hasATR)
         {
          int atrP = (int)StringToInteger(m_cr_iATRp.Text());
          if(atrP >= 1) m_riskManager.SetATRPeriod(atrP); else errors++;
         }
 
-      // Range Period (sempre aplicar se visível)
+      // Range Period
       if(m_cfg_hasRange)
         {
          int rngP = (int)StringToInteger(m_cr_iRngP.Text());
