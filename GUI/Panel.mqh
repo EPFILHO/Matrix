@@ -669,15 +669,12 @@ bool CEPBotPanel::CreateTabButtons(void)
 bool CEPBotPanel::OnEvent(const int id, const long &lparam,
                            const double &dparam, const string &sparam)
   {
-// CAppDialog PRIMEIRO — roteia CHARTEVENT_OBJECT_CLICK para CButtons,
-// que geram ON_CLICK como eventos separados
-   bool result = CAppDialog::OnEvent(id, lparam, dparam, sparam);
-
-   if(result)
-      ReapplyTabVisibility();
-
-// ON_CLICK chega DEPOIS que CAppDialog processou o click original
-   if(id == (CHARTEVENT_CUSTOM + ON_CLICK))
+// ══════════════════════════════════════════════════════════════════
+// ON_CLICK: interceptar NOSSOS botões ANTES de CAppDialog
+// (impede CButton::OnClickButton() de toggle Pressed e interferir
+//  com nossas mudanças visuais — root cause dos cliques falhando)
+// ══════════════════════════════════════════════════════════════════
+   if(id == CHARTEVENT_CUSTOM + ON_CLICK)
      {
       // Abas principais
       if(lparam == m_btnTab0.Id()) { OnClickTab0(); return true; }
@@ -716,7 +713,18 @@ bool CEPBotPanel::OnEvent(const int id, const long &lparam,
       // CONFIG: OUTROS toggles
       if(lparam == m_co_bConfl.Id())     { OnClickConflict();  return true; }
       if(lparam == m_co_bDbg.Id())       { OnClickDebug();     return true; }
+
+      // ON_CLICK não é nosso → fall through para CAppDialog (close, minmax, etc.)
      }
+
+// ══════════════════════════════════════════════════════════════════
+// CAppDialog: processa CHARTEVENT_OBJECT_CLICK (gera ON_CLICK),
+// minimize/maximize, close, drag, e ON_CLICK de controles built-in
+// ══════════════════════════════════════════════════════════════════
+   bool result = CAppDialog::OnEvent(id, lparam, dparam, sparam);
+
+   if(result)
+      ReapplyTabVisibility();
 
    return result;
   }
@@ -890,6 +898,9 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
 //+------------------------------------------------------------------+
 void CEPBotPanel::UpdateTabStyles(void)
   {
+   m_btnTab0.Pressed(false); m_btnTab1.Pressed(false); m_btnTab2.Pressed(false);
+   m_btnTab3.Pressed(false); m_btnTab4.Pressed(false);
+
    m_btnTab0.ColorBackground((m_activeTab == TAB_STATUS)      ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
    m_btnTab1.ColorBackground((m_activeTab == TAB_RESULTADOS)  ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
    m_btnTab2.ColorBackground((m_activeTab == TAB_ESTRATEGIAS) ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);

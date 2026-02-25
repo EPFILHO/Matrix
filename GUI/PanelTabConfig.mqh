@@ -144,6 +144,7 @@ void CEPBotPanel::SetRadioSelection(CButton &btns[], int count, int selected)
   {
    for(int i = 0; i < count; i++)
      {
+      btns[i].Pressed(false);   // Reset MT5 native OBJPROP_STATE toggle
       if(i == selected)
         {
          btns[i].ColorBackground(CLR_RADIO_ACTIVE);
@@ -825,6 +826,9 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
 //+------------------------------------------------------------------+
 void CEPBotPanel::UpdateCfgBtnStyles(void)
   {
+   m_cfg_btnRisco.Pressed(false);  m_cfg_btnRisco2.Pressed(false);
+   m_cfg_btnBloq.Pressed(false);   m_cfg_btnOutros.Pressed(false);
+
    m_cfg_btnRisco.ColorBackground((m_cfgPage == CFG_RISCO)      ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
    m_cfg_btnRisco2.ColorBackground((m_cfgPage == CFG_RISCO2)    ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
    m_cfg_btnBloq.ColorBackground((m_cfgPage == CFG_BLOQUEIOS)   ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
@@ -857,6 +861,7 @@ void CEPBotPanel::OnClickDirection(int selected)
 void CEPBotPanel::OnClickConflict(void)
   {
    m_cur_conflict = (m_cur_conflict == CONFLICT_PRIORITY) ? CONFLICT_CANCEL : CONFLICT_PRIORITY;
+   m_co_bConfl.Pressed(false);
    m_co_bConfl.Text((m_cur_conflict == CONFLICT_PRIORITY) ? "PRIORIDADE" : "CANCELAR");
    ChartRedraw();
   }
@@ -864,6 +869,7 @@ void CEPBotPanel::OnClickConflict(void)
 void CEPBotPanel::OnClickDebug(void)
   {
    m_cur_debug = !m_cur_debug;
+   m_co_bDbg.Pressed(false);
    m_co_bDbg.Text(m_cur_debug ? "ON" : "OFF");
    m_co_bDbg.ColorBackground(m_cur_debug ? C'30,120,70' : C'120,50,50');
    ChartRedraw();
@@ -876,6 +882,7 @@ void CEPBotPanel::OnClickPartialTP(void)
       return;
 
    m_cur_partialTP = !m_cur_partialTP;
+   m_c2_bPTP.Pressed(false);
    m_c2_bPTP.Text(m_cur_partialTP ? "ATIVO" : "DESAB.");
    m_c2_bPTP.ColorBackground(m_cur_partialTP ? C'30,120,70' : C'120,50,50');
    RefreshRisco2State();
@@ -889,6 +896,7 @@ void CEPBotPanel::OnClickPartialTP(void)
 void CEPBotPanel::OnClickTrailToggle(void)
   {
    m_cur_trailOn = !m_cur_trailOn;
+   m_c2_bTrlAct.Pressed(false);
    m_c2_bTrlAct.Text(m_cur_trailOn ? "ON" : "OFF");
    m_c2_bTrlAct.ColorBackground(m_cur_trailOn ? C'30,120,70' : C'120,50,50');
    RefreshRisco2State();
@@ -900,6 +908,7 @@ void CEPBotPanel::OnClickTrailToggle(void)
 void CEPBotPanel::OnClickBEToggle(void)
   {
    m_cur_beOn = !m_cur_beOn;
+   m_c2_bBEAct.Pressed(false);
    m_c2_bBEAct.Text(m_cur_beOn ? "ON" : "OFF");
    m_c2_bBEAct.ColorBackground(m_cur_beOn ? C'30,120,70' : C'120,50,50');
    RefreshRisco2State();
@@ -978,6 +987,7 @@ void CEPBotPanel::OnClickTPType(int selected)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickApply(void)
   {
+   m_cfg_btnApply.Pressed(false);
    ApplyConfig();
   }
 
@@ -1203,6 +1213,7 @@ void CEPBotPanel::ApplyConfig(void)
 void CEPBotPanel::OnClickCompSL(void)
   {
    m_cur_compSL = !m_cur_compSL;
+   m_cr_bCSL.Pressed(false);
    m_cr_bCSL.Text(m_cur_compSL ? "ON" : "OFF");
    m_cr_bCSL.ColorBackground(m_cur_compSL ? C'30,120,70' : C'120,50,50');
    ChartRedraw();
@@ -1213,6 +1224,7 @@ void CEPBotPanel::OnClickCompTP(void)
 // Bloqueado se TP = NENHUM
    if(!m_cfg_hasTP) return;
    m_cur_compTP = !m_cur_compTP;
+   m_cr_bCTP.Pressed(false);
    m_cr_bCTP.Text(m_cur_compTP ? "ON" : "OFF");
    m_cr_bCTP.ColorBackground(m_cur_compTP ? C'30,120,70' : C'120,50,50');
    ChartRedraw();
@@ -1223,6 +1235,7 @@ void CEPBotPanel::OnClickCompTrail(void)
 // Bloqueado se Trailing desligado
    if(!m_cur_trailOn) return;
    m_cur_compTrail = !m_cur_compTrail;
+   m_c2_bCTrl.Pressed(false);
    m_c2_bCTrl.Text(m_cur_compTrail ? "ON" : "OFF");
    m_c2_bCTrl.ColorBackground(m_cur_compTrail ? C'30,120,70' : C'120,50,50');
    ChartRedraw();
