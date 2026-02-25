@@ -493,6 +493,10 @@ public:
 
    virtual bool      OnEvent(const int id, const long &lparam,
                              const double &dparam, const string &sparam);
+
+public:
+   virtual void      ChartEvent(const int id, const long &lparam,
+                                const double &dparam, const string &sparam);
   };
 
 //+------------------------------------------------------------------+
@@ -664,59 +668,73 @@ bool CEPBotPanel::CreateTabButtons(void)
   }
 
 //+------------------------------------------------------------------+
-//| OnEvent — CHARTEVENT_OBJECT_CLICK direto (sparam = nome do obj)   |
+//| ChartEvent — intercepta CHARTEVENT_OBJECT_CLICK antes de tudo     |
+//| (nivel mais alto: recebe o evento RAW do MT5, antes de CAppDialog)|
 //+------------------------------------------------------------------+
-bool CEPBotPanel::OnEvent(const int id, const long &lparam,
-                           const double &dparam, const string &sparam)
+void CEPBotPanel::ChartEvent(const int id, const long &lparam,
+                              const double &dparam, const string &sparam)
   {
 // ══════════════════════════════════════════════════════════════════
-// CHARTEVENT_OBJECT_CLICK: interceptar pelo nome do objeto (sparam)
-// — mais confiável que ON_CLICK, sem depender de routing do CAppDialog
+// CHARTEVENT_OBJECT_CLICK: interceptar pelo nome (sparam)
+// CAppDialog::OnEvent NÃO recebe este evento — ele é processado
+// internamente por CAppDialog::ChartEvent. Por isso usamos este
+// override para capturar nossos botões ANTES do CAppDialog.
 // ══════════════════════════════════════════════════════════════════
    if(id == CHARTEVENT_OBJECT_CLICK)
      {
       // Abas principais
-      if(sparam == m_btnTab0.Name()) { m_btnTab0.Pressed(false); OnClickTab0(); return true; }
-      if(sparam == m_btnTab1.Name()) { m_btnTab1.Pressed(false); OnClickTab1(); return true; }
-      if(sparam == m_btnTab2.Name()) { m_btnTab2.Pressed(false); OnClickTab2(); return true; }
-      if(sparam == m_btnTab3.Name()) { m_btnTab3.Pressed(false); OnClickTab3(); return true; }
-      if(sparam == m_btnTab4.Name()) { m_btnTab4.Pressed(false); OnClickTab4(); return true; }
+      if(sparam == m_btnTab0.Name()) { m_btnTab0.Pressed(false); OnClickTab0(); ChartRedraw(); return; }
+      if(sparam == m_btnTab1.Name()) { m_btnTab1.Pressed(false); OnClickTab1(); ChartRedraw(); return; }
+      if(sparam == m_btnTab2.Name()) { m_btnTab2.Pressed(false); OnClickTab2(); ChartRedraw(); return; }
+      if(sparam == m_btnTab3.Name()) { m_btnTab3.Pressed(false); OnClickTab3(); ChartRedraw(); return; }
+      if(sparam == m_btnTab4.Name()) { m_btnTab4.Pressed(false); OnClickTab4(); ChartRedraw(); return; }
 
       // CONFIG: sub-páginas
-      if(sparam == m_cfg_btnRisco.Name())  { m_cfg_btnRisco.Pressed(false);  OnClickCfgRisco();  return true; }
-      if(sparam == m_cfg_btnRisco2.Name()) { m_cfg_btnRisco2.Pressed(false); OnClickCfgRisco2(); return true; }
-      if(sparam == m_cfg_btnBloq.Name())   { m_cfg_btnBloq.Pressed(false);   OnClickCfgBloq();   return true; }
-      if(sparam == m_cfg_btnOutros.Name()) { m_cfg_btnOutros.Pressed(false); OnClickCfgOutros(); return true; }
+      if(sparam == m_cfg_btnRisco.Name())  { m_cfg_btnRisco.Pressed(false);  OnClickCfgRisco();  ChartRedraw(); return; }
+      if(sparam == m_cfg_btnRisco2.Name()) { m_cfg_btnRisco2.Pressed(false); OnClickCfgRisco2(); ChartRedraw(); return; }
+      if(sparam == m_cfg_btnBloq.Name())   { m_cfg_btnBloq.Pressed(false);   OnClickCfgBloq();   ChartRedraw(); return; }
+      if(sparam == m_cfg_btnOutros.Name()) { m_cfg_btnOutros.Pressed(false); OnClickCfgOutros(); ChartRedraw(); return; }
 
       // CONFIG: APLICAR
-      if(sparam == m_cfg_btnApply.Name())  { m_cfg_btnApply.Pressed(false); OnClickApply(); return true; }
+      if(sparam == m_cfg_btnApply.Name())  { m_cfg_btnApply.Pressed(false); OnClickApply(); ChartRedraw(); return; }
 
       // CONFIG: radio groups (SL Type, TP Type, Direction)
       for(int i = 0; i < 3; i++)
         {
-         if(sparam == m_cr_bSLT[i].Name()) { OnClickSLType(i);    return true; }
-         if(sparam == m_cr_bTPT[i].Name()) { OnClickTPType(i);    return true; }
-         if(sparam == m_cb_bDir[i].Name()) { OnClickDirection(i);  return true; }
+         if(sparam == m_cr_bSLT[i].Name()) { OnClickSLType(i);    ChartRedraw(); return; }
+         if(sparam == m_cr_bTPT[i].Name()) { OnClickTPType(i);    ChartRedraw(); return; }
+         if(sparam == m_cb_bDir[i].Name()) { OnClickDirection(i);  ChartRedraw(); return; }
         }
 
       // CONFIG: RISCO toggles
-      if(sparam == m_cr_bCSL.Name()) { m_cr_bCSL.Pressed(false); OnClickCompSL();     return true; }
-      if(sparam == m_cr_bCTP.Name()) { m_cr_bCTP.Pressed(false); OnClickCompTP();     return true; }
+      if(sparam == m_cr_bCSL.Name()) { OnClickCompSL();  ChartRedraw(); return; }
+      if(sparam == m_cr_bCTP.Name()) { OnClickCompTP();  ChartRedraw(); return; }
 
       // CONFIG: RISCO 2 toggles
-      if(sparam == m_c2_bTrlAct.Name()) { m_c2_bTrlAct.Pressed(false); OnClickTrailToggle(); return true; }
-      if(sparam == m_c2_bBEAct.Name())  { m_c2_bBEAct.Pressed(false);  OnClickBEToggle();    return true; }
-      if(sparam == m_c2_bPTP.Name())    { m_c2_bPTP.Pressed(false);    OnClickPartialTP();   return true; }
-      if(sparam == m_c2_bCTrl.Name())   { m_c2_bCTrl.Pressed(false);   OnClickCompTrail();   return true; }
+      if(sparam == m_c2_bTrlAct.Name()) { OnClickTrailToggle(); ChartRedraw(); return; }
+      if(sparam == m_c2_bBEAct.Name())  { OnClickBEToggle();    ChartRedraw(); return; }
+      if(sparam == m_c2_bPTP.Name())    { OnClickPartialTP();   ChartRedraw(); return; }
+      if(sparam == m_c2_bCTrl.Name())   { OnClickCompTrail();   ChartRedraw(); return; }
 
       // CONFIG: OUTROS toggles
-      if(sparam == m_co_bConfl.Name()) { m_co_bConfl.Pressed(false); OnClickConflict(); return true; }
-      if(sparam == m_co_bDbg.Name())   { m_co_bDbg.Pressed(false);   OnClickDebug();    return true; }
+      if(sparam == m_co_bConfl.Name()) { OnClickConflict(); ChartRedraw(); return; }
+      if(sparam == m_co_bDbg.Name())   { OnClickDebug();    ChartRedraw(); return; }
 
-      // Não é nosso → CAppDialog processa (close, minimize, drag, etc.)
+      // Não é nosso → cai pro CAppDialog abaixo
      }
 
-// CAppDialog: processa tudo que não interceptamos acima
+// CAppDialog: processa tudo que não interceptamos (close, minimize,
+// drag, CEdit focus, etc.)
+   CAppDialog::ChartEvent(id, lparam, dparam, sparam);
+  }
+
+//+------------------------------------------------------------------+
+//| OnEvent — chamado pelo CAppDialog internamente                     |
+//| (CAppDialog::ChartEvent chama OnEvent para eventos custom)        |
+//+------------------------------------------------------------------+
+bool CEPBotPanel::OnEvent(const int id, const long &lparam,
+                           const double &dparam, const string &sparam)
+  {
    bool result = CAppDialog::OnEvent(id, lparam, dparam, sparam);
 
    if(result)
