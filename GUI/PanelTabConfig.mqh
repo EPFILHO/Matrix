@@ -944,13 +944,10 @@ void CEPBotPanel::OnClickSLType(int selected)
 
 //+------------------------------------------------------------------+
 //| OnClickTPType — radio: 0=NENHUM, 1=FIXO, 2=ATR                    |
-//| (bloqueia ATR se Partial TP ativo — conflito conceitual)           |
+//| (se ATR selecionado, Partial TP é forçado OFF via RefreshRisco2)   |
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickTPType(int selected)
   {
-// Se Partial TP ativo, bloquear seleção de ATR (index 2)
-   if(selected == 2 && m_cur_partialTP)
-      return;
 
    m_cur_tpType = IndexToTPType(selected);
    SetRadioSelection(m_cr_bTPT, 3, selected);
