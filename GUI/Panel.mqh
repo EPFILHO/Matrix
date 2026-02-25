@@ -2,15 +2,22 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.13 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.14 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.13"
+#property version   "1.14"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.14 (2026-02-25):
+// + REVERT Move(): campos fixos + enable/disable visual (cinza/read-only)
+// + RefreshRiscoState() — habilita/desabilita campos por tipo SL/TP
+// + SetEditEnabled/SetButtonEnabled helpers visuais
+// + Conflito TP ATR vs Partial TP: bloqueio mútuo
+// + Fix minimize/maximize encavalamento
+//
 // v1.13 (2026-02-24):
 // + LayoutRisco() dinâmico com Move() — elimina gaps ao show/hide
 // + Campos ATR Period, Range Period, Comp Spread agora inline com SL/TP
@@ -398,11 +405,10 @@ private:
    void              UpdateCfgBtnStyles(void);
    void              ApplyConfig(void);
 
-   // Layout dinâmico RISCO (reposiciona controles com Move)
-   void              LayoutRisco(void);
-   void              MoveRowLI(CLabel &lbl, CEdit &inp, int abs_y);
-   void              MoveRowLB(CLabel &lbl, CButton &btn, int abs_y);
-   void              MoveRowHdr(CLabel &lbl, int abs_y);
+   // Estado visual RISCO (enable/disable campos por tipo SL/TP)
+   void              RefreshRiscoState(void);
+   void              SetEditEnabled(CLabel &lbl, CEdit &inp, bool enable);
+   void              SetButtonEnabled(CLabel &lbl, CButton &btn, bool enable);
 
    // Handlers de clique
    void              OnClickTab0(void);
