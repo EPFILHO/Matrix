@@ -2,15 +2,20 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.14 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.15 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.14"
+#property version   "1.15"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.15 (2026-02-25):
+// + FIX CLICKS: OnEvent agora chama CAppDialog::OnEvent() PRIMEIRO
+//   (CAppDialog precisa processar CHARTEVENT_OBJECT_CLICK para gerar ON_CLICK)
+//   Corrige SL Type, Direction, e demais botões que não respondiam
+//
 // v1.14 (2026-02-25):
 // + REVERT Move(): campos fixos + enable/disable visual (cinza/read-only)
 // + RefreshRiscoState() — habilita/desabilita campos por tipo SL/TP
@@ -620,11 +625,19 @@ bool CEPBotPanel::CreateTabButtons(void)
   }
 
 //+------------------------------------------------------------------+
-//| OnEvent — manual (substitui EVENT_MAP para fix de encavalamento)  |
+//| OnEvent — CAppDialog processa PRIMEIRO, depois checamos ON_CLICK  |
 //+------------------------------------------------------------------+
 bool CEPBotPanel::OnEvent(const int id, const long &lparam,
                            const double &dparam, const string &sparam)
   {
+// CAppDialog PRIMEIRO — roteia CHARTEVENT_OBJECT_CLICK para CButtons,
+// que geram ON_CLICK como eventos separados
+   bool result = CAppDialog::OnEvent(id, lparam, dparam, sparam);
+
+   if(result)
+      ReapplyTabVisibility();
+
+// ON_CLICK chega DEPOIS que CAppDialog processou o click original
    if(id == (CHARTEVENT_CUSTOM + ON_CLICK))
      {
       // Abas principais
@@ -653,11 +666,6 @@ bool CEPBotPanel::OnEvent(const int id, const long &lparam,
       if(lparam == m_cr_bCTP.Id())       { OnClickCompTP();    return true; }
       if(lparam == m_cr_bCTrl.Id())      { OnClickCompTrail(); return true; }
      }
-
-   bool result = CAppDialog::OnEvent(id, lparam, dparam, sparam);
-
-   if(result)
-      ReapplyTabVisibility();
 
    return result;
   }

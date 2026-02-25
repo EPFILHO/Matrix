@@ -2,13 +2,19 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.37 - Claude Parte 023 (Claude Code) |
+//|                     Versão 1.38 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.37"
+#property version   "1.38"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.38:                                                 |
+//| 🖥️ PANEL v1.15 — FIX CLICKS (Claude Code):                       |
+//|    - OnEvent: CAppDialog::OnEvent() agora processa PRIMEIRO       |
+//|      (gera ON_CLICK a partir de CHARTEVENT_OBJECT_CLICK)          |
+//|    - Fix: SL Type, Direction e demais botões agora respondem      |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.37:                                                 |
 //| 🖥️ PANEL v1.14 — POSIÇÕES FIXAS + ENABLE/DISABLE (Claude Code):  |
