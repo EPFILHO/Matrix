@@ -438,6 +438,8 @@ public:
    void              SetSLCompensateSpread(bool enable);
    void              SetTPCompensateSpread(bool enable);
    void              SetTrailingCompensateSpread(bool enable);
+   void              SetTrailingActivation(ENUM_TRAILING_ACTIVATION mode) { m_trailingActivation = mode; }
+   void              SetBEActivation(ENUM_BE_ACTIVATION mode)             { m_beActivation_mode = mode; }
 
    // ═══════════════════════════════════════════════════════════════
    // GETTERS DE CONFIGURAÇÃO (Working values)

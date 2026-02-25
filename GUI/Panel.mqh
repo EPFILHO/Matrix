@@ -2,15 +2,24 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.15 - Claude Parte 023 (Claude Code) |
+//|                     Versão 1.16 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.15"
+#property version   "1.16"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.16 (2026-02-25):
+// + RADIO GROUPS: Cycle buttons → CButton[] horizontais
+//   (SL Type, TP Type, Direcao agora com botoes individuais por opcao)
+// + CreateRadioGroup() — helper para criar grupo de N CButtons horizontal
+// + SetRadioSelection() — helper para destacar botao ativo/dimmed
+// + Sub-pagina RISCO 2: Trailing ON/OFF, BE ON/OFF, Partial TP
+//   (CFG_PAGE_COUNT 3→4, separacao de concerns)
+// + RefreshRisco2State() — enable/disable campos Trailing/BE/Partial
+//
 // v1.15 (2026-02-25):
 // + FIX CLICKS: OnEvent agora chama CAppDialog::OnEvent() PRIMEIRO
 //   (CAppDialog precisa processar CHARTEVENT_OBJECT_CLICK para gerar ON_CLICK)
@@ -156,6 +165,10 @@
 #define CLR_WARNING          C'200,140,0'
 #define CLR_NEUTRAL          C'100,100,100'
 #define CLR_HEADER           C'0,50,160'
+#define CLR_RADIO_ACTIVE     C'50,80,140'
+#define CLR_RADIO_INACTIVE   C'180,180,180'
+#define CLR_RADIO_TXT_ACT    clrWhite
+#define CLR_RADIO_TXT_INACT  C'80,80,80'
 
 // ═══════════════════════════════════════════════════════════════
 // PREFIXO DE OBJETOS (evita colisão)
@@ -178,10 +191,11 @@ enum ENUM_PANEL_TAB
 enum ENUM_CONFIG_PAGE
   {
    CFG_RISCO = 0,
-   CFG_BLOQUEIOS = 1,
-   CFG_OUTROS = 2
+   CFG_RISCO2 = 1,
+   CFG_BLOQUEIOS = 2,
+   CFG_OUTROS = 3
   };
-#define CFG_PAGE_COUNT 3
+#define CFG_PAGE_COUNT 4
 
 //+------------------------------------------------------------------+
 //| Classe principal do painel                                        |
@@ -306,36 +320,43 @@ private:
    // ════════════════════════════════════════
    // Sub-page buttons
    CButton  m_cfg_btnRisco;
+   CButton  m_cfg_btnRisco2;
    CButton  m_cfg_btnBloq;
    CButton  m_cfg_btnOutros;
 
-   // --- Risco sub-page ---
+   // --- Risco sub-page (simplificada — SL/TP/Spread) ---
    CLabel   m_cr_hdr1;
-   CLabel   m_cr_lLot;    CEdit   m_cr_iLot;
-   CLabel   m_cr_lSLT;    CButton m_cr_bSLT;    // SL Type cycle
-   CLabel   m_cr_lSL;     CEdit   m_cr_iSL;
-   CLabel   m_cr_lTPT;    CButton m_cr_bTPT;    // TP Type cycle
-   CLabel   m_cr_lTP;     CEdit   m_cr_iTP;
-   CLabel   m_cr_lTrlSt;  CEdit   m_cr_iTrlSt;
-   CLabel   m_cr_lTrlSp;  CEdit   m_cr_iTrlSp;
-   CLabel   m_cr_lBEAct;  CEdit   m_cr_iBEAct;
-   CLabel   m_cr_lBEOff;  CEdit   m_cr_iBEOff;
-   CLabel   m_cr_hdr2;
-   CLabel   m_cr_lPTP;    CButton m_cr_bPTP;
-   CLabel   m_cr_lTP1p;   CEdit   m_cr_iTP1p;
-   CLabel   m_cr_lTP1d;   CEdit   m_cr_iTP1d;
-   CLabel   m_cr_lTP2p;   CEdit   m_cr_iTP2p;
-   CLabel   m_cr_lTP2d;   CEdit   m_cr_iTP2d;
-   CLabel   m_cr_lATRp;   CEdit   m_cr_iATRp;
-   CLabel   m_cr_lRngP;   CEdit   m_cr_iRngP;
-   CLabel   m_cr_lCSL;    CButton m_cr_bCSL;
-   CLabel   m_cr_lCTP;    CButton m_cr_bCTP;
-   CLabel   m_cr_lCTrl;   CButton m_cr_bCTrl;
+   CLabel   m_cr_lLot;    CEdit    m_cr_iLot;
+   CLabel   m_cr_lSLT;    CButton  m_cr_bSLT[3];  // Radio: FIXO | ATR | RANGE
+   CLabel   m_cr_lSL;     CEdit    m_cr_iSL;
+   CLabel   m_cr_lATRp;   CEdit    m_cr_iATRp;
+   CLabel   m_cr_lRngP;   CEdit    m_cr_iRngP;
+   CLabel   m_cr_lCSL;    CButton  m_cr_bCSL;
+   CLabel   m_cr_lTPT;    CButton  m_cr_bTPT[3];  // Radio: NENHUM | FIXO | ATR
+   CLabel   m_cr_lTP;     CEdit    m_cr_iTP;
+   CLabel   m_cr_lCTP;    CButton  m_cr_bCTP;
+
+   // --- Risco 2 sub-page (Trailing/BE/Partial TP) ---
+   CLabel   m_c2_hdr1;
+   CLabel   m_c2_lTrlAct;  CButton m_c2_bTrlAct;  // Trailing ON/OFF
+   CLabel   m_c2_lTrlSt;   CEdit   m_c2_iTrlSt;
+   CLabel   m_c2_lTrlSp;   CEdit   m_c2_iTrlSp;
+   CLabel   m_c2_lCTrl;    CButton m_c2_bCTrl;     // Comp Spread Trail
+   CLabel   m_c2_hdr2;
+   CLabel   m_c2_lBEAct;   CButton m_c2_bBEAct;   // BE ON/OFF
+   CLabel   m_c2_lBEVal;   CEdit   m_c2_iBEVal;
+   CLabel   m_c2_lBEOff;   CEdit   m_c2_iBEOff;
+   CLabel   m_c2_hdr3;
+   CLabel   m_c2_lPTP;     CButton m_c2_bPTP;      // Partial TP toggle
+   CLabel   m_c2_lTP1p;    CEdit   m_c2_iTP1p;
+   CLabel   m_c2_lTP1d;    CEdit   m_c2_iTP1d;
+   CLabel   m_c2_lTP2p;    CEdit   m_c2_iTP2p;
+   CLabel   m_c2_lTP2d;    CEdit   m_c2_iTP2d;
 
    // --- Bloqueios sub-page ---
    CLabel   m_cb_hdr1;
    CLabel   m_cb_lSpr;    CEdit   m_cb_iSpr;
-   CLabel   m_cb_lDir;    CButton m_cb_bDir;
+   CLabel   m_cb_lDir;    CButton m_cb_bDir[3];   // Radio: AMBOS | BUY | SELL
    CLabel   m_cb_hdr2;
    CLabel   m_cb_lTrd;    CEdit   m_cb_iTrd;
    CLabel   m_cb_lLoss;   CEdit   m_cb_iLoss;
@@ -376,6 +397,8 @@ private:
    bool                     m_cur_compSL;
    bool                     m_cur_compTP;
    bool                     m_cur_compTrail;
+   bool                     m_cur_trailOn;
+   bool                     m_cur_beOn;
 
    // ── Helpers privados ──
    bool              CreateLV(CLabel &lbl, CLabel &val, string ln, string en, string lt, int y);
@@ -383,6 +406,17 @@ private:
    bool              CreateLB(CLabel &lbl, CButton &btn, string ln, string bn, string lt, int y);
    bool              CreateHdr(CLabel &lbl, string name, string text, int y);
    void              SetEV(CLabel &val, string value, color clr = CLR_VALUE);
+
+   // Radio group helpers
+   bool              CreateRadioGroup(CLabel &lbl, CButton &btns[],
+                                      string labelName, string btnPrefix,
+                                      string labelText,
+                                      const string &texts[], int count, int y);
+   void              SetRadioSelection(CButton &btns[], int count, int selected);
+   int               SLTypeToIndex(ENUM_SL_TYPE t);
+   ENUM_SL_TYPE      IndexToSLType(int i);
+   int               TPTypeToIndex(ENUM_TP_TYPE t);
+   ENUM_TP_TYPE      IndexToTPType(int i);
 
    bool              CreateTabButtons(void);
    bool              CreateTabStatus(void);
@@ -412,6 +446,7 @@ private:
 
    // Estado visual RISCO (enable/disable campos por tipo SL/TP)
    void              RefreshRiscoState(void);
+   void              RefreshRisco2State(void);
    void              SetEditEnabled(CLabel &lbl, CEdit &inp, bool enable);
    void              SetButtonEnabled(CLabel &lbl, CButton &btn, bool enable);
 
@@ -422,18 +457,21 @@ private:
    void              OnClickTab3(void);
    void              OnClickTab4(void);
    void              OnClickCfgRisco(void);
+   void              OnClickCfgRisco2(void);
    void              OnClickCfgBloq(void);
    void              OnClickCfgOutros(void);
    void              OnClickApply(void);
-   void              OnClickDirection(void);
+   void              OnClickDirection(int selected);
    void              OnClickConflict(void);
    void              OnClickDebug(void);
    void              OnClickPartialTP(void);
-   void              OnClickSLType(void);
-   void              OnClickTPType(void);
+   void              OnClickSLType(int selected);
+   void              OnClickTPType(int selected);
    void              OnClickCompSL(void);
    void              OnClickCompTP(void);
    void              OnClickCompTrail(void);
+   void              OnClickTrailToggle(void);
+   void              OnClickBEToggle(void);
 
 protected:
    virtual bool      CreateButtonClose(void) { return true; }
@@ -474,7 +512,8 @@ CEPBotPanel::CEPBotPanel(void)
      m_cur_direction(DIRECTION_BOTH), m_cur_conflict(CONFLICT_PRIORITY),
      m_cur_slType(SL_FIXED), m_cur_tpType(TP_NONE),
      m_cur_debug(false), m_cur_partialTP(false),
-     m_cur_compSL(false), m_cur_compTP(false), m_cur_compTrail(false)
+     m_cur_compSL(false), m_cur_compTP(false), m_cur_compTrail(false),
+     m_cur_trailOn(false), m_cur_beOn(false)
   {
   }
 
@@ -649,22 +688,34 @@ bool CEPBotPanel::OnEvent(const int id, const long &lparam,
 
       // CONFIG: sub-páginas
       if(lparam == m_cfg_btnRisco.Id())  { OnClickCfgRisco();  return true; }
+      if(lparam == m_cfg_btnRisco2.Id()) { OnClickCfgRisco2(); return true; }
       if(lparam == m_cfg_btnBloq.Id())   { OnClickCfgBloq();   return true; }
       if(lparam == m_cfg_btnOutros.Id()) { OnClickCfgOutros(); return true; }
 
       // CONFIG: APLICAR
       if(lparam == m_cfg_btnApply.Id())  { OnClickApply(); return true; }
 
-      // CONFIG: toggles/cycles
-      if(lparam == m_cb_bDir.Id())       { OnClickDirection(); return true; }
+      // CONFIG: radio groups (SL Type, TP Type, Direction)
+      for(int i = 0; i < 3; i++)
+        {
+         if(lparam == m_cr_bSLT[i].Id()) { OnClickSLType(i);    return true; }
+         if(lparam == m_cr_bTPT[i].Id()) { OnClickTPType(i);    return true; }
+         if(lparam == m_cb_bDir[i].Id()) { OnClickDirection(i);  return true; }
+        }
+
+      // CONFIG: RISCO toggles
+      if(lparam == m_cr_bCSL.Id())       { OnClickCompSL();     return true; }
+      if(lparam == m_cr_bCTP.Id())       { OnClickCompTP();     return true; }
+
+      // CONFIG: RISCO 2 toggles
+      if(lparam == m_c2_bTrlAct.Id())    { OnClickTrailToggle(); return true; }
+      if(lparam == m_c2_bBEAct.Id())     { OnClickBEToggle();    return true; }
+      if(lparam == m_c2_bPTP.Id())       { OnClickPartialTP();   return true; }
+      if(lparam == m_c2_bCTrl.Id())      { OnClickCompTrail();   return true; }
+
+      // CONFIG: OUTROS toggles
       if(lparam == m_co_bConfl.Id())     { OnClickConflict();  return true; }
       if(lparam == m_co_bDbg.Id())       { OnClickDebug();     return true; }
-      if(lparam == m_cr_bSLT.Id())       { OnClickSLType();    return true; }
-      if(lparam == m_cr_bTPT.Id())       { OnClickTPType();    return true; }
-      if(lparam == m_cr_bPTP.Id())       { OnClickPartialTP(); return true; }
-      if(lparam == m_cr_bCSL.Id())       { OnClickCompSL();    return true; }
-      if(lparam == m_cr_bCTP.Id())       { OnClickCompTP();    return true; }
-      if(lparam == m_cr_bCTrl.Id())      { OnClickCompTrail(); return true; }
      }
 
    return result;
@@ -813,16 +864,19 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
          if(vis)
            {
             // Sub-page buttons + apply + status
-            m_cfg_btnRisco.Show(); m_cfg_btnBloq.Show(); m_cfg_btnOutros.Show();
+            m_cfg_btnRisco.Show(); m_cfg_btnRisco2.Show();
+            m_cfg_btnBloq.Show(); m_cfg_btnOutros.Show();
             m_cfg_btnApply.Show(); m_cfg_status.Show();
             // Show active sub-page
             ShowCfgPage(m_cfgPage);
            }
          else
            {
-            m_cfg_btnRisco.Hide(); m_cfg_btnBloq.Hide(); m_cfg_btnOutros.Hide();
+            m_cfg_btnRisco.Hide(); m_cfg_btnRisco2.Hide();
+            m_cfg_btnBloq.Hide(); m_cfg_btnOutros.Hide();
             m_cfg_btnApply.Hide(); m_cfg_status.Hide();
             SetCfgPageVis(CFG_RISCO, false);
+            SetCfgPageVis(CFG_RISCO2, false);
             SetCfgPageVis(CFG_BLOQUEIOS, false);
             SetCfgPageVis(CFG_OUTROS, false);
            }

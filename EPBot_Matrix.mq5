@@ -2,16 +2,25 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.38 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.39 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.38"
+#property version   "1.39"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //+------------------------------------------------------------------+
+//| CHANGELOG v1.39:                                                 |
+//| PANEL v1.16 — RADIO BUTTONS + RISCO 2 (Claude Code):             |
+//|    - Cycle buttons -> CButton[] horizontais (SL Type, TP Type,    |
+//|      Direcao) — clique determinisico, sem ciclo                   |
+//|    - Sub-pagina RISCO 2: Trailing ON/OFF, BE ON/OFF, Partial TP   |
+//|    - SetTrailingActivation/SetBEActivation: hot-reload toggles    |
+//|    - RefreshRisco2State: enable/disable campos Trail/BE/Partial    |
+//|    - 4 sub-paginas CONFIG: RISCO | RISCO 2 | BLOQUEIOS | OUTROS   |
+//+------------------------------------------------------------------+
 //| CHANGELOG v1.38:                                                 |
-//| 🖥️ PANEL v1.15 — FIX CLICKS (Claude Code):                       |
+//| PANEL v1.15 — FIX CLICKS (Claude Code):                          |
 //|    - OnEvent: CAppDialog::OnEvent() agora processa PRIMEIRO       |
 //|      (gera ON_CLICK a partir de CHARTEVENT_OBJECT_CLICK)          |
 //|    - Fix: SL Type, Direction e demais botões agora respondem      |

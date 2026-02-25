@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.14 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.16 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -14,6 +14,14 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.16 (2026-02-25):
+// + RADIO GROUPS: Cycle buttons → CButton[] horizontais
+//   (SL Type, TP Type, Direcao com botoes individuais por opcao)
+// + CreateRadioGroup(), SetRadioSelection() — helpers reutilizaveis
+// + Sub-pagina RISCO 2: Trailing ON/OFF, BE ON/OFF, Partial TP
+//   (CFG_PAGE_COUNT 3→4, separacao de concerns)
+// + RefreshRisco2State() — enable/disable campos Trailing/BE/Partial
+//
 // v1.14 (2026-02-25):
 // + REVERT Move(): campos em posições FIXAS + enable/disable visual
 // + RefreshRiscoState() — habilita/desabilita campos por tipo SL/TP
@@ -93,6 +101,78 @@ bool CEPBotPanel::CreateLB(CLabel &lbl, CButton &btn,
   }
 
 //+------------------------------------------------------------------+
+//| Helper: CreateRadioGroup — Label + N CButtons horizontais          |
+//+------------------------------------------------------------------+
+bool CEPBotPanel::CreateRadioGroup(CLabel &lbl, CButton &btns[],
+                                    string labelName, string btnPrefix,
+                                    string labelText,
+                                    const string &texts[], int count, int y)
+  {
+   if(!lbl.Create(m_chart_id, PFX + labelName, m_subwin,
+                  COL_LABEL_X, y, COL_VALUE_X - 5, y + PANEL_GAP_Y))
+      return false;
+   lbl.Text(labelText);
+   lbl.Color(CLR_LABEL);
+   lbl.FontSize(8);
+   if(!Add(lbl))
+      return false;
+
+   int totalW = COL_VALUE_W;
+   int gap    = 2;
+   int btnW   = (totalW - (count - 1) * gap) / count;
+   int x0     = COL_VALUE_X;
+
+   for(int i = 0; i < count; i++)
+     {
+      int bx1 = x0 + i * (btnW + gap);
+      int bx2 = (i == count - 1) ? (COL_VALUE_X + COL_VALUE_W) : (bx1 + btnW);
+      if(!btns[i].Create(m_chart_id, PFX + btnPrefix + IntegerToString(i),
+                         m_subwin, bx1, y, bx2, y + PANEL_GAP_Y + 2))
+         return false;
+      btns[i].Text(texts[i]);
+      btns[i].FontSize(7);
+      if(!Add(btns[i]))
+         return false;
+     }
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| Helper: SetRadioSelection — destaca ativo, dim inativos            |
+//+------------------------------------------------------------------+
+void CEPBotPanel::SetRadioSelection(CButton &btns[], int count, int selected)
+  {
+   for(int i = 0; i < count; i++)
+     {
+      if(i == selected)
+        {
+         btns[i].ColorBackground(CLR_RADIO_ACTIVE);
+         btns[i].Color(CLR_RADIO_TXT_ACT);
+        }
+      else
+        {
+         btns[i].ColorBackground(CLR_RADIO_INACTIVE);
+         btns[i].Color(CLR_RADIO_TXT_INACT);
+        }
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| Mapping: enum <-> radio index                                      |
+//+------------------------------------------------------------------+
+int CEPBotPanel::SLTypeToIndex(ENUM_SL_TYPE t)
+  { return (t == SL_FIXED) ? 0 : (t == SL_ATR) ? 1 : 2; }
+
+ENUM_SL_TYPE CEPBotPanel::IndexToSLType(int i)
+  { return (i == 0) ? SL_FIXED : (i == 1) ? SL_ATR : SL_RANGE; }
+
+int CEPBotPanel::TPTypeToIndex(ENUM_TP_TYPE t)
+  { return (t == TP_NONE) ? 0 : (t == TP_FIXED) ? 1 : 2; }
+
+ENUM_TP_TYPE CEPBotPanel::IndexToTPType(int i)
+  { return (i == 0) ? TP_NONE : (i == 1) ? TP_FIXED : TP_ATR; }
+
+//+------------------------------------------------------------------+
 //| SetEditEnabled — habilita/desabilita visualmente label+edit        |
 //+------------------------------------------------------------------+
 void CEPBotPanel::SetEditEnabled(CLabel &lbl, CEdit &inp, bool enable)
@@ -147,7 +227,7 @@ bool CEPBotPanel::CreateTabConfig(void)
                            inp_TrailingType == TRAILING_ATR || inp_BEType == BE_ATR);
    m_cfg_hasRange      = (inp_SLType == SL_RANGE);
 
-// ── Botões de sub-página ──
+// ── Botões de sub-página (4 botões) ──
    int sw = (PANEL_WIDTH - 40) / CFG_PAGE_COUNT;
    int sy = CONTENT_TOP;
 
@@ -159,8 +239,16 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!Add(m_cfg_btnRisco))
       return false;
 
+   if(!m_cfg_btnRisco2.Create(m_chart_id, PFX + "cfg_bR2", m_subwin,
+                              5 + (sw + 2), sy, 5 + sw * 2 + 2, sy + TAB_BTN_H))
+      return false;
+   m_cfg_btnRisco2.Text("RISCO 2");
+   m_cfg_btnRisco2.FontSize(7);
+   if(!Add(m_cfg_btnRisco2))
+      return false;
+
    if(!m_cfg_btnBloq.Create(m_chart_id, PFX + "cfg_bB", m_subwin,
-                            5 + (sw + 2), sy, 5 + sw * 2 + 2, sy + TAB_BTN_H))
+                            5 + (sw + 2) * 2, sy, 5 + sw * 3 + 4, sy + TAB_BTN_H))
       return false;
    m_cfg_btnBloq.Text("BLOQUEIOS");
    m_cfg_btnBloq.FontSize(7);
@@ -168,7 +256,7 @@ bool CEPBotPanel::CreateTabConfig(void)
       return false;
 
    if(!m_cfg_btnOutros.Create(m_chart_id, PFX + "cfg_bO", m_subwin,
-                              5 + (sw + 2) * 2, sy, 5 + sw * 3 + 4, sy + TAB_BTN_H))
+                              5 + (sw + 2) * 3, sy, 5 + sw * 4 + 6, sy + TAB_BTN_H))
       return false;
    m_cfg_btnOutros.Text("OUTROS");
    m_cfg_btnOutros.FontSize(7);
@@ -176,8 +264,7 @@ bool CEPBotPanel::CreateTabConfig(void)
       return false;
 
 // ════════════════════════════════════════════════════════════
-// SUB-PÁGINA: RISCO  (todos controles criados incondicionalmente,
-//                      posições FIXAS — enable/disable via RefreshRiscoState)
+// SUB-PÁGINA: RISCO (simplificada — SL/TP/Spread)
 // ════════════════════════════════════════════════════════════
    int y = CFG_CONTENT_Y;
 
@@ -187,19 +274,23 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLI(m_cr_lLot, m_cr_iLot, "cr_lLt", "cr_iLt", "Lote:", y)) return false;
    y += PANEL_GAP_Y;
 
-// SL Type cycle button
-   if(!CreateLB(m_cr_lSLT, m_cr_bSLT, "cr_lST", "cr_bST", "Tipo SL:", y)) return false;
+// SL Type radio group
+   {
+    string sltTexts[] = {"FIXO", "ATR", "RANGE"};
+    if(!CreateRadioGroup(m_cr_lSLT, m_cr_bSLT, "cr_lST", "cr_bST", "Tipo SL:", sltTexts, 3, y))
+       return false;
+   }
    y += PANEL_GAP_Y + 2;
 
 // SL value (label muda conforme tipo)
    if(!CreateLI(m_cr_lSL, m_cr_iSL, "cr_lSL", "cr_iSL", "SL (Fixo pts):", y)) return false;
    y += PANEL_GAP_Y;
 
-// ATR Period (desabilitado quando nenhuma feature usa ATR)
+// ATR Period
    if(!CreateLI(m_cr_lATRp, m_cr_iATRp, "cr_lAP", "cr_iAP", "ATR Period:", y)) return false;
    y += PANEL_GAP_Y;
 
-// Range Period (desabilitado quando SL != RANGE)
+// Range Period
    if(!CreateLI(m_cr_lRngP, m_cr_iRngP, "cr_lRP", "cr_iRP", "Range Period:", y)) return false;
    y += PANEL_GAP_Y;
 
@@ -207,49 +298,69 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLB(m_cr_lCSL, m_cr_bCSL, "cr_lCS", "cr_bCS", "Comp. Spread SL:", y)) return false;
    y += PANEL_GAP_Y + 2;
 
-// TP Type cycle button
-   if(!CreateLB(m_cr_lTPT, m_cr_bTPT, "cr_lTT", "cr_bTT", "Tipo TP:", y)) return false;
+// TP Type radio group
+   {
+    string tptTexts[] = {"NENHUM", "FIXO", "ATR"};
+    if(!CreateRadioGroup(m_cr_lTPT, m_cr_bTPT, "cr_lTT", "cr_bTT", "Tipo TP:", tptTexts, 3, y))
+       return false;
+   }
    y += PANEL_GAP_Y + 2;
 
-// TP value (desabilitado quando TP = NENHUM)
+// TP value
    if(!CreateLI(m_cr_lTP, m_cr_iTP, "cr_lTP", "cr_iTP", "TP (Fixo pts):", y)) return false;
    y += PANEL_GAP_Y;
 
-// Comp Spread TP (desabilitado quando TP = NENHUM)
+// Comp Spread TP
    if(!CreateLB(m_cr_lCTP, m_cr_bCTP, "cr_lCT", "cr_bCT", "Comp. Spread TP:", y)) return false;
    y += PANEL_GAP_Y + 2;
 
-// Trailing (criado sempre — desabilitado visualmente se feature off)
-   string trSuffix = (inp_TrailingType == TRAILING_FIXED) ? " (pts):" : " (ATR x):";
-   if(!CreateLI(m_cr_lTrlSt, m_cr_iTrlSt, "cr_lTS", "cr_iTS", "Trail Start" + trSuffix, y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLI(m_cr_lTrlSp, m_cr_iTrlSp, "cr_lTP2", "cr_iTP2", "Trail Step" + trSuffix, y)) return false;
-   y += PANEL_GAP_Y;
+// ════════════════════════════════════════════════════════════
+// SUB-PÁGINA: RISCO 2 (Trailing/BE/Partial TP)
+// ════════════════════════════════════════════════════════════
+   y = CFG_CONTENT_Y;
 
-// BE (criado sempre — desabilitado visualmente se feature off)
-   string beSuffix = (inp_BEType == BE_FIXED) ? " (pts):" : " (ATR x):";
-   if(!CreateLI(m_cr_lBEAct, m_cr_iBEAct, "cr_lBA", "cr_iBA", "BE Ativacao" + beSuffix, y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLI(m_cr_lBEOff, m_cr_iBEOff, "cr_lBO", "cr_iBO", "BE Offset" + beSuffix, y)) return false;
-   y += PANEL_GAP_Y;
-
-// Comp Spread Trail (criado sempre)
-   if(!CreateLB(m_cr_lCTrl, m_cr_bCTrl, "cr_lCR", "cr_bCR", "Comp. Spread Trail:", y)) return false;
+// TRAILING
+   if(!CreateHdr(m_c2_hdr1, "c2_h1", "TRAILING", y)) return false;
+   y += PANEL_GAP_Y + 2;
+   if(!CreateLB(m_c2_lTrlAct, m_c2_bTrlAct, "c2_lTA", "c2_bTA", "Trailing:", y)) return false;
+   y += PANEL_GAP_Y + 2;
+   {
+    string trSuffix = (inp_TrailingType == TRAILING_FIXED) ? " (pts):" : " (ATR x):";
+    if(!CreateLI(m_c2_lTrlSt, m_c2_iTrlSt, "c2_lTS", "c2_iTS", "Trail Start" + trSuffix, y)) return false;
+    y += PANEL_GAP_Y;
+    if(!CreateLI(m_c2_lTrlSp, m_c2_iTrlSp, "c2_lTP2", "c2_iTP2", "Trail Step" + trSuffix, y)) return false;
+    y += PANEL_GAP_Y;
+   }
+   if(!CreateLB(m_c2_lCTrl, m_c2_bCTrl, "c2_lCR", "c2_bCR", "Comp. Spread Trail:", y)) return false;
    y += PANEL_GAP_Y + 2;
 
-// Partial TP
+// BREAK EVEN
    y += PANEL_GAP_SECTION;
-   if(!CreateHdr(m_cr_hdr2, "cr_h2", "PARTIAL TP", y)) return false;
+   if(!CreateHdr(m_c2_hdr2, "c2_h2", "BREAK EVEN", y)) return false;
    y += PANEL_GAP_Y + 2;
-   if(!CreateLB(m_cr_lPTP, m_cr_bPTP, "cr_lPT", "cr_bPT", "Partial TP:", y)) return false;
+   if(!CreateLB(m_c2_lBEAct, m_c2_bBEAct, "c2_lBA", "c2_bBA", "Break Even:", y)) return false;
    y += PANEL_GAP_Y + 2;
-   if(!CreateLI(m_cr_lTP1p, m_cr_iTP1p, "cr_l1p", "cr_i1p", "TP1 %:", y)) return false;
+   {
+    string beSuffix = (inp_BEType == BE_FIXED) ? " (pts):" : " (ATR x):";
+    if(!CreateLI(m_c2_lBEVal, m_c2_iBEVal, "c2_lBV", "c2_iBV", "BE Ativacao" + beSuffix, y)) return false;
+    y += PANEL_GAP_Y;
+    if(!CreateLI(m_c2_lBEOff, m_c2_iBEOff, "c2_lBO", "c2_iBO", "BE Offset" + beSuffix, y)) return false;
+    y += PANEL_GAP_Y;
+   }
+
+// PARTIAL TP
+   y += PANEL_GAP_SECTION;
+   if(!CreateHdr(m_c2_hdr3, "c2_h3", "PARTIAL TP", y)) return false;
+   y += PANEL_GAP_Y + 2;
+   if(!CreateLB(m_c2_lPTP, m_c2_bPTP, "c2_lPT", "c2_bPT", "Partial TP:", y)) return false;
+   y += PANEL_GAP_Y + 2;
+   if(!CreateLI(m_c2_lTP1p, m_c2_iTP1p, "c2_l1p", "c2_i1p", "TP1 %:", y)) return false;
    y += PANEL_GAP_Y;
-   if(!CreateLI(m_cr_lTP1d, m_cr_iTP1d, "cr_l1d", "cr_i1d", "TP1 Dist (pts):", y)) return false;
+   if(!CreateLI(m_c2_lTP1d, m_c2_iTP1d, "c2_l1d", "c2_i1d", "TP1 Dist (pts):", y)) return false;
    y += PANEL_GAP_Y;
-   if(!CreateLI(m_cr_lTP2p, m_cr_iTP2p, "cr_l2p", "cr_i2p", "TP2 %:", y)) return false;
+   if(!CreateLI(m_c2_lTP2p, m_c2_iTP2p, "c2_l2p", "c2_i2p", "TP2 %:", y)) return false;
    y += PANEL_GAP_Y;
-   if(!CreateLI(m_cr_lTP2d, m_cr_iTP2d, "cr_l2d", "cr_i2d", "TP2 Dist (pts):", y)) return false;
+   if(!CreateLI(m_c2_lTP2d, m_c2_iTP2d, "c2_l2d", "c2_i2d", "TP2 Dist (pts):", y)) return false;
    y += PANEL_GAP_Y;
 
 // ════════════════════════════════════════════════════════════
@@ -262,7 +373,11 @@ bool CEPBotPanel::CreateTabConfig(void)
 
    if(!CreateLI(m_cb_lSpr, m_cb_iSpr, "cb_lSp", "cb_iSp", "Max Spread (0=sem):", y)) return false;
    y += PANEL_GAP_Y;
-   if(!CreateLB(m_cb_lDir, m_cb_bDir, "cb_lDr", "cb_bDr", "Direcao:", y)) return false;
+   {
+    string dirTexts[] = {"AMBOS", "BUY", "SELL"};
+    if(!CreateRadioGroup(m_cb_lDir, m_cb_bDir, "cb_lDr", "cb_bDr", "Direcao:", dirTexts, 3, y))
+       return false;
+   }
    y += PANEL_GAP_Y + 2;
 
    if(m_cfg_hasDailyLimits)
@@ -357,15 +472,11 @@ void CEPBotPanel::PopulateConfig(void)
                      inp_TrailingType == TRAILING_ATR || inp_BEType == BE_ATR);
    m_cfg_hasRange = (m_cur_slType == SL_RANGE);
 
-// ── Risco ──
+// ── Risco (radio groups) ──
    m_cr_iLot.Text(DoubleToString(inp_LotSize, 2));
 
-// SL Type button
-   string slTypeTxt = (m_cur_slType == SL_FIXED) ? "FIXO" :
-                      (m_cur_slType == SL_ATR)   ? "ATR"  : "RANGE";
-   m_cr_bSLT.Text(slTypeTxt);
-   m_cr_bSLT.ColorBackground(C'50,80,140');
-   m_cr_bSLT.Color(clrWhite);
+// SL Type radio group
+   SetRadioSelection(m_cr_bSLT, 3, SLTypeToIndex(m_cur_slType));
 
 // SL value + label
    string slLabel = (m_cur_slType == SL_FIXED) ? "SL (Fixo pts):" :
@@ -378,7 +489,7 @@ void CEPBotPanel::PopulateConfig(void)
    else
       m_cr_iSL.Text(DoubleToString(inp_RangeMultiplier, 1));
 
-// ATR Period + Range Period (sempre populados)
+// ATR Period + Range Period
    m_cr_iATRp.Text(IntegerToString(inp_ATRPeriod));
    m_cr_iRngP.Text(IntegerToString(inp_RangePeriod));
 
@@ -388,12 +499,8 @@ void CEPBotPanel::PopulateConfig(void)
    m_cr_bCSL.ColorBackground(m_cur_compSL ? C'30,120,70' : C'120,50,50');
    m_cr_bCSL.Color(clrWhite);
 
-// TP Type button
-   string tpTypeTxt = (m_cur_tpType == TP_NONE)  ? "NENHUM" :
-                      (m_cur_tpType == TP_FIXED) ? "FIXO"   : "ATR";
-   m_cr_bTPT.Text(tpTypeTxt);
-   m_cr_bTPT.ColorBackground(C'50,80,140');
-   m_cr_bTPT.Color(clrWhite);
+// TP Type radio group
+   SetRadioSelection(m_cr_bTPT, 3, TPTypeToIndex(m_cur_tpType));
 
 // TP value + label
    string tpLabel = (m_cur_tpType == TP_FIXED) ? "TP (Fixo pts):" : "TP (ATR x):";
@@ -411,53 +518,57 @@ void CEPBotPanel::PopulateConfig(void)
    m_cr_bCTP.ColorBackground(m_cur_compTP ? C'30,120,70' : C'120,50,50');
    m_cr_bCTP.Color(clrWhite);
 
-// Trailing (sempre populado)
+// ── Risco 2 (Trailing/BE/Partial TP) ──
+   m_cur_trailOn = m_cfg_hasTrailing;
+   m_c2_bTrlAct.Text(m_cur_trailOn ? "ON" : "OFF");
+   m_c2_bTrlAct.ColorBackground(m_cur_trailOn ? C'30,120,70' : C'120,50,50');
+   m_c2_bTrlAct.Color(clrWhite);
+
    if(inp_TrailingType == TRAILING_FIXED)
      {
-      m_cr_iTrlSt.Text(IntegerToString(inp_TrailingStart));
-      m_cr_iTrlSp.Text(IntegerToString(inp_TrailingStep));
+      m_c2_iTrlSt.Text(IntegerToString(inp_TrailingStart));
+      m_c2_iTrlSp.Text(IntegerToString(inp_TrailingStep));
      }
    else
      {
-      m_cr_iTrlSt.Text(DoubleToString(inp_TrailingATRStart, 2));
-      m_cr_iTrlSp.Text(DoubleToString(inp_TrailingATRStep, 2));
+      m_c2_iTrlSt.Text(DoubleToString(inp_TrailingATRStart, 2));
+      m_c2_iTrlSp.Text(DoubleToString(inp_TrailingATRStep, 2));
      }
 
-// BE (sempre populado)
+   m_cur_compTrail = inp_Trailing_CompensateSpread;
+   m_c2_bCTrl.Text(m_cur_compTrail ? "ON" : "OFF");
+   m_c2_bCTrl.ColorBackground(m_cur_compTrail ? C'30,120,70' : C'120,50,50');
+   m_c2_bCTrl.Color(clrWhite);
+
+   m_cur_beOn = m_cfg_hasBE;
+   m_c2_bBEAct.Text(m_cur_beOn ? "ON" : "OFF");
+   m_c2_bBEAct.ColorBackground(m_cur_beOn ? C'30,120,70' : C'120,50,50');
+   m_c2_bBEAct.Color(clrWhite);
+
    if(inp_BEType == BE_FIXED)
      {
-      m_cr_iBEAct.Text(IntegerToString(inp_BEActivation));
-      m_cr_iBEOff.Text(IntegerToString(inp_BEOffset));
+      m_c2_iBEVal.Text(IntegerToString(inp_BEActivation));
+      m_c2_iBEOff.Text(IntegerToString(inp_BEOffset));
      }
    else
      {
-      m_cr_iBEAct.Text(DoubleToString(inp_BE_ATRActivation, 2));
-      m_cr_iBEOff.Text(DoubleToString(inp_BE_ATROffset, 2));
+      m_c2_iBEVal.Text(DoubleToString(inp_BE_ATRActivation, 2));
+      m_c2_iBEOff.Text(DoubleToString(inp_BE_ATROffset, 2));
      }
 
-// Comp Spread Trail
-   m_cur_compTrail = inp_Trailing_CompensateSpread;
-   m_cr_bCTrl.Text(m_cur_compTrail ? "ON" : "OFF");
-   m_cr_bCTrl.ColorBackground(m_cur_compTrail ? C'30,120,70' : C'120,50,50');
-   m_cr_bCTrl.Color(clrWhite);
-
-// Partial TP
-   m_cr_bPTP.Text(m_cur_partialTP ? "ATIVO" : "DESAB.");
-   m_cr_bPTP.ColorBackground(m_cur_partialTP ? C'30,120,70' : C'120,50,50');
-   m_cr_bPTP.Color(clrWhite);
-   m_cr_iTP1p.Text(DoubleToString(inp_PartialTP1_Percent, 1));
-   m_cr_iTP1d.Text(IntegerToString(inp_PartialTP1_Distance));
-   m_cr_iTP2p.Text(DoubleToString(inp_PartialTP2_Percent, 1));
-   m_cr_iTP2d.Text(IntegerToString(inp_PartialTP2_Distance));
+   m_c2_bPTP.Text(m_cur_partialTP ? "ATIVO" : "DESAB.");
+   m_c2_bPTP.ColorBackground(m_cur_partialTP ? C'30,120,70' : C'120,50,50');
+   m_c2_bPTP.Color(clrWhite);
+   m_c2_iTP1p.Text(DoubleToString(inp_PartialTP1_Percent, 1));
+   m_c2_iTP1d.Text(IntegerToString(inp_PartialTP1_Distance));
+   m_c2_iTP2p.Text(DoubleToString(inp_PartialTP2_Percent, 1));
+   m_c2_iTP2d.Text(IntegerToString(inp_PartialTP2_Distance));
 
 // ── Bloqueios ──
    m_cb_iSpr.Text(IntegerToString(inp_MaxSpread));
 
-   string dirTxt = (m_cur_direction == DIRECTION_BOTH)     ? "AMBOS" :
-                   (m_cur_direction == DIRECTION_BUY_ONLY) ? "APENAS BUY" : "APENAS SELL";
-   m_cb_bDir.Text(dirTxt);
-   m_cb_bDir.ColorBackground(C'50,80,140');
-   m_cb_bDir.Color(clrWhite);
+// Direction radio group
+   SetRadioSelection(m_cb_bDir, 3, (int)m_cur_direction);
 
    if(m_cfg_hasDailyLimits)
      {
@@ -508,64 +619,70 @@ void CEPBotPanel::RefreshRiscoState(void)
    SetEditEnabled(m_cr_lTP, m_cr_iTP, m_cfg_hasTP);
 
 // Comp Spread TP: habilitado quando TP != NENHUM
+   SetButtonEnabled(m_cr_lCTP, m_cr_bCTP, m_cfg_hasTP);
    if(m_cfg_hasTP)
      {
-      m_cr_lCTP.Color(CLR_LABEL);
-      // Cores do botão mantidas pelo handler
-     }
-   else
-     {
-      m_cr_lCTP.Color(C'180,180,180');
-      m_cr_bCTP.ColorBackground(C'160,160,160');
-      m_cr_bCTP.Color(C'200,200,200');
+      m_cr_bCTP.ColorBackground(m_cur_compTP ? C'30,120,70' : C'120,50,50');
+      m_cr_bCTP.Color(clrWhite);
      }
 
-// Trailing: habilitado se feature ativa
-   SetEditEnabled(m_cr_lTrlSt, m_cr_iTrlSt, m_cfg_hasTrailing);
-   SetEditEnabled(m_cr_lTrlSp, m_cr_iTrlSp, m_cfg_hasTrailing);
-   SetButtonEnabled(m_cr_lCTrl, m_cr_bCTrl, m_cfg_hasTrailing);
-// Restaurar cor do botão Comp Trail se habilitado
-   if(m_cfg_hasTrailing)
+// Dim radio TP ATR se Partial TP ativo (conflito)
+   if(m_cur_partialTP)
      {
-      m_cr_bCTrl.ColorBackground(m_cur_compTrail ? C'30,120,70' : C'120,50,50');
-      m_cr_bCTrl.Color(clrWhite);
+      m_cr_bTPT[2].ColorBackground(C'160,160,160');
+      m_cr_bTPT[2].Color(C'200,200,200');
      }
 
-// BE: habilitado se feature ativa
-   SetEditEnabled(m_cr_lBEAct, m_cr_iBEAct, m_cfg_hasBE);
-   SetEditEnabled(m_cr_lBEOff, m_cr_iBEOff, m_cfg_hasBE);
+   ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
+//| RefreshRisco2State — enable/disable Trailing/BE/Partial TP         |
+//+------------------------------------------------------------------+
+void CEPBotPanel::RefreshRisco2State(void)
+  {
+// Trailing fields: habilitado se toggle ON
+   SetEditEnabled(m_c2_lTrlSt, m_c2_iTrlSt, m_cur_trailOn);
+   SetEditEnabled(m_c2_lTrlSp, m_c2_iTrlSp, m_cur_trailOn);
+   SetButtonEnabled(m_c2_lCTrl, m_c2_bCTrl, m_cur_trailOn);
+   if(m_cur_trailOn)
+     {
+      m_c2_bCTrl.ColorBackground(m_cur_compTrail ? C'30,120,70' : C'120,50,50');
+      m_c2_bCTrl.Color(clrWhite);
+     }
+
+// BE fields: habilitado se toggle ON
+   SetEditEnabled(m_c2_lBEVal, m_c2_iBEVal, m_cur_beOn);
+   SetEditEnabled(m_c2_lBEOff, m_c2_iBEOff, m_cur_beOn);
 
 // ── Conflito TP ATR vs Partial TP ──
-// TP=ATR é incompatível com Partial TP (distâncias fixas vs TP dinâmico)
    bool ptpBlocked = (m_cur_tpType == TP_ATR);
 
-// Se TP=ATR e partial estava ativo, desativar
    if(ptpBlocked && m_cur_partialTP)
      {
       m_cur_partialTP = false;
-      m_cr_bPTP.Text("DESAB.");
+      m_c2_bPTP.Text("DESAB.");
      }
 
-// Visual do toggle Partial TP
    if(ptpBlocked)
      {
-      SetButtonEnabled(m_cr_lPTP, m_cr_bPTP, false);
-      m_cr_bPTP.Text("BLOQ.");
+      SetButtonEnabled(m_c2_lPTP, m_c2_bPTP, false);
+      m_c2_bPTP.Text("BLOQ.");
      }
    else
      {
-      m_cr_lPTP.Color(CLR_LABEL);
-      m_cr_bPTP.ColorBackground(m_cur_partialTP ? C'30,120,70' : C'120,50,50');
-      m_cr_bPTP.Color(clrWhite);
-      m_cr_bPTP.Text(m_cur_partialTP ? "ATIVO" : "DESAB.");
+      m_c2_lPTP.Color(CLR_LABEL);
+      m_c2_bPTP.ColorBackground(m_cur_partialTP ? C'30,120,70' : C'120,50,50');
+      m_c2_bPTP.Color(clrWhite);
+      m_c2_bPTP.Text(m_cur_partialTP ? "ATIVO" : "DESAB.");
      }
 
-// Campos TP1/TP2: habilitados só se Partial TP ativo (e não bloqueado)
+// Campos TP1/TP2
    bool ptpActive = (m_cur_partialTP && !ptpBlocked);
-   SetEditEnabled(m_cr_lTP1p, m_cr_iTP1p, ptpActive);
-   SetEditEnabled(m_cr_lTP1d, m_cr_iTP1d, ptpActive);
-   SetEditEnabled(m_cr_lTP2p, m_cr_iTP2p, ptpActive);
-   SetEditEnabled(m_cr_lTP2d, m_cr_iTP2d, ptpActive);
+   SetEditEnabled(m_c2_lTP1p, m_c2_iTP1p, ptpActive);
+   SetEditEnabled(m_c2_lTP1d, m_c2_iTP1d, ptpActive);
+   SetEditEnabled(m_c2_lTP2p, m_c2_iTP2p, ptpActive);
+   SetEditEnabled(m_c2_lTP2d, m_c2_iTP2d, ptpActive);
 
    ChartRedraw();
   }
@@ -576,9 +693,8 @@ void CEPBotPanel::RefreshRiscoState(void)
 void CEPBotPanel::ShowCfgPage(ENUM_CONFIG_PAGE page)
   {
    m_cfgPage = page;
-   SetCfgPageVis(CFG_RISCO, false);
-   SetCfgPageVis(CFG_BLOQUEIOS, false);
-   SetCfgPageVis(CFG_OUTROS, false);
+   for(int p = 0; p < CFG_PAGE_COUNT; p++)
+      SetCfgPageVis((ENUM_CONFIG_PAGE)p, false);
    SetCfgPageVis(page, true);
    UpdateCfgBtnStyles();
   }
@@ -594,47 +710,64 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
         {
          if(vis)
            {
-            // Mostrar TODOS os controles RISCO
             m_cr_hdr1.Show(); m_cr_lLot.Show(); m_cr_iLot.Show();
-            m_cr_lSLT.Show(); m_cr_bSLT.Show();
+            m_cr_lSLT.Show(); for(int i=0;i<3;i++) m_cr_bSLT[i].Show();
             m_cr_lSL.Show(); m_cr_iSL.Show();
             m_cr_lATRp.Show(); m_cr_iATRp.Show();
             m_cr_lRngP.Show(); m_cr_iRngP.Show();
             m_cr_lCSL.Show(); m_cr_bCSL.Show();
-            m_cr_lTPT.Show(); m_cr_bTPT.Show();
+            m_cr_lTPT.Show(); for(int i=0;i<3;i++) m_cr_bTPT[i].Show();
             m_cr_lTP.Show(); m_cr_iTP.Show();
             m_cr_lCTP.Show(); m_cr_bCTP.Show();
-            m_cr_lTrlSt.Show(); m_cr_iTrlSt.Show();
-            m_cr_lTrlSp.Show(); m_cr_iTrlSp.Show();
-            m_cr_lBEAct.Show(); m_cr_iBEAct.Show();
-            m_cr_lBEOff.Show(); m_cr_iBEOff.Show();
-            m_cr_lCTrl.Show(); m_cr_bCTrl.Show();
-            m_cr_hdr2.Show(); m_cr_lPTP.Show(); m_cr_bPTP.Show();
-            m_cr_lTP1p.Show(); m_cr_iTP1p.Show(); m_cr_lTP1d.Show(); m_cr_iTP1d.Show();
-            m_cr_lTP2p.Show(); m_cr_iTP2p.Show(); m_cr_lTP2d.Show(); m_cr_iTP2d.Show();
-            // Aplicar estado enable/disable
             RefreshRiscoState();
            }
          else
            {
-            // Esconder TODOS controles RISCO
             m_cr_hdr1.Hide(); m_cr_lLot.Hide(); m_cr_iLot.Hide();
-            m_cr_lSLT.Hide(); m_cr_bSLT.Hide();
+            m_cr_lSLT.Hide(); for(int i=0;i<3;i++) m_cr_bSLT[i].Hide();
             m_cr_lSL.Hide(); m_cr_iSL.Hide();
             m_cr_lATRp.Hide(); m_cr_iATRp.Hide();
             m_cr_lRngP.Hide(); m_cr_iRngP.Hide();
             m_cr_lCSL.Hide(); m_cr_bCSL.Hide();
-            m_cr_lTPT.Hide(); m_cr_bTPT.Hide();
+            m_cr_lTPT.Hide(); for(int i=0;i<3;i++) m_cr_bTPT[i].Hide();
             m_cr_lTP.Hide(); m_cr_iTP.Hide();
             m_cr_lCTP.Hide(); m_cr_bCTP.Hide();
-            m_cr_lTrlSt.Hide(); m_cr_iTrlSt.Hide();
-            m_cr_lTrlSp.Hide(); m_cr_iTrlSp.Hide();
-            m_cr_lBEAct.Hide(); m_cr_iBEAct.Hide();
-            m_cr_lBEOff.Hide(); m_cr_iBEOff.Hide();
-            m_cr_lCTrl.Hide(); m_cr_bCTrl.Hide();
-            m_cr_hdr2.Hide(); m_cr_lPTP.Hide(); m_cr_bPTP.Hide();
-            m_cr_lTP1p.Hide(); m_cr_iTP1p.Hide(); m_cr_lTP1d.Hide(); m_cr_iTP1d.Hide();
-            m_cr_lTP2p.Hide(); m_cr_iTP2p.Hide(); m_cr_lTP2d.Hide(); m_cr_iTP2d.Hide();
+           }
+         break;
+        }
+
+      case CFG_RISCO2:
+        {
+         if(vis)
+           {
+            m_c2_hdr1.Show(); m_c2_lTrlAct.Show(); m_c2_bTrlAct.Show();
+            m_c2_lTrlSt.Show(); m_c2_iTrlSt.Show();
+            m_c2_lTrlSp.Show(); m_c2_iTrlSp.Show();
+            m_c2_lCTrl.Show(); m_c2_bCTrl.Show();
+            m_c2_hdr2.Show(); m_c2_lBEAct.Show(); m_c2_bBEAct.Show();
+            m_c2_lBEVal.Show(); m_c2_iBEVal.Show();
+            m_c2_lBEOff.Show(); m_c2_iBEOff.Show();
+            m_c2_hdr3.Show(); m_c2_lPTP.Show(); m_c2_bPTP.Show();
+            m_c2_lTP1p.Show(); m_c2_iTP1p.Show();
+            m_c2_lTP1d.Show(); m_c2_iTP1d.Show();
+            m_c2_lTP2p.Show(); m_c2_iTP2p.Show();
+            m_c2_lTP2d.Show(); m_c2_iTP2d.Show();
+            RefreshRisco2State();
+           }
+         else
+           {
+            m_c2_hdr1.Hide(); m_c2_lTrlAct.Hide(); m_c2_bTrlAct.Hide();
+            m_c2_lTrlSt.Hide(); m_c2_iTrlSt.Hide();
+            m_c2_lTrlSp.Hide(); m_c2_iTrlSp.Hide();
+            m_c2_lCTrl.Hide(); m_c2_bCTrl.Hide();
+            m_c2_hdr2.Hide(); m_c2_lBEAct.Hide(); m_c2_bBEAct.Hide();
+            m_c2_lBEVal.Hide(); m_c2_iBEVal.Hide();
+            m_c2_lBEOff.Hide(); m_c2_iBEOff.Hide();
+            m_c2_hdr3.Hide(); m_c2_lPTP.Hide(); m_c2_bPTP.Hide();
+            m_c2_lTP1p.Hide(); m_c2_iTP1p.Hide();
+            m_c2_lTP1d.Hide(); m_c2_iTP1d.Hide();
+            m_c2_lTP2p.Hide(); m_c2_iTP2p.Hide();
+            m_c2_lTP2d.Hide(); m_c2_iTP2d.Hide();
            }
          break;
         }
@@ -644,7 +777,7 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
          if(vis)
            {
             m_cb_hdr1.Show(); m_cb_lSpr.Show(); m_cb_iSpr.Show();
-            m_cb_lDir.Show(); m_cb_bDir.Show();
+            m_cb_lDir.Show(); for(int i=0;i<3;i++) m_cb_bDir[i].Show();
             if(m_cfg_hasDailyLimits) { m_cb_hdr2.Show(); m_cb_lTrd.Show(); m_cb_iTrd.Show();
                                        m_cb_lLoss.Show(); m_cb_iLoss.Show();
                                        m_cb_lGain.Show(); m_cb_iGain.Show(); }
@@ -655,7 +788,7 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
          else
            {
             m_cb_hdr1.Hide(); m_cb_lSpr.Hide(); m_cb_iSpr.Hide();
-            m_cb_lDir.Hide(); m_cb_bDir.Hide();
+            m_cb_lDir.Hide(); for(int i=0;i<3;i++) m_cb_bDir[i].Hide();
             if(m_cfg_hasDailyLimits) { m_cb_hdr2.Hide(); m_cb_lTrd.Hide(); m_cb_iTrd.Hide();
                                        m_cb_lLoss.Hide(); m_cb_iLoss.Hide();
                                        m_cb_lGain.Hide(); m_cb_iGain.Hide(); }
@@ -692,37 +825,32 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
 //+------------------------------------------------------------------+
 void CEPBotPanel::UpdateCfgBtnStyles(void)
   {
-   m_cfg_btnRisco.ColorBackground((m_cfgPage == CFG_RISCO)     ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
-   m_cfg_btnBloq.ColorBackground((m_cfgPage == CFG_BLOQUEIOS)  ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
-   m_cfg_btnOutros.ColorBackground((m_cfgPage == CFG_OUTROS)   ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
+   m_cfg_btnRisco.ColorBackground((m_cfgPage == CFG_RISCO)      ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
+   m_cfg_btnRisco2.ColorBackground((m_cfgPage == CFG_RISCO2)    ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
+   m_cfg_btnBloq.ColorBackground((m_cfgPage == CFG_BLOQUEIOS)   ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
+   m_cfg_btnOutros.ColorBackground((m_cfgPage == CFG_OUTROS)    ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
 
-   m_cfg_btnRisco.Color((m_cfgPage == CFG_RISCO)     ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
-   m_cfg_btnBloq.Color((m_cfgPage == CFG_BLOQUEIOS)  ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
-   m_cfg_btnOutros.Color((m_cfgPage == CFG_OUTROS)   ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
+   m_cfg_btnRisco.Color((m_cfgPage == CFG_RISCO)      ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
+   m_cfg_btnRisco2.Color((m_cfgPage == CFG_RISCO2)    ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
+   m_cfg_btnBloq.Color((m_cfgPage == CFG_BLOQUEIOS)   ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
+   m_cfg_btnOutros.Color((m_cfgPage == CFG_OUTROS)    ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
   }
 
 //+------------------------------------------------------------------+
 //| Handlers de clique das sub-páginas                                 |
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickCfgRisco(void)   { ShowCfgPage(CFG_RISCO);     }
+void CEPBotPanel::OnClickCfgRisco2(void)  { ShowCfgPage(CFG_RISCO2);    }
 void CEPBotPanel::OnClickCfgBloq(void)    { ShowCfgPage(CFG_BLOQUEIOS); }
 void CEPBotPanel::OnClickCfgOutros(void)  { ShowCfgPage(CFG_OUTROS);    }
 
 //+------------------------------------------------------------------+
 //| Toggle/Cycle handlers                                              |
 //+------------------------------------------------------------------+
-void CEPBotPanel::OnClickDirection(void)
+void CEPBotPanel::OnClickDirection(int selected)
   {
-   if(m_cur_direction == DIRECTION_BOTH)
-      m_cur_direction = DIRECTION_BUY_ONLY;
-   else if(m_cur_direction == DIRECTION_BUY_ONLY)
-      m_cur_direction = DIRECTION_SELL_ONLY;
-   else
-      m_cur_direction = DIRECTION_BOTH;
-
-   string txt = (m_cur_direction == DIRECTION_BOTH)     ? "AMBOS" :
-                (m_cur_direction == DIRECTION_BUY_ONLY) ? "APENAS BUY" : "APENAS SELL";
-   m_cb_bDir.Text(txt);
+   m_cur_direction = (ENUM_TRADE_DIRECTION)selected;
+   SetRadioSelection(m_cb_bDir, 3, selected);
    ChartRedraw();
   }
 
@@ -748,27 +876,42 @@ void CEPBotPanel::OnClickPartialTP(void)
       return;
 
    m_cur_partialTP = !m_cur_partialTP;
-   m_cr_bPTP.Text(m_cur_partialTP ? "ATIVO" : "DESAB.");
-   m_cr_bPTP.ColorBackground(m_cur_partialTP ? C'30,120,70' : C'120,50,50');
+   m_c2_bPTP.Text(m_cur_partialTP ? "ATIVO" : "DESAB.");
+   m_c2_bPTP.ColorBackground(m_cur_partialTP ? C'30,120,70' : C'120,50,50');
+   RefreshRisco2State();
+// Atualizar dim do botão ATR na página RISCO
    RefreshRiscoState();
   }
 
 //+------------------------------------------------------------------+
-//| OnClickSLType — ciclo: FIXED → ATR → RANGE → FIXED               |
+//| OnClickTrailToggle — liga/desliga Trailing                         |
 //+------------------------------------------------------------------+
-void CEPBotPanel::OnClickSLType(void)
+void CEPBotPanel::OnClickTrailToggle(void)
   {
-   if(m_cur_slType == SL_FIXED)
-      m_cur_slType = SL_ATR;
-   else if(m_cur_slType == SL_ATR)
-      m_cur_slType = SL_RANGE;
-   else
-      m_cur_slType = SL_FIXED;
+   m_cur_trailOn = !m_cur_trailOn;
+   m_c2_bTrlAct.Text(m_cur_trailOn ? "ON" : "OFF");
+   m_c2_bTrlAct.ColorBackground(m_cur_trailOn ? C'30,120,70' : C'120,50,50');
+   RefreshRisco2State();
+  }
 
-// Atualizar botão
-   string typeTxt = (m_cur_slType == SL_FIXED) ? "FIXO" :
-                    (m_cur_slType == SL_ATR)   ? "ATR"  : "RANGE";
-   m_cr_bSLT.Text(typeTxt);
+//+------------------------------------------------------------------+
+//| OnClickBEToggle — liga/desliga Break Even                          |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickBEToggle(void)
+  {
+   m_cur_beOn = !m_cur_beOn;
+   m_c2_bBEAct.Text(m_cur_beOn ? "ON" : "OFF");
+   m_c2_bBEAct.ColorBackground(m_cur_beOn ? C'30,120,70' : C'120,50,50');
+   RefreshRisco2State();
+  }
+
+//+------------------------------------------------------------------+
+//| OnClickSLType — radio: 0=FIXO, 1=ATR, 2=RANGE                    |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickSLType(int selected)
+  {
+   m_cur_slType = IndexToSLType(selected);
+   SetRadioSelection(m_cr_bSLT, 3, selected);
 
 // Atualizar label + valor do SL
    string slLabel = (m_cur_slType == SL_FIXED) ? "SL (Fixo pts):" :
@@ -791,28 +934,17 @@ void CEPBotPanel::OnClickSLType(void)
   }
 
 //+------------------------------------------------------------------+
-//| OnClickTPType — ciclo: NONE → FIXED → ATR → NONE                  |
-//| (pula ATR se Partial TP está ativo — conflito conceitual)          |
+//| OnClickTPType — radio: 0=NENHUM, 1=FIXO, 2=ATR                    |
+//| (bloqueia ATR se Partial TP ativo — conflito conceitual)           |
 //+------------------------------------------------------------------+
-void CEPBotPanel::OnClickTPType(void)
+void CEPBotPanel::OnClickTPType(int selected)
   {
-   if(m_cur_tpType == TP_NONE)
-      m_cur_tpType = TP_FIXED;
-   else if(m_cur_tpType == TP_FIXED)
-     {
-      // Se Partial TP ativo, pular ATR (conflito)
-      if(m_cur_partialTP)
-         m_cur_tpType = TP_NONE;
-      else
-         m_cur_tpType = TP_ATR;
-     }
-   else // TP_ATR
-      m_cur_tpType = TP_NONE;
+// Se Partial TP ativo, bloquear seleção de ATR (index 2)
+   if(selected == 2 && m_cur_partialTP)
+      return;
 
-// Atualizar botão
-   string typeTxt = (m_cur_tpType == TP_NONE)  ? "NENHUM" :
-                    (m_cur_tpType == TP_FIXED) ? "FIXO"   : "ATR";
-   m_cr_bTPT.Text(typeTxt);
+   m_cur_tpType = IndexToTPType(selected);
+   SetRadioSelection(m_cr_bTPT, 3, selected);
 
 // Recalcular flags
    m_cfg_hasTP  = (m_cur_tpType != TP_NONE);
@@ -835,8 +967,10 @@ void CEPBotPanel::OnClickTPType(void)
       m_cr_iTP.Text("---");
      }
 
-// Atualizar estado visual (enable/disable + conflito Partial TP)
+// Atualizar estado visual
    RefreshRiscoState();
+// Atualizar RISCO 2 (conflito TP ATR vs Partial TP)
+   RefreshRisco2State();
   }
 
 //+------------------------------------------------------------------+
@@ -904,13 +1038,16 @@ void CEPBotPanel::ApplyConfig(void)
            }
         }
 
-      // Trailing (só se feature habilitada)
-      if(m_cfg_hasTrailing)
+      // Trailing activation (toggle ON/OFF)
+      m_riskManager.SetTrailingActivation(m_cur_trailOn ? TRAILING_ALWAYS : TRAILING_NEVER);
+
+      // Trailing params (só se toggle ON)
+      if(m_cur_trailOn)
         {
          if(inp_TrailingType == TRAILING_FIXED)
            {
-            int start = (int)StringToInteger(m_cr_iTrlSt.Text());
-            int step  = (int)StringToInteger(m_cr_iTrlSp.Text());
+            int start = (int)StringToInteger(m_c2_iTrlSt.Text());
+            int step  = (int)StringToInteger(m_c2_iTrlSp.Text());
             if(start >= 0 && step >= 0)
                m_riskManager.SetTrailingParams(start, step);
             else
@@ -918,8 +1055,8 @@ void CEPBotPanel::ApplyConfig(void)
            }
          else
            {
-            double start = StringToDouble(m_cr_iTrlSt.Text());
-            double step  = StringToDouble(m_cr_iTrlSp.Text());
+            double start = StringToDouble(m_c2_iTrlSt.Text());
+            double step  = StringToDouble(m_c2_iTrlSp.Text());
             if(start > 0 && step > 0)
                m_riskManager.SetTrailingATRParams(start, step);
             else
@@ -927,13 +1064,16 @@ void CEPBotPanel::ApplyConfig(void)
            }
         }
 
-      // BE (só se feature habilitada)
-      if(m_cfg_hasBE)
+      // BE activation (toggle ON/OFF)
+      m_riskManager.SetBEActivation(m_cur_beOn ? BE_ALWAYS : BE_NEVER);
+
+      // BE params (só se toggle ON)
+      if(m_cur_beOn)
         {
          if(inp_BEType == BE_FIXED)
            {
-            int act = (int)StringToInteger(m_cr_iBEAct.Text());
-            int off = (int)StringToInteger(m_cr_iBEOff.Text());
+            int act = (int)StringToInteger(m_c2_iBEVal.Text());
+            int off = (int)StringToInteger(m_c2_iBEOff.Text());
             if(act >= 0 && off >= 0)
                m_riskManager.SetBreakevenParams(act, off);
             else
@@ -941,8 +1081,8 @@ void CEPBotPanel::ApplyConfig(void)
            }
          else
            {
-            double act = StringToDouble(m_cr_iBEAct.Text());
-            double off = StringToDouble(m_cr_iBEOff.Text());
+            double act = StringToDouble(m_c2_iBEVal.Text());
+            double off = StringToDouble(m_c2_iBEOff.Text());
             if(act > 0 && off >= 0)
                m_riskManager.SetBreakevenATRParams(act, off);
             else
@@ -954,12 +1094,12 @@ void CEPBotPanel::ApplyConfig(void)
       m_riskManager.SetUsePartialTP(m_cur_partialTP);
       if(m_cur_partialTP)
         {
-         double tp1p = StringToDouble(m_cr_iTP1p.Text());
-         int    tp1d = (int)StringToInteger(m_cr_iTP1d.Text());
+         double tp1p = StringToDouble(m_c2_iTP1p.Text());
+         int    tp1d = (int)StringToInteger(m_c2_iTP1d.Text());
          m_riskManager.SetPartialTP1((tp1p > 0 && tp1d > 0), tp1p, tp1d);
 
-         double tp2p = StringToDouble(m_cr_iTP2p.Text());
-         int    tp2d = (int)StringToInteger(m_cr_iTP2d.Text());
+         double tp2p = StringToDouble(m_c2_iTP2p.Text());
+         int    tp2d = (int)StringToInteger(m_c2_iTP2d.Text());
          m_riskManager.SetPartialTP2((tp2p > 0 && tp2d > 0), tp2p, tp2d);
         }
 
@@ -980,7 +1120,7 @@ void CEPBotPanel::ApplyConfig(void)
       // Spread Compensation
       m_riskManager.SetSLCompensateSpread(m_cur_compSL);
       if(m_cfg_hasTP) m_riskManager.SetTPCompensateSpread(m_cur_compTP);
-      if(m_cfg_hasTrailing) m_riskManager.SetTrailingCompensateSpread(m_cur_compTrail);
+      if(m_cur_trailOn) m_riskManager.SetTrailingCompensateSpread(m_cur_compTrail);
      }
 
 // ═══════════════════════════════════════════════
@@ -1080,11 +1220,11 @@ void CEPBotPanel::OnClickCompTP(void)
 
 void CEPBotPanel::OnClickCompTrail(void)
   {
-// Bloqueado se Trailing desabilitado
-   if(!m_cfg_hasTrailing) return;
+// Bloqueado se Trailing desligado
+   if(!m_cur_trailOn) return;
    m_cur_compTrail = !m_cur_compTrail;
-   m_cr_bCTrl.Text(m_cur_compTrail ? "ON" : "OFF");
-   m_cr_bCTrl.ColorBackground(m_cur_compTrail ? C'30,120,70' : C'120,50,50');
+   m_c2_bCTrl.Text(m_cur_compTrail ? "ON" : "OFF");
+   m_c2_bCTrl.ColorBackground(m_cur_compTrail ? C'30,120,70' : C'120,50,50');
    ChartRedraw();
   }
 //+------------------------------------------------------------------+
