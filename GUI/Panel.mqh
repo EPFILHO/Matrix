@@ -664,63 +664,59 @@ bool CEPBotPanel::CreateTabButtons(void)
   }
 
 //+------------------------------------------------------------------+
-//| OnEvent — CAppDialog processa PRIMEIRO, depois checamos ON_CLICK  |
+//| OnEvent — CHARTEVENT_OBJECT_CLICK direto (sparam = nome do obj)   |
 //+------------------------------------------------------------------+
 bool CEPBotPanel::OnEvent(const int id, const long &lparam,
                            const double &dparam, const string &sparam)
   {
 // ══════════════════════════════════════════════════════════════════
-// ON_CLICK: interceptar NOSSOS botões ANTES de CAppDialog
-// (impede CButton::OnClickButton() de toggle Pressed e interferir
-//  com nossas mudanças visuais — root cause dos cliques falhando)
+// CHARTEVENT_OBJECT_CLICK: interceptar pelo nome do objeto (sparam)
+// — mais confiável que ON_CLICK, sem depender de routing do CAppDialog
 // ══════════════════════════════════════════════════════════════════
-   if(id == CHARTEVENT_CUSTOM + ON_CLICK)
+   if(id == CHARTEVENT_OBJECT_CLICK)
      {
       // Abas principais
-      if(lparam == m_btnTab0.Id()) { OnClickTab0(); return true; }
-      if(lparam == m_btnTab1.Id()) { OnClickTab1(); return true; }
-      if(lparam == m_btnTab2.Id()) { OnClickTab2(); return true; }
-      if(lparam == m_btnTab3.Id()) { OnClickTab3(); return true; }
-      if(lparam == m_btnTab4.Id()) { OnClickTab4(); return true; }
+      if(sparam == m_btnTab0.Name()) { m_btnTab0.Pressed(false); OnClickTab0(); return true; }
+      if(sparam == m_btnTab1.Name()) { m_btnTab1.Pressed(false); OnClickTab1(); return true; }
+      if(sparam == m_btnTab2.Name()) { m_btnTab2.Pressed(false); OnClickTab2(); return true; }
+      if(sparam == m_btnTab3.Name()) { m_btnTab3.Pressed(false); OnClickTab3(); return true; }
+      if(sparam == m_btnTab4.Name()) { m_btnTab4.Pressed(false); OnClickTab4(); return true; }
 
       // CONFIG: sub-páginas
-      if(lparam == m_cfg_btnRisco.Id())  { OnClickCfgRisco();  return true; }
-      if(lparam == m_cfg_btnRisco2.Id()) { OnClickCfgRisco2(); return true; }
-      if(lparam == m_cfg_btnBloq.Id())   { OnClickCfgBloq();   return true; }
-      if(lparam == m_cfg_btnOutros.Id()) { OnClickCfgOutros(); return true; }
+      if(sparam == m_cfg_btnRisco.Name())  { m_cfg_btnRisco.Pressed(false);  OnClickCfgRisco();  return true; }
+      if(sparam == m_cfg_btnRisco2.Name()) { m_cfg_btnRisco2.Pressed(false); OnClickCfgRisco2(); return true; }
+      if(sparam == m_cfg_btnBloq.Name())   { m_cfg_btnBloq.Pressed(false);   OnClickCfgBloq();   return true; }
+      if(sparam == m_cfg_btnOutros.Name()) { m_cfg_btnOutros.Pressed(false); OnClickCfgOutros(); return true; }
 
       // CONFIG: APLICAR
-      if(lparam == m_cfg_btnApply.Id())  { OnClickApply(); return true; }
+      if(sparam == m_cfg_btnApply.Name())  { m_cfg_btnApply.Pressed(false); OnClickApply(); return true; }
 
       // CONFIG: radio groups (SL Type, TP Type, Direction)
       for(int i = 0; i < 3; i++)
         {
-         if(lparam == m_cr_bSLT[i].Id()) { OnClickSLType(i);    return true; }
-         if(lparam == m_cr_bTPT[i].Id()) { OnClickTPType(i);    return true; }
-         if(lparam == m_cb_bDir[i].Id()) { OnClickDirection(i);  return true; }
+         if(sparam == m_cr_bSLT[i].Name()) { OnClickSLType(i);    return true; }
+         if(sparam == m_cr_bTPT[i].Name()) { OnClickTPType(i);    return true; }
+         if(sparam == m_cb_bDir[i].Name()) { OnClickDirection(i);  return true; }
         }
 
       // CONFIG: RISCO toggles
-      if(lparam == m_cr_bCSL.Id())       { OnClickCompSL();     return true; }
-      if(lparam == m_cr_bCTP.Id())       { OnClickCompTP();     return true; }
+      if(sparam == m_cr_bCSL.Name()) { m_cr_bCSL.Pressed(false); OnClickCompSL();     return true; }
+      if(sparam == m_cr_bCTP.Name()) { m_cr_bCTP.Pressed(false); OnClickCompTP();     return true; }
 
       // CONFIG: RISCO 2 toggles
-      if(lparam == m_c2_bTrlAct.Id())    { OnClickTrailToggle(); return true; }
-      if(lparam == m_c2_bBEAct.Id())     { OnClickBEToggle();    return true; }
-      if(lparam == m_c2_bPTP.Id())       { OnClickPartialTP();   return true; }
-      if(lparam == m_c2_bCTrl.Id())      { OnClickCompTrail();   return true; }
+      if(sparam == m_c2_bTrlAct.Name()) { m_c2_bTrlAct.Pressed(false); OnClickTrailToggle(); return true; }
+      if(sparam == m_c2_bBEAct.Name())  { m_c2_bBEAct.Pressed(false);  OnClickBEToggle();    return true; }
+      if(sparam == m_c2_bPTP.Name())    { m_c2_bPTP.Pressed(false);    OnClickPartialTP();   return true; }
+      if(sparam == m_c2_bCTrl.Name())   { m_c2_bCTrl.Pressed(false);   OnClickCompTrail();   return true; }
 
       // CONFIG: OUTROS toggles
-      if(lparam == m_co_bConfl.Id())     { OnClickConflict();  return true; }
-      if(lparam == m_co_bDbg.Id())       { OnClickDebug();     return true; }
+      if(sparam == m_co_bConfl.Name()) { m_co_bConfl.Pressed(false); OnClickConflict(); return true; }
+      if(sparam == m_co_bDbg.Name())   { m_co_bDbg.Pressed(false);   OnClickDebug();    return true; }
 
-      // ON_CLICK não é nosso → fall through para CAppDialog (close, minmax, etc.)
+      // Não é nosso → CAppDialog processa (close, minimize, drag, etc.)
      }
 
-// ══════════════════════════════════════════════════════════════════
-// CAppDialog: processa CHARTEVENT_OBJECT_CLICK (gera ON_CLICK),
-// minimize/maximize, close, drag, e ON_CLICK de controles built-in
-// ══════════════════════════════════════════════════════════════════
+// CAppDialog: processa tudo que não interceptamos acima
    bool result = CAppDialog::OnEvent(id, lparam, dparam, sparam);
 
    if(result)
