@@ -273,10 +273,20 @@ bool CEPBotPanel::CreateTabConfig(void)
    y += PANEL_GAP_Y + 2;
 
    if(!CreateLI(m_cr_lLot, m_cr_iLot, "cr_lLt", "cr_iLt", "Lote:", y)) return false;
+   y += PANEL_GAP_Y;
+
+// ATR Period (compartilhado entre SL e TP)
+   if(!CreateLI(m_cr_lATRp, m_cr_iATRp, "cr_lAP", "cr_iAP", "ATR Period:", y)) return false;
+   y += PANEL_GAP_Y;
+
+// Range Period
+   if(!CreateLI(m_cr_lRngP, m_cr_iRngP, "cr_lRP", "cr_iRP", "Range Period:", y)) return false;
    y += PANEL_GAP_Y + 2;
 
-// ── SL ──
+// ── STOP LOSS ──
    y += PANEL_GAP_SECTION;
+   if(!CreateHdr(m_cr_hdrSL, "cr_hSL", "STOP LOSS", y)) return false;
+   y += PANEL_GAP_Y + 2;
    {
     string sltTexts[] = {"FIXO", "ATR", "RANGE"};
     if(!CreateRadioGroup(m_cr_lSLT, m_cr_bSLT, "cr_lST", "cr_bST", "Tipo SL:", sltTexts, 3, y))
@@ -288,20 +298,14 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLI(m_cr_lSL, m_cr_iSL, "cr_lSL", "cr_iSL", "SL (Fixo pts):", y)) return false;
    y += PANEL_GAP_Y;
 
-// ATR Period
-   if(!CreateLI(m_cr_lATRp, m_cr_iATRp, "cr_lAP", "cr_iAP", "ATR Period:", y)) return false;
-   y += PANEL_GAP_Y;
-
-// Range Period
-   if(!CreateLI(m_cr_lRngP, m_cr_iRngP, "cr_lRP", "cr_iRP", "Range Period:", y)) return false;
-   y += PANEL_GAP_Y;
-
 // Comp Spread SL
    if(!CreateLB(m_cr_lCSL, m_cr_bCSL, "cr_lCS", "cr_bCS", "Comp. Spread SL:", y)) return false;
    y += PANEL_GAP_Y + 2;
 
-// ── TP ──
+// ── TAKE PROFIT ──
    y += PANEL_GAP_SECTION;
+   if(!CreateHdr(m_cr_hdrTP, "cr_hTP", "TAKE PROFIT", y)) return false;
+   y += PANEL_GAP_Y + 2;
    {
     string tptTexts[] = {"NENHUM", "FIXO", "ATR"};
     if(!CreateRadioGroup(m_cr_lTPT, m_cr_bTPT, "cr_lTT", "cr_bTT", "Tipo TP:", tptTexts, 3, y))
@@ -714,11 +718,13 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
          if(vis)
            {
             m_cr_hdr1.Show(); m_cr_lLot.Show(); m_cr_iLot.Show();
-            m_cr_lSLT.Show(); for(int i=0;i<3;i++) m_cr_bSLT[i].Show();
-            m_cr_lSL.Show(); m_cr_iSL.Show();
             m_cr_lATRp.Show(); m_cr_iATRp.Show();
             m_cr_lRngP.Show(); m_cr_iRngP.Show();
+            m_cr_hdrSL.Show();
+            m_cr_lSLT.Show(); for(int i=0;i<3;i++) m_cr_bSLT[i].Show();
+            m_cr_lSL.Show(); m_cr_iSL.Show();
             m_cr_lCSL.Show(); m_cr_bCSL.Show();
+            m_cr_hdrTP.Show();
             m_cr_lTPT.Show(); for(int i=0;i<3;i++) m_cr_bTPT[i].Show();
             m_cr_lTP.Show(); m_cr_iTP.Show();
             m_cr_lCTP.Show(); m_cr_bCTP.Show();
@@ -727,11 +733,13 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
          else
            {
             m_cr_hdr1.Hide(); m_cr_lLot.Hide(); m_cr_iLot.Hide();
-            m_cr_lSLT.Hide(); for(int i=0;i<3;i++) m_cr_bSLT[i].Hide();
-            m_cr_lSL.Hide(); m_cr_iSL.Hide();
             m_cr_lATRp.Hide(); m_cr_iATRp.Hide();
             m_cr_lRngP.Hide(); m_cr_iRngP.Hide();
+            m_cr_hdrSL.Hide();
+            m_cr_lSLT.Hide(); for(int i=0;i<3;i++) m_cr_bSLT[i].Hide();
+            m_cr_lSL.Hide(); m_cr_iSL.Hide();
             m_cr_lCSL.Hide(); m_cr_bCSL.Hide();
+            m_cr_hdrTP.Hide();
             m_cr_lTPT.Hide(); for(int i=0;i<3;i++) m_cr_bTPT[i].Hide();
             m_cr_lTP.Hide(); m_cr_iTP.Hide();
             m_cr_lCTP.Hide(); m_cr_bCTP.Hide();

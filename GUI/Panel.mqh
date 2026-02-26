@@ -327,11 +327,13 @@ private:
    // --- Risco sub-page (simplificada — SL/TP/Spread) ---
    CLabel   m_cr_hdr1;
    CLabel   m_cr_lLot;    CEdit    m_cr_iLot;
-   CLabel   m_cr_lSLT;    CButton  m_cr_bSLT[3];  // Radio: FIXO | ATR | RANGE
-   CLabel   m_cr_lSL;     CEdit    m_cr_iSL;
    CLabel   m_cr_lATRp;   CEdit    m_cr_iATRp;
    CLabel   m_cr_lRngP;   CEdit    m_cr_iRngP;
+   CLabel   m_cr_hdrSL;                            // Header "STOP LOSS"
+   CLabel   m_cr_lSLT;    CButton  m_cr_bSLT[3];  // Radio: FIXO | ATR | RANGE
+   CLabel   m_cr_lSL;     CEdit    m_cr_iSL;
    CLabel   m_cr_lCSL;    CButton  m_cr_bCSL;
+   CLabel   m_cr_hdrTP;                            // Header "TAKE PROFIT"
    CLabel   m_cr_lTPT;    CButton  m_cr_bTPT[3];  // Radio: NENHUM | FIXO | ATR
    CLabel   m_cr_lTP;     CEdit    m_cr_iTP;
    CLabel   m_cr_lCTP;    CButton  m_cr_bCTP;
