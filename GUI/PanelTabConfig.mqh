@@ -273,9 +273,10 @@ bool CEPBotPanel::CreateTabConfig(void)
    y += PANEL_GAP_Y + 2;
 
    if(!CreateLI(m_cr_lLot, m_cr_iLot, "cr_lLt", "cr_iLt", "Lote:", y)) return false;
-   y += PANEL_GAP_Y;
+   y += PANEL_GAP_Y + 2;
 
-// SL Type radio group
+// ── SL ──
+   y += PANEL_GAP_SECTION;
    {
     string sltTexts[] = {"FIXO", "ATR", "RANGE"};
     if(!CreateRadioGroup(m_cr_lSLT, m_cr_bSLT, "cr_lST", "cr_bST", "Tipo SL:", sltTexts, 3, y))
@@ -299,7 +300,8 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLB(m_cr_lCSL, m_cr_bCSL, "cr_lCS", "cr_bCS", "Comp. Spread SL:", y)) return false;
    y += PANEL_GAP_Y + 2;
 
-// TP Type radio group
+// ── TP ──
+   y += PANEL_GAP_SECTION;
    {
     string tptTexts[] = {"NENHUM", "FIXO", "ATR"};
     if(!CreateRadioGroup(m_cr_lTPT, m_cr_bTPT, "cr_lTT", "cr_bTT", "Tipo TP:", tptTexts, 3, y))
@@ -829,10 +831,10 @@ void CEPBotPanel::UpdateCfgBtnStyles(void)
    m_cfg_btnRisco.Pressed(false);  m_cfg_btnRisco2.Pressed(false);
    m_cfg_btnBloq.Pressed(false);   m_cfg_btnOutros.Pressed(false);
 
-   m_cfg_btnRisco.ColorBackground((m_cfgPage == CFG_RISCO)      ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
-   m_cfg_btnRisco2.ColorBackground((m_cfgPage == CFG_RISCO2)    ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
-   m_cfg_btnBloq.ColorBackground((m_cfgPage == CFG_BLOQUEIOS)   ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
-   m_cfg_btnOutros.ColorBackground((m_cfgPage == CFG_OUTROS)    ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
+   m_cfg_btnRisco.ColorBackground((m_cfgPage == CFG_RISCO)      ? CLR_CFG_ACTIVE : CLR_TAB_INACTIVE);
+   m_cfg_btnRisco2.ColorBackground((m_cfgPage == CFG_RISCO2)    ? CLR_CFG_ACTIVE : CLR_TAB_INACTIVE);
+   m_cfg_btnBloq.ColorBackground((m_cfgPage == CFG_BLOQUEIOS)   ? CLR_CFG_ACTIVE : CLR_TAB_INACTIVE);
+   m_cfg_btnOutros.ColorBackground((m_cfgPage == CFG_OUTROS)    ? CLR_CFG_ACTIVE : CLR_TAB_INACTIVE);
 
    m_cfg_btnRisco.Color((m_cfgPage == CFG_RISCO)      ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
    m_cfg_btnRisco2.Color((m_cfgPage == CFG_RISCO2)    ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
