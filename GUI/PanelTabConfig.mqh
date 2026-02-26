@@ -973,10 +973,10 @@ void CEPBotPanel::OnClickTPType(int selected)
       m_cr_iTP.Text("---");
      }
 
-// Atualizar estado visual
-   RefreshRiscoState();
-// Atualizar RISCO 2 (conflito TP ATR vs Partial TP)
+// Atualizar RISCO 2 primeiro (força Partial TP OFF se ATR)
    RefreshRisco2State();
+// Atualizar estado visual RISCO (usa m_cur_partialTP já atualizado)
+   RefreshRiscoState();
   }
 
 //+------------------------------------------------------------------+
