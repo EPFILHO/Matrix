@@ -158,7 +158,6 @@
 #define CLR_TAB_INACTIVE     C'70,70,70'
 #define CLR_TAB_TXT_ACT      clrWhite
 #define CLR_TAB_TXT_INACT    C'190,190,190'
-#define CLR_CFG_ACTIVE       C'30,120,70'
 #define CLR_LABEL            clrBlack
 #define CLR_VALUE            clrBlack
 #define CLR_POSITIVE         C'0,160,70'
@@ -166,7 +165,7 @@
 #define CLR_WARNING          C'200,140,0'
 #define CLR_NEUTRAL          C'100,100,100'
 #define CLR_HEADER           C'0,50,160'
-#define CLR_RADIO_ACTIVE     C'50,80,140'
+#define CLR_RADIO_ACTIVE     C'30,120,70'
 #define CLR_RADIO_INACTIVE   C'180,180,180'
 #define CLR_RADIO_TXT_ACT    clrWhite
 #define CLR_RADIO_TXT_INACT  C'80,80,80'

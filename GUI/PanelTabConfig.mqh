@@ -831,10 +831,10 @@ void CEPBotPanel::UpdateCfgBtnStyles(void)
    m_cfg_btnRisco.Pressed(false);  m_cfg_btnRisco2.Pressed(false);
    m_cfg_btnBloq.Pressed(false);   m_cfg_btnOutros.Pressed(false);
 
-   m_cfg_btnRisco.ColorBackground((m_cfgPage == CFG_RISCO)      ? CLR_CFG_ACTIVE : CLR_TAB_INACTIVE);
-   m_cfg_btnRisco2.ColorBackground((m_cfgPage == CFG_RISCO2)    ? CLR_CFG_ACTIVE : CLR_TAB_INACTIVE);
-   m_cfg_btnBloq.ColorBackground((m_cfgPage == CFG_BLOQUEIOS)   ? CLR_CFG_ACTIVE : CLR_TAB_INACTIVE);
-   m_cfg_btnOutros.ColorBackground((m_cfgPage == CFG_OUTROS)    ? CLR_CFG_ACTIVE : CLR_TAB_INACTIVE);
+   m_cfg_btnRisco.ColorBackground((m_cfgPage == CFG_RISCO)      ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
+   m_cfg_btnRisco2.ColorBackground((m_cfgPage == CFG_RISCO2)    ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
+   m_cfg_btnBloq.ColorBackground((m_cfgPage == CFG_BLOQUEIOS)   ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
+   m_cfg_btnOutros.ColorBackground((m_cfgPage == CFG_OUTROS)    ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
 
    m_cfg_btnRisco.Color((m_cfgPage == CFG_RISCO)      ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
    m_cfg_btnRisco2.Color((m_cfgPage == CFG_RISCO2)    ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
