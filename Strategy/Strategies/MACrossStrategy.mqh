@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
 //|                                             MACrossStrategy.mqh  |
-//|                                         Copyright 2025, EP Filho |
+//|                                         Copyright 2026, EP Filho |
 //|                   Estratégia de Cruzamento de MAs - EPBot Matrix |
-//|                                   Versão 2.20 - Claude Parte 017 |
+//|                                   Versão 2.21 - Claude Parte 022 |
 //+------------------------------------------------------------------+
-#property copyright "Copyright 2025, EP Filho"
-#property version   "2.20"
+#property copyright "Copyright 2026, EP Filho"
+#property version   "2.21"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -14,6 +14,10 @@
 #include "../../Core/Logger.mqh"
 #include "../Base/StrategyBase.mqh"
 
+// ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.21:
+// + Fix: CopyBuffer validação alterada de <= 0 para < 3
+//   (previne acesso fora dos limites se indicador retorna dados incompletos)
 // ═══════════════════════════════════════════════════════════════
 // NOVIDADES v2.20:
 // + Migração para Logger v3.00 (5 níveis + throttle inteligente)
@@ -458,10 +462,10 @@ bool CMACrossStrategy::UpdateIndicators()
      }
 
    int copiedFast = CopyBuffer(m_handleMAFast, 0, 0, 3, m_maFast);
-   if(copiedFast <= 0)
+   if(copiedFast < 3)
      {
       int error = GetLastError();
-      string msg = "[MA Cross] Erro ao copiar buffer MA rápida. Código: " + IntegerToString(error);
+      string msg = "[MA Cross] Erro ao copiar buffer MA rápida (copiados: " + IntegerToString(copiedFast) + "/3). Código: " + IntegerToString(error);
       if(m_logger != NULL)
          m_logger.Log(LOG_ERROR, THROTTLE_NONE, "UPDATE", msg);
       else
@@ -470,10 +474,10 @@ bool CMACrossStrategy::UpdateIndicators()
      }
 
    int copiedSlow = CopyBuffer(m_handleMASlow, 0, 0, 3, m_maSlow);
-   if(copiedSlow <= 0)
+   if(copiedSlow < 3)
      {
       int error = GetLastError();
-      string msg = "[MA Cross] Erro ao copiar buffer MA lenta. Código: " + IntegerToString(error);
+      string msg = "[MA Cross] Erro ao copiar buffer MA lenta (copiados: " + IntegerToString(copiedSlow) + "/3). Código: " + IntegerToString(error);
       if(m_logger != NULL)
          m_logger.Log(LOG_ERROR, THROTTLE_NONE, "UPDATE", msg);
       else
