@@ -2,13 +2,85 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.30 - Claude Parte 021 (Claude Code) |
+//|                     Versão 1.39 - Claude Parte 022 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.30"
+#property version   "1.39"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.39:                                                 |
+//| PANEL v1.16 — RADIO BUTTONS + RISCO 2 (Claude Code):             |
+//|    - Cycle buttons -> CButton[] horizontais (SL Type, TP Type,    |
+//|      Direcao) — clique determinisico, sem ciclo                   |
+//|    - Sub-pagina RISCO 2: Trailing ON/OFF, BE ON/OFF, Partial TP   |
+//|    - SetTrailingActivation/SetBEActivation: hot-reload toggles    |
+//|    - RefreshRisco2State: enable/disable campos Trail/BE/Partial    |
+//|    - 4 sub-paginas CONFIG: RISCO | RISCO 2 | BLOQUEIOS | OUTROS   |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.38:                                                 |
+//| PANEL v1.15 — FIX CLICKS (Claude Code):                          |
+//|    - OnEvent: CAppDialog::OnEvent() agora processa PRIMEIRO       |
+//|      (gera ON_CLICK a partir de CHARTEVENT_OBJECT_CLICK)          |
+//|    - Fix: SL Type, Direction e demais botões agora respondem      |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.37:                                                 |
+//| 🖥️ PANEL v1.14 — POSIÇÕES FIXAS + ENABLE/DISABLE (Claude Code):  |
+//|    - Abandonado Move(): campos em posições fixas, sempre visíveis  |
+//|    - RefreshRiscoState(): enable/disable visual por tipo SL/TP    |
+//|    - Campos desabilitados: label cinza, CEdit ReadOnly + fundo    |
+//|    - Conflito TP ATR vs Partial TP: bloqueio mútuo com "BLOQ."   |
+//|    - Fix: clicks em Direction/SL Type agora funcionam             |
+//|    - Fix: minimize/maximize sem encavalamento de texto            |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.36:                                                 |
+//| 🖥️ PANEL v1.13 — LAYOUT RISCO DINÂMICO (Claude Code):             |
+//|    - LayoutRisco() com Move() — campos se reposicionam sem gaps   |
+//|    - ATR Period, Range Period, Comp Spread inline com SL/TP       |
+//|    - Eliminada seção CONFIGURACAO separada                         |
+//|    - Todos controles RISCO criados incondicionalmente              |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.35:                                                 |
+//| 🖥️ PANEL v1.12 — SELETORES DE TIPO SL/TP (Claude Code):          |
+//|    - SL Type: cycle button FIXO → ATR → RANGE (label dinâmico)   |
+//|    - TP Type: cycle button NENHUM → FIXO → ATR (show/hide)       |
+//|    - TP, ATR Period, Range Period, Comp TP sempre criados         |
+//|    - RiskManager v3.14: SetSLType, SetTPType, SetRangeMultiplier |
+//|    - PANEL_HEIGHT 540→600, CFG_APPLY_Y 420→520                   |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.34:                                                 |
+//| 🖥️ PANEL v1.11 — FIX + RISCO EXPANDIDO (Claude Code):            |
+//|    - Fix: ChartRedraw() nos toggles (Direção não atualizava)     |
+//|    - Fix: encavalamento sub-páginas CONFIG                        |
+//|    - RISCO: ATR Period, Range Period, Compensar Spread SL/TP/Trail|
+//|    - RiskManager: 5 novos setters hot-reload                      |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.33:                                                 |
+//| 🖥️ HOT RELOAD + PARTIÇÃO DO PAINEL (Claude Code):                |
+//|    - Panel.mqh v1.10: aba CONFIG redesenhada com campos editáveis|
+//|      3 sub-páginas (RISCO | BLOQUEIOS | OUTROS)                  |
+//|      CEdit para valores numéricos, CButton para toggles/cycles   |
+//|      Botão APLICAR chama setters hot-reload nos módulos           |
+//|      Campos condicionais (só aparecem se feature está ativa)      |
+//|    - Código do painel dividido em 6 arquivos por aba:            |
+//|      Panel.mqh (core), PanelTab{Status,Resultados,Estrategias,   |
+//|      Filtros,Config}.mqh                                         |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.32:                                                 |
+//| 🖥️ PAINEL GUI (Claude Code):                                     |
+//|    - Novo módulo GUI/Panel.mqh (v1.09) com 5 abas               |
+//|    - Integração: include, global, OnInit, OnDeinit, OnChartEvent |
+//|    - Timer 1.5s para atualização seletiva da aba ativa           |
+//|    - Proteção de mouse: MouseProtection() desabilita             |
+//|      CHART_DRAG_TRADE_LEVELS e CHART_MOUSE_SCROLL sobre painel   |
+//|    - Input inp_ShowPanel para habilitar/desabilitar               |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.31:                                                 |
+//| 🎯 CORREÇÃO: Revisão completa de bugs (Claude Code):             |
+//|    - CopyBuffer: validação alterada de <= 0 para < count         |
+//|    - HistorySelect: janela ampliada de 10s para 60s              |
+//|    - Log adicionado quando PositionSelectByTicket falha           |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.30:                                                 |
 //| 🎯 CORREÇÃO: Entrada no mesmo CANDLE                             |
@@ -103,6 +175,9 @@
 // #include "Strategy/Filters/RSIFilter.mqh"           // ✅ Já incluído
 #include "Strategy/Filters/TrendFilter.mqh"
 
+// 5️⃣ GUI (painel opcional)
+#include "GUI/Panel.mqh"
+
 //+------------------------------------------------------------------+
 //| VARIÁVEIS GLOBAIS - INSTÂNCIAS DOS MÓDULOS                       |
 //+------------------------------------------------------------------+
@@ -113,7 +188,7 @@
 CLogger*        g_logger        = NULL;  // Sistema de logging centralizado
 CBlockers*      g_blockers      = NULL;  // Gerenciador de bloqueios
 CRiskManager*   g_riskManager   = NULL;  // Gerenciador de risco
-CTradeManager*  g_tradeManager  = NULL;  // Gerenciador de posições (v1.01)
+CTradeManager*  g_tradeManager  = NULL;  // Gerenciador de posições (v1.22)
 CSignalManager* g_signalManager = NULL;  // Orquestrador de sinais
 
 // ═══════════════════════════════════════════════════════════════
@@ -127,6 +202,11 @@ CRSIStrategy*     g_rsiStrategy     = NULL;  // Estratégia RSI
 // ═══════════════════════════════════════════════════════════════
 CTrendFilter* g_trendFilter = NULL;  // Filtro de tendência
 CRSIFilter*   g_rsiFilter   = NULL;  // Filtro RSI
+
+// ═══════════════════════════════════════════════════════════════
+// GUI (painel opcional)
+// ═══════════════════════════════════════════════════════════════
+CEPBotPanel*  g_panel       = NULL;  // Painel GUI com abas
 
 // ═══════════════════════════════════════════════════════════════
 // CONTROLE DE CANDLES E POSIÇÕES (CORRIGIDO!)
@@ -147,7 +227,7 @@ bool g_tradingAllowed = true;  // Controle geral de trading
 int OnInit()
   {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.30 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v1.39 - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
 
 // ═══════════════════════════════════════════════════════════════
@@ -618,13 +698,42 @@ int OnInit()
    g_lastBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
 
 // ═══════════════════════════════════════════════════════════════
+// ETAPA 9: PAINEL GUI (opcional)
+// ═══════════════════════════════════════════════════════════════
+   if(inp_ShowPanel && !MQLInfoInteger(MQL_TESTER))
+     {
+      g_panel = new CEPBotPanel();
+      if(g_panel != NULL)
+        {
+         g_panel.Init(g_logger, g_blockers, g_riskManager, g_tradeManager,
+                      g_signalManager, g_maCrossStrategy, g_rsiStrategy,
+                      g_trendFilter, g_rsiFilter, inp_MagicNumber, _Symbol);
+
+         int chartWidth = (int)ChartGetInteger(0, CHART_WIDTH_IN_PIXELS);
+         int x1 = chartWidth - PANEL_WIDTH - 10;
+         if(!g_panel.CreatePanel(0, "EPBotMatrix - Versão 1.39", 0, x1, 20, x1 + PANEL_WIDTH, 20 + PANEL_HEIGHT))
+           {
+            g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar painel GUI");
+            delete g_panel;
+            g_panel = NULL;
+           }
+         else
+           {
+            g_panel.Run();
+            EventSetMillisecondTimer(1500);
+            g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "Painel GUI criado com sucesso");
+           }
+        }
+     }
+
+// ═══════════════════════════════════════════════════════════════
 // SUCESSO!
 // ═══════════════════════════════════════════════════════════════
    Print("════════════════════════════════════════════════════════════════");
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
 
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.30 - PRONTO PARA OPERAR!");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.39 - PRONTO PARA OPERAR!");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Símbolo: " + _Symbol);
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
@@ -660,6 +769,15 @@ void OnDeinit(const int reason)
 // ═══════════════════════════════════════════════════════════════
 // LIMPEZA SEGURA - Ordem inversa da inicialização
 // ═══════════════════════════════════════════════════════════════
+
+// ETAPA 0: Destruir painel GUI (ANTES dos módulos)
+   if(g_panel != NULL)
+     {
+      g_panel.Destroy(reason);
+      delete g_panel;
+      g_panel = NULL;
+     }
+   EventKillTimer();
 
 // ETAPA 1: Desinicializar SignalManager ANTES de deletar strategies/filters
 //          (enquanto os ponteiros ainda são válidos)
@@ -897,7 +1015,11 @@ void OnTick()
 
       // Selecionar a posição específica
       if(!PositionSelectByTicket(myPositionTicket))
+        {
+         g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "POSITION",
+            "⚠️ Falha ao selecionar posição #" + IntegerToString((int)myPositionTicket));
          return;
+        }
 
       ulong  ticket = PositionGetInteger(POSITION_TICKET);
       double volume = PositionGetDouble(POSITION_VOLUME);
@@ -1482,7 +1604,7 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
       if(result.deal > 0)
         {
          // Atualizar histórico para garantir que deal está disponível
-         datetime from = TimeCurrent() - 10;
+         datetime from = TimeCurrent() - 60;
          datetime to = TimeCurrent();
          
          if(HistorySelect(from, to))
@@ -1647,5 +1769,30 @@ string GetDeinitReasonText(int reason)
   }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.30                                   |
+//| EVENTO DE GRÁFICO — encaminha para o painel GUI                  |
+//+------------------------------------------------------------------+
+void OnChartEvent(const int id, const long &lparam,
+                  const double &dparam, const string &sparam)
+  {
+   if(g_panel != NULL)
+     {
+      g_panel.ChartEvent(id, lparam, dparam, sparam);
+
+      // Proteção: desabilita arrasto de SL/TP quando mouse sobre o painel
+      if(id == CHARTEVENT_MOUSE_MOVE)
+         g_panel.MouseProtection((int)lparam, (int)dparam);
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| TIMER — atualiza o painel GUI                                     |
+//+------------------------------------------------------------------+
+void OnTimer()
+  {
+   if(g_panel != NULL)
+      g_panel.Update();
+  }
+
+//+------------------------------------------------------------------+
+//| FIM DO EA - EPBOT MATRIX v1.39                                   |
 //+------------------------------------------------------------------+
