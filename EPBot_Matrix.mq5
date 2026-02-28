@@ -2,13 +2,23 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.39 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.40 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.39"
+#property version   "1.40"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.40:                                                 |
+//| PANEL v1.17 + BLOCKERS v3.09 — CONFIG BLOQUEIOS EXPANDIDO (Parte 023): |
+//|    - Partial TP movido de RISCO 2 → RISCO (m_cr_bPTP etc.)       |
+//|    - BLOQUEIOS: radio Profit Target Action (PARAR|ATIVAR DD)      |
+//|    - BLOQUEIOS: radio Streak Action (PAUSAR|PARAR DIA) + pause min|
+//|    - BLOQUEIOS: radio DD Type (FINANCEIRO|PERCENTUAL)             |
+//|    - BLOQUEIOS: radio DD Peak Mode (SO REAL.|C/FLUTUANTE)         |
+//|    - Blockers v3.09: SetDrawdownType + SetDrawdownPeakMode        |
+//|    - RefreshStreakState: pausa fields visíveis só se PAUSAR ativo  |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.39:                                                 |
 //| PANEL v1.16 — RADIO BUTTONS + RISCO 2 (Claude Code):             |

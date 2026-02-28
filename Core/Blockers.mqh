@@ -2,12 +2,16 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.08 - Claude Parte 021 (Claude Code) |
+//|                     Versão 3.09 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.08"
+#property version   "3.09"
 #property strict
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.09 (Parte 023):
+// + SetDrawdownType(ENUM_DRAWDOWN_TYPE) — hot-reload do tipo DD
+// + SetDrawdownPeakMode(ENUM_DRAWDOWN_PEAK_MODE) — hot-reload do modo de pico
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.08:
 // ✅ Fix: Funções Hot Reload só logam quando há mudança real
@@ -401,6 +405,8 @@ public:
    void              SetStreakLimits(int maxLoss, ENUM_STREAK_ACTION lossAction, int lossPause,
                                      int maxWin, ENUM_STREAK_ACTION winAction, int winPause);
    void              SetDrawdownValue(double newValue);
+   void              SetDrawdownType(ENUM_DRAWDOWN_TYPE newType);
+   void              SetDrawdownPeakMode(ENUM_DRAWDOWN_PEAK_MODE newMode);
 
    // ═══════════════════════════════════════════════════════════════
    // GETTERS - INFORMAÇÕES DE ESTADO
@@ -1222,6 +1228,36 @@ void CBlockers::SetDrawdownValue(double newValue)
       else
          Print("🔄 Drawdown alterado: ", typeText, oldValue, " → ", typeText, newValue);
      }
+  }
+
+//+------------------------------------------------------------------+
+//| SetDrawdownType — altera tipo de drawdown (FINANCEIRO/%)         |
+//+------------------------------------------------------------------+
+void CBlockers::SetDrawdownType(ENUM_DRAWDOWN_TYPE newType)
+  {
+   if(m_drawdownType == newType) return;
+   m_drawdownType = newType;
+   string typeText = (newType == DD_FINANCIAL) ? "FINANCEIRO ($)" : "PERCENTUAL (%)";
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "DrawdownType: " + typeText);
+   else
+      Print("🔄 DrawdownType: ", typeText);
+  }
+
+//+------------------------------------------------------------------+
+//| SetDrawdownPeakMode — altera modo de cálculo do pico             |
+//+------------------------------------------------------------------+
+void CBlockers::SetDrawdownPeakMode(ENUM_DRAWDOWN_PEAK_MODE newMode)
+  {
+   if(m_drawdownPeakMode == newMode) return;
+   m_drawdownPeakMode = newMode;
+   string modeText = (newMode == DD_PEAK_REALIZED_ONLY) ? "SO REALIZADO" : "C/ FLUTUANTE";
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "DrawdownPeakMode: " + modeText);
+   else
+      Print("🔄 DrawdownPeakMode: ", modeText);
   }
 
 //+------------------------------------------------------------------+

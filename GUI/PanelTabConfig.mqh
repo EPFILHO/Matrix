@@ -2,18 +2,27 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.16 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.17 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
 //
-// Sub-páginas: RISCO | BLOQUEIOS | OUTROS
+// Sub-páginas: RISCO | RISCO 2 | BLOQUEIOS | OUTROS
 // Campos CEdit editáveis + botões de toggle/cycle
 // Botão APLICAR chama setters hot-reload nos módulos
 //
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.17 (2026-02-28):
+// + Partial TP movido de RISCO 2 → RISCO (m_c2_bPTP/iTP* → m_cr_bPTP/iTP*)
+//   RefreshRisco2State: removida lógica PTP → agora em RefreshRiscoState
+// + BLOQUEIOS: radio Profit Target Action (PARAR|ATIVAR DD) em Daily Limits
+// + BLOQUEIOS: radio Streak Action (PAUSAR|PARAR DIA) por Loss/Win + campos pause
+// + BLOQUEIOS: DRAWDOWN com header separado + radio DD Type + DD Peak Mode
+// + 5 novos handlers: OnClickLossStreakAction/WinStreakAction/DDType/DDPeakMode/PTA
+// + RefreshStreakState() — enable/disable campos de pausa por action
+//
 // v1.16 (2026-02-25):
 // + RADIO GROUPS: Cycle buttons → CButton[] horizontais
 //   (SL Type, TP Type, Direcao com botoes individuais por opcao)
@@ -321,8 +330,23 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLB(m_cr_lCTP, m_cr_bCTP, "cr_lCT", "cr_bCT", "Comp. Spread TP:", y)) return false;
    y += PANEL_GAP_Y + 2;
 
+// ── PARTIAL TP (movido de RISCO 2) ──
+   y += PANEL_GAP_SECTION;
+   if(!CreateHdr(m_cr_hdrPTP, "cr_hPTP", "PARTIAL TP", y)) return false;
+   y += PANEL_GAP_Y + 2;
+   if(!CreateLB(m_cr_lPTP, m_cr_bPTP, "cr_lPTP", "cr_bPTP", "Partial TP:", y)) return false;
+   y += PANEL_GAP_Y + 2;
+   if(!CreateLI(m_cr_lTP1p, m_cr_iTP1p, "cr_l1p", "cr_i1p", "TP1 %:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cr_lTP1d, m_cr_iTP1d, "cr_l1d", "cr_i1d", "TP1 Dist (pts):", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cr_lTP2p, m_cr_iTP2p, "cr_l2p", "cr_i2p", "TP2 %:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cr_lTP2d, m_cr_iTP2d, "cr_l2d", "cr_i2d", "TP2 Dist (pts):", y)) return false;
+   y += PANEL_GAP_Y;
+
 // ════════════════════════════════════════════════════════════
-// SUB-PÁGINA: RISCO 2 (Trailing/BE/Partial TP)
+// SUB-PÁGINA: RISCO 2 (Trailing/BE)
 // ════════════════════════════════════════════════════════════
    y = CFG_CONTENT_Y;
 
@@ -355,21 +379,6 @@ bool CEPBotPanel::CreateTabConfig(void)
     y += PANEL_GAP_Y;
    }
 
-// PARTIAL TP
-   y += PANEL_GAP_SECTION;
-   if(!CreateHdr(m_c2_hdr3, "c2_h3", "PARTIAL TP", y)) return false;
-   y += PANEL_GAP_Y + 2;
-   if(!CreateLB(m_c2_lPTP, m_c2_bPTP, "c2_lPT", "c2_bPT", "Partial TP:", y)) return false;
-   y += PANEL_GAP_Y + 2;
-   if(!CreateLI(m_c2_lTP1p, m_c2_iTP1p, "c2_l1p", "c2_i1p", "TP1 %:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLI(m_c2_lTP1d, m_c2_iTP1d, "c2_l1d", "c2_i1d", "TP1 Dist (pts):", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLI(m_c2_lTP2p, m_c2_iTP2p, "c2_l2p", "c2_i2p", "TP2 %:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLI(m_c2_lTP2d, m_c2_iTP2d, "c2_l2d", "c2_i2d", "TP2 Dist (pts):", y)) return false;
-   y += PANEL_GAP_Y;
-
 // ════════════════════════════════════════════════════════════
 // SUB-PÁGINA: BLOQUEIOS
 // ════════════════════════════════════════════════════════════
@@ -398,6 +407,13 @@ bool CEPBotPanel::CreateTabConfig(void)
       y += PANEL_GAP_Y;
       if(!CreateLI(m_cb_lGain, m_cb_iGain, "cb_lGn", "cb_iGn", "Max Gain $:", y)) return false;
       y += PANEL_GAP_Y;
+      // Profit Target Action
+      {
+       string ptaTexts[] = {"PARAR", "ATIVAR DD"};
+       if(!CreateRadioGroup(m_cb_lPTA, m_cb_bPTA, "cb_lPTA", "cb_bPTA", "Profit Acao:", ptaTexts, 2, y))
+          return false;
+      }
+      y += PANEL_GAP_Y + 2;
      }
 
    if(m_cfg_hasStreak)
@@ -407,14 +423,51 @@ bool CEPBotPanel::CreateTabConfig(void)
       y += PANEL_GAP_Y + 2;
       if(!CreateLI(m_cb_lLStr, m_cb_iLStr, "cb_lLS", "cb_iLS", "Max Loss Streak:", y)) return false;
       y += PANEL_GAP_Y;
+      // Loss Streak Action radio
+      {
+       string lsaTexts[] = {"PAUSAR", "PARAR DIA"};
+       if(!CreateRadioGroup(m_cb_lLStrA, m_cb_bLStrA, "cb_lLSA", "cb_bLSA", "Loss Acao:", lsaTexts, 2, y))
+          return false;
+      }
+      y += PANEL_GAP_Y + 2;
+      if(!CreateLI(m_cb_lLStrP, m_cb_iLStrP, "cb_lLSP", "cb_iLSP", "Pausa Loss (min):", y)) return false;
+      y += PANEL_GAP_Y;
+
       if(!CreateLI(m_cb_lWStr, m_cb_iWStr, "cb_lWS", "cb_iWS", "Max Win Streak:", y)) return false;
+      y += PANEL_GAP_Y;
+      // Win Streak Action radio
+      {
+       string wsaTexts[] = {"PAUSAR", "PARAR DIA"};
+       if(!CreateRadioGroup(m_cb_lWStrA, m_cb_bWStrA, "cb_lWSA", "cb_bWSA", "Win Acao:", wsaTexts, 2, y))
+          return false;
+      }
+      y += PANEL_GAP_Y + 2;
+      if(!CreateLI(m_cb_lWStrP, m_cb_iWStrP, "cb_lWSP", "cb_iWSP", "Pausa Win (min):", y)) return false;
       y += PANEL_GAP_Y;
      }
 
    if(m_cfg_hasDrawdown)
      {
+      y += PANEL_GAP_SECTION;
+      if(!CreateHdr(m_cb_hdr4, "cb_h4", "DRAWDOWN", y)) return false;
+      y += PANEL_GAP_Y + 2;
       string ddLabel = (inp_DrawdownType == DD_FINANCIAL) ? "Drawdown $:" : "Drawdown %:";
       if(!CreateLI(m_cb_lDD, m_cb_iDD, "cb_lDD", "cb_iDD", ddLabel, y)) return false;
+      y += PANEL_GAP_Y;
+      // DD Type radio
+      {
+       string ddtTexts[] = {"FINANCEIRO", "PERCENTUAL"};
+       if(!CreateRadioGroup(m_cb_lDDT, m_cb_bDDT, "cb_lDT", "cb_bDT", "Tipo DD:", ddtTexts, 2, y))
+          return false;
+      }
+      y += PANEL_GAP_Y + 2;
+      // DD Peak Mode radio
+      {
+       string ddpTexts[] = {"SO REAL.", "C/FLUTUANTE"};
+       if(!CreateRadioGroup(m_cb_lDDPk, m_cb_bDDPk, "cb_lDPk", "cb_bDPk", "Modo Peak:", ddpTexts, 2, y))
+          return false;
+      }
+      y += PANEL_GAP_Y;
      }
 
 // ════════════════════════════════════════════════════════════
@@ -563,13 +616,13 @@ void CEPBotPanel::PopulateConfig(void)
       m_c2_iBEOff.Text(DoubleToString(inp_BE_ATROffset, 2));
      }
 
-   m_c2_bPTP.Text(m_cur_partialTP ? "ATIVO" : "DESAB.");
-   m_c2_bPTP.ColorBackground(m_cur_partialTP ? C'30,120,70' : C'120,50,50');
-   m_c2_bPTP.Color(clrWhite);
-   m_c2_iTP1p.Text(DoubleToString(inp_PartialTP1_Percent, 1));
-   m_c2_iTP1d.Text(IntegerToString(inp_PartialTP1_Distance));
-   m_c2_iTP2p.Text(DoubleToString(inp_PartialTP2_Percent, 1));
-   m_c2_iTP2d.Text(IntegerToString(inp_PartialTP2_Distance));
+   m_cr_bPTP.Text(m_cur_partialTP ? "ATIVO" : "DESAB.");
+   m_cr_bPTP.ColorBackground(m_cur_partialTP ? C'30,120,70' : C'120,50,50');
+   m_cr_bPTP.Color(clrWhite);
+   m_cr_iTP1p.Text(DoubleToString(inp_PartialTP1_Percent, 1));
+   m_cr_iTP1d.Text(IntegerToString(inp_PartialTP1_Distance));
+   m_cr_iTP2p.Text(DoubleToString(inp_PartialTP2_Percent, 1));
+   m_cr_iTP2d.Text(IntegerToString(inp_PartialTP2_Distance));
 
 // ── Bloqueios ──
    m_cb_iSpr.Text(IntegerToString(inp_MaxSpread));
@@ -582,16 +635,36 @@ void CEPBotPanel::PopulateConfig(void)
       m_cb_iTrd.Text(IntegerToString(inp_MaxDailyTrades));
       m_cb_iLoss.Text(DoubleToString(inp_MaxDailyLoss, 2));
       m_cb_iGain.Text(DoubleToString(inp_MaxDailyGain, 2));
+      // Profit Target Action
+      m_cur_profitTargetAction = inp_ProfitTargetAction;
+      SetRadioSelection(m_cb_bPTA, 2, (int)m_cur_profitTargetAction);
      }
 
    if(m_cfg_hasStreak)
      {
       m_cb_iLStr.Text(IntegerToString(inp_MaxLossStreak));
+      // Loss Streak Action
+      m_cur_lossStreakAction = inp_LossStreakAction;
+      SetRadioSelection(m_cb_bLStrA, 2, (int)m_cur_lossStreakAction);
+      m_cb_iLStrP.Text(IntegerToString(inp_LossPauseMinutes));
+
       m_cb_iWStr.Text(IntegerToString(inp_MaxWinStreak));
+      // Win Streak Action
+      m_cur_winStreakAction = inp_WinStreakAction;
+      SetRadioSelection(m_cb_bWStrA, 2, (int)m_cur_winStreakAction);
+      m_cb_iWStrP.Text(IntegerToString(inp_WinPauseMinutes));
      }
 
    if(m_cfg_hasDrawdown)
+     {
       m_cb_iDD.Text(DoubleToString(inp_DrawdownValue, 2));
+      // DD Type
+      m_cur_ddType = inp_DrawdownType;
+      SetRadioSelection(m_cb_bDDT, 2, (int)m_cur_ddType);
+      // DD Peak Mode
+      m_cur_ddPeakMode = inp_DrawdownPeakMode;
+      SetRadioSelection(m_cb_bDDPk, 2, (int)m_cur_ddPeakMode);
+     }
 
 // ── Outros ──
    m_co_iSlip.Text(IntegerToString(inp_Slippage));
@@ -633,6 +706,36 @@ void CEPBotPanel::RefreshRiscoState(void)
       m_cr_bCTP.Color(clrWhite);
      }
 
+// ── Partial TP (movido de RISCO 2) ──
+   bool ptpBlocked = (m_cur_tpType == TP_ATR);
+
+// Forçar OFF se TP=ATR (conflito)
+   if(ptpBlocked && m_cur_partialTP)
+     {
+      m_cur_partialTP = false;
+      m_cr_bPTP.Text("DESAB.");
+     }
+
+   if(ptpBlocked)
+     {
+      SetButtonEnabled(m_cr_lPTP, m_cr_bPTP, false);
+      m_cr_bPTP.Text("BLOQ.");
+     }
+   else
+     {
+      m_cr_lPTP.Color(CLR_LABEL);
+      m_cr_bPTP.ColorBackground(m_cur_partialTP ? C'30,120,70' : C'120,50,50');
+      m_cr_bPTP.Color(clrWhite);
+      m_cr_bPTP.Text(m_cur_partialTP ? "ATIVO" : "DESAB.");
+     }
+
+// Campos TP1/TP2: habilitados se PTP ativo e não bloqueado
+   bool ptpActive = (m_cur_partialTP && !ptpBlocked);
+   SetEditEnabled(m_cr_lTP1p, m_cr_iTP1p, ptpActive);
+   SetEditEnabled(m_cr_lTP1d, m_cr_iTP1d, ptpActive);
+   SetEditEnabled(m_cr_lTP2p, m_cr_iTP2p, ptpActive);
+   SetEditEnabled(m_cr_lTP2d, m_cr_iTP2d, ptpActive);
+
 // Dim radio TP ATR se Partial TP ativo (conflito)
    if(m_cur_partialTP)
      {
@@ -661,35 +764,6 @@ void CEPBotPanel::RefreshRisco2State(void)
 // BE fields: habilitado se toggle ON
    SetEditEnabled(m_c2_lBEVal, m_c2_iBEVal, m_cur_beOn);
    SetEditEnabled(m_c2_lBEOff, m_c2_iBEOff, m_cur_beOn);
-
-// ── Conflito TP ATR vs Partial TP ──
-   bool ptpBlocked = (m_cur_tpType == TP_ATR);
-
-   if(ptpBlocked && m_cur_partialTP)
-     {
-      m_cur_partialTP = false;
-      m_c2_bPTP.Text("DESAB.");
-     }
-
-   if(ptpBlocked)
-     {
-      SetButtonEnabled(m_c2_lPTP, m_c2_bPTP, false);
-      m_c2_bPTP.Text("BLOQ.");
-     }
-   else
-     {
-      m_c2_lPTP.Color(CLR_LABEL);
-      m_c2_bPTP.ColorBackground(m_cur_partialTP ? C'30,120,70' : C'120,50,50');
-      m_c2_bPTP.Color(clrWhite);
-      m_c2_bPTP.Text(m_cur_partialTP ? "ATIVO" : "DESAB.");
-     }
-
-// Campos TP1/TP2
-   bool ptpActive = (m_cur_partialTP && !ptpBlocked);
-   SetEditEnabled(m_c2_lTP1p, m_c2_iTP1p, ptpActive);
-   SetEditEnabled(m_c2_lTP1d, m_c2_iTP1d, ptpActive);
-   SetEditEnabled(m_c2_lTP2p, m_c2_iTP2p, ptpActive);
-   SetEditEnabled(m_c2_lTP2d, m_c2_iTP2d, ptpActive);
 
    ChartRedraw();
   }
@@ -728,6 +802,11 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_cr_lTPT.Show(); for(int i=0;i<3;i++) m_cr_bTPT[i].Show();
             m_cr_lTP.Show(); m_cr_iTP.Show();
             m_cr_lCTP.Show(); m_cr_bCTP.Show();
+            m_cr_hdrPTP.Show(); m_cr_lPTP.Show(); m_cr_bPTP.Show();
+            m_cr_lTP1p.Show(); m_cr_iTP1p.Show();
+            m_cr_lTP1d.Show(); m_cr_iTP1d.Show();
+            m_cr_lTP2p.Show(); m_cr_iTP2p.Show();
+            m_cr_lTP2d.Show(); m_cr_iTP2d.Show();
             RefreshRiscoState();
            }
          else
@@ -743,6 +822,11 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_cr_lTPT.Hide(); for(int i=0;i<3;i++) m_cr_bTPT[i].Hide();
             m_cr_lTP.Hide(); m_cr_iTP.Hide();
             m_cr_lCTP.Hide(); m_cr_bCTP.Hide();
+            m_cr_hdrPTP.Hide(); m_cr_lPTP.Hide(); m_cr_bPTP.Hide();
+            m_cr_lTP1p.Hide(); m_cr_iTP1p.Hide();
+            m_cr_lTP1d.Hide(); m_cr_iTP1d.Hide();
+            m_cr_lTP2p.Hide(); m_cr_iTP2p.Hide();
+            m_cr_lTP2d.Hide(); m_cr_iTP2d.Hide();
            }
          break;
         }
@@ -758,11 +842,6 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_c2_hdr2.Show(); m_c2_lBEAct.Show(); m_c2_bBEAct.Show();
             m_c2_lBEVal.Show(); m_c2_iBEVal.Show();
             m_c2_lBEOff.Show(); m_c2_iBEOff.Show();
-            m_c2_hdr3.Show(); m_c2_lPTP.Show(); m_c2_bPTP.Show();
-            m_c2_lTP1p.Show(); m_c2_iTP1p.Show();
-            m_c2_lTP1d.Show(); m_c2_iTP1d.Show();
-            m_c2_lTP2p.Show(); m_c2_iTP2p.Show();
-            m_c2_lTP2d.Show(); m_c2_iTP2d.Show();
             RefreshRisco2State();
            }
          else
@@ -774,11 +853,6 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_c2_hdr2.Hide(); m_c2_lBEAct.Hide(); m_c2_bBEAct.Hide();
             m_c2_lBEVal.Hide(); m_c2_iBEVal.Hide();
             m_c2_lBEOff.Hide(); m_c2_iBEOff.Hide();
-            m_c2_hdr3.Hide(); m_c2_lPTP.Hide(); m_c2_bPTP.Hide();
-            m_c2_lTP1p.Hide(); m_c2_iTP1p.Hide();
-            m_c2_lTP1d.Hide(); m_c2_iTP1d.Hide();
-            m_c2_lTP2p.Hide(); m_c2_iTP2p.Hide();
-            m_c2_lTP2d.Hide(); m_c2_iTP2d.Hide();
            }
          break;
         }
@@ -789,23 +863,54 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
            {
             m_cb_hdr1.Show(); m_cb_lSpr.Show(); m_cb_iSpr.Show();
             m_cb_lDir.Show(); for(int i=0;i<3;i++) m_cb_bDir[i].Show();
-            if(m_cfg_hasDailyLimits) { m_cb_hdr2.Show(); m_cb_lTrd.Show(); m_cb_iTrd.Show();
-                                       m_cb_lLoss.Show(); m_cb_iLoss.Show();
-                                       m_cb_lGain.Show(); m_cb_iGain.Show(); }
-            if(m_cfg_hasStreak)      { m_cb_hdr3.Show(); m_cb_lLStr.Show(); m_cb_iLStr.Show();
-                                       m_cb_lWStr.Show(); m_cb_iWStr.Show(); }
-            if(m_cfg_hasDrawdown)    { m_cb_lDD.Show(); m_cb_iDD.Show(); }
+            if(m_cfg_hasDailyLimits)
+              {
+               m_cb_hdr2.Show(); m_cb_lTrd.Show(); m_cb_iTrd.Show();
+               m_cb_lLoss.Show(); m_cb_iLoss.Show();
+               m_cb_lGain.Show(); m_cb_iGain.Show();
+               m_cb_lPTA.Show(); for(int i=0;i<2;i++) m_cb_bPTA[i].Show();
+              }
+            if(m_cfg_hasStreak)
+              {
+               m_cb_hdr3.Show(); m_cb_lLStr.Show(); m_cb_iLStr.Show();
+               m_cb_lLStrA.Show(); for(int i=0;i<2;i++) m_cb_bLStrA[i].Show();
+               m_cb_lWStr.Show(); m_cb_iWStr.Show();
+               m_cb_lWStrA.Show(); for(int i=0;i<2;i++) m_cb_bWStrA[i].Show();
+               RefreshStreakState();
+              }
+            if(m_cfg_hasDrawdown)
+              {
+               m_cb_hdr4.Show(); m_cb_lDD.Show(); m_cb_iDD.Show();
+               m_cb_lDDT.Show(); for(int i=0;i<2;i++) m_cb_bDDT[i].Show();
+               m_cb_lDDPk.Show(); for(int i=0;i<2;i++) m_cb_bDDPk[i].Show();
+              }
            }
          else
            {
             m_cb_hdr1.Hide(); m_cb_lSpr.Hide(); m_cb_iSpr.Hide();
             m_cb_lDir.Hide(); for(int i=0;i<3;i++) m_cb_bDir[i].Hide();
-            if(m_cfg_hasDailyLimits) { m_cb_hdr2.Hide(); m_cb_lTrd.Hide(); m_cb_iTrd.Hide();
-                                       m_cb_lLoss.Hide(); m_cb_iLoss.Hide();
-                                       m_cb_lGain.Hide(); m_cb_iGain.Hide(); }
-            if(m_cfg_hasStreak)      { m_cb_hdr3.Hide(); m_cb_lLStr.Hide(); m_cb_iLStr.Hide();
-                                       m_cb_lWStr.Hide(); m_cb_iWStr.Hide(); }
-            if(m_cfg_hasDrawdown)    { m_cb_lDD.Hide(); m_cb_iDD.Hide(); }
+            if(m_cfg_hasDailyLimits)
+              {
+               m_cb_hdr2.Hide(); m_cb_lTrd.Hide(); m_cb_iTrd.Hide();
+               m_cb_lLoss.Hide(); m_cb_iLoss.Hide();
+               m_cb_lGain.Hide(); m_cb_iGain.Hide();
+               m_cb_lPTA.Hide(); for(int i=0;i<2;i++) m_cb_bPTA[i].Hide();
+              }
+            if(m_cfg_hasStreak)
+              {
+               m_cb_hdr3.Hide(); m_cb_lLStr.Hide(); m_cb_iLStr.Hide();
+               m_cb_lLStrA.Hide(); for(int i=0;i<2;i++) m_cb_bLStrA[i].Hide();
+               m_cb_lLStrP.Hide(); m_cb_iLStrP.Hide();
+               m_cb_lWStr.Hide(); m_cb_iWStr.Hide();
+               m_cb_lWStrA.Hide(); for(int i=0;i<2;i++) m_cb_bWStrA[i].Hide();
+               m_cb_lWStrP.Hide(); m_cb_iWStrP.Hide();
+              }
+            if(m_cfg_hasDrawdown)
+              {
+               m_cb_hdr4.Hide(); m_cb_lDD.Hide(); m_cb_iDD.Hide();
+               m_cb_lDDT.Hide(); for(int i=0;i<2;i++) m_cb_bDDT[i].Hide();
+               m_cb_lDDPk.Hide(); for(int i=0;i<2;i++) m_cb_bDDPk[i].Hide();
+              }
            }
          break;
         }
@@ -892,11 +997,10 @@ void CEPBotPanel::OnClickPartialTP(void)
       return;
 
    m_cur_partialTP = !m_cur_partialTP;
-   m_c2_bPTP.Pressed(false);
-   m_c2_bPTP.Text(m_cur_partialTP ? "ATIVO" : "DESAB.");
-   m_c2_bPTP.ColorBackground(m_cur_partialTP ? C'30,120,70' : C'120,50,50');
-   RefreshRisco2State();
-// Atualizar dim do botão ATR na página RISCO
+   m_cr_bPTP.Pressed(false);
+   m_cr_bPTP.Text(m_cur_partialTP ? "ATIVO" : "DESAB.");
+   m_cr_bPTP.ColorBackground(m_cur_partialTP ? C'30,120,70' : C'120,50,50');
+// Partial TP agora em RISCO — atualiza estado visual incluindo conflito e dim ATR
    RefreshRiscoState();
   }
 
@@ -1111,12 +1215,12 @@ void CEPBotPanel::ApplyConfig(void)
       m_riskManager.SetUsePartialTP(m_cur_partialTP);
       if(m_cur_partialTP)
         {
-         double tp1p = StringToDouble(m_c2_iTP1p.Text());
-         int    tp1d = (int)StringToInteger(m_c2_iTP1d.Text());
+         double tp1p = StringToDouble(m_cr_iTP1p.Text());
+         int    tp1d = (int)StringToInteger(m_cr_iTP1d.Text());
          m_riskManager.SetPartialTP1((tp1p > 0 && tp1d > 0), tp1p, tp1d);
 
-         double tp2p = StringToDouble(m_c2_iTP2p.Text());
-         int    tp2d = (int)StringToInteger(m_c2_iTP2d.Text());
+         double tp2p = StringToDouble(m_cr_iTP2p.Text());
+         int    tp2d = (int)StringToInteger(m_cr_iTP2d.Text());
          m_riskManager.SetPartialTP2((tp2p > 0 && tp2d > 0), tp2p, tp2d);
         }
 
@@ -1156,18 +1260,20 @@ void CEPBotPanel::ApplyConfig(void)
          double maxLs = StringToDouble(m_cb_iLoss.Text());
          double maxGn = StringToDouble(m_cb_iGain.Text());
          if(maxTrd >= 0 && maxLs >= 0 && maxGn >= 0)
-            m_blockers.SetDailyLimits(maxTrd, maxLs, maxGn, inp_ProfitTargetAction);
+            m_blockers.SetDailyLimits(maxTrd, maxLs, maxGn, m_cur_profitTargetAction);
          else
             errors++;
         }
 
       if(m_cfg_hasStreak)
         {
-         int lStr = (int)StringToInteger(m_cb_iLStr.Text());
-         int wStr = (int)StringToInteger(m_cb_iWStr.Text());
-         if(lStr >= 0 && wStr >= 0)
-            m_blockers.SetStreakLimits(lStr, inp_LossStreakAction, inp_LossPauseMinutes,
-                                      wStr, inp_WinStreakAction, inp_WinPauseMinutes);
+         int lStr  = (int)StringToInteger(m_cb_iLStr.Text());
+         int wStr  = (int)StringToInteger(m_cb_iWStr.Text());
+         int lPause = (int)StringToInteger(m_cb_iLStrP.Text());
+         int wPause = (int)StringToInteger(m_cb_iWStrP.Text());
+         if(lStr >= 0 && wStr >= 0 && lPause >= 0 && wPause >= 0)
+            m_blockers.SetStreakLimits(lStr, m_cur_lossStreakAction, lPause,
+                                      wStr, m_cur_winStreakAction,  wPause);
          else
             errors++;
         }
@@ -1175,7 +1281,14 @@ void CEPBotPanel::ApplyConfig(void)
       if(m_cfg_hasDrawdown)
         {
          double dd = StringToDouble(m_cb_iDD.Text());
-         if(dd >= 0) m_blockers.SetDrawdownValue(dd); else errors++;
+         if(dd >= 0)
+           {
+            m_blockers.SetDrawdownValue(dd);
+            m_blockers.SetDrawdownType(m_cur_ddType);
+            m_blockers.SetDrawdownPeakMode(m_cur_ddPeakMode);
+           }
+         else
+            errors++;
         }
      }
 
@@ -1245,6 +1358,73 @@ void CEPBotPanel::OnClickCompTrail(void)
    m_c2_bCTrl.Pressed(false);
    m_c2_bCTrl.Text(m_cur_compTrail ? "ON" : "OFF");
    m_c2_bCTrl.ColorBackground(m_cur_compTrail ? C'30,120,70' : C'120,50,50');
+   ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
+//| RefreshStreakState — enable/disable campos de pausa por action    |
+//+------------------------------------------------------------------+
+void CEPBotPanel::RefreshStreakState(void)
+  {
+   if(!m_cfg_hasStreak) return;
+
+// Loss Pause Minutes: visível só se action = PAUSAR
+   bool lPause = (m_cur_lossStreakAction == STREAK_PAUSE);
+   SetEditEnabled(m_cb_lLStrP, m_cb_iLStrP, lPause);
+   if(lPause)
+     { m_cb_lLStrP.Show(); m_cb_iLStrP.Show(); }
+   else
+     { m_cb_lLStrP.Hide(); m_cb_iLStrP.Hide(); }
+
+// Win Pause Minutes: visível só se action = PAUSAR
+   bool wPause = (m_cur_winStreakAction == STREAK_PAUSE);
+   SetEditEnabled(m_cb_lWStrP, m_cb_iWStrP, wPause);
+   if(wPause)
+     { m_cb_lWStrP.Show(); m_cb_iWStrP.Show(); }
+   else
+     { m_cb_lWStrP.Hide(); m_cb_iWStrP.Hide(); }
+  }
+
+//+------------------------------------------------------------------+
+//| Novos handlers BLOQUEIOS (Parte 023)                              |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickLossStreakAction(int selected)
+  {
+   m_cur_lossStreakAction = (ENUM_STREAK_ACTION)selected;
+   SetRadioSelection(m_cb_bLStrA, 2, selected);
+   RefreshStreakState();
+   ChartRedraw();
+  }
+
+void CEPBotPanel::OnClickWinStreakAction(int selected)
+  {
+   m_cur_winStreakAction = (ENUM_STREAK_ACTION)selected;
+   SetRadioSelection(m_cb_bWStrA, 2, selected);
+   RefreshStreakState();
+   ChartRedraw();
+  }
+
+void CEPBotPanel::OnClickDDType(int selected)
+  {
+   m_cur_ddType = (ENUM_DRAWDOWN_TYPE)selected;
+   SetRadioSelection(m_cb_bDDT, 2, selected);
+// Atualizar label do campo de valor drawdown
+   string ddLabel = (m_cur_ddType == DD_FINANCIAL) ? "Drawdown $:" : "Drawdown %:";
+   m_cb_lDD.Text(ddLabel);
+   ChartRedraw();
+  }
+
+void CEPBotPanel::OnClickDDPeakMode(int selected)
+  {
+   m_cur_ddPeakMode = (ENUM_DRAWDOWN_PEAK_MODE)selected;
+   SetRadioSelection(m_cb_bDDPk, 2, selected);
+   ChartRedraw();
+  }
+
+void CEPBotPanel::OnClickProfitTargetAction(int selected)
+  {
+   m_cur_profitTargetAction = (ENUM_PROFIT_TARGET_ACTION)selected;
+   SetRadioSelection(m_cb_bPTA, 2, selected);
    ChartRedraw();
   }
 //+------------------------------------------------------------------+
