@@ -61,8 +61,8 @@
 
 ## Próximas Partes
 
-### FASE 2 — Horários e Filtro de Notícias (Parte 024+)
-**Status: PENDENTE**
+### FASE 2 — Horários e Filtro de Notícias (Parte 023 — continuação)
+**Status: PENDENTE (iniciará após compilação/teste)**
 
 > **Bloqueador**: Blockers.mqh não possui setters hot-reload para Horários nem News.
 > Ambos são configurados apenas via `Init()`. Requer refatoração do Init antes de
