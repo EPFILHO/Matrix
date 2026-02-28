@@ -2,10 +2,10 @@
 //|                                               SignalManager.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                   Gerenciador de Sinais e Filtros - EPBot Matrix |
-//|                                   Versão 2.11 - Claude Parte 021 |
+//|                                   Versão 2.12 - Claude Parte 022 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.11"
+#property version   "2.12"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,10 @@
 #include "Base/StrategyBase.mqh"
 #include "Base/FilterBase.mqh"
 
+// ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.12:
+// + Fix: ResolveConflict() agora usa parâmetro 'count' no loop de
+//   CONFLICT_PRIORITY (antes usava m_strategyCount incorretamente)
 // ═══════════════════════════════════════════════════════════════
 // NOVIDADES v2.11:
 // + Fix: SetConflictResolution() só loga quando há mudança real
@@ -719,7 +723,7 @@ ENUM_SIGNAL_TYPE CSignalManager::ResolveConflict(ENUM_SIGNAL_TYPE &signals[], in
    ENUM_SIGNAL_TYPE winningSignal = SIGNAL_NONE;
    string winningStrategy = "";
 
-   for(int i = 0; i < m_strategyCount; i++)
+   for(int i = 0; i < count; i++)
      {
       if(m_strategies[i].enabled &&
          m_strategies[i].strategy != NULL &&
@@ -854,7 +858,7 @@ void CSignalManager::PrintStatus()
    if(m_logger != NULL)
      {
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════");
-      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "📊 [Signal Manager v2.11] Status");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "📊 [Signal Manager v2.12] Status");
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════");
 
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO", "🎯 Estratégias (" + IntegerToString(m_strategyCount) + "):");
@@ -889,7 +893,7 @@ void CSignalManager::PrintStatus()
    else
      {
       Print("═══════════════════════════════════════════════════════");
-      Print("📊 [Signal Manager v2.11] Status");
+      Print("📊 [Signal Manager v2.12] Status");
       Print("═══════════════════════════════════════════════════════");
 
       Print("🎯 Estratégias (", m_strategyCount, "):");
