@@ -405,8 +405,8 @@ bool CEPBotPanel::CreateTabConfig(void)
     y += PANEL_GAP_Y + 2;
    }
    {
-    string ddpTexts[] = {"SO REAL.", "C/FLUTUANTE"};
-    if(!CreateRadioGroup(m_c2_lDDPk, m_c2_bDDPk, "c2_lDPk", "c2_bDPk", "Modo Peak:", ddpTexts, 2, y))
+    string ddpTexts[] = {"REALIZADO", "FLUTUANTE"};
+    if(!CreateRadioGroup(m_c2_lDDPk, m_c2_bDDPk, "c2_lDPk", "c2_bDPk", "Modo Peak(Pico):", ddpTexts, 2, y))
        return false;
     y += PANEL_GAP_Y;
    }
@@ -452,7 +452,7 @@ bool CEPBotPanel::CreateTabConfig(void)
    y += PANEL_GAP_SECTION;
    if(!CreateHdr(m_cb_hdr3, "cb_h3", "SEQUENCIAS", y)) return false;
    y += PANEL_GAP_Y + 2;
-   if(!CreateLI(m_cb_lLStr, m_cb_iLStr, "cb_lLS", "cb_iLS", "Max Loss Streak:", y)) return false;
+   if(!CreateLI(m_cb_lLStr, m_cb_iLStr, "cb_lLS", "cb_iLS", "Quant. Max Loss:", y)) return false;
    y += PANEL_GAP_Y;
    {
     string lsaTexts[] = {"PAUSAR", "PARAR DIA"};
@@ -461,9 +461,9 @@ bool CEPBotPanel::CreateTabConfig(void)
    }
    y += PANEL_GAP_Y + 2;
    if(!CreateLI(m_cb_lLStrP, m_cb_iLStrP, "cb_lLSP", "cb_iLSP", "Pausa Loss (min):", y)) return false;
-   y += PANEL_GAP_Y;
+   y += PANEL_GAP_Y + PANEL_GAP_SECTION;  // espaço extra antes de Win Streak
 
-   if(!CreateLI(m_cb_lWStr, m_cb_iWStr, "cb_lWS", "cb_iWS", "Max Win Streak:", y)) return false;
+   if(!CreateLI(m_cb_lWStr, m_cb_iWStr, "cb_lWS", "cb_iWS", "Quant. Max WIN:", y)) return false;
    y += PANEL_GAP_Y;
    {
     string wsaTexts[] = {"PAUSAR", "PARAR DIA"};
