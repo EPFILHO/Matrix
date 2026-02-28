@@ -2,10 +2,10 @@
 //|                                                  RiskManager.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                       Sistema de Cálculo de Risco - EPBot Matrix |
-//|                                   Versão 3.12 - Claude Parte 021 |
+//|                  Versão 3.14 - Claude Parte 022 (Claude Code)    |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.12" 
+#property version   "3.14"
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
@@ -45,6 +45,17 @@
 // NOVIDADES v3.12:
 // + Fix: Funções Hot Reload só logam quando há mudança real nos valores
 // + Evita logs redundantes na inicialização/recarregamento
+//
+// NOVIDADES v3.13:
+// + SetATRPeriod, SetRangePeriod hot reload setters
+// + SetSLCompensateSpread, SetTPCompensateSpread, SetTrailingCompensateSpread
+// + 5 novos setters para campos expandidos da aba RISCO do painel
+//
+// NOVIDADES v3.14:
+// + SetSLType(ENUM_SL_TYPE) — troca tipo SL em runtime (FIXO/ATR/RANGE)
+// + SetTPType(ENUM_TP_TYPE) — troca tipo TP em runtime (NENHUM/FIXO/ATR)
+// + SetRangeMultiplier(double) — altera multiplicador Range em runtime
+// + Criação automática de handle ATR quando tipo muda para ATR
 // ═══════════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
@@ -419,7 +430,17 @@ public:
    void              SetPartialTP1(bool enable, double percent, int distance);
    void              SetPartialTP2(bool enable, double percent, int distance);
    void              SetUsePartialTP(bool enable);
-   
+   void              SetSLType(ENUM_SL_TYPE type);
+   void              SetTPType(ENUM_TP_TYPE type);
+   void              SetRangeMultiplier(double mult);
+   void              SetATRPeriod(int period);
+   void              SetRangePeriod(int period);
+   void              SetSLCompensateSpread(bool enable);
+   void              SetTPCompensateSpread(bool enable);
+   void              SetTrailingCompensateSpread(bool enable);
+   void              SetTrailingActivation(ENUM_TRAILING_ACTIVATION mode) { m_trailingActivation = mode; }
+   void              SetBEActivation(ENUM_BE_ACTIVATION mode)             { m_beActivation_mode = mode; }
+
    // ═══════════════════════════════════════════════════════════════
    // GETTERS DE CONFIGURAÇÃO (Working values)
    // ═══════════════════════════════════════════════════════════════
@@ -1039,6 +1060,92 @@ void CRiskManager::SetUsePartialTP(bool enable)
          "🔄 Partial TP: " + (enable ? "ATIVADO" : "DESATIVADO"));
    else
       Print("🔄 Partial TP: ", enable ? "ATIVADO" : "DESATIVADO");
+  }
+
+void CRiskManager::SetSLType(ENUM_SL_TYPE type)
+  {
+   ENUM_SL_TYPE oldType = m_slType;
+   m_slType = type;
+
+   // Criar handle ATR se necessário e não existe
+   if(type == SL_ATR && m_handleATR == INVALID_HANDLE)
+     {
+      m_handleATR = iATR(m_symbol, PERIOD_CURRENT, m_atrPeriod);
+      if(m_handleATR == INVALID_HANDLE && m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "Falha ao criar handle ATR para SL");
+     }
+
+   if(oldType != type && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 SL Type: " + EnumToString(oldType) + " → " + EnumToString(type));
+  }
+
+void CRiskManager::SetTPType(ENUM_TP_TYPE type)
+  {
+   ENUM_TP_TYPE oldType = m_tpType;
+   m_tpType = type;
+
+   // Criar handle ATR se necessário e não existe
+   if(type == TP_ATR && m_handleATR == INVALID_HANDLE)
+     {
+      m_handleATR = iATR(m_symbol, PERIOD_CURRENT, m_atrPeriod);
+      if(m_handleATR == INVALID_HANDLE && m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "Falha ao criar handle ATR para TP");
+     }
+
+   if(oldType != type && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 TP Type: " + EnumToString(oldType) + " → " + EnumToString(type));
+  }
+
+void CRiskManager::SetRangeMultiplier(double mult)
+  {
+   double oldValue = m_rangeMultiplier;
+   m_rangeMultiplier = mult;
+
+   if(oldValue != mult && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 Range Mult alterado: %.1f → %.1f×", oldValue, mult));
+  }
+
+void CRiskManager::SetATRPeriod(int period)
+  {
+   m_atrPeriod = period;
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 ATR Period: " + IntegerToString(period));
+  }
+
+void CRiskManager::SetRangePeriod(int period)
+  {
+   m_rangePeriod = period;
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 Range Period: " + IntegerToString(period));
+  }
+
+void CRiskManager::SetSLCompensateSpread(bool enable)
+  {
+   m_slCompensateSpread = enable;
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 SL Compensar Spread: " + (enable ? "ON" : "OFF"));
+  }
+
+void CRiskManager::SetTPCompensateSpread(bool enable)
+  {
+   m_tpCompensateSpread = enable;
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 TP Compensar Spread: " + (enable ? "ON" : "OFF"));
+  }
+
+void CRiskManager::SetTrailingCompensateSpread(bool enable)
+  {
+   m_trailingCompensateSpread = enable;
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 Trailing Compensar Spread: " + (enable ? "ON" : "OFF"));
   }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1800,7 +1907,7 @@ void CRiskManager::PrintConfiguration()
    if(m_logger != NULL)
      {
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "╔══════════════════════════════════════════════════════╗");
-      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "║       RISKMANAGER v3.12 - CONFIGURAÇÃO ATUAL        ║");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "║       RISKMANAGER v3.14 - CONFIGURAÇÃO ATUAL        ║");
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "╚══════════════════════════════════════════════════════╝");
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "");
       
@@ -1839,7 +1946,7 @@ void CRiskManager::PrintConfiguration()
    else
      {
       Print("╔══════════════════════════════════════════════════════╗");
-      Print("║       RISKMANAGER v3.12 - CONFIGURAÇÃO ATUAL        ║");
+      Print("║       RISKMANAGER v3.14 - CONFIGURAÇÃO ATUAL        ║");
       Print("╚══════════════════════════════════════════════════════╝");
       Print("");
       

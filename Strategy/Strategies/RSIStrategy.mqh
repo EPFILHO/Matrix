@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
 //|                                                 RSIStrategy.mqh  |
-//|                                         Copyright 2025, EP Filho |
+//|                                         Copyright 2026, EP Filho |
 //|                                    Estratégia RSI - EPBot Matrix |
-//|                                   Versão 2.10 - Claude Parte 016 |
+//|                                   Versão 2.11 - Claude Parte 022 |
 //+------------------------------------------------------------------+
-#property copyright "Copyright 2025, EP Filho"
-#property version   "2.10"
+#property copyright "Copyright 2026, EP Filho"
+#property version   "2.11"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -14,6 +14,10 @@
 #include "../../Core/Logger.mqh"
 #include "../Base/StrategyBase.mqh"
 
+// ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.11:
+// + Fix: CopyBuffer validação alterada de <= 0 para < count
+//   (previne acesso fora dos limites se indicador retorna dados incompletos)
 // ═══════════════════════════════════════════════════════════════
 // NOVIDADES v2.10:
 // + Migração para Logger v3.00 (5 níveis + throttle inteligente)
@@ -330,9 +334,9 @@ bool CRSIStrategy::LoadRSIValues(int count)
    if(m_rsi_handle == INVALID_HANDLE)
       return false;
 
-   if(CopyBuffer(m_rsi_handle, 0, 0, count, m_rsi_buffer) <= 0)
+   if(CopyBuffer(m_rsi_handle, 0, 0, count, m_rsi_buffer) < count)
      {
-      string msg = "[" + m_strategyName + "] Erro ao copiar buffer RSI";
+      string msg = "[" + m_strategyName + "] Erro ao copiar buffer RSI (solicitados: " + IntegerToString(count) + ")";
       if(m_logger != NULL)
          m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER", msg);
       else

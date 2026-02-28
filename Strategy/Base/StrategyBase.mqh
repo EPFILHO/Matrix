@@ -1,9 +1,9 @@
 //+------------------------------------------------------------------+
 //|                                                 StrategyBase.mqh |
-//|                                         Copyright 2025, EP Filho |
+//|                                         Copyright 2026, EP Filho |
 //|                                Interface Base para Estratégias   |
 //+------------------------------------------------------------------+
-#property copyright "Copyright 2025, EP Filho"
+#property copyright "Copyright 2026, EP Filho"
 #property version   "2.00"
 #property strict
 
