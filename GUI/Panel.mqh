@@ -2,15 +2,21 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.17 - Claude Parte 023 (Claude Code) |
+//|                     Versão 1.18 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.17"
+#property version   "1.18"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.18 (2026-02-28):
+// + DrawDown movido de BLOQUEIOS → RISCO 2 (m_cb_hdr4/lDD/bDDT/bDDPk → m_c2_hdr3/*)
+// + Streak e DrawDown criados incondicionalmente (sempre visíveis)
+// + RefreshStreakState: removido early-return por m_cfg_hasStreak
+// + ChartEvent: m_cb_bDDT/bDDPk → m_c2_bDDT/bDDPk
+//
 // v1.17 (2026-02-28):
 // + Partial TP movido de RISCO 2 → RISCO (m_c2_bPTP/iTP* → m_cr_bPTP/iTP*)
 // + BLOQUEIOS expandido: radio Streak Action (PAUSAR|PARAR DIA) por Loss/Win
@@ -356,7 +362,7 @@ private:
    CLabel   m_cr_lTP2p;   CEdit    m_cr_iTP2p;
    CLabel   m_cr_lTP2d;   CEdit    m_cr_iTP2d;
 
-   // --- Risco 2 sub-page (Trailing/BE) ---
+   // --- Risco 2 sub-page (Trailing/BE/DrawDown) ---
    CLabel   m_c2_hdr1;
    CLabel   m_c2_lTrlAct;  CButton m_c2_bTrlAct;  // Trailing ON/OFF
    CLabel   m_c2_lTrlSt;   CEdit   m_c2_iTrlSt;
@@ -366,6 +372,10 @@ private:
    CLabel   m_c2_lBEAct;   CButton m_c2_bBEAct;   // BE ON/OFF
    CLabel   m_c2_lBEVal;   CEdit   m_c2_iBEVal;
    CLabel   m_c2_lBEOff;   CEdit   m_c2_iBEOff;
+   CLabel   m_c2_hdr3;                              // Header "DRAWDOWN"
+   CLabel   m_c2_lDD;      CEdit   m_c2_iDD;
+   CLabel   m_c2_lDDT;     CButton m_c2_bDDT[2];   // Radio: FINANCEIRO | PERCENTUAL
+   CLabel   m_c2_lDDPk;    CButton m_c2_bDDPk[2];  // Radio: SO REAL. | C/FLUTUANTE
 
    // --- Bloqueios sub-page ---
    CLabel   m_cb_hdr1;
@@ -383,10 +393,7 @@ private:
    CLabel   m_cb_lWStr;   CEdit   m_cb_iWStr;
    CLabel   m_cb_lWStrA;  CButton m_cb_bWStrA[2]; // Radio: PAUSAR | PARAR DIA
    CLabel   m_cb_lWStrP;  CEdit   m_cb_iWStrP;    // Win Pause Minutes
-   CLabel   m_cb_hdr4;
-   CLabel   m_cb_lDD;     CEdit   m_cb_iDD;
-   CLabel   m_cb_lDDT;    CButton m_cb_bDDT[2];   // Radio: FINANCEIRO | PERCENTUAL
-   CLabel   m_cb_lDDPk;   CButton m_cb_bDDPk[2];  // Radio: SÓ REAL. | C/ FLUTUANTE
+   // (DrawDown movido para RISCO 2 em v1.18 → m_c2_hdr3/lDD/lDDT/lDDPk)
 
    // --- Outros sub-page ---
    CLabel   m_co_hdr1;
@@ -760,9 +767,13 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
         {
          if(sparam == m_cb_bLStrA[i].Name())  { OnClickLossStreakAction(i);   ChartRedraw(); return; }
          if(sparam == m_cb_bWStrA[i].Name())  { OnClickWinStreakAction(i);    ChartRedraw(); return; }
-         if(sparam == m_cb_bDDT[i].Name())    { OnClickDDType(i);             ChartRedraw(); return; }
-         if(sparam == m_cb_bDDPk[i].Name())   { OnClickDDPeakMode(i);         ChartRedraw(); return; }
          if(sparam == m_cb_bPTA[i].Name())    { OnClickProfitTargetAction(i); ChartRedraw(); return; }
+        }
+      // CONFIG: RISCO 2 radio groups — DrawDown (movido de BLOQUEIOS em v1.18)
+      for(int i = 0; i < 2; i++)
+        {
+         if(sparam == m_c2_bDDT[i].Name())    { OnClickDDType(i);             ChartRedraw(); return; }
+         if(sparam == m_c2_bDDPk[i].Name())   { OnClickDDPeakMode(i);         ChartRedraw(); return; }
         }
 
       // CONFIG: OUTROS toggles
