@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.18 - Claude Parte 023 (Claude Code) |
+//|                     Versão 1.19 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -14,6 +14,13 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.19 (2026-02-28):
+// + Toggles ON/OFF individuais: DrawDown (RISCO 2), Loss Streak, Win Streak (BLOQUEIOS)
+// + OnClickDDToggle/LossStreakToggle/WinStreakToggle: novos handlers
+// + RefreshRisco2State: enable/disable DD sub-campos por m_cur_ddOn
+// + RefreshStreakState: enable/disable Loss/Win sub-campos por m_cur_lossStreakOn/winStreakOn
+// + OnClickDDType/DDPeakMode/LossStreakAction/WinStreakAction: guard quando OFF
+//
 // v1.18 (2026-02-28):
 // + DrawDown movido de BLOQUEIOS → RISCO 2 (após Break Even)
 // + Streak criado incondicionalmente em BLOQUEIOS (sempre visível)
@@ -389,9 +396,11 @@ bool CEPBotPanel::CreateTabConfig(void)
     y += PANEL_GAP_Y;
    }
 
-// ── DRAWDOWN (movido de BLOQUEIOS em v1.18 — sempre criado) ──
+// ── DRAWDOWN (movido de BLOQUEIOS em v1.18 — toggle ON/OFF em v1.19) ──
    y += PANEL_GAP_SECTION;
    if(!CreateHdr(m_c2_hdr3, "c2_h3", "DRAWDOWN", y)) return false;
+   y += PANEL_GAP_Y + 2;
+   if(!CreateLB(m_c2_lDDAct, m_c2_bDDAct, "c2_lDA", "c2_bDA", "DrawDown:", y)) return false;
    y += PANEL_GAP_Y + 2;
    {
     string ddLabel = (inp_DrawdownType == DD_FINANCIAL) ? "Drawdown $:" : "Drawdown %:";
@@ -448,9 +457,13 @@ bool CEPBotPanel::CreateTabConfig(void)
       y += PANEL_GAP_Y + 2;
      }
 
-// ── SEQUENCIAS (sempre criado — sem guard if(m_cfg_hasStreak)) ──
+// ── SEQUENCIAS (toggles individuais ON/OFF em v1.19) ──
    y += PANEL_GAP_SECTION;
    if(!CreateHdr(m_cb_hdr3, "cb_h3", "SEQUENCIAS", y)) return false;
+   y += PANEL_GAP_Y + 2;
+
+   // Loss Streak toggle + sub-campos
+   if(!CreateLB(m_cb_lLStrOn, m_cb_bLStrOn, "cb_lLSO", "cb_bLSO", "Loss Streak:", y)) return false;
    y += PANEL_GAP_Y + 2;
    if(!CreateLI(m_cb_lLStr, m_cb_iLStr, "cb_lLS", "cb_iLS", "Quant. Max Loss:", y)) return false;
    y += PANEL_GAP_Y;
@@ -463,6 +476,9 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLI(m_cb_lLStrP, m_cb_iLStrP, "cb_lLSP", "cb_iLSP", "Pausa Loss (min):", y)) return false;
    y += PANEL_GAP_Y + PANEL_GAP_SECTION;  // espaço extra antes de Win Streak
 
+   // Win Streak toggle + sub-campos
+   if(!CreateLB(m_cb_lWStrOn, m_cb_bWStrOn, "cb_lWSO", "cb_bWSO", "Win Streak:", y)) return false;
+   y += PANEL_GAP_Y + 2;
    if(!CreateLI(m_cb_lWStr, m_cb_iWStr, "cb_lWS", "cb_iWS", "Quant. Max WIN:", y)) return false;
    y += PANEL_GAP_Y;
    {
@@ -473,7 +489,6 @@ bool CEPBotPanel::CreateTabConfig(void)
    y += PANEL_GAP_Y + 2;
    if(!CreateLI(m_cb_lWStrP, m_cb_iWStrP, "cb_lWSP", "cb_iWSP", "Pausa Win (min):", y)) return false;
    y += PANEL_GAP_Y;
-   // (DrawDown movido para RISCO 2 em v1.18)
 
 // ════════════════════════════════════════════════════════════
 // SUB-PÁGINA: OUTROS
@@ -645,18 +660,30 @@ void CEPBotPanel::PopulateConfig(void)
       SetRadioSelection(m_cb_bPTA, 2, (int)m_cur_profitTargetAction);
      }
 
-// Streak — sempre populado (v1.18: sem guard if(m_cfg_hasStreak))
+// Streak — toggles (v1.19: m_cur_lossStreakOn/winStreakOn inicializados do input)
+   m_cur_lossStreakOn = m_cfg_hasStreak;
+   m_cb_bLStrOn.Text(m_cur_lossStreakOn ? "ON" : "OFF");
+   m_cb_bLStrOn.ColorBackground(m_cur_lossStreakOn ? C'30,120,70' : C'120,50,50');
+   m_cb_bLStrOn.Color(clrWhite);
    m_cb_iLStr.Text(IntegerToString(inp_MaxLossStreak));
    m_cur_lossStreakAction = inp_LossStreakAction;
    SetRadioSelection(m_cb_bLStrA, 2, (int)m_cur_lossStreakAction);
    m_cb_iLStrP.Text(IntegerToString(inp_LossPauseMinutes));
 
+   m_cur_winStreakOn = m_cfg_hasStreak;
+   m_cb_bWStrOn.Text(m_cur_winStreakOn ? "ON" : "OFF");
+   m_cb_bWStrOn.ColorBackground(m_cur_winStreakOn ? C'30,120,70' : C'120,50,50');
+   m_cb_bWStrOn.Color(clrWhite);
    m_cb_iWStr.Text(IntegerToString(inp_MaxWinStreak));
    m_cur_winStreakAction = inp_WinStreakAction;
    SetRadioSelection(m_cb_bWStrA, 2, (int)m_cur_winStreakAction);
    m_cb_iWStrP.Text(IntegerToString(inp_WinPauseMinutes));
 
-// DrawDown — sempre populado em RISCO 2 (v1.18: sem guard if(m_cfg_hasDrawdown))
+// DrawDown — toggle (v1.19: m_cur_ddOn inicializado do input)
+   m_cur_ddOn = m_cfg_hasDrawdown;
+   m_c2_bDDAct.Text(m_cur_ddOn ? "ON" : "OFF");
+   m_c2_bDDAct.ColorBackground(m_cur_ddOn ? C'30,120,70' : C'120,50,50');
+   m_c2_bDDAct.Color(clrWhite);
    m_c2_iDD.Text(DoubleToString(inp_DrawdownValue, 2));
    m_cur_ddType = inp_DrawdownType;
    SetRadioSelection(m_c2_bDDT, 2, (int)m_cur_ddType);
@@ -762,6 +789,23 @@ void CEPBotPanel::RefreshRisco2State(void)
    SetEditEnabled(m_c2_lBEVal, m_c2_iBEVal, m_cur_beOn);
    SetEditEnabled(m_c2_lBEOff, m_c2_iBEOff, m_cur_beOn);
 
+// DD fields: habilitado se toggle ON (v1.19)
+   SetEditEnabled(m_c2_lDD, m_c2_iDD, m_cur_ddOn);
+   if(m_cur_ddOn)
+     {
+      m_c2_lDDT.Color(CLR_LABEL);
+      m_c2_lDDPk.Color(CLR_LABEL);
+      SetRadioSelection(m_c2_bDDT, 2, (int)m_cur_ddType);
+      SetRadioSelection(m_c2_bDDPk, 2, (int)m_cur_ddPeakMode);
+     }
+   else
+     {
+      m_c2_lDDT.Color(C'180,180,180');
+      m_c2_lDDPk.Color(C'180,180,180');
+      for(int i=0;i<2;i++) { m_c2_bDDT[i].ColorBackground(C'160,160,160'); m_c2_bDDT[i].Color(C'200,200,200'); }
+      for(int i=0;i<2;i++) { m_c2_bDDPk[i].ColorBackground(C'160,160,160'); m_c2_bDDPk[i].Color(C'200,200,200'); }
+     }
+
    ChartRedraw();
   }
 
@@ -839,8 +883,9 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_c2_hdr2.Show(); m_c2_lBEAct.Show(); m_c2_bBEAct.Show();
             m_c2_lBEVal.Show(); m_c2_iBEVal.Show();
             m_c2_lBEOff.Show(); m_c2_iBEOff.Show();
-            // DrawDown (movido de BLOQUEIOS em v1.18 — sempre visível)
-            m_c2_hdr3.Show(); m_c2_lDD.Show(); m_c2_iDD.Show();
+            // DrawDown toggle + sub-campos
+            m_c2_hdr3.Show(); m_c2_lDDAct.Show(); m_c2_bDDAct.Show();
+            m_c2_lDD.Show(); m_c2_iDD.Show();
             m_c2_lDDT.Show(); for(int i=0;i<2;i++) m_c2_bDDT[i].Show();
             m_c2_lDDPk.Show(); for(int i=0;i<2;i++) m_c2_bDDPk[i].Show();
             RefreshRisco2State();
@@ -854,8 +899,9 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_c2_hdr2.Hide(); m_c2_lBEAct.Hide(); m_c2_bBEAct.Hide();
             m_c2_lBEVal.Hide(); m_c2_iBEVal.Hide();
             m_c2_lBEOff.Hide(); m_c2_iBEOff.Hide();
-            // DrawDown
-            m_c2_hdr3.Hide(); m_c2_lDD.Hide(); m_c2_iDD.Hide();
+            // DrawDown toggle + sub-campos
+            m_c2_hdr3.Hide(); m_c2_lDDAct.Hide(); m_c2_bDDAct.Hide();
+            m_c2_lDD.Hide(); m_c2_iDD.Hide();
             m_c2_lDDT.Hide(); for(int i=0;i<2;i++) m_c2_bDDT[i].Hide();
             m_c2_lDDPk.Hide(); for(int i=0;i<2;i++) m_c2_bDDPk[i].Hide();
            }
@@ -875,13 +921,15 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
                m_cb_lGain.Show(); m_cb_iGain.Show();
                m_cb_lPTA.Show(); for(int i=0;i<2;i++) m_cb_bPTA[i].Show();
               }
-            // Streak — sempre visível (v1.18: sem guard if(m_cfg_hasStreak))
-            m_cb_hdr3.Show(); m_cb_lLStr.Show(); m_cb_iLStr.Show();
+            // Streak — toggles + sub-campos (v1.19)
+            m_cb_hdr3.Show();
+            m_cb_lLStrOn.Show(); m_cb_bLStrOn.Show();
+            m_cb_lLStr.Show(); m_cb_iLStr.Show();
             m_cb_lLStrA.Show(); for(int i=0;i<2;i++) m_cb_bLStrA[i].Show();
+            m_cb_lWStrOn.Show(); m_cb_bWStrOn.Show();
             m_cb_lWStr.Show(); m_cb_iWStr.Show();
             m_cb_lWStrA.Show(); for(int i=0;i<2;i++) m_cb_bWStrA[i].Show();
             RefreshStreakState();
-            // (DrawDown movido para RISCO 2 em v1.18)
            }
          else
            {
@@ -894,14 +942,16 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
                m_cb_lGain.Hide(); m_cb_iGain.Hide();
                m_cb_lPTA.Hide(); for(int i=0;i<2;i++) m_cb_bPTA[i].Hide();
               }
-            // Streak — sempre hide (v1.18: sem guard if(m_cfg_hasStreak))
-            m_cb_hdr3.Hide(); m_cb_lLStr.Hide(); m_cb_iLStr.Hide();
+            // Streak — toggles + sub-campos (v1.19)
+            m_cb_hdr3.Hide();
+            m_cb_lLStrOn.Hide(); m_cb_bLStrOn.Hide();
+            m_cb_lLStr.Hide(); m_cb_iLStr.Hide();
             m_cb_lLStrA.Hide(); for(int i=0;i<2;i++) m_cb_bLStrA[i].Hide();
             m_cb_lLStrP.Hide(); m_cb_iLStrP.Hide();
+            m_cb_lWStrOn.Hide(); m_cb_bWStrOn.Hide();
             m_cb_lWStr.Hide(); m_cb_iWStr.Hide();
             m_cb_lWStrA.Hide(); for(int i=0;i<2;i++) m_cb_bWStrA[i].Hide();
             m_cb_lWStrP.Hide(); m_cb_iWStrP.Hide();
-            // (DrawDown movido para RISCO 2 em v1.18)
            }
          break;
         }
@@ -1256,12 +1306,12 @@ void CEPBotPanel::ApplyConfig(void)
             errors++;
         }
 
-      // Streak — sempre aplicado (v1.18: sem guard if(m_cfg_hasStreak))
+      // Streak — aplica só se toggle ON (v1.19), passa 0 se OFF
       {
-       int lStr   = (int)StringToInteger(m_cb_iLStr.Text());
-       int wStr   = (int)StringToInteger(m_cb_iWStr.Text());
-       int lPause = (int)StringToInteger(m_cb_iLStrP.Text());
-       int wPause = (int)StringToInteger(m_cb_iWStrP.Text());
+       int lStr   = m_cur_lossStreakOn ? (int)StringToInteger(m_cb_iLStr.Text()) : 0;
+       int wStr   = m_cur_winStreakOn  ? (int)StringToInteger(m_cb_iWStr.Text()) : 0;
+       int lPause = m_cur_lossStreakOn ? (int)StringToInteger(m_cb_iLStrP.Text()) : 0;
+       int wPause = m_cur_winStreakOn  ? (int)StringToInteger(m_cb_iWStrP.Text()) : 0;
        if(lStr >= 0 && wStr >= 0 && lPause >= 0 && wPause >= 0)
           m_blockers.SetStreakLimits(lStr, m_cur_lossStreakAction, lPause,
                                     wStr, m_cur_winStreakAction,  wPause);
@@ -1269,18 +1319,23 @@ void CEPBotPanel::ApplyConfig(void)
           errors++;
       }
 
-      // DrawDown — sempre aplicado em RISCO 2 (v1.18: sem guard if(m_cfg_hasDrawdown))
-      {
-       double dd = StringToDouble(m_c2_iDD.Text());
-       if(dd >= 0)
-         {
-          m_blockers.SetDrawdownValue(dd);
-          m_blockers.SetDrawdownType(m_cur_ddType);
-          m_blockers.SetDrawdownPeakMode(m_cur_ddPeakMode);
-         }
-       else
-          errors++;
-      }
+      // DrawDown — aplica só se toggle ON (v1.19), passa 0 se OFF
+      if(m_cur_ddOn)
+        {
+         double dd = StringToDouble(m_c2_iDD.Text());
+         if(dd >= 0)
+           {
+            m_blockers.SetDrawdownValue(dd);
+            m_blockers.SetDrawdownType(m_cur_ddType);
+            m_blockers.SetDrawdownPeakMode(m_cur_ddPeakMode);
+           }
+         else
+            errors++;
+        }
+      else
+        {
+         m_blockers.SetDrawdownValue(0);
+        }
      }
 
 // ═══════════════════════════════════════════════
@@ -1353,22 +1408,44 @@ void CEPBotPanel::OnClickCompTrail(void)
   }
 
 //+------------------------------------------------------------------+
-//| RefreshStreakState — enable/disable campos de pausa por action    |
+//| RefreshStreakState — enable/disable por toggle ON/OFF (v1.19)    |
 //+------------------------------------------------------------------+
 void CEPBotPanel::RefreshStreakState(void)
   {
-   // (v1.18: early-return if(!m_cfg_hasStreak) removido — sempre executa)
-
-// Loss Pause Minutes: visível só se action = PAUSAR
-   bool lPause = (m_cur_lossStreakAction == STREAK_PAUSE);
+// ── Loss Streak ──
+   SetEditEnabled(m_cb_lLStr, m_cb_iLStr, m_cur_lossStreakOn);
+   if(m_cur_lossStreakOn)
+     {
+      m_cb_lLStrA.Color(CLR_LABEL);
+      SetRadioSelection(m_cb_bLStrA, 2, (int)m_cur_lossStreakAction);
+     }
+   else
+     {
+      m_cb_lLStrA.Color(C'180,180,180');
+      for(int i=0;i<2;i++) { m_cb_bLStrA[i].ColorBackground(C'160,160,160'); m_cb_bLStrA[i].Color(C'200,200,200'); }
+     }
+   // Loss Pause: visível só se ON + action = PAUSAR
+   bool lPause = (m_cur_lossStreakOn && m_cur_lossStreakAction == STREAK_PAUSE);
    SetEditEnabled(m_cb_lLStrP, m_cb_iLStrP, lPause);
    if(lPause)
      { m_cb_lLStrP.Show(); m_cb_iLStrP.Show(); }
    else
      { m_cb_lLStrP.Hide(); m_cb_iLStrP.Hide(); }
 
-// Win Pause Minutes: visível só se action = PAUSAR
-   bool wPause = (m_cur_winStreakAction == STREAK_PAUSE);
+// ── Win Streak ──
+   SetEditEnabled(m_cb_lWStr, m_cb_iWStr, m_cur_winStreakOn);
+   if(m_cur_winStreakOn)
+     {
+      m_cb_lWStrA.Color(CLR_LABEL);
+      SetRadioSelection(m_cb_bWStrA, 2, (int)m_cur_winStreakAction);
+     }
+   else
+     {
+      m_cb_lWStrA.Color(C'180,180,180');
+      for(int i=0;i<2;i++) { m_cb_bWStrA[i].ColorBackground(C'160,160,160'); m_cb_bWStrA[i].Color(C'200,200,200'); }
+     }
+   // Win Pause: visível só se ON + action = PAUSAR
+   bool wPause = (m_cur_winStreakOn && m_cur_winStreakAction == STREAK_PAUSE);
    SetEditEnabled(m_cb_lWStrP, m_cb_iWStrP, wPause);
    if(wPause)
      { m_cb_lWStrP.Show(); m_cb_iWStrP.Show(); }
@@ -1377,10 +1454,43 @@ void CEPBotPanel::RefreshStreakState(void)
   }
 
 //+------------------------------------------------------------------+
-//| Novos handlers BLOQUEIOS (Parte 023)                              |
+//| Toggle handlers: DD, Loss Streak, Win Streak (v1.19)            |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickDDToggle(void)
+  {
+   m_cur_ddOn = !m_cur_ddOn;
+   m_c2_bDDAct.Pressed(false);
+   m_c2_bDDAct.Text(m_cur_ddOn ? "ON" : "OFF");
+   m_c2_bDDAct.ColorBackground(m_cur_ddOn ? C'30,120,70' : C'120,50,50');
+   RefreshRisco2State();
+  }
+
+void CEPBotPanel::OnClickLossStreakToggle(void)
+  {
+   m_cur_lossStreakOn = !m_cur_lossStreakOn;
+   m_cb_bLStrOn.Pressed(false);
+   m_cb_bLStrOn.Text(m_cur_lossStreakOn ? "ON" : "OFF");
+   m_cb_bLStrOn.ColorBackground(m_cur_lossStreakOn ? C'30,120,70' : C'120,50,50');
+   RefreshStreakState();
+   ChartRedraw();
+  }
+
+void CEPBotPanel::OnClickWinStreakToggle(void)
+  {
+   m_cur_winStreakOn = !m_cur_winStreakOn;
+   m_cb_bWStrOn.Pressed(false);
+   m_cb_bWStrOn.Text(m_cur_winStreakOn ? "ON" : "OFF");
+   m_cb_bWStrOn.ColorBackground(m_cur_winStreakOn ? C'30,120,70' : C'120,50,50');
+   RefreshStreakState();
+   ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
+//| Radio handlers BLOQUEIOS (com guard quando toggle OFF)           |
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickLossStreakAction(int selected)
   {
+   if(!m_cur_lossStreakOn) return;
    m_cur_lossStreakAction = (ENUM_STREAK_ACTION)selected;
    SetRadioSelection(m_cb_bLStrA, 2, selected);
    RefreshStreakState();
@@ -1389,6 +1499,7 @@ void CEPBotPanel::OnClickLossStreakAction(int selected)
 
 void CEPBotPanel::OnClickWinStreakAction(int selected)
   {
+   if(!m_cur_winStreakOn) return;
    m_cur_winStreakAction = (ENUM_STREAK_ACTION)selected;
    SetRadioSelection(m_cb_bWStrA, 2, selected);
    RefreshStreakState();
@@ -1397,6 +1508,7 @@ void CEPBotPanel::OnClickWinStreakAction(int selected)
 
 void CEPBotPanel::OnClickDDType(int selected)
   {
+   if(!m_cur_ddOn) return;
    m_cur_ddType = (ENUM_DRAWDOWN_TYPE)selected;
    SetRadioSelection(m_c2_bDDT, 2, selected);
 // Atualizar label do campo de valor drawdown (DD agora em RISCO 2)
@@ -1407,6 +1519,7 @@ void CEPBotPanel::OnClickDDType(int selected)
 
 void CEPBotPanel::OnClickDDPeakMode(int selected)
   {
+   if(!m_cur_ddOn) return;
    m_cur_ddPeakMode = (ENUM_DRAWDOWN_PEAK_MODE)selected;
    SetRadioSelection(m_c2_bDDPk, 2, selected);
    ChartRedraw();

@@ -2,15 +2,22 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.18 - Claude Parte 023 (Claude Code) |
+//|                     Versão 1.19 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.18"
+#property version   "1.19"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.19 (2026-02-28):
+// + Toggles ON/OFF individuais: DrawDown (RISCO 2), Loss Streak, Win Streak (BLOQUEIOS)
+// + m_cur_ddOn, m_cur_lossStreakOn, m_cur_winStreakOn: novos estados
+// + m_c2_bDDAct, m_cb_bLStrOn, m_cb_bWStrOn: novos botões toggle
+// + OnClickDDToggle, OnClickLossStreakToggle, OnClickWinStreakToggle: novos handlers
+// + RefreshRisco2State/RefreshStreakState: enable/disable sub-campos por toggle
+//
 // v1.18 (2026-02-28):
 // + DrawDown movido de BLOQUEIOS → RISCO 2 (m_cb_hdr4/lDD/bDDT/bDDPk → m_c2_hdr3/*)
 // + Streak e DrawDown criados incondicionalmente (sempre visíveis)
@@ -373,9 +380,10 @@ private:
    CLabel   m_c2_lBEVal;   CEdit   m_c2_iBEVal;
    CLabel   m_c2_lBEOff;   CEdit   m_c2_iBEOff;
    CLabel   m_c2_hdr3;                              // Header "DRAWDOWN"
-   CLabel   m_c2_lDD;      CEdit   m_c2_iDD;
-   CLabel   m_c2_lDDT;     CButton m_c2_bDDT[2];   // Radio: FINANCEIRO | PERCENTUAL
-   CLabel   m_c2_lDDPk;    CButton m_c2_bDDPk[2];  // Radio: SO REAL. | C/FLUTUANTE
+   CLabel   m_c2_lDDAct;    CButton m_c2_bDDAct;    // DrawDown ON/OFF
+   CLabel   m_c2_lDD;       CEdit   m_c2_iDD;
+   CLabel   m_c2_lDDT;      CButton m_c2_bDDT[2];   // Radio: FINANCEIRO | PERCENTUAL
+   CLabel   m_c2_lDDPk;     CButton m_c2_bDDPk[2];  // Radio: REALIZADO | FLUTUANTE
 
    // --- Bloqueios sub-page ---
    CLabel   m_cb_hdr1;
@@ -387,9 +395,11 @@ private:
    CLabel   m_cb_lGain;   CEdit   m_cb_iGain;
    CLabel   m_cb_lPTA;    CButton m_cb_bPTA[2];   // Radio: PARAR | ATIVAR DD
    CLabel   m_cb_hdr3;
+   CLabel   m_cb_lLStrOn; CButton m_cb_bLStrOn;   // Loss Streak ON/OFF
    CLabel   m_cb_lLStr;   CEdit   m_cb_iLStr;
    CLabel   m_cb_lLStrA;  CButton m_cb_bLStrA[2]; // Radio: PAUSAR | PARAR DIA
    CLabel   m_cb_lLStrP;  CEdit   m_cb_iLStrP;    // Loss Pause Minutes
+   CLabel   m_cb_lWStrOn; CButton m_cb_bWStrOn;   // Win Streak ON/OFF
    CLabel   m_cb_lWStr;   CEdit   m_cb_iWStr;
    CLabel   m_cb_lWStrA;  CButton m_cb_bWStrA[2]; // Radio: PAUSAR | PARAR DIA
    CLabel   m_cb_lWStrP;  CEdit   m_cb_iWStrP;    // Win Pause Minutes
@@ -428,6 +438,9 @@ private:
    bool                      m_cur_compTrail;
    bool                      m_cur_trailOn;
    bool                      m_cur_beOn;
+   bool                      m_cur_ddOn;
+   bool                      m_cur_lossStreakOn;
+   bool                      m_cur_winStreakOn;
    // Novos estados (Parte 023)
    ENUM_STREAK_ACTION        m_cur_lossStreakAction;
    ENUM_STREAK_ACTION        m_cur_winStreakAction;
@@ -508,6 +521,9 @@ private:
    void              OnClickCompTrail(void);
    void              OnClickTrailToggle(void);
    void              OnClickBEToggle(void);
+   void              OnClickDDToggle(void);
+   void              OnClickLossStreakToggle(void);
+   void              OnClickWinStreakToggle(void);
    void              OnClickLossStreakAction(int selected);
    void              OnClickWinStreakAction(int selected);
    void              OnClickDDType(int selected);
@@ -559,6 +575,7 @@ CEPBotPanel::CEPBotPanel(void)
      m_cur_debug(false), m_cur_partialTP(false),
      m_cur_compSL(false), m_cur_compTP(false), m_cur_compTrail(false),
      m_cur_trailOn(false), m_cur_beOn(false),
+     m_cur_ddOn(false), m_cur_lossStreakOn(false), m_cur_winStreakOn(false),
      m_cur_lossStreakAction(STREAK_PAUSE), m_cur_winStreakAction(STREAK_PAUSE),
      m_cur_ddType(DD_FINANCIAL), m_cur_ddPeakMode(DD_PEAK_REALIZED_ONLY),
      m_cur_profitTargetAction(PROFIT_ACTION_STOP)
@@ -761,6 +778,11 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       if(sparam == m_c2_bTrlAct.Name()) { OnClickTrailToggle(); ChartRedraw(); return; }
       if(sparam == m_c2_bBEAct.Name())  { OnClickBEToggle();    ChartRedraw(); return; }
       if(sparam == m_c2_bCTrl.Name())   { OnClickCompTrail();   ChartRedraw(); return; }
+      if(sparam == m_c2_bDDAct.Name())  { OnClickDDToggle();    ChartRedraw(); return; }
+
+      // CONFIG: BLOQUEIOS toggles
+      if(sparam == m_cb_bLStrOn.Name()) { OnClickLossStreakToggle(); ChartRedraw(); return; }
+      if(sparam == m_cb_bWStrOn.Name()) { OnClickWinStreakToggle();  ChartRedraw(); return; }
 
       // CONFIG: BLOQUEIOS radio groups (2 opções cada)
       for(int i = 0; i < 2; i++)
