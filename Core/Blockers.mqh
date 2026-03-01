@@ -1289,6 +1289,20 @@ void CBlockers::SetDrawdownValue(double newValue)
       else
          Print("🔄 Drawdown: ", m_enableDrawdown ? "ATIVADO" : "DESATIVADO");
      }
+
+   // Se o limite foi atingido anteriormente e o valor mudou, limpar o bloqueio.
+   // O próximo tick de CheckDrawdownLimit() re-avalia com o novo valor — se ainda
+   // estiver acima do novo limite, o bloqueio volta imediatamente; se não estiver,
+   // o EA retoma. Idêntico ao padrão de cancelamento de pausa do streak.
+   if(m_drawdownLimitReached && oldValue != newValue)
+     {
+      m_drawdownLimitReached = false;
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            "▶️ Bloqueio de drawdown liberado — novo limite será reavaliado no próximo tick");
+      else
+         Print("▶️ Bloqueio de drawdown liberado — novo limite será reavaliado no próximo tick");
+     }
   }
 
 //+------------------------------------------------------------------+
