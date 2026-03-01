@@ -304,20 +304,20 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!Add(m_cfg_btnBloq))
       return false;
 
-   if(!m_cfg_btnOutros.Create(m_chart_id, PFX + "cfg_bO", m_subwin,
-                              5 + (sw + 2) * 3, sy, 5 + sw * 4 + 6, sy + TAB_BTN_H))
-      return false;
-   m_cfg_btnOutros.Text("OUTROS");
-   m_cfg_btnOutros.FontSize(7);
-   if(!Add(m_cfg_btnOutros))
-      return false;
-
    if(!m_cfg_btnBloq2.Create(m_chart_id, PFX + "cfg_bB2", m_subwin,
-                              5 + (sw + 2) * 4, sy, 5 + sw * 5 + 8, sy + TAB_BTN_H))
+                              5 + (sw + 2) * 3, sy, 5 + sw * 4 + 6, sy + TAB_BTN_H))
       return false;
    m_cfg_btnBloq2.Text("BLOQ 2");
    m_cfg_btnBloq2.FontSize(7);
    if(!Add(m_cfg_btnBloq2))
+      return false;
+
+   if(!m_cfg_btnOutros.Create(m_chart_id, PFX + "cfg_bO", m_subwin,
+                              5 + (sw + 2) * 4, sy, 5 + sw * 5 + 8, sy + TAB_BTN_H))
+      return false;
+   m_cfg_btnOutros.Text("OUTROS");
+   m_cfg_btnOutros.FontSize(7);
+   if(!Add(m_cfg_btnOutros))
       return false;
 
 // ════════════════════════════════════════════════════════════
