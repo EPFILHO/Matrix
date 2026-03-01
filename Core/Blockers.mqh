@@ -2,12 +2,18 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.16 - Claude Parte 023 (Claude Code) |
+//|                     Versão 3.17 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.16"
+#property version   "3.17"
 #property strict
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.17 (Parte 023):
+// ✅ Fix: CheckTimeFilter() usava <= endMinutes (inclusivo) — padrão diferente
+//    do CheckNewsFilter(). Padronizado para < endMinutes (exclusivo) em ambos
+//    os casos (janela normal e overnight), mantendo consistência de comportamento:
+//    o horário de término é o PRIMEIRO minuto fora do intervalo em todos os filtros.
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.16 (Parte 023):
 // ✅ Fix: CheckNewsFilter() usava <= newsEnd (inclusivo) — liberava apenas no
@@ -2430,10 +2436,10 @@ bool CBlockers::CheckTimeFilter()
 
    if(startMinutes < endMinutes)
      {
-      return (currentMinutes >= startMinutes && currentMinutes <= endMinutes);
+      return (currentMinutes >= startMinutes && currentMinutes < endMinutes);
      }
 
-   return (currentMinutes >= startMinutes || currentMinutes <= endMinutes);
+   return (currentMinutes >= startMinutes || currentMinutes < endMinutes);
   }
 
 //+------------------------------------------------------------------+
