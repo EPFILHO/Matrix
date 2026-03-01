@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.21 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.21 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.

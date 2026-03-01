@@ -2,12 +2,17 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.11 - Claude Parte 025 (Claude Code) |
+//|                     Versão 3.11 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "3.11"
 #property strict
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.11 (Parte 023):
+// + SetCloseBeforeSessionEnd(bool, int) — hot-reload do fechar antes
+//   do fim da sessão, atualiza m_closeBeforeSessionEnd e
+//   m_minutesBeforeSessionEnd atomicamente
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.10 (Parte 024):
 // + SetTimeFilter(bool,int,int,int,int) — hot-reload do filtro de horário

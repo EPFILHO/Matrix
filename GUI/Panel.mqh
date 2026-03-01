@@ -2,7 +2,7 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.21 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.21 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.21"
