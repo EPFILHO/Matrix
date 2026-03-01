@@ -2,15 +2,22 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.21 - Claude Parte 023 (Claude Code) |
+//|                     Versão 1.22 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.21"
+#property version   "1.22"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.22 (2026-03-01):
+// + CFG_BLOQ2 = 4, CFG_PAGE_COUNT = 5
+// + m_cfg_btnBloq2: novo botão de aba "BLOQ 2"
+// + m_cb2_* (24 controles): BLOQUEIO 2 — Filtro de Notícias (3 janelas)
+// + m_cur_newsOn1/2/3: novos estados
+// + OnClickCfgBloq2, OnClickNewsOn1/2/3, RefreshNewsState(w): novos handlers
+//
 // v1.21 (2026-03-01):
 // + Fechar Antes do Fim da Sessão na sub-página BLOQUEIOS
 // + m_cb_hdr5, m_cb_lCBSOn/bCBSOn, m_cb_lCBSMin/iCBSMin
