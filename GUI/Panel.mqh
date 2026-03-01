@@ -231,9 +231,10 @@ enum ENUM_CONFIG_PAGE
    CFG_RISCO = 0,
    CFG_RISCO2 = 1,
    CFG_BLOQUEIOS = 2,
-   CFG_OUTROS = 3
+   CFG_OUTROS = 3,
+   CFG_BLOQ2 = 4
   };
-#define CFG_PAGE_COUNT 4
+#define CFG_PAGE_COUNT 5
 
 //+------------------------------------------------------------------+
 //| Classe principal do painel                                        |
@@ -361,6 +362,7 @@ private:
    CButton  m_cfg_btnRisco2;
    CButton  m_cfg_btnBloq;
    CButton  m_cfg_btnOutros;
+   CButton  m_cfg_btnBloq2;
 
    // --- Risco sub-page (SL/TP/Spread/PartialTP) ---
    CLabel   m_cr_hdr1;
@@ -431,6 +433,30 @@ private:
    CLabel   m_cb_lCBSOn;  CButton m_cb_bCBSOn;   // Prot. Fim Sessão ON/OFF
    CLabel   m_cb_lCBSMin; CEdit   m_cb_iCBSMin;  // Minutos antes do fim
 
+   // --- BLOQUEIO 2: Filtro de Notícias (v1.22) ---
+   CLabel   m_cb2_hdr1;                           // "FILTRO NOTICIAS"
+   // Janela 1
+   CLabel   m_cb2_hdr2;                           // "Janela 1"
+   CLabel   m_cb2_lN1On;  CButton m_cb2_bN1On;   // toggle ON/OFF
+   CLabel   m_cb2_lN1SH;  CEdit   m_cb2_iN1SH;   // Hora Início
+   CLabel   m_cb2_lN1SM;  CEdit   m_cb2_iN1SM;   // Min Início
+   CLabel   m_cb2_lN1EH;  CEdit   m_cb2_iN1EH;   // Hora Fim
+   CLabel   m_cb2_lN1EM;  CEdit   m_cb2_iN1EM;   // Min Fim
+   // Janela 2
+   CLabel   m_cb2_hdr3;
+   CLabel   m_cb2_lN2On;  CButton m_cb2_bN2On;
+   CLabel   m_cb2_lN2SH;  CEdit   m_cb2_iN2SH;
+   CLabel   m_cb2_lN2SM;  CEdit   m_cb2_iN2SM;
+   CLabel   m_cb2_lN2EH;  CEdit   m_cb2_iN2EH;
+   CLabel   m_cb2_lN2EM;  CEdit   m_cb2_iN2EM;
+   // Janela 3
+   CLabel   m_cb2_hdr4;
+   CLabel   m_cb2_lN3On;  CButton m_cb2_bN3On;
+   CLabel   m_cb2_lN3SH;  CEdit   m_cb2_iN3SH;
+   CLabel   m_cb2_lN3SM;  CEdit   m_cb2_iN3SM;
+   CLabel   m_cb2_lN3EH;  CEdit   m_cb2_iN3EH;
+   CLabel   m_cb2_lN3EM;  CEdit   m_cb2_iN3EM;
+
    // --- Outros sub-page ---
    CLabel   m_co_hdr1;
    CLabel   m_co_lSlip;   CEdit   m_co_iSlip;
@@ -476,6 +502,10 @@ private:
    ENUM_DRAWDOWN_TYPE        m_cur_ddType;
    ENUM_DRAWDOWN_PEAK_MODE   m_cur_ddPeakMode;
    ENUM_PROFIT_TARGET_ACTION m_cur_profitTargetAction;
+   // Filtro de Notícias (v1.22)
+   bool                      m_cur_newsOn1;
+   bool                      m_cur_newsOn2;
+   bool                      m_cur_newsOn3;
 
    // ── Helpers privados ──
    bool              CreateLV(CLabel &lbl, CLabel &val, string ln, string en, string lt, int y);
@@ -563,6 +593,11 @@ private:
    void              OnClickDDType(int selected);
    void              OnClickDDPeakMode(int selected);
    void              OnClickProfitTargetAction(int selected);
+   void              OnClickCfgBloq2(void);
+   void              OnClickNewsOn1(void);
+   void              OnClickNewsOn2(void);
+   void              OnClickNewsOn3(void);
+   void              RefreshNewsState(int w);
 
 protected:
    virtual bool      CreateButtonClose(void) { return true; }
@@ -790,6 +825,7 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       if(sparam == m_cfg_btnRisco2.Name()) { m_cfg_btnRisco2.Pressed(false); OnClickCfgRisco2(); ChartRedraw(); return; }
       if(sparam == m_cfg_btnBloq.Name())   { m_cfg_btnBloq.Pressed(false);   OnClickCfgBloq();   ChartRedraw(); return; }
       if(sparam == m_cfg_btnOutros.Name()) { m_cfg_btnOutros.Pressed(false); OnClickCfgOutros(); ChartRedraw(); return; }
+      if(sparam == m_cfg_btnBloq2.Name())  { m_cfg_btnBloq2.Pressed(false);  OnClickCfgBloq2();  ChartRedraw(); return; }
 
       // CONFIG: APLICAR
       if(sparam == m_cfg_btnApply.Name())  { m_cfg_btnApply.Pressed(false); OnClickApply(); ChartRedraw(); return; }
@@ -835,6 +871,11 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
          if(sparam == m_c2_bDDT[i].Name())    { OnClickDDType(i);             ChartRedraw(); return; }
          if(sparam == m_c2_bDDPk[i].Name())   { OnClickDDPeakMode(i);         ChartRedraw(); return; }
         }
+
+      // CONFIG: BLOQUEIO 2 — news window toggles
+      if(sparam == m_cb2_bN1On.Name()) { m_cb2_bN1On.Pressed(false); OnClickNewsOn1(); ChartRedraw(); return; }
+      if(sparam == m_cb2_bN2On.Name()) { m_cb2_bN2On.Pressed(false); OnClickNewsOn2(); ChartRedraw(); return; }
+      if(sparam == m_cb2_bN3On.Name()) { m_cb2_bN3On.Pressed(false); OnClickNewsOn3(); ChartRedraw(); return; }
 
       // CONFIG: OUTROS toggles
       if(sparam == m_co_bConfl.Name()) { OnClickConflict(); ChartRedraw(); return; }
@@ -1007,7 +1048,7 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
            {
             // Sub-page buttons + apply + status
             m_cfg_btnRisco.Show(); m_cfg_btnRisco2.Show();
-            m_cfg_btnBloq.Show(); m_cfg_btnOutros.Show();
+            m_cfg_btnBloq.Show(); m_cfg_btnOutros.Show(); m_cfg_btnBloq2.Show();
             m_cfg_btnApply.Show(); m_cfg_status.Show();
             // Show active sub-page
             ShowCfgPage(m_cfgPage);
@@ -1015,12 +1056,13 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
          else
            {
             m_cfg_btnRisco.Hide(); m_cfg_btnRisco2.Hide();
-            m_cfg_btnBloq.Hide(); m_cfg_btnOutros.Hide();
+            m_cfg_btnBloq.Hide(); m_cfg_btnOutros.Hide(); m_cfg_btnBloq2.Hide();
             m_cfg_btnApply.Hide(); m_cfg_status.Hide();
             SetCfgPageVis(CFG_RISCO, false);
             SetCfgPageVis(CFG_RISCO2, false);
             SetCfgPageVis(CFG_BLOQUEIOS, false);
             SetCfgPageVis(CFG_OUTROS, false);
+            SetCfgPageVis(CFG_BLOQ2, false);
            }
          break;
         }

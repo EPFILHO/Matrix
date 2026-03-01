@@ -2,18 +2,25 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.21 - Claude Parte 023 (Claude Code) |
+//|                     Versão 1.22 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
 //
-// Sub-páginas: RISCO | RISCO 2 | BLOQUEIOS | OUTROS
+// Sub-páginas: RISCO | RISCO 2 | BLOQUEIOS | OUTROS | BLOQUEIO 2
 // Campos CEdit editáveis + botões de toggle/cycle
 // Botão APLICAR chama setters hot-reload nos módulos
 //
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.22 (2026-03-01):
+// + Nova sub-página BLOQUEIO 2: Filtro de Notícias (3 janelas)
+// + m_cb2_* controls: 3 janelas de horário com toggle ON/OFF + HH/MM início/fim
+// + OnClickCfgBloq2, OnClickNewsOn1/2/3, RefreshNewsState(w)
+// + ApplyConfig: SetNewsFilter(1/2/3, ...)
+// + PopulateConfig: inicialização de m_cur_newsOn1/2/3 dos inputs
+//
 // v1.21 (2026-03-01):
 // + Fechar Antes do Fim da Sessão na sub-página BLOQUEIOS
 // + m_cb_hdr5, bCBSOn, lCBSMin/iCBSMin
@@ -305,6 +312,14 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!Add(m_cfg_btnOutros))
       return false;
 
+   if(!m_cfg_btnBloq2.Create(m_chart_id, PFX + "cfg_bB2", m_subwin,
+                              5 + (sw + 2) * 4, sy, 5 + sw * 5 + 8, sy + TAB_BTN_H))
+      return false;
+   m_cfg_btnBloq2.Text("BLOQ 2");
+   m_cfg_btnBloq2.FontSize(7);
+   if(!Add(m_cfg_btnBloq2))
+      return false;
+
 // ════════════════════════════════════════════════════════════
 // SUB-PÁGINA: RISCO (simplificada — SL/TP/Spread)
 // ════════════════════════════════════════════════════════════
@@ -548,6 +563,55 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLI(m_co_lDbgCd, m_co_iDbgCd, "co_lDc", "co_iDc", "Debug Cooldown (s):", y)) return false;
 
 // ════════════════════════════════════════════════════════════
+// SUB-PÁGINA: BLOQUEIO 2 — Filtro de Notícias
+// ════════════════════════════════════════════════════════════
+   y = CFG_CONTENT_Y;
+
+   if(!CreateHdr(m_cb2_hdr1, "cb2_h1", "FILTRO NOTICIAS", y)) return false;
+   y += PANEL_GAP_Y + 2;
+
+// ── Janela 1 ──
+   if(!CreateHdr(m_cb2_hdr2, "cb2_h2", "Janela 1", y)) return false;
+   y += PANEL_GAP_Y + 2;
+   if(!CreateLB(m_cb2_lN1On, m_cb2_bN1On, "cb2_lN1O","cb2_bN1O","Janela 1:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cb2_lN1SH, m_cb2_iN1SH, "cb2_lN1SH","cb2_iN1SH","Ini H:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cb2_lN1SM, m_cb2_iN1SM, "cb2_lN1SM","cb2_iN1SM","Ini M:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cb2_lN1EH, m_cb2_iN1EH, "cb2_lN1EH","cb2_iN1EH","Fim H:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cb2_lN1EM, m_cb2_iN1EM, "cb2_lN1EM","cb2_iN1EM","Fim M:", y)) return false;
+   y += PANEL_GAP_Y + 2;
+
+// ── Janela 2 ──
+   if(!CreateHdr(m_cb2_hdr3, "cb2_h3", "Janela 2", y)) return false;
+   y += PANEL_GAP_Y + 2;
+   if(!CreateLB(m_cb2_lN2On, m_cb2_bN2On, "cb2_lN2O","cb2_bN2O","Janela 2:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cb2_lN2SH, m_cb2_iN2SH, "cb2_lN2SH","cb2_iN2SH","Ini H:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cb2_lN2SM, m_cb2_iN2SM, "cb2_lN2SM","cb2_iN2SM","Ini M:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cb2_lN2EH, m_cb2_iN2EH, "cb2_lN2EH","cb2_iN2EH","Fim H:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cb2_lN2EM, m_cb2_iN2EM, "cb2_lN2EM","cb2_iN2EM","Fim M:", y)) return false;
+   y += PANEL_GAP_Y + 2;
+
+// ── Janela 3 ──
+   if(!CreateHdr(m_cb2_hdr4, "cb2_h4", "Janela 3", y)) return false;
+   y += PANEL_GAP_Y + 2;
+   if(!CreateLB(m_cb2_lN3On, m_cb2_bN3On, "cb2_lN3O","cb2_bN3O","Janela 3:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cb2_lN3SH, m_cb2_iN3SH, "cb2_lN3SH","cb2_iN3SH","Ini H:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cb2_lN3SM, m_cb2_iN3SM, "cb2_lN3SM","cb2_iN3SM","Ini M:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cb2_lN3EH, m_cb2_iN3EH, "cb2_lN3EH","cb2_iN3EH","Fim H:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cb2_lN3EM, m_cb2_iN3EM, "cb2_lN3EM","cb2_iN3EM","Fim M:", y)) return false;
+
+// ════════════════════════════════════════════════════════════
 // APLICAR + STATUS (fixos, visíveis em todas sub-páginas)
 // ════════════════════════════════════════════════════════════
    if(!m_cfg_btnApply.Create(m_chart_id, PFX + "cfg_apply", m_subwin,
@@ -751,6 +815,35 @@ void CEPBotPanel::PopulateConfig(void)
    m_cb_bCBSOn.ColorBackground(m_cur_cbsOn ? C'30,120,70' : C'120,50,50');
    m_cb_bCBSOn.Color(clrWhite);
    m_cb_iCBSMin.Text(IntegerToString(inp_MinutesBeforeSessionEnd));
+
+// ── BLOQUEIO 2: Filtro de Notícias (v1.22) ──
+// Janela 1
+   m_cur_newsOn1 = inp_EnableNews1;
+   m_cb2_bN1On.Text(m_cur_newsOn1 ? "ON" : "OFF");
+   m_cb2_bN1On.ColorBackground(m_cur_newsOn1 ? C'30,120,70' : C'120,50,50');
+   m_cb2_bN1On.Color(clrWhite);
+   m_cb2_iN1SH.Text(IntegerToString(inp_News1StartH));
+   m_cb2_iN1SM.Text(IntegerToString(inp_News1StartM));
+   m_cb2_iN1EH.Text(IntegerToString(inp_News1EndH));
+   m_cb2_iN1EM.Text(IntegerToString(inp_News1EndM));
+// Janela 2
+   m_cur_newsOn2 = inp_EnableNews2;
+   m_cb2_bN2On.Text(m_cur_newsOn2 ? "ON" : "OFF");
+   m_cb2_bN2On.ColorBackground(m_cur_newsOn2 ? C'30,120,70' : C'120,50,50');
+   m_cb2_bN2On.Color(clrWhite);
+   m_cb2_iN2SH.Text(IntegerToString(inp_News2StartH));
+   m_cb2_iN2SM.Text(IntegerToString(inp_News2StartM));
+   m_cb2_iN2EH.Text(IntegerToString(inp_News2EndH));
+   m_cb2_iN2EM.Text(IntegerToString(inp_News2EndM));
+// Janela 3
+   m_cur_newsOn3 = inp_EnableNews3;
+   m_cb2_bN3On.Text(m_cur_newsOn3 ? "ON" : "OFF");
+   m_cb2_bN3On.ColorBackground(m_cur_newsOn3 ? C'30,120,70' : C'120,50,50');
+   m_cb2_bN3On.Color(clrWhite);
+   m_cb2_iN3SH.Text(IntegerToString(inp_News3StartH));
+   m_cb2_iN3SM.Text(IntegerToString(inp_News3StartM));
+   m_cb2_iN3EH.Text(IntegerToString(inp_News3EndH));
+   m_cb2_iN3EM.Text(IntegerToString(inp_News3EndM));
 
 // ── Outros ──
    m_co_iSlip.Text(IntegerToString(inp_Slippage));
@@ -1062,6 +1155,56 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
            }
          break;
         }
+
+      case CFG_BLOQ2:
+        {
+         if(vis)
+           {
+            m_cb2_hdr1.Show();
+            // Janela 1
+            m_cb2_hdr2.Show();
+            m_cb2_lN1On.Show(); m_cb2_bN1On.Show();
+            m_cb2_lN1SH.Show(); m_cb2_iN1SH.Show();
+            m_cb2_lN1SM.Show(); m_cb2_iN1SM.Show();
+            m_cb2_lN1EH.Show(); m_cb2_iN1EH.Show();
+            m_cb2_lN1EM.Show(); m_cb2_iN1EM.Show();
+            // Janela 2
+            m_cb2_hdr3.Show();
+            m_cb2_lN2On.Show(); m_cb2_bN2On.Show();
+            m_cb2_lN2SH.Show(); m_cb2_iN2SH.Show();
+            m_cb2_lN2SM.Show(); m_cb2_iN2SM.Show();
+            m_cb2_lN2EH.Show(); m_cb2_iN2EH.Show();
+            m_cb2_lN2EM.Show(); m_cb2_iN2EM.Show();
+            // Janela 3
+            m_cb2_hdr4.Show();
+            m_cb2_lN3On.Show(); m_cb2_bN3On.Show();
+            m_cb2_lN3SH.Show(); m_cb2_iN3SH.Show();
+            m_cb2_lN3SM.Show(); m_cb2_iN3SM.Show();
+            m_cb2_lN3EH.Show(); m_cb2_iN3EH.Show();
+            m_cb2_lN3EM.Show(); m_cb2_iN3EM.Show();
+            RefreshNewsState(1); RefreshNewsState(2); RefreshNewsState(3);
+           }
+         else
+           {
+            m_cb2_hdr1.Hide();
+            m_cb2_hdr2.Hide(); m_cb2_lN1On.Hide(); m_cb2_bN1On.Hide();
+            m_cb2_lN1SH.Hide(); m_cb2_iN1SH.Hide();
+            m_cb2_lN1SM.Hide(); m_cb2_iN1SM.Hide();
+            m_cb2_lN1EH.Hide(); m_cb2_iN1EH.Hide();
+            m_cb2_lN1EM.Hide(); m_cb2_iN1EM.Hide();
+            m_cb2_hdr3.Hide(); m_cb2_lN2On.Hide(); m_cb2_bN2On.Hide();
+            m_cb2_lN2SH.Hide(); m_cb2_iN2SH.Hide();
+            m_cb2_lN2SM.Hide(); m_cb2_iN2SM.Hide();
+            m_cb2_lN2EH.Hide(); m_cb2_iN2EH.Hide();
+            m_cb2_lN2EM.Hide(); m_cb2_iN2EM.Hide();
+            m_cb2_hdr4.Hide(); m_cb2_lN3On.Hide(); m_cb2_bN3On.Hide();
+            m_cb2_lN3SH.Hide(); m_cb2_iN3SH.Hide();
+            m_cb2_lN3SM.Hide(); m_cb2_iN3SM.Hide();
+            m_cb2_lN3EH.Hide(); m_cb2_iN3EH.Hide();
+            m_cb2_lN3EM.Hide(); m_cb2_iN3EM.Hide();
+           }
+         break;
+        }
      }
   }
 
@@ -1072,16 +1215,19 @@ void CEPBotPanel::UpdateCfgBtnStyles(void)
   {
    m_cfg_btnRisco.Pressed(false);  m_cfg_btnRisco2.Pressed(false);
    m_cfg_btnBloq.Pressed(false);   m_cfg_btnOutros.Pressed(false);
+   m_cfg_btnBloq2.Pressed(false);
 
    m_cfg_btnRisco.ColorBackground((m_cfgPage == CFG_RISCO)      ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
    m_cfg_btnRisco2.ColorBackground((m_cfgPage == CFG_RISCO2)    ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
    m_cfg_btnBloq.ColorBackground((m_cfgPage == CFG_BLOQUEIOS)   ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
    m_cfg_btnOutros.ColorBackground((m_cfgPage == CFG_OUTROS)    ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
+   m_cfg_btnBloq2.ColorBackground((m_cfgPage == CFG_BLOQ2)      ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
 
    m_cfg_btnRisco.Color((m_cfgPage == CFG_RISCO)      ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
    m_cfg_btnRisco2.Color((m_cfgPage == CFG_RISCO2)    ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
    m_cfg_btnBloq.Color((m_cfgPage == CFG_BLOQUEIOS)   ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
    m_cfg_btnOutros.Color((m_cfgPage == CFG_OUTROS)    ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
+   m_cfg_btnBloq2.Color((m_cfgPage == CFG_BLOQ2)      ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
   }
 
 //+------------------------------------------------------------------+
@@ -1091,6 +1237,7 @@ void CEPBotPanel::OnClickCfgRisco(void)   { ShowCfgPage(CFG_RISCO);     }
 void CEPBotPanel::OnClickCfgRisco2(void)  { ShowCfgPage(CFG_RISCO2);    }
 void CEPBotPanel::OnClickCfgBloq(void)    { ShowCfgPage(CFG_BLOQUEIOS); }
 void CEPBotPanel::OnClickCfgOutros(void)  { ShowCfgPage(CFG_OUTROS);    }
+void CEPBotPanel::OnClickCfgBloq2(void)   { ShowCfgPage(CFG_BLOQ2);     }
 
 //+------------------------------------------------------------------+
 //| Toggle/Cycle handlers                                              |
@@ -1448,6 +1595,19 @@ void CEPBotPanel::ApplyConfig(void)
        else
           errors++;
       }
+
+      // ── News Filters (v1.22) ──
+      {
+       int s1H=(int)StringToInteger(m_cb2_iN1SH.Text()), s1M=(int)StringToInteger(m_cb2_iN1SM.Text());
+       int e1H=(int)StringToInteger(m_cb2_iN1EH.Text()), e1M=(int)StringToInteger(m_cb2_iN1EM.Text());
+       int s2H=(int)StringToInteger(m_cb2_iN2SH.Text()), s2M=(int)StringToInteger(m_cb2_iN2SM.Text());
+       int e2H=(int)StringToInteger(m_cb2_iN2EH.Text()), e2M=(int)StringToInteger(m_cb2_iN2EM.Text());
+       int s3H=(int)StringToInteger(m_cb2_iN3SH.Text()), s3M=(int)StringToInteger(m_cb2_iN3SM.Text());
+       int e3H=(int)StringToInteger(m_cb2_iN3EH.Text()), e3M=(int)StringToInteger(m_cb2_iN3EM.Text());
+       m_blockers.SetNewsFilter(1, m_cur_newsOn1, s1H, s1M, e1H, e1M);
+       m_blockers.SetNewsFilter(2, m_cur_newsOn2, s2H, s2M, e2H, e2M);
+       m_blockers.SetNewsFilter(3, m_cur_newsOn3, s3H, s3M, e3H, e3M);
+      }
      }
 
 // ═══════════════════════════════════════════════
@@ -1710,4 +1870,61 @@ void CEPBotPanel::OnClickProfitTargetAction(int selected)
    SetRadioSelection(m_cb_bPTA, 2, selected);
    ChartRedraw();
   }
+
+//+------------------------------------------------------------------+
+//| RefreshNewsState — enable/disable campos por toggle da janela     |
+//+------------------------------------------------------------------+
+void CEPBotPanel::RefreshNewsState(int w)
+  {
+   bool on = (w == 1) ? m_cur_newsOn1 : (w == 2) ? m_cur_newsOn2 : m_cur_newsOn3;
+   if(w == 1)
+     {
+      SetEditEnabled(m_cb2_lN1SH, m_cb2_iN1SH, on);
+      SetEditEnabled(m_cb2_lN1SM, m_cb2_iN1SM, on);
+      SetEditEnabled(m_cb2_lN1EH, m_cb2_iN1EH, on);
+      SetEditEnabled(m_cb2_lN1EM, m_cb2_iN1EM, on);
+     }
+   else if(w == 2)
+     {
+      SetEditEnabled(m_cb2_lN2SH, m_cb2_iN2SH, on);
+      SetEditEnabled(m_cb2_lN2SM, m_cb2_iN2SM, on);
+      SetEditEnabled(m_cb2_lN2EH, m_cb2_iN2EH, on);
+      SetEditEnabled(m_cb2_lN2EM, m_cb2_iN2EM, on);
+     }
+   else
+     {
+      SetEditEnabled(m_cb2_lN3SH, m_cb2_iN3SH, on);
+      SetEditEnabled(m_cb2_lN3SM, m_cb2_iN3SM, on);
+      SetEditEnabled(m_cb2_lN3EH, m_cb2_iN3EH, on);
+      SetEditEnabled(m_cb2_lN3EM, m_cb2_iN3EM, on);
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| Toggle handlers BLOQUEIO 2 — Janelas de Notícias (v1.22)          |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickNewsOn1(void)
+  {
+   m_cur_newsOn1 = !m_cur_newsOn1;
+   m_cb2_bN1On.Text(m_cur_newsOn1 ? "ON" : "OFF");
+   m_cb2_bN1On.ColorBackground(m_cur_newsOn1 ? C'30,120,70' : C'120,50,50');
+   RefreshNewsState(1);
+  }
+
+void CEPBotPanel::OnClickNewsOn2(void)
+  {
+   m_cur_newsOn2 = !m_cur_newsOn2;
+   m_cb2_bN2On.Text(m_cur_newsOn2 ? "ON" : "OFF");
+   m_cb2_bN2On.ColorBackground(m_cur_newsOn2 ? C'30,120,70' : C'120,50,50');
+   RefreshNewsState(2);
+  }
+
+void CEPBotPanel::OnClickNewsOn3(void)
+  {
+   m_cur_newsOn3 = !m_cur_newsOn3;
+   m_cb2_bN3On.Text(m_cur_newsOn3 ? "ON" : "OFF");
+   m_cb2_bN3On.ColorBackground(m_cur_newsOn3 ? C'30,120,70' : C'120,50,50');
+   RefreshNewsState(3);
+  }
+
 //+------------------------------------------------------------------+

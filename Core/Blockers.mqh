@@ -2,12 +2,16 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.13 - Claude Parte 023 (Claude Code) |
+//|                     Versão 3.14 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.13"
+#property version   "3.14"
 #property strict
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.14 (Parte 023):
+// + SetNewsFilter(int,bool,int,int,int,int) — hot-reload dos 3 filtros
+//   de janela de notícias (window 1-3): ativa/desativa e define horários
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.13 (Parte 023):
 // ✅ Fix: SetDrawdownValue() não atualizava m_enableDrawdown no hot-reload
@@ -433,6 +437,7 @@ public:
    void              SetTimeFilter(bool enable, int startH, int startM, int endH, int endM);
    void              SetCloseOnEndTime(bool close);
    void              SetCloseBeforeSessionEnd(bool close, int minutes);
+   void              SetNewsFilter(int window, bool enable, int startH, int startM, int endH, int endM);
 
    // ═══════════════════════════════════════════════════════════════
    // GETTERS - INFORMAÇÕES DE ESTADO
@@ -1409,6 +1414,43 @@ void CBlockers::SetCloseBeforeSessionEnd(bool close, int minutes)
          StringFormat("CloseBeforeSessionEnd: %s | %d min", close ? "ON" : "OFF", minutes));
    else
       Print("🔄 CloseBeforeSessionEnd: ", close ? "ON" : "OFF", " | ", minutes, " min");
+  }
+
+//+------------------------------------------------------------------+
+//| SetNewsFilter — hot-reload dos filtros de janela de notícias     |
+//+------------------------------------------------------------------+
+void CBlockers::SetNewsFilter(int window, bool enable,
+                               int startH, int startM, int endH, int endM)
+  {
+   if(window < 1 || window > 3) return;
+
+   if(window == 1)
+     {
+      m_enableNewsFilter1  = enable;
+      m_newsStart1Hour     = startH;  m_newsStart1Minute = startM;
+      m_newsEnd1Hour       = endH;    m_newsEnd1Minute   = endM;
+     }
+   else if(window == 2)
+     {
+      m_enableNewsFilter2  = enable;
+      m_newsStart2Hour     = startH;  m_newsStart2Minute = startM;
+      m_newsEnd2Hour       = endH;    m_newsEnd2Minute   = endM;
+     }
+   else
+     {
+      m_enableNewsFilter3  = enable;
+      m_newsStart3Hour     = startH;  m_newsStart3Minute = startM;
+      m_newsEnd3Hour       = endH;    m_newsEnd3Minute   = endM;
+     }
+
+   string info = enable
+      ? StringFormat("ON %02d:%02d -> %02d:%02d", startH, startM, endH, endM)
+      : "OFF";
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+                   StringFormat("NewsFilter%d: %s", window, info));
+   else
+      Print(StringFormat("🔄 NewsFilter%d: %s", window, info));
   }
 
 //+------------------------------------------------------------------+
