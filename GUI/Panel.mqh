@@ -2,15 +2,21 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.20 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.21 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.20"
+#property version   "1.21"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.21 (2026-03-01):
+// + Fechar Antes do Fim da Sessão na sub-página BLOQUEIOS
+// + m_cb_hdr5, m_cb_lCBSOn/bCBSOn, m_cb_lCBSMin/iCBSMin
+// + m_cur_cbsOn: novo estado
+// + OnClickCBSToggle, RefreshBloqSessionEnd: novos handlers
+//
 // v1.20 (2026-03-01):
 // + Filtro de Horário na sub-página BLOQUEIOS
 // + m_cb_hdr4, m_cb_lTFOn/bTFOn, m_cb_lTFSH/iTFSH, m_cb_lTFSM/iTFSM
@@ -420,6 +426,10 @@ private:
    CLabel   m_cb_lTFEH;  CEdit   m_cb_iTFEH;     // Hora Fim (0-23)
    CLabel   m_cb_lTFEM;  CEdit   m_cb_iTFEM;     // Min Fim (0-59)
    CLabel   m_cb_lTFCl;  CButton m_cb_bTFCl;     // Fechar ao Fim ON/OFF
+   // --- Fechar Antes do Fim da Sessão (v1.21) ---
+   CLabel   m_cb_hdr5;
+   CLabel   m_cb_lCBSOn;  CButton m_cb_bCBSOn;   // Prot. Fim Sessão ON/OFF
+   CLabel   m_cb_lCBSMin; CEdit   m_cb_iCBSMin;  // Minutos antes do fim
 
    // --- Outros sub-page ---
    CLabel   m_co_hdr1;
@@ -459,6 +469,7 @@ private:
    bool                      m_cur_winStreakOn;
    bool                      m_cur_tfOn;
    bool                      m_cur_tfClose;
+   bool                      m_cur_cbsOn;
    // Novos estados (Parte 023)
    ENUM_STREAK_ACTION        m_cur_lossStreakAction;
    ENUM_STREAK_ACTION        m_cur_winStreakAction;
@@ -545,6 +556,8 @@ private:
    void              OnClickWinStreakToggle(void);
    void              OnClickTFToggle(void);
    void              OnClickTFClose(void);
+   void              OnClickCBSToggle(void);
+   void              RefreshBloqSessionEnd(void);
    void              OnClickLossStreakAction(int selected);
    void              OnClickWinStreakAction(int selected);
    void              OnClickDDType(int selected);
@@ -597,7 +610,7 @@ CEPBotPanel::CEPBotPanel(void)
      m_cur_compSL(false), m_cur_compTP(false), m_cur_compTrail(false),
      m_cur_trailOn(false), m_cur_beOn(false),
      m_cur_ddOn(false), m_cur_lossStreakOn(false), m_cur_winStreakOn(false),
-     m_cur_tfOn(false), m_cur_tfClose(false),
+     m_cur_tfOn(false), m_cur_tfClose(false), m_cur_cbsOn(false),
      m_cur_lossStreakAction(STREAK_PAUSE), m_cur_winStreakAction(STREAK_PAUSE),
      m_cur_ddType(DD_FINANCIAL), m_cur_ddPeakMode(DD_PEAK_REALIZED_ONLY),
      m_cur_profitTargetAction(PROFIT_ACTION_STOP)
@@ -807,6 +820,7 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       if(sparam == m_cb_bWStrOn.Name()) { OnClickWinStreakToggle();  ChartRedraw(); return; }
       if(sparam == m_cb_bTFOn.Name())   { OnClickTFToggle();         ChartRedraw(); return; }
       if(sparam == m_cb_bTFCl.Name())   { OnClickTFClose();          ChartRedraw(); return; }
+      if(sparam == m_cb_bCBSOn.Name())  { OnClickCBSToggle();        ChartRedraw(); return; }
 
       // CONFIG: BLOQUEIOS radio groups (2 opções cada)
       for(int i = 0; i < 2; i++)

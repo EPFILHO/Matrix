@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.20 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.21 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -14,6 +14,13 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.21 (2026-03-01):
+// + Fechar Antes do Fim da Sessão na sub-página BLOQUEIOS
+// + m_cb_hdr5, bCBSOn, lCBSMin/iCBSMin
+// + RefreshBloqSessionEnd, OnClickCBSToggle: novos handlers
+// + ApplyConfig: SetCloseBeforeSessionEnd
+// + PopulateConfig: inicialização de m_cur_cbsOn/iCBSMin dos inputs
+//
 // v1.20 (2026-03-01):
 // + Filtro de Horário na sub-página BLOQUEIOS
 // + m_cb_hdr4, bTFOn, lTFSH/iTFSH, lTFSM/iTFSM, lTFEH/iTFEH, lTFEM/iTFEM, bTFCl
@@ -515,6 +522,15 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLB(m_cb_lTFCl, m_cb_bTFCl, "cb_lTFC", "cb_bTFC", "Fechar Fim:", y)) return false;
    y += PANEL_GAP_Y;
 
+// ── FECHAR ANTES DO FIM DA SESSÃO (v1.21) ──
+   y += PANEL_GAP_SECTION;
+   if(!CreateHdr(m_cb_hdr5, "cb_h5", "FECHAR ANTES DO FIM DA SESSAO", y)) return false;
+   y += PANEL_GAP_Y + 2;
+   if(!CreateLB(m_cb_lCBSOn, m_cb_bCBSOn, "cb_lCBSO", "cb_bCBSO", "Prot. Fim Sessao:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cb_lCBSMin, m_cb_iCBSMin, "cb_lCBSM", "cb_iCBSM", "Minutos antes:", y)) return false;
+   y += PANEL_GAP_Y;
+
 // ════════════════════════════════════════════════════════════
 // SUB-PÁGINA: OUTROS
 // ════════════════════════════════════════════════════════════
@@ -728,6 +744,13 @@ void CEPBotPanel::PopulateConfig(void)
    m_cb_bTFCl.Text(m_cur_tfClose ? "ON" : "OFF");
    m_cb_bTFCl.ColorBackground(m_cur_tfClose ? C'30,120,70' : C'120,50,50');
    m_cb_bTFCl.Color(clrWhite);
+
+// Fechar Antes do Fim da Sessão (v1.21)
+   m_cur_cbsOn = inp_CloseBeforeSessionEnd;
+   m_cb_bCBSOn.Text(m_cur_cbsOn ? "ON" : "OFF");
+   m_cb_bCBSOn.ColorBackground(m_cur_cbsOn ? C'30,120,70' : C'120,50,50');
+   m_cb_bCBSOn.Color(clrWhite);
+   m_cb_iCBSMin.Text(IntegerToString(inp_MinutesBeforeSessionEnd));
 
 // ── Outros ──
    m_co_iSlip.Text(IntegerToString(inp_Slippage));
@@ -978,6 +1001,11 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_cb_lTFEM.Show(); m_cb_iTFEM.Show();
             m_cb_lTFCl.Show(); m_cb_bTFCl.Show();
             RefreshBloqTimeFilter();
+            // Fechar Antes do Fim da Sessão (v1.21)
+            m_cb_hdr5.Show();
+            m_cb_lCBSOn.Show(); m_cb_bCBSOn.Show();
+            m_cb_lCBSMin.Show(); m_cb_iCBSMin.Show();
+            RefreshBloqSessionEnd();
            }
          else
            {
@@ -1008,6 +1036,10 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_cb_lTFEH.Hide(); m_cb_iTFEH.Hide();
             m_cb_lTFEM.Hide(); m_cb_iTFEM.Hide();
             m_cb_lTFCl.Hide(); m_cb_bTFCl.Hide();
+            // Fechar Antes do Fim da Sessão (v1.21)
+            m_cb_hdr5.Hide();
+            m_cb_lCBSOn.Hide(); m_cb_bCBSOn.Hide();
+            m_cb_lCBSMin.Hide(); m_cb_iCBSMin.Hide();
            }
          break;
         }
@@ -1407,6 +1439,15 @@ void CEPBotPanel::ApplyConfig(void)
           errors++;
        m_blockers.SetCloseOnEndTime(m_cur_tfClose);
       }
+
+      // Fechar Antes do Fim da Sessão (v1.21)
+      {
+       int mins = (int)StringToInteger(m_cb_iCBSMin.Text());
+       if(mins >= 0)
+          m_blockers.SetCloseBeforeSessionEnd(m_cur_cbsOn, mins);
+       else
+          errors++;
+      }
      }
 
 // ═══════════════════════════════════════════════
@@ -1599,6 +1640,27 @@ void CEPBotPanel::OnClickTFClose(void)
    m_cb_bTFCl.Pressed(false);
    m_cb_bTFCl.Text(m_cur_tfClose ? "ON" : "OFF");
    m_cb_bTFCl.ColorBackground(m_cur_tfClose ? C'30,120,70' : C'120,50,50');
+   ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
+//| RefreshBloqSessionEnd — enable/disable campo por m_cur_cbsOn   |
+//+------------------------------------------------------------------+
+void CEPBotPanel::RefreshBloqSessionEnd(void)
+  {
+   SetEditEnabled(m_cb_lCBSMin, m_cb_iCBSMin, m_cur_cbsOn);
+  }
+
+//+------------------------------------------------------------------+
+//| Toggle handler: Fechar Antes do Fim da Sessão (v1.21)           |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickCBSToggle(void)
+  {
+   m_cur_cbsOn = !m_cur_cbsOn;
+   m_cb_bCBSOn.Pressed(false);
+   m_cb_bCBSOn.Text(m_cur_cbsOn ? "ON" : "OFF");
+   m_cb_bCBSOn.ColorBackground(m_cur_cbsOn ? C'30,120,70' : C'120,50,50');
+   RefreshBloqSessionEnd();
    ChartRedraw();
   }
 

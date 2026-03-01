@@ -2,10 +2,10 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.10 - Claude Parte 024 (Claude Code) |
+//|                     Versão 3.11 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.10"
+#property version   "3.11"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -413,6 +413,7 @@ public:
    void              SetDrawdownPeakMode(ENUM_DRAWDOWN_PEAK_MODE newMode);
    void              SetTimeFilter(bool enable, int startH, int startM, int endH, int endM);
    void              SetCloseOnEndTime(bool close);
+   void              SetCloseBeforeSessionEnd(bool close, int minutes);
 
    // ═══════════════════════════════════════════════════════════════
    // GETTERS - INFORMAÇÕES DE ESTADO
@@ -1297,6 +1298,22 @@ void CBlockers::SetCloseOnEndTime(bool close)
          "CloseOnEndTime: " + (close ? "ON" : "OFF"));
    else
       Print("🔄 CloseOnEndTime: ", close ? "ON" : "OFF");
+  }
+
+//+------------------------------------------------------------------+
+//| SetCloseBeforeSessionEnd — hot-reload do fechar antes do fim    |
+//+------------------------------------------------------------------+
+void CBlockers::SetCloseBeforeSessionEnd(bool close, int minutes)
+  {
+   bool changed = (m_closeBeforeSessionEnd != close || m_minutesBeforeSessionEnd != minutes);
+   m_closeBeforeSessionEnd = close;
+   m_minutesBeforeSessionEnd = minutes;
+   if(!changed) return;
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("CloseBeforeSessionEnd: %s | %d min", close ? "ON" : "OFF", minutes));
+   else
+      Print("🔄 CloseBeforeSessionEnd: ", close ? "ON" : "OFF", " | ", minutes, " min");
   }
 
 //+------------------------------------------------------------------+
