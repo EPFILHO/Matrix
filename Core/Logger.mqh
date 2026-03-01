@@ -2,13 +2,19 @@
 //|                                                       Logger.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                                Sistema de Logging - EPBot Matrix |
-//|                     Versão 3.25 - Claude Parte 022 (Claude Code) |
+//|                     Versão 3.26 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "3.25"
+#property version   "3.26"
 
 // ═══════════════════════════════════════════════════════════════════
+// CHANGELOG v3.26 (Parte 023):
+// ✅ Novo: m_dailyTradeResults[] armazena sequência ordenada win/loss
+// ✅ Novo: GetDailyTradeResults() expõe sequência para Blockers
+// ✅ LoadDailyStats() popula sequência para reconstrução de streak
+// ✅ ResetDaily() e construtor limpam a sequência
+//
 // CHANGELOG v3.25:
 // ✅ Novos getters públicos GetGrossProfit() e GetGrossLoss():
 //    - Necessários para cálculo de Profit Factor e Payoff no Painel GUI
@@ -137,6 +143,9 @@ private:
    int               m_dailyDraws;
    double            m_grossProfit;
    double            m_grossLoss;
+   // Sequência ordenada de trades (para reconstrução de streak em Blockers)
+   bool              m_dailyTradeResults[];
+   int               m_dailyTradeResultCount;
    
    // ═══════════════════════════════════════════════════════════
    // MÉTODOS PRIVADOS
@@ -218,6 +227,12 @@ public:
    int               GetDailyDraws() { return m_dailyDraws; }
    double            GetGrossProfit() { return m_grossProfit; }
    double            GetGrossLoss() { return m_grossLoss; }
+   int               GetDailyTradeResults(bool &results[])
+                       {
+                        ArrayResize(results, m_dailyTradeResultCount);
+                        ArrayCopy(results, m_dailyTradeResults, 0, 0, m_dailyTradeResultCount);
+                        return m_dailyTradeResultCount;
+                       }
 
    bool              GetShowDebug() { return m_showDebug; }
    bool              GetInputShowDebug() { return m_inputShowDebug; }
@@ -246,6 +261,8 @@ CLogger::CLogger()
    m_dailyDraws = 0;
    m_grossProfit = 0;
    m_grossLoss = 0;
+   m_dailyTradeResultCount = 0;
+   ArrayResize(m_dailyTradeResults, 0);
 
    ArrayResize(m_throttles, 0);
   }
@@ -766,6 +783,8 @@ void CLogger::LoadDailyStats()
    m_dailyLosses = 0;
    m_dailyDraws = 0;
    m_grossProfit = 0;
+   m_dailyTradeResultCount = 0;
+   ArrayResize(m_dailyTradeResults, 0);
    m_grossLoss = 0;
 
    // Tentar abrir CSV
@@ -851,6 +870,10 @@ void CLogger::LoadDailyStats()
             m_dailyLosses++;
             m_grossLoss += MathAbs(profit);
            }
+
+         // Sequência ordenada para reconstrução de streak
+         ArrayResize(m_dailyTradeResults, m_dailyTradeResultCount + 1);
+         m_dailyTradeResults[m_dailyTradeResultCount++] = (profit > 0 && !isBreakeven);
 
          tradesCarregados++;
         }
@@ -1070,6 +1093,8 @@ void CLogger::ResetDaily()
    m_dailyDraws = 0;
    m_grossProfit = 0;
    m_grossLoss = 0;
+   m_dailyTradeResultCount = 0;
+   ArrayResize(m_dailyTradeResults, 0);
 
    // Atualizar nome do arquivo TXT para o novo dia
    MqlDateTime dt;

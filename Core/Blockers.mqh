@@ -2,12 +2,19 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.11 - Claude Parte 023 (Claude Code) |
+//|                     Versão 3.12 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.11"
+#property version   "3.12"
 #property strict
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.12 (Parte 023):
+// ✅ Fix Bug: Streak não bloqueava após hot-reload com EA iniciado sem streak
+// + ReconstructStreakFromHistory(): reconstrói contadores consecutivos do CSV
+// + Init(): chama ReconstructStreakFromHistory() após reset de contadores
+// + UpdateAfterTrade(): remove guard if(m_enableStreakControl) — sempre conta
+// + SetStreakLimits(): ativa m_enableStreakControl e reconstrói ao ativar
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.11 (Parte 023):
 // + SetCloseBeforeSessionEnd(bool, int) — hot-reload do fechar antes
@@ -347,6 +354,7 @@ private:
    bool              CheckDailyLimits(int dailyTrades, double dailyProfit);
    bool              CheckStreakLimit();
    bool              CheckDrawdownLimit();
+   void              ReconstructStreakFromHistory();
    bool              CheckDirectionAllowed(int orderType);
 
    // ═══════════════════════════════════════════════════════════════
@@ -1042,6 +1050,7 @@ bool CBlockers::Init(
 // ───────────────────────────────────────────────────────────────
    m_currentLossStreak = 0;
    m_currentWinStreak = 0;
+   ReconstructStreakFromHistory();  // reconstrói do CSV independente de enableStreak
    m_streakPauseActive = false;
    m_streakPauseUntil = 0;
    m_streakPauseReason = "";
@@ -1189,12 +1198,20 @@ void CBlockers::SetStreakLimits(int maxLoss, ENUM_STREAK_ACTION lossAction, int 
    ENUM_STREAK_ACTION oldWinAction = m_winStreakAction;
    int oldWinPause = m_winPauseMinutes;
 
+   bool wasEnabled = m_enableStreakControl;
+
    m_maxLossStreak = maxLoss;
    m_lossStreakAction = lossAction;
    m_lossPauseMinutes = lossPause;
    m_maxWinStreak = maxWin;
    m_winStreakAction = winAction;
    m_winPauseMinutes = winPause;
+
+   m_enableStreakControl = (maxLoss > 0 || maxWin > 0);
+
+   // Se ativando pela primeira vez via hot-reload, reconstrói streak do CSV
+   if(!wasEnabled && m_enableStreakControl)
+      ReconstructStreakFromHistory();
 
    // Só logar se houve mudança real
    if(oldMaxLoss != maxLoss || oldLossAction != lossAction || oldLossPause != lossPause ||
@@ -1303,6 +1320,27 @@ void CBlockers::SetCloseOnEndTime(bool close)
          "CloseOnEndTime: " + (close ? "ON" : "OFF"));
    else
       Print("🔄 CloseOnEndTime: ", close ? "ON" : "OFF");
+  }
+
+//+------------------------------------------------------------------+
+//| ReconstructStreakFromHistory — recalcula streak do CSV do dia   |
+//+------------------------------------------------------------------+
+void CBlockers::ReconstructStreakFromHistory()
+  {
+   if(m_logger == NULL) return;
+   bool results[];
+   int count = m_logger.GetDailyTradeResults(results);
+   m_currentLossStreak = 0;
+   m_currentWinStreak  = 0;
+   for(int i = 0; i < count; i++)
+     {
+      if(results[i]) { m_currentWinStreak++;  m_currentLossStreak = 0; }
+      else           { m_currentLossStreak++; m_currentWinStreak  = 0; }
+     }
+   if(count > 0)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT",
+         StringFormat("📊 Streak reconstruído: %dL / %dW consecutivos (de %d trades)",
+                      m_currentLossStreak, m_currentWinStreak, count));
   }
 
 //+------------------------------------------------------------------+
@@ -2025,35 +2063,34 @@ bool CBlockers::ShouldCloseByDrawdown(ulong positionTicket, double dailyProfit, 
 //+------------------------------------------------------------------+
 void CBlockers::UpdateAfterTrade(bool isWin, double tradeProfit)
   {
-   if(m_enableStreakControl)
+   // Contadores sempre atualizados (independente de m_enableStreakControl),
+   // para que hot-reload de limites encontre o streak correto.
+   if(isWin)
      {
-      if(isWin)
-        {
-         m_currentWinStreak++;
-         m_currentLossStreak = 0;
+      m_currentWinStreak++;
+      m_currentLossStreak = 0;
 
-         if(m_maxWinStreak > 0 && m_currentWinStreak >= m_maxWinStreak)
-           {
-            if(m_logger != NULL)
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK",
-                  "⚠️ WIN STREAK ATINGIDO: " + IntegerToString(m_currentWinStreak) + " ganhos consecutivos!");
-            else
-               Print("⚠️ WIN STREAK ATINGIDO: ", m_currentWinStreak, " ganhos consecutivos!");
-           }
+      if(m_maxWinStreak > 0 && m_currentWinStreak >= m_maxWinStreak)
+        {
+         if(m_logger != NULL)
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK",
+               "⚠️ WIN STREAK ATINGIDO: " + IntegerToString(m_currentWinStreak) + " ganhos consecutivos!");
+         else
+            Print("⚠️ WIN STREAK ATINGIDO: ", m_currentWinStreak, " ganhos consecutivos!");
         }
-      else
-        {
-         m_currentLossStreak++;
-         m_currentWinStreak = 0;
+     }
+   else
+     {
+      m_currentLossStreak++;
+      m_currentWinStreak = 0;
 
-         if(m_maxLossStreak > 0 && m_currentLossStreak >= m_maxLossStreak)
-           {
-            if(m_logger != NULL)
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK",
-                  "⚠️ LOSS STREAK ATINGIDO: " + IntegerToString(m_currentLossStreak) + " perdas consecutivas!");
-            else
-               Print("⚠️ LOSS STREAK ATINGIDO: ", m_currentLossStreak, " perdas consecutivas!");
-           }
+      if(m_maxLossStreak > 0 && m_currentLossStreak >= m_maxLossStreak)
+        {
+         if(m_logger != NULL)
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK",
+               "⚠️ LOSS STREAK ATINGIDO: " + IntegerToString(m_currentLossStreak) + " perdas consecutivas!");
+         else
+            Print("⚠️ LOSS STREAK ATINGIDO: ", m_currentLossStreak, " perdas consecutivas!");
         }
      }
   }
