@@ -2,18 +2,22 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.14 - Claude Parte 023 (Claude Code) |
+//|                     Versão 3.15 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.14"
+#property version   "3.15"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
-// CHANGELOG v3.14 (Parte 023):
-// + SetNewsFilter(int,bool,int,int,int,int) — hot-reload dos 3 filtros
-//   de janela de notícias (window 1-3): ativa/desativa e define horários
+// CHANGELOG v3.15 (Parte 023):
+// + CanTrade(): logging de transição de estado para 4 bloqueadores
+//   silenciosos: TimeFilter, NewsFilter, SpreadFilter, DailyLimits
+//   - Loga ao ENTRAR no bloqueio (com detalhes: janela, spread, $)
+//   - Loga ao SAIR do bloqueio (operações liberadas)
+//   - NewsFilter: identifica qual janela (1/2/3) está ativa
+//   - Padrão: static bool por bloqueador, log apenas em transições
 // ═══════════════════════════════════════════════════════════════
-// CHANGELOG v3.13 (Parte 023):
+// CHANGELOG v3.14 (Parte 023):
 // ✅ Fix: SetDrawdownValue() não atualizava m_enableDrawdown no hot-reload
 // ✅ Fix: SetDailyLimits() não atualizava m_enableDailyLimits no hot-reload
 // ✅ Fix: SetStreakLimits() não cancelava m_streakPauseActive ao subir limite
@@ -1599,27 +1603,93 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
         }
      }
 
-// Verificações restantes (sem alteração)
-   if(!CheckTimeFilter())
+// ── Filtro de Horário — logging de transição ──
      {
-      m_currentBlocker = BLOCKER_TIME_FILTER;
-      blockReason = "Fora do horário permitido";
-      return false;
+      bool blocked = !CheckTimeFilter();
+      static bool s_tfWasBlocked = false;
+      if(blocked)
+        {
+         m_currentBlocker = BLOCKER_TIME_FILTER;
+         blockReason = "Fora do horário permitido";
+         if(!s_tfWasBlocked && m_logger != NULL)
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
+               StringFormat("🕐 FILTRO HORÁRIO: operações bloqueadas | janela %02d:%02d-%02d:%02d",
+                            m_startHour, m_startMinute, m_endHour, m_endMinute));
+         s_tfWasBlocked = true;
+         return false;
+        }
+      else if(s_tfWasBlocked)
+        {
+         s_tfWasBlocked = false;
+         if(m_logger != NULL)
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
+               StringFormat("✅ FILTRO HORÁRIO: janela %02d:%02d-%02d:%02d ativa, operações liberadas",
+                            m_startHour, m_startMinute, m_endHour, m_endMinute));
+        }
      }
 
-   if(!CheckNewsFilter())
+// ── Filtro de Notícias — logging de transição ──
      {
-      m_currentBlocker = BLOCKER_NEWS_FILTER;
-      blockReason = "Horário de volatilidade";
-      return false;
+      bool blocked = !CheckNewsFilter();
+      static bool s_nfWasBlocked = false;
+      if(blocked)
+        {
+         m_currentBlocker = BLOCKER_NEWS_FILTER;
+         blockReason = "Horário de volatilidade";
+         if(!s_nfWasBlocked && m_logger != NULL)
+           {
+            MqlDateTime dt; TimeToStruct(TimeCurrent(), dt);
+            int cur = dt.hour * 60 + dt.min;
+            string wDesc = "janela ativa";
+            int s1=m_newsStart1Hour*60+m_newsStart1Minute, e1=m_newsEnd1Hour*60+m_newsEnd1Minute;
+            int s2=m_newsStart2Hour*60+m_newsStart2Minute, e2=m_newsEnd2Hour*60+m_newsEnd2Minute;
+            int s3=m_newsStart3Hour*60+m_newsStart3Minute, e3=m_newsEnd3Hour*60+m_newsEnd3Minute;
+            if(m_enableNewsFilter1 && s1<e1 && cur>=s1 && cur<=e1)
+               wDesc = StringFormat("Janela 1 %02d:%02d-%02d:%02d", m_newsStart1Hour, m_newsStart1Minute, m_newsEnd1Hour, m_newsEnd1Minute);
+            else if(m_enableNewsFilter2 && s2<e2 && cur>=s2 && cur<=e2)
+               wDesc = StringFormat("Janela 2 %02d:%02d-%02d:%02d", m_newsStart2Hour, m_newsStart2Minute, m_newsEnd2Hour, m_newsEnd2Minute);
+            else if(m_enableNewsFilter3 && s3<e3 && cur>=s3 && cur<=e3)
+               wDesc = StringFormat("Janela 3 %02d:%02d-%02d:%02d", m_newsStart3Hour, m_newsStart3Minute, m_newsEnd3Hour, m_newsEnd3Minute);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
+               StringFormat("📰 FILTRO NOTICIAS: operações bloqueadas | %s", wDesc));
+           }
+         s_nfWasBlocked = true;
+         return false;
+        }
+      else if(s_nfWasBlocked)
+        {
+         s_nfWasBlocked = false;
+         if(m_logger != NULL)
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
+               "✅ FILTRO NOTICIAS: janela encerrada, operações liberadas");
+        }
      }
 
-   if(!CheckSpreadFilter())
+// ── Filtro de Spread — logging de transição ──
      {
-      m_currentBlocker = BLOCKER_SPREAD;
-      long spread = SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
-      blockReason = StringFormat("Spread alto (%d > %d)", spread, m_maxSpread);
-      return false;
+      bool blocked = !CheckSpreadFilter();
+      static bool s_sfWasBlocked = false;
+      if(blocked)
+        {
+         m_currentBlocker = BLOCKER_SPREAD;
+         long spread = SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
+         blockReason = StringFormat("Spread alto (%d > %d)", spread, m_maxSpread);
+         if(!s_sfWasBlocked && m_logger != NULL)
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
+               StringFormat("⛔ SPREAD ALTO: %d pts (máx: %d pts) — operações bloqueadas", spread, m_maxSpread));
+         s_sfWasBlocked = true;
+         return false;
+        }
+      else if(s_sfWasBlocked)
+        {
+         s_sfWasBlocked = false;
+         if(m_logger != NULL)
+           {
+            long spread = SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
+               StringFormat("✅ SPREAD NORMALIZADO: %d pts — operações liberadas", spread));
+           }
+        }
      }
 
    if(!CheckStreakLimit())
@@ -1637,10 +1707,37 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
       return false;
      }
 
-   if(!CheckDailyLimits(dailyTrades, dailyProfit))
+// ── Limites Diários — logging de transição ──
      {
-      blockReason = GetBlockerReasonText(m_currentBlocker);
-      return false;
+      bool blocked = !CheckDailyLimits(dailyTrades, dailyProfit);
+      static bool s_dlWasBlocked = false;
+      static ENUM_BLOCKER_REASON s_dlLastReason = BLOCKER_NONE;
+      if(blocked)
+        {
+         blockReason = GetBlockerReasonText(m_currentBlocker);
+         bool isNew = !s_dlWasBlocked || (m_currentBlocker != s_dlLastReason);
+         if(isNew && m_logger != NULL)
+           {
+            string msg;
+            switch(m_currentBlocker)
+              {
+               case BLOCKER_DAILY_TRADES: msg = StringFormat("🔒 MAX TRADES/DIA: %d trades atingido", dailyTrades); break;
+               case BLOCKER_DAILY_LOSS:   msg = StringFormat("🔒 MAX PERDA/DIA: $%.2f atingido", MathAbs(dailyProfit)); break;
+               case BLOCKER_DAILY_GAIN:   msg = StringFormat("🔒 PROFIT TARGET: $%.2f atingido", dailyProfit); break;
+               default:                   msg = "🔒 LIMITE DIÁRIO atingido"; break;
+              }
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK", msg);
+           }
+         s_dlWasBlocked = true;
+         s_dlLastReason = m_currentBlocker;
+         return false;
+        }
+      else if(s_dlWasBlocked)
+        {
+         // Diário só libera no novo dia — ResetDaily() já loga "✅ Contadores zerados!"
+         s_dlWasBlocked = false;
+         s_dlLastReason = BLOCKER_NONE;
+        }
      }
 
    if(m_enableDailyLimits &&
