@@ -2,12 +2,18 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.15 - Claude Parte 023 (Claude Code) |
+//|                     Versão 3.16 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.15"
+#property version   "3.16"
 #property strict
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.16 (Parte 023):
+// ✅ Fix: CheckNewsFilter() usava <= newsEnd (inclusivo) — liberava apenas no
+//    minuto seguinte ao fim. Corrigido para < newsEnd (exclusivo): ao atingir
+//    o minuto de término, operações já são liberadas.
+//    Mesmo fix aplicado nas checagens de log de transição em CanTrade().
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.15 (Parte 023):
 // + CanTrade(): logging de transição de estado para 4 bloqueadores
@@ -1644,11 +1650,11 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
             int s1=m_newsStart1Hour*60+m_newsStart1Minute, e1=m_newsEnd1Hour*60+m_newsEnd1Minute;
             int s2=m_newsStart2Hour*60+m_newsStart2Minute, e2=m_newsEnd2Hour*60+m_newsEnd2Minute;
             int s3=m_newsStart3Hour*60+m_newsStart3Minute, e3=m_newsEnd3Hour*60+m_newsEnd3Minute;
-            if(m_enableNewsFilter1 && s1<e1 && cur>=s1 && cur<=e1)
+            if(m_enableNewsFilter1 && s1<e1 && cur>=s1 && cur<e1)
                wDesc = StringFormat("Janela 1 %02d:%02d-%02d:%02d", m_newsStart1Hour, m_newsStart1Minute, m_newsEnd1Hour, m_newsEnd1Minute);
-            else if(m_enableNewsFilter2 && s2<e2 && cur>=s2 && cur<=e2)
+            else if(m_enableNewsFilter2 && s2<e2 && cur>=s2 && cur<e2)
                wDesc = StringFormat("Janela 2 %02d:%02d-%02d:%02d", m_newsStart2Hour, m_newsStart2Minute, m_newsEnd2Hour, m_newsEnd2Minute);
-            else if(m_enableNewsFilter3 && s3<e3 && cur>=s3 && cur<=e3)
+            else if(m_enableNewsFilter3 && s3<e3 && cur>=s3 && cur<e3)
                wDesc = StringFormat("Janela 3 %02d:%02d-%02d:%02d", m_newsStart3Hour, m_newsStart3Minute, m_newsEnd3Hour, m_newsEnd3Minute);
             m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
                StringFormat("📰 FILTRO NOTICIAS: operações bloqueadas | %s", wDesc));
@@ -2449,7 +2455,7 @@ bool CBlockers::CheckNewsFilter()
 
       if(newsStart1 < newsEnd1)
         {
-         if(currentMinutes >= newsStart1 && currentMinutes <= newsEnd1)
+         if(currentMinutes >= newsStart1 && currentMinutes < newsEnd1)
             return false;
         }
      }
@@ -2461,7 +2467,7 @@ bool CBlockers::CheckNewsFilter()
 
       if(newsStart2 < newsEnd2)
         {
-         if(currentMinutes >= newsStart2 && currentMinutes <= newsEnd2)
+         if(currentMinutes >= newsStart2 && currentMinutes < newsEnd2)
             return false;
         }
      }
@@ -2473,7 +2479,7 @@ bool CBlockers::CheckNewsFilter()
 
       if(newsStart3 < newsEnd3)
         {
-         if(currentMinutes >= newsStart3 && currentMinutes <= newsEnd3)
+         if(currentMinutes >= newsStart3 && currentMinutes < newsEnd3)
             return false;
         }
      }
