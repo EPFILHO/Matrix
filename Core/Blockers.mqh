@@ -1214,6 +1214,26 @@ void CBlockers::SetStreakLimits(int maxLoss, ENUM_STREAK_ACTION lossAction, int 
    if(!wasEnabled && m_enableStreakControl)
       ReconstructStreakFromHistory();
 
+   // Se há pausa ativa, verificar se ainda é válida com os novos limites.
+   // Exemplo: pausa ativada com limit=1 (streak=2), usuário sobe para limit=3
+   // → a pausa não seria mais justificada e deve ser cancelada.
+   if(m_streakPauseActive)
+     {
+      bool stillBlocked = (m_maxLossStreak > 0 && m_currentLossStreak >= m_maxLossStreak) ||
+                          (m_maxWinStreak  > 0 && m_currentWinStreak  >= m_maxWinStreak);
+      if(!stillBlocked)
+        {
+         m_streakPauseActive  = false;
+         m_streakPauseUntil   = 0;
+         m_streakPauseReason  = "";
+         if(m_logger != NULL)
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+               "▶️ Pausa de streak cancelada — sequência atual não viola o novo limite");
+         else
+            Print("▶️ Pausa de streak cancelada — sequência atual não viola o novo limite");
+        }
+     }
+
    // Só logar se houve mudança real
    if(oldMaxLoss != maxLoss || oldLossAction != lossAction || oldLossPause != lossPause ||
       oldMaxWin != maxWin || oldWinAction != winAction || oldWinPause != winPause)
