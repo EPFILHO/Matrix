@@ -1162,6 +1162,7 @@ void CBlockers::SetDailyLimits(int maxTrades, double maxLoss, double maxGain, EN
    m_maxDailyLoss = MathAbs(maxLoss);
    m_maxDailyGain = MathAbs(maxGain);
    m_profitTargetAction = action;
+   m_enableDailyLimits = (maxTrades > 0 || m_maxDailyLoss > 0 || m_maxDailyGain > 0);
 
    // Só logar se houve mudança real
    if(oldMaxTrades != maxTrades || oldMaxLoss != m_maxDailyLoss || oldMaxGain != m_maxDailyGain || oldAction != action)
@@ -1244,7 +1245,9 @@ void CBlockers::SetStreakLimits(int maxLoss, ENUM_STREAK_ACTION lossAction, int 
 void CBlockers::SetDrawdownValue(double newValue)
   {
    double oldValue = m_drawdownValue;
+   bool oldEnabled = m_enableDrawdown;
    m_drawdownValue = newValue;
+   m_enableDrawdown = (newValue > 0);
 
    // Só logar se houve mudança real
    if(oldValue != newValue)
@@ -1256,6 +1259,15 @@ void CBlockers::SetDrawdownValue(double newValue)
             StringFormat("Drawdown alterado: %s%.2f → %s%.2f", typeText, oldValue, typeText, newValue));
       else
          Print("🔄 Drawdown alterado: ", typeText, oldValue, " → ", typeText, newValue);
+     }
+
+   if(oldEnabled != m_enableDrawdown)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            "Drawdown: " + (m_enableDrawdown ? "ATIVADO" : "DESATIVADO"));
+      else
+         Print("🔄 Drawdown: ", m_enableDrawdown ? "ATIVADO" : "DESATIVADO");
      }
   }
 
