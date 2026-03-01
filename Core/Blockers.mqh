@@ -2,12 +2,18 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.12 - Claude Parte 023 (Claude Code) |
+//|                     Versão 3.13 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.12"
+#property version   "3.13"
 #property strict
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.13 (Parte 023):
+// ✅ Fix: SetDrawdownValue() não atualizava m_enableDrawdown no hot-reload
+// ✅ Fix: SetDailyLimits() não atualizava m_enableDailyLimits no hot-reload
+// ✅ Fix: SetStreakLimits() não cancelava m_streakPauseActive ao subir limite
+// ✅ Fix: SetDrawdownValue() não limpava m_drawdownLimitReached ao subir limite
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.12 (Parte 023):
 // ✅ Fix Bug: Streak não bloqueava após hot-reload com EA iniciado sem streak
