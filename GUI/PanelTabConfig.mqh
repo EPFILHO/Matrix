@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.19 - Claude Parte 023 (Claude Code) |
+//|                     Versão 1.20 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -14,6 +14,14 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.20 (2026-03-01):
+// + Filtro de Horário na sub-página BLOQUEIOS
+// + m_cb_hdr4, bTFOn, lTFSH/iTFSH, lTFSM/iTFSM, lTFEH/iTFEH, lTFEM/iTFEM, bTFCl
+// + RefreshBloqTimeFilter: enable/disable campos por m_cur_tfOn
+// + OnClickTFToggle, OnClickTFClose: novos handlers
+// + ApplyConfig: SetTimeFilter + SetCloseOnEndTime
+// + PopulateConfig: inicialização de m_cur_tfOn/tfClose dos inputs
+//
 // v1.19 (2026-02-28):
 // + Toggles ON/OFF individuais: DrawDown (RISCO 2), Loss Streak, Win Streak (BLOQUEIOS)
 // + OnClickDDToggle/LossStreakToggle/WinStreakToggle: novos handlers
@@ -490,6 +498,23 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLI(m_cb_lWStrP, m_cb_iWStrP, "cb_lWSP", "cb_iWSP", "Pausa Win (min):", y)) return false;
    y += PANEL_GAP_Y;
 
+// ── FILTRO HORARIO ──
+   y += PANEL_GAP_SECTION;
+   if(!CreateHdr(m_cb_hdr4, "cb_h4", "FILTRO HORARIO", y)) return false;
+   y += PANEL_GAP_Y + 2;
+   if(!CreateLB(m_cb_lTFOn, m_cb_bTFOn, "cb_lTFO", "cb_bTFO", "Filtro Hor.:", y)) return false;
+   y += PANEL_GAP_Y + 2;
+   if(!CreateLI(m_cb_lTFSH, m_cb_iTFSH, "cb_lTFSH", "cb_iTFSH", "Hora Inicio:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cb_lTFSM, m_cb_iTFSM, "cb_lTFSM", "cb_iTFSM", "Min Inicio:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cb_lTFEH, m_cb_iTFEH, "cb_lTFEH", "cb_iTFEH", "Hora Fim:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_cb_lTFEM, m_cb_iTFEM, "cb_lTFEM", "cb_iTFEM", "Min Fim:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLB(m_cb_lTFCl, m_cb_bTFCl, "cb_lTFC", "cb_bTFC", "Fechar Fim:", y)) return false;
+   y += PANEL_GAP_Y;
+
 // ════════════════════════════════════════════════════════════
 // SUB-PÁGINA: OUTROS
 // ════════════════════════════════════════════════════════════
@@ -689,6 +714,20 @@ void CEPBotPanel::PopulateConfig(void)
    SetRadioSelection(m_c2_bDDT, 2, (int)m_cur_ddType);
    m_cur_ddPeakMode = inp_DrawdownPeakMode;
    SetRadioSelection(m_c2_bDDPk, 2, (int)m_cur_ddPeakMode);
+
+// Filtro Horário (v1.20)
+   m_cur_tfOn = inp_EnableTimeFilter;
+   m_cb_bTFOn.Text(m_cur_tfOn ? "ON" : "OFF");
+   m_cb_bTFOn.ColorBackground(m_cur_tfOn ? C'30,120,70' : C'120,50,50');
+   m_cb_bTFOn.Color(clrWhite);
+   m_cb_iTFSH.Text(IntegerToString(inp_StartHour));
+   m_cb_iTFSM.Text(IntegerToString(inp_StartMinute));
+   m_cb_iTFEH.Text(IntegerToString(inp_EndHour));
+   m_cb_iTFEM.Text(IntegerToString(inp_EndMinute));
+   m_cur_tfClose = inp_CloseOnEndTime;
+   m_cb_bTFCl.Text(m_cur_tfClose ? "ON" : "OFF");
+   m_cb_bTFCl.ColorBackground(m_cur_tfClose ? C'30,120,70' : C'120,50,50');
+   m_cb_bTFCl.Color(clrWhite);
 
 // ── Outros ──
    m_co_iSlip.Text(IntegerToString(inp_Slippage));
@@ -930,6 +969,15 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_cb_lWStr.Show(); m_cb_iWStr.Show();
             m_cb_lWStrA.Show(); for(int i=0;i<2;i++) m_cb_bWStrA[i].Show();
             RefreshStreakState();
+            // Filtro Horário (v1.20)
+            m_cb_hdr4.Show();
+            m_cb_lTFOn.Show(); m_cb_bTFOn.Show();
+            m_cb_lTFSH.Show(); m_cb_iTFSH.Show();
+            m_cb_lTFSM.Show(); m_cb_iTFSM.Show();
+            m_cb_lTFEH.Show(); m_cb_iTFEH.Show();
+            m_cb_lTFEM.Show(); m_cb_iTFEM.Show();
+            m_cb_lTFCl.Show(); m_cb_bTFCl.Show();
+            RefreshBloqTimeFilter();
            }
          else
            {
@@ -952,6 +1000,14 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_cb_lWStr.Hide(); m_cb_iWStr.Hide();
             m_cb_lWStrA.Hide(); for(int i=0;i<2;i++) m_cb_bWStrA[i].Hide();
             m_cb_lWStrP.Hide(); m_cb_iWStrP.Hide();
+            // Filtro Horário (v1.20)
+            m_cb_hdr4.Hide();
+            m_cb_lTFOn.Hide(); m_cb_bTFOn.Hide();
+            m_cb_lTFSH.Hide(); m_cb_iTFSH.Hide();
+            m_cb_lTFSM.Hide(); m_cb_iTFSM.Hide();
+            m_cb_lTFEH.Hide(); m_cb_iTFEH.Hide();
+            m_cb_lTFEM.Hide(); m_cb_iTFEM.Hide();
+            m_cb_lTFCl.Hide(); m_cb_bTFCl.Hide();
            }
          break;
         }
@@ -1336,6 +1392,21 @@ void CEPBotPanel::ApplyConfig(void)
         {
          m_blockers.SetDrawdownValue(0);
         }
+
+      // Filtro Horário (v1.20)
+      {
+       int sfH = (int)StringToInteger(m_cb_iTFSH.Text());
+       int sfM = (int)StringToInteger(m_cb_iTFSM.Text());
+       int efH = (int)StringToInteger(m_cb_iTFEH.Text());
+       int efM = (int)StringToInteger(m_cb_iTFEM.Text());
+       bool valid = (sfH >= 0 && sfH <= 23 && sfM >= 0 && sfM <= 59 &&
+                    efH >= 0 && efH <= 23 && efM >= 0 && efM <= 59);
+       if(valid)
+          m_blockers.SetTimeFilter(m_cur_tfOn, sfH, sfM, efH, efM);
+       else
+          errors++;
+       m_blockers.SetCloseOnEndTime(m_cur_tfClose);
+      }
      }
 
 // ═══════════════════════════════════════════════
@@ -1482,6 +1553,52 @@ void CEPBotPanel::OnClickWinStreakToggle(void)
    m_cb_bWStrOn.Text(m_cur_winStreakOn ? "ON" : "OFF");
    m_cb_bWStrOn.ColorBackground(m_cur_winStreakOn ? C'30,120,70' : C'120,50,50');
    RefreshStreakState();
+   ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
+//| RefreshBloqTimeFilter — enable/disable campos por m_cur_tfOn    |
+//+------------------------------------------------------------------+
+void CEPBotPanel::RefreshBloqTimeFilter(void)
+  {
+   SetEditEnabled(m_cb_lTFSH, m_cb_iTFSH, m_cur_tfOn);
+   SetEditEnabled(m_cb_lTFSM, m_cb_iTFSM, m_cur_tfOn);
+   SetEditEnabled(m_cb_lTFEH, m_cb_iTFEH, m_cur_tfOn);
+   SetEditEnabled(m_cb_lTFEM, m_cb_iTFEM, m_cur_tfOn);
+   if(m_cur_tfOn)
+     {
+      m_cb_lTFCl.Color(CLR_LABEL);
+      m_cb_bTFCl.ColorBackground(m_cur_tfClose ? C'30,120,70' : C'120,50,50');
+      m_cb_bTFCl.Color(clrWhite);
+     }
+   else
+     {
+      m_cb_lTFCl.Color(C'180,180,180');
+      m_cb_bTFCl.ColorBackground(C'160,160,160');
+      m_cb_bTFCl.Color(C'200,200,200');
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| Toggle handlers: Filtro Horário (v1.20)                         |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickTFToggle(void)
+  {
+   m_cur_tfOn = !m_cur_tfOn;
+   m_cb_bTFOn.Pressed(false);
+   m_cb_bTFOn.Text(m_cur_tfOn ? "ON" : "OFF");
+   m_cb_bTFOn.ColorBackground(m_cur_tfOn ? C'30,120,70' : C'120,50,50');
+   RefreshBloqTimeFilter();
+   ChartRedraw();
+  }
+
+void CEPBotPanel::OnClickTFClose(void)
+  {
+   if(!m_cur_tfOn) return;
+   m_cur_tfClose = !m_cur_tfClose;
+   m_cb_bTFCl.Pressed(false);
+   m_cb_bTFCl.Text(m_cur_tfClose ? "ON" : "OFF");
+   m_cb_bTFCl.ColorBackground(m_cur_tfClose ? C'30,120,70' : C'120,50,50');
    ChartRedraw();
   }
 

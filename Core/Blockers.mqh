@@ -2,12 +2,16 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.09 - Claude Parte 023 (Claude Code) |
+//|                     Versão 3.10 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.09"
+#property version   "3.10"
 #property strict
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.10 (Parte 024):
+// + SetTimeFilter(bool,int,int,int,int) — hot-reload do filtro de horário
+// + SetCloseOnEndTime(bool) — hot-reload do fechar posição ao fim
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.09 (Parte 023):
 // + SetDrawdownType(ENUM_DRAWDOWN_TYPE) — hot-reload do tipo DD
@@ -407,6 +411,8 @@ public:
    void              SetDrawdownValue(double newValue);
    void              SetDrawdownType(ENUM_DRAWDOWN_TYPE newType);
    void              SetDrawdownPeakMode(ENUM_DRAWDOWN_PEAK_MODE newMode);
+   void              SetTimeFilter(bool enable, int startH, int startM, int endH, int endM);
+   void              SetCloseOnEndTime(bool close);
 
    // ═══════════════════════════════════════════════════════════════
    // GETTERS - INFORMAÇÕES DE ESTADO
@@ -623,14 +629,14 @@ bool CBlockers::Init(
      {
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "╔══════════════════════════════════════════════════════╗");
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║              VERSÃO COMPLETA v3.09                   ║");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║              VERSÃO COMPLETA v3.10                   ║");
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "╚══════════════════════════════════════════════════════╝");
      }
    else
      {
       Print("╔══════════════════════════════════════════════════════╗");
       Print("║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
-      Print("║              VERSÃO COMPLETA v3.09                   ║");
+      Print("║              VERSÃO COMPLETA v3.10                   ║");
       Print("╚══════════════════════════════════════════════════════╝");
      }
 
@@ -1258,6 +1264,39 @@ void CBlockers::SetDrawdownPeakMode(ENUM_DRAWDOWN_PEAK_MODE newMode)
          "DrawdownPeakMode: " + modeText);
    else
       Print("🔄 DrawdownPeakMode: ", modeText);
+  }
+
+//+------------------------------------------------------------------+
+//| SetTimeFilter — hot-reload do filtro de horário                  |
+//+------------------------------------------------------------------+
+void CBlockers::SetTimeFilter(bool enable, int startH, int startM, int endH, int endM)
+  {
+   m_enableTimeFilter = enable;
+   m_startHour        = startH;
+   m_startMinute      = startM;
+   m_endHour          = endH;
+   m_endMinute        = endM;
+   string info = enable
+      ? StringFormat("ON %02d:%02d -> %02d:%02d", startH, startM, endH, endM)
+      : "OFF";
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "TimeFilter: " + info);
+   else
+      Print("🔄 TimeFilter: ", info);
+  }
+
+//+------------------------------------------------------------------+
+//| SetCloseOnEndTime — hot-reload do fechar posição ao fim          |
+//+------------------------------------------------------------------+
+void CBlockers::SetCloseOnEndTime(bool close)
+  {
+   if(m_closeOnEndTime == close) return;
+   m_closeOnEndTime = close;
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "CloseOnEndTime: " + (close ? "ON" : "OFF"));
+   else
+      Print("🔄 CloseOnEndTime: ", close ? "ON" : "OFF");
   }
 
 //+------------------------------------------------------------------+

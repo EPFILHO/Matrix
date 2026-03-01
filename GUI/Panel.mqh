@@ -2,15 +2,23 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.19 - Claude Parte 023 (Claude Code) |
+//|                     Versão 1.20 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.19"
+#property version   "1.20"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.20 (2026-03-01):
+// + Filtro de Horário na sub-página BLOQUEIOS
+// + m_cb_hdr4, m_cb_lTFOn/bTFOn, m_cb_lTFSH/iTFSH, m_cb_lTFSM/iTFSM
+// + m_cb_lTFEH/iTFEH, m_cb_lTFEM/iTFEM, m_cb_lTFCl/bTFCl
+// + m_cur_tfOn, m_cur_tfClose: novos estados
+// + OnClickTFToggle, OnClickTFClose: novos handlers
+// + RefreshBloqTimeFilter: enable/disable campos por toggle
+//
 // v1.19 (2026-02-28):
 // + Toggles ON/OFF individuais: DrawDown (RISCO 2), Loss Streak, Win Streak (BLOQUEIOS)
 // + m_cur_ddOn, m_cur_lossStreakOn, m_cur_winStreakOn: novos estados
@@ -404,6 +412,14 @@ private:
    CLabel   m_cb_lWStrA;  CButton m_cb_bWStrA[2]; // Radio: PAUSAR | PARAR DIA
    CLabel   m_cb_lWStrP;  CEdit   m_cb_iWStrP;    // Win Pause Minutes
    // (DrawDown movido para RISCO 2 em v1.18 → m_c2_hdr3/lDD/lDDT/lDDPk)
+   // --- Filtro de Horário (v1.20) ---
+   CLabel   m_cb_hdr4;
+   CLabel   m_cb_lTFOn;  CButton m_cb_bTFOn;     // Filtro Horário ON/OFF
+   CLabel   m_cb_lTFSH;  CEdit   m_cb_iTFSH;     // Hora Início (0-23)
+   CLabel   m_cb_lTFSM;  CEdit   m_cb_iTFSM;     // Min Início (0-59)
+   CLabel   m_cb_lTFEH;  CEdit   m_cb_iTFEH;     // Hora Fim (0-23)
+   CLabel   m_cb_lTFEM;  CEdit   m_cb_iTFEM;     // Min Fim (0-59)
+   CLabel   m_cb_lTFCl;  CButton m_cb_bTFCl;     // Fechar ao Fim ON/OFF
 
    // --- Outros sub-page ---
    CLabel   m_co_hdr1;
@@ -441,6 +457,8 @@ private:
    bool                      m_cur_ddOn;
    bool                      m_cur_lossStreakOn;
    bool                      m_cur_winStreakOn;
+   bool                      m_cur_tfOn;
+   bool                      m_cur_tfClose;
    // Novos estados (Parte 023)
    ENUM_STREAK_ACTION        m_cur_lossStreakAction;
    ENUM_STREAK_ACTION        m_cur_winStreakAction;
@@ -496,6 +514,7 @@ private:
    void              RefreshRiscoState(void);
    void              RefreshRisco2State(void);
    void              RefreshStreakState(void);
+   void              RefreshBloqTimeFilter(void);
    void              SetEditEnabled(CLabel &lbl, CEdit &inp, bool enable);
    void              SetButtonEnabled(CLabel &lbl, CButton &btn, bool enable);
 
@@ -524,6 +543,8 @@ private:
    void              OnClickDDToggle(void);
    void              OnClickLossStreakToggle(void);
    void              OnClickWinStreakToggle(void);
+   void              OnClickTFToggle(void);
+   void              OnClickTFClose(void);
    void              OnClickLossStreakAction(int selected);
    void              OnClickWinStreakAction(int selected);
    void              OnClickDDType(int selected);
@@ -576,6 +597,7 @@ CEPBotPanel::CEPBotPanel(void)
      m_cur_compSL(false), m_cur_compTP(false), m_cur_compTrail(false),
      m_cur_trailOn(false), m_cur_beOn(false),
      m_cur_ddOn(false), m_cur_lossStreakOn(false), m_cur_winStreakOn(false),
+     m_cur_tfOn(false), m_cur_tfClose(false),
      m_cur_lossStreakAction(STREAK_PAUSE), m_cur_winStreakAction(STREAK_PAUSE),
      m_cur_ddType(DD_FINANCIAL), m_cur_ddPeakMode(DD_PEAK_REALIZED_ONLY),
      m_cur_profitTargetAction(PROFIT_ACTION_STOP)
@@ -783,6 +805,8 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       // CONFIG: BLOQUEIOS toggles
       if(sparam == m_cb_bLStrOn.Name()) { OnClickLossStreakToggle(); ChartRedraw(); return; }
       if(sparam == m_cb_bWStrOn.Name()) { OnClickWinStreakToggle();  ChartRedraw(); return; }
+      if(sparam == m_cb_bTFOn.Name())   { OnClickTFToggle();         ChartRedraw(); return; }
+      if(sparam == m_cb_bTFCl.Name())   { OnClickTFClose();          ChartRedraw(); return; }
 
       // CONFIG: BLOQUEIOS radio groups (2 opções cada)
       for(int i = 0; i < 2; i++)
