@@ -2,12 +2,19 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.17 - Claude Parte 023 (Claude Code) |
+//|                     Versão 3.18 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.17"
+#property version   "3.18"
 #property strict
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.18 (Parte 023):
+// ✅ Fix: ShouldCloseOnEndTime() usava > endMinutes — fechava a posição somente
+//    no primeiro tick de 17:36, enquanto CheckTimeFilter já bloqueava novas entradas
+//    desde 17:35. Padronizado para >= endMinutes: ao chegar em 17:35 (primeiro minuto
+//    fora da janela) novas entradas são bloqueadas E posição aberta é fechada no
+//    mesmo momento, sem esperar o próximo candle.
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.17 (Parte 023):
 // ✅ Fix: CheckTimeFilter() usava <= endMinutes (inclusivo) — padrão diferente
@@ -1830,13 +1837,13 @@ bool CBlockers::ShouldCloseOnEndTime(ulong positionTicket)
 // Janela normal no mesmo dia
    if(startMinutes <= endMinutes)
      {
-      if(currentMinutes > endMinutes)
+      if(currentMinutes >= endMinutes)
          shouldClose = true;
      }
 // Janela que atravessa meia-noite
    else
      {
-      if(currentMinutes > endMinutes && currentMinutes < startMinutes)
+      if(currentMinutes >= endMinutes && currentMinutes < startMinutes)
          shouldClose = true;
      }
 
