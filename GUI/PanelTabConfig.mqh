@@ -1636,11 +1636,13 @@ void CEPBotPanel::ApplyConfig(void)
      {
       m_cfg_status.Text("Aplicado com sucesso!");
       m_cfg_status.Color(CLR_POSITIVE);
+      m_cfgStatusExpiry = GetTickCount() + 10000;   // auto-clear em 10s
      }
    else
      {
       m_cfg_status.Text(IntegerToString(errors) + " campo(s) invalido(s)");
       m_cfg_status.Color(CLR_NEGATIVE);
+      m_cfgStatusExpiry = GetTickCount() + 10000;   // auto-clear em 10s
      }
    ChartRedraw();
   }

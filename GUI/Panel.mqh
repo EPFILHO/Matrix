@@ -186,8 +186,8 @@
 #define PANEL_GAP_SECTION    8
 
 #define COL_LABEL_X          10
-#define COL_VALUE_X          195
-#define COL_VALUE_W          210
+#define COL_VALUE_X          150
+#define COL_VALUE_W          255
 
 #define CONTENT_TOP          32
 #define TAB_BTN_H            22
@@ -474,6 +474,7 @@ private:
    // APLICAR + status
    CButton  m_cfg_btnApply;
    CLabel   m_cfg_status;
+   uint     m_cfgStatusExpiry;     // GetTickCount() em que a msg expira
 
    // Feature flags (definidos em CreateTabConfig)
    bool     m_cfg_hasTP;
@@ -655,7 +656,8 @@ CEPBotPanel::CEPBotPanel(void)
      m_cur_tfOn(false), m_cur_tfClose(false), m_cur_cbsOn(false),
      m_cur_lossStreakAction(STREAK_PAUSE), m_cur_winStreakAction(STREAK_PAUSE),
      m_cur_ddType(DD_FINANCIAL), m_cur_ddPeakMode(DD_PEAK_REALIZED_ONLY),
-     m_cur_profitTargetAction(PROFIT_ACTION_STOP)
+     m_cur_profitTargetAction(PROFIT_ACTION_STOP),
+     m_cfgStatusExpiry(0)
   {
   }
 
@@ -1108,7 +1110,10 @@ void CEPBotPanel::Update(void)
       case TAB_RESULTADOS:  UpdateResultados();   break;
       case TAB_ESTRATEGIAS: UpdateEstrategias();  break;
       case TAB_FILTROS:     UpdateFiltros();      break;
-      case TAB_CONFIG:      /* user-editable */   break;
+      case TAB_CONFIG:
+         if(m_cfgStatusExpiry > 0 && GetTickCount() >= m_cfgStatusExpiry)
+           { m_cfg_status.Text(""); m_cfgStatusExpiry = 0; ChartRedraw(); }
+         break;
      }
   }
 
