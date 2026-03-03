@@ -2,16 +2,23 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.22 - Claude Parte 023 (Claude Code) |
+//|                     Versão 1.23 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.22"
+#property version   "1.23"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.22 (2026-03-01):
+// v1.23 (2026-03-03):
+// + Layout: COL_VALUE_X 195→150, COL_VALUE_W 210→255 (campos de valor
+//   ficam 45px mais próximos dos labels em todas as abas; borda direita
+//   permanece inalterada em x=405)
+// + Auto-hide status CONFIG: m_cfgStatusExpiry (uint) armazena timestamp
+//   de expiração; Update() limpa m_cfg_status após 10s automaticamente
+// + m_cfgStatusExpiry inicializado a 0 no construtor
+//
 // + CFG_BLOQ2 = 4, CFG_PAGE_COUNT = 5
 // + m_cfg_btnBloq2: novo botão de aba "BLOQ 2"
 // + m_cb2_* (24 controles): BLOQUEIO 2 — Filtro de Notícias (3 janelas)

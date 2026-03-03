@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.22 - Claude Parte 023 (Claude Code) |
+//|                     Versão 1.23 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -14,7 +14,11 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.22 (2026-03-01):
+// v1.23 (2026-03-03):
+// + ApplyConfig: seta m_cfgStatusExpiry = GetTickCount() + 10000 tanto
+//   no sucesso quanto no erro — mensagem desaparece automaticamente
+//   após 10s via Update() do painel (vide Panel.mqh v1.23)
+//
 // + Nova sub-página BLOQUEIO 2: Filtro de Notícias (3 janelas)
 // + m_cb2_* controls: 3 janelas de horário com toggle ON/OFF + HH/MM início/fim
 // + OnClickCfgBloq2, OnClickNewsOn1/2/3, RefreshNewsState(w)
