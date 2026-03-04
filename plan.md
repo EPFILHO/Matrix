@@ -1,154 +1,117 @@
-# Plano: Hot Reload — Edição de Parâmetros via GUI
+# Plano de Desenvolvimento — EPBot Matrix GUI (Hot Reload)
 
-## Resumo
-Transformar a aba CONFIG do painel de **read-only** para **editável**, permitindo
-ao usuário alterar parâmetros em tempo real sem reiniciar o EA. Usa os 25 setters
-hot-reload que já existem nos módulos (Blockers, RiskManager, TradeManager,
-SignalManager, Logger). Botão **APLICAR** para confirmar alterações.
-
-## Escopo: Todos os parâmetros hot-reloadable
-
-### Campos editáveis (CEdit — campo de texto numérico):
-
-**GESTÃO DE RISCO** (7-12 campos, dependendo da configuração):
-| # | Label | Tipo | Setter | Condição |
-|---|-------|------|--------|----------|
-| 1 | Lote | double | SetLotSize() | sempre |
-| 2 | SL (Fixo/ATR×/Range×) | int/double | SetFixedSL / SetSLATRMultiplier | sempre (label adapta ao tipo) |
-| 3 | TP (Fixo/ATR×) | int/double | SetFixedTP / SetTPATRMultiplier | só se TP != TP_NONE |
-| 4 | Trail Start | int/double | SetTrailingParams / SetTrailingATRParams | só se Trailing != NEVER |
-| 5 | Trail Step | int/double | (mesmo setter acima) | só se Trailing != NEVER |
-| 6 | BE Ativação | int/double | SetBreakevenParams / SetBreakevenATRParams | só se BE != NEVER |
-| 7 | BE Offset | int/double | (mesmo setter acima) | só se BE != NEVER |
-| 8 | TP1 % | double | SetPartialTP1() | só se PartialTP habilitado |
-| 9 | TP1 Dist | int | SetPartialTP1() | só se PartialTP habilitado |
-| 10 | TP2 % | double | SetPartialTP2() | só se PartialTP habilitado |
-| 11 | TP2 Dist | int | SetPartialTP2() | só se PartialTP habilitado |
-
-**BLOQUEIOS** (2-8 campos):
-| # | Label | Tipo | Setter | Condição |
-|---|-------|------|--------|----------|
-| 12 | Max Spread | int | SetMaxSpread() | sempre |
-| 13 | Max Trades | int | SetDailyLimits() | só se DailyLimits ativo |
-| 14 | Max Loss $ | double | SetDailyLimits() | só se DailyLimits ativo |
-| 15 | Max Gain $ | double | SetDailyLimits() | só se DailyLimits ativo |
-| 16 | Loss Streak | int | SetStreakLimits() | só se StreakControl ativo |
-| 17 | Win Streak | int | SetStreakLimits() | só se StreakControl ativo |
-| 18 | Drawdown | double | SetDrawdownValue() | só se Drawdown ativo |
-
-**OUTROS** (3 campos):
-| # | Label | Tipo | Setter | Condição |
-|---|-------|------|--------|----------|
-| 19 | Slippage | int | SetSlippage() | sempre |
-| 20 | Debug Cooldown | int | SetDebugCooldown() | sempre |
-
-### Campos com botão de toggle/cycle (CButton):
-| # | Label | Valores | Setter |
-|---|-------|---------|--------|
-| 21 | Direção | AMBOS → APENAS BUY → APENAS SELL | SetTradeDirection() |
-| 22 | Debug Logs | ON / OFF | SetShowDebug() |
-
-### Campos read-only (CLabel — mantidos sem edição):
-- Magic Number, Comentário (informativos, não alteráveis em runtime)
-
-### Total: 8-22 campos editáveis (adapta conforme features habilitadas)
+## Estado Atual
+- **EA**: v1.40 (Parte 023)
+- **Panel.mqh**: v1.17 (Parte 023)
+- **PanelTabConfig.mqh**: v1.17 (Parte 023)
+- **Blockers.mqh**: v3.09 (Parte 023)
 
 ---
 
-## Arquitetura Técnica
+## Histórico de Partes
 
-### Novos includes
-```cpp
-#include <Controls\Edit.mqh>   // CEdit para campos editáveis
-```
+### Parte 022 — Hot Reload + Radio Buttons + RISCO 2
+**Status: CONCLUÍDO**
 
-### Novos helpers
-```
-CreateLI(CLabel &lbl, CEdit &inp, ...) — Label + Input (CEdit)
-CreateLB(CLabel &lbl, CButton &btn, ...) — Label + Button (cycle/toggle)
-```
-
-### Novos membros na classe CEPBotPanel
-- ~22 CEdit + ~2 CButton para campos editáveis
-- 1 CButton m_btnApply (APLICAR)
-- 1 CLabel m_c_status (mensagem de feedback)
-- Variáveis de estado: m_curDirection (enum), m_curDebug (bool)
-
-### Fluxo do APLICAR
-```
-OnEvent() → detecta clique no m_btnApply → ApplyConfig()
-  ├─ Lê valores de todos os CEdit (StringToDouble/StringToInteger)
-  ├─ Valida (>= 0, numérico)
-  ├─ Se inválido: pinta campo de vermelho, mostra erro no m_c_status
-  ├─ Se válido: chama setter no módulo correspondente
-  ├─ Atualiza m_c_status: "Aplicado!" (verde) por 3 segundos
-  └─ Log via Logger: HOT_RELOAD (cada setter já faz isso internamente)
-```
+- [x] CONFIG aba totalmente redesenhada com campos editáveis (CEdit)
+- [x] Helpers CreateLI / CreateLB / CreateHdr / CreateRadioGroup / SetRadioSelection
+- [x] SetEditEnabled / SetButtonEnabled (enable/disable visual label+campo)
+- [x] 4 sub-páginas: RISCO | RISCO 2 | BLOQUEIOS | OUTROS
+- [x] RISCO: Lote, SL Type (radio FIXO|ATR|RANGE), SL valor, ATR Period,
+      Range Period, Comp Spread SL, TP Type (radio NENHUM|FIXO|ATR),
+      TP valor, Comp Spread TP
+- [x] RISCO 2: Trailing ON/OFF + Start/Step, Comp Spread Trail,
+      BE ON/OFF + Ativação/Offset, Partial TP + TP1/TP2 dist/pct
+- [x] BLOQUEIOS: Max Spread, Direção (radio AMBOS|BUY|SELL),
+      Daily Limits (Max Trades/Loss/Gain), Streak (Loss/Win count), Drawdown valor
+- [x] OUTROS: Slippage, Conflito Sinais (cycle), Debug ON/OFF, Debug Cooldown
+- [x] Botão APLICAR → ApplyConfig() → setters hot-reload
+- [x] PopulateConfig() — preenche campos com valores iniciais dos inp_*
+- [x] RefreshRiscoState() — enable/disable campos por tipo SL/TP
+- [x] RefreshRisco2State() — enable/disable campos Trailing/BE
+- [x] Conflito TP ATR vs Partial TP: bloqueio mútuo
+- [x] ChartEvent override: intercepta CHARTEVENT_OBJECT_CLICK por nome
+- [x] Panel v1.16, EPBot_Matrix.mq5 v1.39
 
 ---
 
-## Fases de Implementação
+### Parte 023 — BLOQUEIOS Expandido + Partial TP → RISCO
+**Status: CONCLUÍDO**
 
-### Fase 1: Infraestrutura (Panel.mqh)
-- [ ] Adicionar `#include <Controls\Edit.mqh>`
-- [ ] Aumentar PANEL_HEIGHT de 540 → 600 (comporta todos os campos)
-- [ ] Criar helper `CreateLI()` (Label + CEdit)
-- [ ] Criar helper `CreateLB()` (Label + CButton cycle)
-- [ ] Declarar todos os novos membros (CEdit, CButton, estado)
-- [ ] Declarar novos métodos: ApplyConfig(), OnClickApply(), OnClickDirection(), OnClickDebug()
-
-### Fase 2: Redesign CreateTabConfig()
-- [ ] Remover criação antiga dos CLabel config (m_c_eXXX)
-- [ ] Seção GERAL: Magic (read-only), Comment (read-only), Lot (CEdit)
-- [ ] Seção RISCO: SL, TP, Trailing, BE, PartialTP — campos condicionais
-- [ ] Seção BLOQUEIOS: Spread, Direção (button), Daily, Streak, Drawdown — condicionais
-- [ ] Seção OUTROS: Slippage, Debug (button), Debug Cooldown
-- [ ] Botão APLICAR no final
-- [ ] Label de status/feedback
-
-### Fase 3: SetTabVis() para CONFIG
-- [ ] Atualizar case TAB_CONFIG para Show/Hide todos os novos controles
-- [ ] Manter consistência com as outras abas
-
-### Fase 4: PopulateConfig() → reescrever
-- [ ] Preencher CEdit com valores iniciais dos inp_* (formatação numérica)
-- [ ] Configurar texto dos botões Direction e Debug
-- [ ] Labels adaptam ao tipo (ex: "SL (Fixo):" vs "SL (ATR×):")
-
-### Fase 5: ApplyConfig()
-- [ ] Ler cada CEdit → StringToDouble / StringToInteger
-- [ ] Validar: >= 0, numérico, lot dentro de limites do símbolo
-- [ ] Chamar setters nos módulos (m_riskManager->SetLotSize(), etc.)
-- [ ] Para SetDailyLimits: lê 3 campos + passa inp_ProfitTargetAction inalterado
-- [ ] Para SetStreakLimits: lê 2 campos + passa ações/pausas inalteradas do inp_*
-- [ ] Para SetPartialTP1/TP2: lê 2 campos cada + estado enable do inp_*
-- [ ] Feedback visual: m_c_status "Aplicado!" (verde)
-
-### Fase 6: Event wiring
-- [ ] OnEvent(): capturar clique do m_btnApply → OnClickApply() → ApplyConfig()
-- [ ] OnEvent(): capturar clique m_btnDirection → ciclar enum, atualizar texto
-- [ ] OnEvent(): capturar clique m_btnDebug → toggle, atualizar texto
-
-### Fase 7: Testes mentais + Versão + Commit
-- [ ] Verificar fluxo completo: init → populate → edit → apply → setter → log
-- [ ] Verificar que campos condicionais funcionam (features desabilitadas = ocultos)
-- [ ] Verificar que SetTabVis() inclui TODOS os novos controles
-- [ ] Verificar destrutor (CAppDialog limpa automaticamente via Add())
-- [ ] Panel.mqh versão 1.10
-- [ ] EPBot_Matrix.mq5 changelog atualizado
-- [ ] Commit + Push
+- [x] Partial TP movido de RISCO 2 → RISCO (m_c2_bPTP → m_cr_bPTP etc.)
+      RefreshRiscoState absorve lógica de conflito e enable/disable dos campos TP1/2
+- [x] RISCO 2: apenas Trailing + BE (Partial TP removido)
+- [x] BLOQUEIOS — Limites Diários: radio Profit Target Action
+      PARAR | ATIVAR DD — ApplyConfig usa m_cur_profitTargetAction (não mais inp_)
+- [x] BLOQUEIOS — Sequências: radio Streak Action (PAUSAR | PARAR DIA) por Loss e Win
+      + campos Pausa Min (visíveis apenas quando action = PAUSAR)
+      RefreshStreakState() gerencia visibilidade dinâmica
+- [x] BLOQUEIOS — Drawdown: seção separada com header
+      radio DD Type (FINANCEIRO | PERCENTUAL)
+      radio DD Peak Mode (SÓ REAL. | C/FLUTUANTE)
+      ApplyConfig chama SetDrawdownType() + SetDrawdownPeakMode()
+- [x] Blockers v3.09: SetDrawdownType() + SetDrawdownPeakMode() com log HOT_RELOAD
+- [x] 5 novos state vars: m_cur_lossStreakAction, m_cur_winStreakAction,
+      m_cur_ddType, m_cur_ddPeakMode, m_cur_profitTargetAction
+- [x] 6 novos handlers: OnClickLossStreakAction, OnClickWinStreakAction,
+      OnClickDDType, OnClickDDPeakMode, OnClickProfitTargetAction, RefreshStreakState
+- [x] Panel v1.17, PanelTabConfig v1.17, EPBot_Matrix.mq5 v1.40
 
 ---
 
-## Arquivos Modificados
-1. **GUI/Panel.mqh** — mudanças principais (redesign da aba CONFIG)
-2. **EPBot_Matrix.mq5** — apenas changelog/versão
+## Próximas Partes
 
-## Arquivos NÃO modificados
-- Nenhum módulo (Blockers, RiskManager, TradeManager, etc.) — setters já existem!
+### FASE 2 — Horários e Filtro de Notícias (Parte 023 — continuação)
+**Status: PENDENTE (iniciará após compilação/teste)**
 
-## Riscos e Mitigações
-- **Risco**: Painel não cabe na tela → PANEL_HEIGHT 600px é razoável (MT5 mínimo 600px)
-- **Risco**: CEdit + CAppDialog → CEdit funciona com Add() igual ao CLabel
-- **Risco**: Valores inválidos → Validação antes de chamar setters
-- **Risco**: SetTabVis() fica enorme → Organizar por seções, comentar bem
+> **Bloqueador**: Blockers.mqh não possui setters hot-reload para Horários nem News.
+> Ambos são configurados apenas via `Init()`. Requer refatoração do Init antes de
+> expor na GUI.
+
+#### Sub-tarefas
+
+##### 2a — Setters Hot-Reload para Horários
+- [ ] Blockers.mqh: adicionar `SetTradingHours(startH, startM, endH, endM)`
+- [ ] Blockers.mqh: adicionar `SetUseTradingHours(bool enable)`
+- [ ] GUI: nova sub-página HORÁRIOS (ou expandir BLOQUEIOS)
+      Campos: Hora Início, Minuto Início, Hora Fim, Minuto Fim
+      Toggle: Usar Horários ON/OFF
+
+##### 2b — Setters Hot-Reload para Notícias
+- [ ] Blockers.mqh: `SetNewsFilterEnabled(bool)`, `SetNewsMinutesBefore(int)`,
+      `SetNewsMinutesAfter(int)`, `SetNewsImpact(ENUM_NEWS_IMPACT)`
+- [ ] GUI: seção NOTICIAS em BLOQUEIOS ou nova sub-página
+      Toggle ON/OFF, minutos antes/depois, nível impacto (radio)
+
+##### 2c — Sub-página HORÁRIOS na GUI
+- [ ] Panel.mqh: novos membros m_ch_* (Horários sub-page)
+- [ ] PanelTabConfig.mqh: CreateTabConfig + SetCfgPageVis + PopulateConfig
+- [ ] ApplyConfig: chamar novos setters
+
+---
+
+## Notas de Arquitetura
+
+### Padrão "Parte"
+Cada conversa = um número de Parte. Arquivos modificados recebem:
+- Header: `Versão X.Y - Claude Parte NNN (Claude Code)`
+- `#property version` atualizado
+- Entrada no CHANGELOG interno
+
+### Padrão Hot-Reload
+Módulos têm dois conjuntos de parâmetros:
+- `m_input*` — valores originais (imutáveis após Init)
+- `m_*` — valores de trabalho (alterados pelos setters hot-reload)
+Setters fazem `if(new == current) return;` + log HOT_RELOAD via Logger.
+
+### Padrão Radio Button (MQL5)
+MQL5 não tem radio group nativo horizontal. Solução:
+- `CButton[] btns` — array de N botões horizontais
+- `CreateRadioGroup()` — cria e posiciona proporcionalmente
+- `SetRadioSelection()` — destaca ativo (verde), dim inativos (cinza)
+- ChartEvent intercepta por nome: `for(int i=0;i<N;i++) if(sparam == btns[i].Name())`
+
+### Padrão Enable/Disable Visual
+- `SetEditEnabled(CLabel&, CEdit&, bool)` — cinza + ReadOnly
+- `SetButtonEnabled(CLabel&, CButton&, bool)` — cinza no label + fundo cinza no botão
+- `RefreshXxxState()` — função que aplica estado visual completo de uma sub-página

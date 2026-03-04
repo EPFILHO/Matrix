@@ -2,12 +2,65 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.08 - Claude Parte 021 (Claude Code) |
+//|                     Versão 3.18 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.08"
+#property version   "3.18"
 #property strict
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.18 (Parte 023):
+// ✅ Fix: ShouldCloseOnEndTime() usava > endMinutes — fechava a posição somente
+//    no primeiro tick de 17:36, enquanto CheckTimeFilter já bloqueava novas entradas
+//    desde 17:35. Padronizado para >= endMinutes: ao chegar em 17:35 (primeiro minuto
+//    fora da janela) novas entradas são bloqueadas E posição aberta é fechada no
+//    mesmo momento, sem esperar o próximo candle.
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.17 (Parte 023):
+// ✅ Fix: CheckTimeFilter() usava <= endMinutes (inclusivo) — padrão diferente
+//    do CheckNewsFilter(). Padronizado para < endMinutes (exclusivo) em ambos
+//    os casos (janela normal e overnight), mantendo consistência de comportamento:
+//    o horário de término é o PRIMEIRO minuto fora do intervalo em todos os filtros.
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.16 (Parte 023):
+// ✅ Fix: CheckNewsFilter() usava <= newsEnd (inclusivo) — liberava apenas no
+//    minuto seguinte ao fim. Corrigido para < newsEnd (exclusivo): ao atingir
+//    o minuto de término, operações já são liberadas.
+//    Mesmo fix aplicado nas checagens de log de transição em CanTrade().
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.15 (Parte 023):
+// + CanTrade(): logging de transição de estado para 4 bloqueadores
+//   silenciosos: TimeFilter, NewsFilter, SpreadFilter, DailyLimits
+//   - Loga ao ENTRAR no bloqueio (com detalhes: janela, spread, $)
+//   - Loga ao SAIR do bloqueio (operações liberadas)
+//   - NewsFilter: identifica qual janela (1/2/3) está ativa
+//   - Padrão: static bool por bloqueador, log apenas em transições
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.14 (Parte 023):
+// ✅ Fix: SetDrawdownValue() não atualizava m_enableDrawdown no hot-reload
+// ✅ Fix: SetDailyLimits() não atualizava m_enableDailyLimits no hot-reload
+// ✅ Fix: SetStreakLimits() não cancelava m_streakPauseActive ao subir limite
+// ✅ Fix: SetDrawdownValue() não limpava m_drawdownLimitReached ao subir limite
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.12 (Parte 023):
+// ✅ Fix Bug: Streak não bloqueava após hot-reload com EA iniciado sem streak
+// + ReconstructStreakFromHistory(): reconstrói contadores consecutivos do CSV
+// + Init(): chama ReconstructStreakFromHistory() após reset de contadores
+// + UpdateAfterTrade(): remove guard if(m_enableStreakControl) — sempre conta
+// + SetStreakLimits(): ativa m_enableStreakControl e reconstrói ao ativar
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.11 (Parte 023):
+// + SetCloseBeforeSessionEnd(bool, int) — hot-reload do fechar antes
+//   do fim da sessão, atualiza m_closeBeforeSessionEnd e
+//   m_minutesBeforeSessionEnd atomicamente
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.10 (Parte 024):
+// + SetTimeFilter(bool,int,int,int,int) — hot-reload do filtro de horário
+// + SetCloseOnEndTime(bool) — hot-reload do fechar posição ao fim
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.09 (Parte 023):
+// + SetDrawdownType(ENUM_DRAWDOWN_TYPE) — hot-reload do tipo DD
+// + SetDrawdownPeakMode(ENUM_DRAWDOWN_PEAK_MODE) — hot-reload do modo de pico
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.08:
 // ✅ Fix: Funções Hot Reload só logam quando há mudança real
@@ -334,6 +387,7 @@ private:
    bool              CheckDailyLimits(int dailyTrades, double dailyProfit);
    bool              CheckStreakLimit();
    bool              CheckDrawdownLimit();
+   void              ReconstructStreakFromHistory();
    bool              CheckDirectionAllowed(int orderType);
 
    // ═══════════════════════════════════════════════════════════════
@@ -401,6 +455,12 @@ public:
    void              SetStreakLimits(int maxLoss, ENUM_STREAK_ACTION lossAction, int lossPause,
                                      int maxWin, ENUM_STREAK_ACTION winAction, int winPause);
    void              SetDrawdownValue(double newValue);
+   void              SetDrawdownType(ENUM_DRAWDOWN_TYPE newType);
+   void              SetDrawdownPeakMode(ENUM_DRAWDOWN_PEAK_MODE newMode);
+   void              SetTimeFilter(bool enable, int startH, int startM, int endH, int endM);
+   void              SetCloseOnEndTime(bool close);
+   void              SetCloseBeforeSessionEnd(bool close, int minutes);
+   void              SetNewsFilter(int window, bool enable, int startH, int startM, int endH, int endM);
 
    // ═══════════════════════════════════════════════════════════════
    // GETTERS - INFORMAÇÕES DE ESTADO
@@ -617,14 +677,14 @@ bool CBlockers::Init(
      {
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "╔══════════════════════════════════════════════════════╗");
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║              VERSÃO COMPLETA v3.08                   ║");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║              VERSÃO COMPLETA v3.18                   ║");
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "╚══════════════════════════════════════════════════════╝");
      }
    else
      {
       Print("╔══════════════════════════════════════════════════════╗");
       Print("║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
-      Print("║              VERSÃO COMPLETA v3.08                   ║");
+      Print("║              VERSÃO COMPLETA v3.18                   ║");
       Print("╚══════════════════════════════════════════════════════╝");
      }
 
@@ -1024,6 +1084,7 @@ bool CBlockers::Init(
 // ───────────────────────────────────────────────────────────────
    m_currentLossStreak = 0;
    m_currentWinStreak = 0;
+   ReconstructStreakFromHistory();  // reconstrói do CSV independente de enableStreak
    m_streakPauseActive = false;
    m_streakPauseUntil = 0;
    m_streakPauseReason = "";
@@ -1135,6 +1196,7 @@ void CBlockers::SetDailyLimits(int maxTrades, double maxLoss, double maxGain, EN
    m_maxDailyLoss = MathAbs(maxLoss);
    m_maxDailyGain = MathAbs(maxGain);
    m_profitTargetAction = action;
+   m_enableDailyLimits = (maxTrades > 0 || m_maxDailyLoss > 0 || m_maxDailyGain > 0);
 
    // Só logar se houve mudança real
    if(oldMaxTrades != maxTrades || oldMaxLoss != m_maxDailyLoss || oldMaxGain != m_maxDailyGain || oldAction != action)
@@ -1171,12 +1233,40 @@ void CBlockers::SetStreakLimits(int maxLoss, ENUM_STREAK_ACTION lossAction, int 
    ENUM_STREAK_ACTION oldWinAction = m_winStreakAction;
    int oldWinPause = m_winPauseMinutes;
 
+   bool wasEnabled = m_enableStreakControl;
+
    m_maxLossStreak = maxLoss;
    m_lossStreakAction = lossAction;
    m_lossPauseMinutes = lossPause;
    m_maxWinStreak = maxWin;
    m_winStreakAction = winAction;
    m_winPauseMinutes = winPause;
+
+   m_enableStreakControl = (maxLoss > 0 || maxWin > 0);
+
+   // Se ativando pela primeira vez via hot-reload, reconstrói streak do CSV
+   if(!wasEnabled && m_enableStreakControl)
+      ReconstructStreakFromHistory();
+
+   // Se há pausa ativa, verificar se ainda é válida com os novos limites.
+   // Exemplo: pausa ativada com limit=1 (streak=2), usuário sobe para limit=3
+   // → a pausa não seria mais justificada e deve ser cancelada.
+   if(m_streakPauseActive)
+     {
+      bool stillBlocked = (m_maxLossStreak > 0 && m_currentLossStreak >= m_maxLossStreak) ||
+                          (m_maxWinStreak  > 0 && m_currentWinStreak  >= m_maxWinStreak);
+      if(!stillBlocked)
+        {
+         m_streakPauseActive  = false;
+         m_streakPauseUntil   = 0;
+         m_streakPauseReason  = "";
+         if(m_logger != NULL)
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+               "▶️ Pausa de streak cancelada — sequência atual não viola o novo limite");
+         else
+            Print("▶️ Pausa de streak cancelada — sequência atual não viola o novo limite");
+        }
+     }
 
    // Só logar se houve mudança real
    if(oldMaxLoss != maxLoss || oldLossAction != lossAction || oldLossPause != lossPause ||
@@ -1209,7 +1299,9 @@ void CBlockers::SetStreakLimits(int maxLoss, ENUM_STREAK_ACTION lossAction, int 
 void CBlockers::SetDrawdownValue(double newValue)
   {
    double oldValue = m_drawdownValue;
+   bool oldEnabled = m_enableDrawdown;
    m_drawdownValue = newValue;
+   m_enableDrawdown = (newValue > 0);
 
    // Só logar se houve mudança real
    if(oldValue != newValue)
@@ -1222,6 +1314,166 @@ void CBlockers::SetDrawdownValue(double newValue)
       else
          Print("🔄 Drawdown alterado: ", typeText, oldValue, " → ", typeText, newValue);
      }
+
+   if(oldEnabled != m_enableDrawdown)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            "Drawdown: " + (m_enableDrawdown ? "ATIVADO" : "DESATIVADO"));
+      else
+         Print("🔄 Drawdown: ", m_enableDrawdown ? "ATIVADO" : "DESATIVADO");
+     }
+
+   // Se o limite foi atingido anteriormente e o valor mudou, limpar o bloqueio.
+   // O próximo tick de CheckDrawdownLimit() re-avalia com o novo valor — se ainda
+   // estiver acima do novo limite, o bloqueio volta imediatamente; se não estiver,
+   // o EA retoma. Idêntico ao padrão de cancelamento de pausa do streak.
+   if(m_drawdownLimitReached && oldValue != newValue)
+     {
+      m_drawdownLimitReached = false;
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            "▶️ Bloqueio de drawdown liberado — novo limite será reavaliado no próximo tick");
+      else
+         Print("▶️ Bloqueio de drawdown liberado — novo limite será reavaliado no próximo tick");
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| SetDrawdownType — altera tipo de drawdown (FINANCEIRO/%)         |
+//+------------------------------------------------------------------+
+void CBlockers::SetDrawdownType(ENUM_DRAWDOWN_TYPE newType)
+  {
+   if(m_drawdownType == newType) return;
+   m_drawdownType = newType;
+   string typeText = (newType == DD_FINANCIAL) ? "FINANCEIRO ($)" : "PERCENTUAL (%)";
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "DrawdownType: " + typeText);
+   else
+      Print("🔄 DrawdownType: ", typeText);
+  }
+
+//+------------------------------------------------------------------+
+//| SetDrawdownPeakMode — altera modo de cálculo do pico             |
+//+------------------------------------------------------------------+
+void CBlockers::SetDrawdownPeakMode(ENUM_DRAWDOWN_PEAK_MODE newMode)
+  {
+   if(m_drawdownPeakMode == newMode) return;
+   m_drawdownPeakMode = newMode;
+   string modeText = (newMode == DD_PEAK_REALIZED_ONLY) ? "SO REALIZADO" : "C/ FLUTUANTE";
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "DrawdownPeakMode: " + modeText);
+   else
+      Print("🔄 DrawdownPeakMode: ", modeText);
+  }
+
+//+------------------------------------------------------------------+
+//| SetTimeFilter — hot-reload do filtro de horário                  |
+//+------------------------------------------------------------------+
+void CBlockers::SetTimeFilter(bool enable, int startH, int startM, int endH, int endM)
+  {
+   m_enableTimeFilter = enable;
+   m_startHour        = startH;
+   m_startMinute      = startM;
+   m_endHour          = endH;
+   m_endMinute        = endM;
+   string info = enable
+      ? StringFormat("ON %02d:%02d -> %02d:%02d", startH, startM, endH, endM)
+      : "OFF";
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "TimeFilter: " + info);
+   else
+      Print("🔄 TimeFilter: ", info);
+  }
+
+//+------------------------------------------------------------------+
+//| SetCloseOnEndTime — hot-reload do fechar posição ao fim          |
+//+------------------------------------------------------------------+
+void CBlockers::SetCloseOnEndTime(bool close)
+  {
+   if(m_closeOnEndTime == close) return;
+   m_closeOnEndTime = close;
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "CloseOnEndTime: " + (close ? "ON" : "OFF"));
+   else
+      Print("🔄 CloseOnEndTime: ", close ? "ON" : "OFF");
+  }
+
+//+------------------------------------------------------------------+
+//| ReconstructStreakFromHistory — recalcula streak do CSV do dia   |
+//+------------------------------------------------------------------+
+void CBlockers::ReconstructStreakFromHistory()
+  {
+   if(m_logger == NULL) return;
+   bool results[];
+   int count = m_logger.GetDailyTradeResults(results);
+   m_currentLossStreak = 0;
+   m_currentWinStreak  = 0;
+   for(int i = 0; i < count; i++)
+     {
+      if(results[i]) { m_currentWinStreak++;  m_currentLossStreak = 0; }
+      else           { m_currentLossStreak++; m_currentWinStreak  = 0; }
+     }
+   if(count > 0)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT",
+         StringFormat("📊 Streak reconstruído: %dL / %dW consecutivos (de %d trades)",
+                      m_currentLossStreak, m_currentWinStreak, count));
+  }
+
+//+------------------------------------------------------------------+
+//| SetCloseBeforeSessionEnd — hot-reload do fechar antes do fim    |
+//+------------------------------------------------------------------+
+void CBlockers::SetCloseBeforeSessionEnd(bool close, int minutes)
+  {
+   bool changed = (m_closeBeforeSessionEnd != close || m_minutesBeforeSessionEnd != minutes);
+   m_closeBeforeSessionEnd = close;
+   m_minutesBeforeSessionEnd = minutes;
+   if(!changed) return;
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("CloseBeforeSessionEnd: %s | %d min", close ? "ON" : "OFF", minutes));
+   else
+      Print("🔄 CloseBeforeSessionEnd: ", close ? "ON" : "OFF", " | ", minutes, " min");
+  }
+
+//+------------------------------------------------------------------+
+//| SetNewsFilter — hot-reload dos filtros de janela de notícias     |
+//+------------------------------------------------------------------+
+void CBlockers::SetNewsFilter(int window, bool enable,
+                               int startH, int startM, int endH, int endM)
+  {
+   if(window < 1 || window > 3) return;
+
+   if(window == 1)
+     {
+      m_enableNewsFilter1  = enable;
+      m_newsStart1Hour     = startH;  m_newsStart1Minute = startM;
+      m_newsEnd1Hour       = endH;    m_newsEnd1Minute   = endM;
+     }
+   else if(window == 2)
+     {
+      m_enableNewsFilter2  = enable;
+      m_newsStart2Hour     = startH;  m_newsStart2Minute = startM;
+      m_newsEnd2Hour       = endH;    m_newsEnd2Minute   = endM;
+     }
+   else
+     {
+      m_enableNewsFilter3  = enable;
+      m_newsStart3Hour     = startH;  m_newsStart3Minute = startM;
+      m_newsEnd3Hour       = endH;    m_newsEnd3Minute   = endM;
+     }
+
+   string info = enable
+      ? StringFormat("ON %02d:%02d -> %02d:%02d", startH, startM, endH, endM)
+      : "OFF";
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+                   StringFormat("NewsFilter%d: %s", window, info));
+   else
+      Print(StringFormat("🔄 NewsFilter%d: %s", window, info));
   }
 
 //+------------------------------------------------------------------+
@@ -1370,27 +1622,93 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
         }
      }
 
-// Verificações restantes (sem alteração)
-   if(!CheckTimeFilter())
+// ── Filtro de Horário — logging de transição ──
      {
-      m_currentBlocker = BLOCKER_TIME_FILTER;
-      blockReason = "Fora do horário permitido";
-      return false;
+      bool blocked = !CheckTimeFilter();
+      static bool s_tfWasBlocked = false;
+      if(blocked)
+        {
+         m_currentBlocker = BLOCKER_TIME_FILTER;
+         blockReason = "Fora do horário permitido";
+         if(!s_tfWasBlocked && m_logger != NULL)
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
+               StringFormat("🕐 FILTRO HORÁRIO: operações bloqueadas | janela %02d:%02d-%02d:%02d",
+                            m_startHour, m_startMinute, m_endHour, m_endMinute));
+         s_tfWasBlocked = true;
+         return false;
+        }
+      else if(s_tfWasBlocked)
+        {
+         s_tfWasBlocked = false;
+         if(m_logger != NULL)
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
+               StringFormat("✅ FILTRO HORÁRIO: janela %02d:%02d-%02d:%02d ativa, operações liberadas",
+                            m_startHour, m_startMinute, m_endHour, m_endMinute));
+        }
      }
 
-   if(!CheckNewsFilter())
+// ── Filtro de Notícias — logging de transição ──
      {
-      m_currentBlocker = BLOCKER_NEWS_FILTER;
-      blockReason = "Horário de volatilidade";
-      return false;
+      bool blocked = !CheckNewsFilter();
+      static bool s_nfWasBlocked = false;
+      if(blocked)
+        {
+         m_currentBlocker = BLOCKER_NEWS_FILTER;
+         blockReason = "Horário de volatilidade";
+         if(!s_nfWasBlocked && m_logger != NULL)
+           {
+            MqlDateTime dt; TimeToStruct(TimeCurrent(), dt);
+            int cur = dt.hour * 60 + dt.min;
+            string wDesc = "janela ativa";
+            int s1=m_newsStart1Hour*60+m_newsStart1Minute, e1=m_newsEnd1Hour*60+m_newsEnd1Minute;
+            int s2=m_newsStart2Hour*60+m_newsStart2Minute, e2=m_newsEnd2Hour*60+m_newsEnd2Minute;
+            int s3=m_newsStart3Hour*60+m_newsStart3Minute, e3=m_newsEnd3Hour*60+m_newsEnd3Minute;
+            if(m_enableNewsFilter1 && s1<e1 && cur>=s1 && cur<e1)
+               wDesc = StringFormat("Janela 1 %02d:%02d-%02d:%02d", m_newsStart1Hour, m_newsStart1Minute, m_newsEnd1Hour, m_newsEnd1Minute);
+            else if(m_enableNewsFilter2 && s2<e2 && cur>=s2 && cur<e2)
+               wDesc = StringFormat("Janela 2 %02d:%02d-%02d:%02d", m_newsStart2Hour, m_newsStart2Minute, m_newsEnd2Hour, m_newsEnd2Minute);
+            else if(m_enableNewsFilter3 && s3<e3 && cur>=s3 && cur<e3)
+               wDesc = StringFormat("Janela 3 %02d:%02d-%02d:%02d", m_newsStart3Hour, m_newsStart3Minute, m_newsEnd3Hour, m_newsEnd3Minute);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
+               StringFormat("📰 FILTRO NOTICIAS: operações bloqueadas | %s", wDesc));
+           }
+         s_nfWasBlocked = true;
+         return false;
+        }
+      else if(s_nfWasBlocked)
+        {
+         s_nfWasBlocked = false;
+         if(m_logger != NULL)
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
+               "✅ FILTRO NOTICIAS: janela encerrada, operações liberadas");
+        }
      }
 
-   if(!CheckSpreadFilter())
+// ── Filtro de Spread — logging de transição ──
      {
-      m_currentBlocker = BLOCKER_SPREAD;
-      long spread = SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
-      blockReason = StringFormat("Spread alto (%d > %d)", spread, m_maxSpread);
-      return false;
+      bool blocked = !CheckSpreadFilter();
+      static bool s_sfWasBlocked = false;
+      if(blocked)
+        {
+         m_currentBlocker = BLOCKER_SPREAD;
+         long spread = SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
+         blockReason = StringFormat("Spread alto (%d > %d)", spread, m_maxSpread);
+         if(!s_sfWasBlocked && m_logger != NULL)
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
+               StringFormat("⛔ SPREAD ALTO: %d pts (máx: %d pts) — operações bloqueadas", spread, m_maxSpread));
+         s_sfWasBlocked = true;
+         return false;
+        }
+      else if(s_sfWasBlocked)
+        {
+         s_sfWasBlocked = false;
+         if(m_logger != NULL)
+           {
+            long spread = SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
+               StringFormat("✅ SPREAD NORMALIZADO: %d pts — operações liberadas", spread));
+           }
+        }
      }
 
    if(!CheckStreakLimit())
@@ -1408,10 +1726,37 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
       return false;
      }
 
-   if(!CheckDailyLimits(dailyTrades, dailyProfit))
+// ── Limites Diários — logging de transição ──
      {
-      blockReason = GetBlockerReasonText(m_currentBlocker);
-      return false;
+      bool blocked = !CheckDailyLimits(dailyTrades, dailyProfit);
+      static bool s_dlWasBlocked = false;
+      static ENUM_BLOCKER_REASON s_dlLastReason = BLOCKER_NONE;
+      if(blocked)
+        {
+         blockReason = GetBlockerReasonText(m_currentBlocker);
+         bool isNew = !s_dlWasBlocked || (m_currentBlocker != s_dlLastReason);
+         if(isNew && m_logger != NULL)
+           {
+            string msg;
+            switch(m_currentBlocker)
+              {
+               case BLOCKER_DAILY_TRADES: msg = StringFormat("🔒 MAX TRADES/DIA: %d trades atingido", dailyTrades); break;
+               case BLOCKER_DAILY_LOSS:   msg = StringFormat("🔒 MAX PERDA/DIA: $%.2f atingido", MathAbs(dailyProfit)); break;
+               case BLOCKER_DAILY_GAIN:   msg = StringFormat("🔒 PROFIT TARGET: $%.2f atingido", dailyProfit); break;
+               default:                   msg = "🔒 LIMITE DIÁRIO atingido"; break;
+              }
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK", msg);
+           }
+         s_dlWasBlocked = true;
+         s_dlLastReason = m_currentBlocker;
+         return false;
+        }
+      else if(s_dlWasBlocked)
+        {
+         // Diário só libera no novo dia — ResetDaily() já loga "✅ Contadores zerados!"
+         s_dlWasBlocked = false;
+         s_dlLastReason = BLOCKER_NONE;
+        }
      }
 
    if(m_enableDailyLimits &&
@@ -1492,13 +1837,13 @@ bool CBlockers::ShouldCloseOnEndTime(ulong positionTicket)
 // Janela normal no mesmo dia
    if(startMinutes <= endMinutes)
      {
-      if(currentMinutes > endMinutes)
+      if(currentMinutes >= endMinutes)
          shouldClose = true;
      }
 // Janela que atravessa meia-noite
    else
      {
-      if(currentMinutes > endMinutes && currentMinutes < startMinutes)
+      if(currentMinutes >= endMinutes && currentMinutes < startMinutes)
          shouldClose = true;
      }
 
@@ -1928,35 +2273,34 @@ bool CBlockers::ShouldCloseByDrawdown(ulong positionTicket, double dailyProfit, 
 //+------------------------------------------------------------------+
 void CBlockers::UpdateAfterTrade(bool isWin, double tradeProfit)
   {
-   if(m_enableStreakControl)
+   // Contadores sempre atualizados (independente de m_enableStreakControl),
+   // para que hot-reload de limites encontre o streak correto.
+   if(isWin)
      {
-      if(isWin)
-        {
-         m_currentWinStreak++;
-         m_currentLossStreak = 0;
+      m_currentWinStreak++;
+      m_currentLossStreak = 0;
 
-         if(m_maxWinStreak > 0 && m_currentWinStreak >= m_maxWinStreak)
-           {
-            if(m_logger != NULL)
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK",
-                  "⚠️ WIN STREAK ATINGIDO: " + IntegerToString(m_currentWinStreak) + " ganhos consecutivos!");
-            else
-               Print("⚠️ WIN STREAK ATINGIDO: ", m_currentWinStreak, " ganhos consecutivos!");
-           }
+      if(m_maxWinStreak > 0 && m_currentWinStreak >= m_maxWinStreak)
+        {
+         if(m_logger != NULL)
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK",
+               "⚠️ WIN STREAK ATINGIDO: " + IntegerToString(m_currentWinStreak) + " ganhos consecutivos!");
+         else
+            Print("⚠️ WIN STREAK ATINGIDO: ", m_currentWinStreak, " ganhos consecutivos!");
         }
-      else
-        {
-         m_currentLossStreak++;
-         m_currentWinStreak = 0;
+     }
+   else
+     {
+      m_currentLossStreak++;
+      m_currentWinStreak = 0;
 
-         if(m_maxLossStreak > 0 && m_currentLossStreak >= m_maxLossStreak)
-           {
-            if(m_logger != NULL)
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK",
-                  "⚠️ LOSS STREAK ATINGIDO: " + IntegerToString(m_currentLossStreak) + " perdas consecutivas!");
-            else
-               Print("⚠️ LOSS STREAK ATINGIDO: ", m_currentLossStreak, " perdas consecutivas!");
-           }
+      if(m_maxLossStreak > 0 && m_currentLossStreak >= m_maxLossStreak)
+        {
+         if(m_logger != NULL)
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK",
+               "⚠️ LOSS STREAK ATINGIDO: " + IntegerToString(m_currentLossStreak) + " perdas consecutivas!");
+         else
+            Print("⚠️ LOSS STREAK ATINGIDO: ", m_currentLossStreak, " perdas consecutivas!");
         }
      }
   }
@@ -2099,10 +2443,10 @@ bool CBlockers::CheckTimeFilter()
 
    if(startMinutes < endMinutes)
      {
-      return (currentMinutes >= startMinutes && currentMinutes <= endMinutes);
+      return (currentMinutes >= startMinutes && currentMinutes < endMinutes);
      }
 
-   return (currentMinutes >= startMinutes || currentMinutes <= endMinutes);
+   return (currentMinutes >= startMinutes || currentMinutes < endMinutes);
   }
 
 //+------------------------------------------------------------------+
@@ -2124,7 +2468,7 @@ bool CBlockers::CheckNewsFilter()
 
       if(newsStart1 < newsEnd1)
         {
-         if(currentMinutes >= newsStart1 && currentMinutes <= newsEnd1)
+         if(currentMinutes >= newsStart1 && currentMinutes < newsEnd1)
             return false;
         }
      }
@@ -2136,7 +2480,7 @@ bool CBlockers::CheckNewsFilter()
 
       if(newsStart2 < newsEnd2)
         {
-         if(currentMinutes >= newsStart2 && currentMinutes <= newsEnd2)
+         if(currentMinutes >= newsStart2 && currentMinutes < newsEnd2)
             return false;
         }
      }
@@ -2148,7 +2492,7 @@ bool CBlockers::CheckNewsFilter()
 
       if(newsStart3 < newsEnd3)
         {
-         if(currentMinutes >= newsStart3 && currentMinutes <= newsEnd3)
+         if(currentMinutes >= newsStart3 && currentMinutes < newsEnd3)
             return false;
         }
      }

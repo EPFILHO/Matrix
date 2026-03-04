@@ -2,15 +2,67 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.16 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.23 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.16"
+#property version   "1.23"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.23 (2026-03-03):
+// + Layout: COL_VALUE_X 195→150, COL_VALUE_W 210→255 (campos de valor
+//   ficam 45px mais próximos dos labels em todas as abas; borda direita
+//   permanece inalterada em x=405)
+// + Auto-hide status CONFIG: m_cfgStatusExpiry (uint) armazena timestamp
+//   de expiração; Update() limpa m_cfg_status após 10s automaticamente
+// + m_cfgStatusExpiry inicializado a 0 no construtor
+//
+// + CFG_BLOQ2 = 4, CFG_PAGE_COUNT = 5
+// + m_cfg_btnBloq2: novo botão de aba "BLOQ 2"
+// + m_cb2_* (24 controles): BLOQUEIO 2 — Filtro de Notícias (3 janelas)
+// + m_cur_newsOn1/2/3: novos estados
+// + OnClickCfgBloq2, OnClickNewsOn1/2/3, RefreshNewsState(w): novos handlers
+//
+// v1.21 (2026-03-01):
+// + Fechar Antes do Fim da Sessão na sub-página BLOQUEIOS
+// + m_cb_hdr5, m_cb_lCBSOn/bCBSOn, m_cb_lCBSMin/iCBSMin
+// + m_cur_cbsOn: novo estado
+// + OnClickCBSToggle, RefreshBloqSessionEnd: novos handlers
+//
+// v1.20 (2026-03-01):
+// + Filtro de Horário na sub-página BLOQUEIOS
+// + m_cb_hdr4, m_cb_lTFOn/bTFOn, m_cb_lTFSH/iTFSH, m_cb_lTFSM/iTFSM
+// + m_cb_lTFEH/iTFEH, m_cb_lTFEM/iTFEM, m_cb_lTFCl/bTFCl
+// + m_cur_tfOn, m_cur_tfClose: novos estados
+// + OnClickTFToggle, OnClickTFClose: novos handlers
+// + RefreshBloqTimeFilter: enable/disable campos por toggle
+//
+// v1.19 (2026-02-28):
+// + Toggles ON/OFF individuais: DrawDown (RISCO 2), Loss Streak, Win Streak (BLOQUEIOS)
+// + m_cur_ddOn, m_cur_lossStreakOn, m_cur_winStreakOn: novos estados
+// + m_c2_bDDAct, m_cb_bLStrOn, m_cb_bWStrOn: novos botões toggle
+// + OnClickDDToggle, OnClickLossStreakToggle, OnClickWinStreakToggle: novos handlers
+// + RefreshRisco2State/RefreshStreakState: enable/disable sub-campos por toggle
+//
+// v1.18 (2026-02-28):
+// + DrawDown movido de BLOQUEIOS → RISCO 2 (m_cb_hdr4/lDD/bDDT/bDDPk → m_c2_hdr3/*)
+// + Streak e DrawDown criados incondicionalmente (sempre visíveis)
+// + RefreshStreakState: removido early-return por m_cfg_hasStreak
+// + ChartEvent: m_cb_bDDT/bDDPk → m_c2_bDDT/bDDPk
+//
+// v1.17 (2026-02-28):
+// + Partial TP movido de RISCO 2 → RISCO (m_c2_bPTP/iTP* → m_cr_bPTP/iTP*)
+// + BLOQUEIOS expandido: radio Streak Action (PAUSAR|PARAR DIA) por Loss/Win
+// + BLOQUEIOS: campos Pausa Min (Loss/Win) — visíveis só se action=PAUSAR
+// + BLOQUEIOS: radio DD Type (FINANCEIRO|PERCENTUAL), DD Peak Mode (SÓ REAL.|C/FLUTUANTE)
+// + BLOQUEIOS: radio Profit Target Action (PARAR|ATIVAR DD)
+// + Novos state vars: m_cur_lossStreakAction/winStreakAction/ddType/ddPeakMode/profitTargetAction
+// + RefreshStreakState() — enable/disable campos de pausa por action selecionada
+// + Novos handlers: OnClickLossStreakAction, OnClickWinStreakAction, OnClickDDType,
+//   OnClickDDPeakMode, OnClickProfitTargetAction
+//
 // v1.16 (2026-02-25):
 // + RADIO GROUPS: Cycle buttons → CButton[] horizontais
 //   (SL Type, TP Type, Direcao agora com botoes individuais por opcao)
@@ -141,8 +193,8 @@
 #define PANEL_GAP_SECTION    8
 
 #define COL_LABEL_X          10
-#define COL_VALUE_X          195
-#define COL_VALUE_W          210
+#define COL_VALUE_X          150
+#define COL_VALUE_W          255
 
 #define CONTENT_TOP          32
 #define TAB_BTN_H            22
@@ -193,9 +245,10 @@ enum ENUM_CONFIG_PAGE
    CFG_RISCO = 0,
    CFG_RISCO2 = 1,
    CFG_BLOQUEIOS = 2,
-   CFG_OUTROS = 3
+   CFG_OUTROS = 3,
+   CFG_BLOQ2 = 4
   };
-#define CFG_PAGE_COUNT 4
+#define CFG_PAGE_COUNT 5
 
 //+------------------------------------------------------------------+
 //| Classe principal do painel                                        |
@@ -323,8 +376,9 @@ private:
    CButton  m_cfg_btnRisco2;
    CButton  m_cfg_btnBloq;
    CButton  m_cfg_btnOutros;
+   CButton  m_cfg_btnBloq2;
 
-   // --- Risco sub-page (simplificada — SL/TP/Spread) ---
+   // --- Risco sub-page (SL/TP/Spread/PartialTP) ---
    CLabel   m_cr_hdr1;
    CLabel   m_cr_lLot;    CEdit    m_cr_iLot;
    CLabel   m_cr_lATRp;   CEdit    m_cr_iATRp;
@@ -337,8 +391,15 @@ private:
    CLabel   m_cr_lTPT;    CButton  m_cr_bTPT[3];  // Radio: NENHUM | FIXO | ATR
    CLabel   m_cr_lTP;     CEdit    m_cr_iTP;
    CLabel   m_cr_lCTP;    CButton  m_cr_bCTP;
+   // Partial TP (movido de RISCO 2 para cá)
+   CLabel   m_cr_hdrPTP;
+   CLabel   m_cr_lPTP;    CButton  m_cr_bPTP;     // Partial TP toggle
+   CLabel   m_cr_lTP1p;   CEdit    m_cr_iTP1p;
+   CLabel   m_cr_lTP1d;   CEdit    m_cr_iTP1d;
+   CLabel   m_cr_lTP2p;   CEdit    m_cr_iTP2p;
+   CLabel   m_cr_lTP2d;   CEdit    m_cr_iTP2d;
 
-   // --- Risco 2 sub-page (Trailing/BE/Partial TP) ---
+   // --- Risco 2 sub-page (Trailing/BE/DrawDown) ---
    CLabel   m_c2_hdr1;
    CLabel   m_c2_lTrlAct;  CButton m_c2_bTrlAct;  // Trailing ON/OFF
    CLabel   m_c2_lTrlSt;   CEdit   m_c2_iTrlSt;
@@ -348,12 +409,11 @@ private:
    CLabel   m_c2_lBEAct;   CButton m_c2_bBEAct;   // BE ON/OFF
    CLabel   m_c2_lBEVal;   CEdit   m_c2_iBEVal;
    CLabel   m_c2_lBEOff;   CEdit   m_c2_iBEOff;
-   CLabel   m_c2_hdr3;
-   CLabel   m_c2_lPTP;     CButton m_c2_bPTP;      // Partial TP toggle
-   CLabel   m_c2_lTP1p;    CEdit   m_c2_iTP1p;
-   CLabel   m_c2_lTP1d;    CEdit   m_c2_iTP1d;
-   CLabel   m_c2_lTP2p;    CEdit   m_c2_iTP2p;
-   CLabel   m_c2_lTP2d;    CEdit   m_c2_iTP2d;
+   CLabel   m_c2_hdr3;                              // Header "DRAWDOWN"
+   CLabel   m_c2_lDDAct;    CButton m_c2_bDDAct;    // DrawDown ON/OFF
+   CLabel   m_c2_lDD;       CEdit   m_c2_iDD;
+   CLabel   m_c2_lDDT;      CButton m_c2_bDDT[2];   // Radio: FINANCEIRO | PERCENTUAL
+   CLabel   m_c2_lDDPk;     CButton m_c2_bDDPk[2];  // Radio: REALIZADO | FLUTUANTE
 
    // --- Bloqueios sub-page ---
    CLabel   m_cb_hdr1;
@@ -363,10 +423,53 @@ private:
    CLabel   m_cb_lTrd;    CEdit   m_cb_iTrd;
    CLabel   m_cb_lLoss;   CEdit   m_cb_iLoss;
    CLabel   m_cb_lGain;   CEdit   m_cb_iGain;
+   CLabel   m_cb_lPTA;    CButton m_cb_bPTA[2];   // Radio: PARAR | ATIVAR DD
    CLabel   m_cb_hdr3;
+   CLabel   m_cb_lLStrOn; CButton m_cb_bLStrOn;   // Loss Streak ON/OFF
    CLabel   m_cb_lLStr;   CEdit   m_cb_iLStr;
+   CLabel   m_cb_lLStrA;  CButton m_cb_bLStrA[2]; // Radio: PAUSAR | PARAR DIA
+   CLabel   m_cb_lLStrP;  CEdit   m_cb_iLStrP;    // Loss Pause Minutes
+   CLabel   m_cb_lWStrOn; CButton m_cb_bWStrOn;   // Win Streak ON/OFF
    CLabel   m_cb_lWStr;   CEdit   m_cb_iWStr;
-   CLabel   m_cb_lDD;     CEdit   m_cb_iDD;
+   CLabel   m_cb_lWStrA;  CButton m_cb_bWStrA[2]; // Radio: PAUSAR | PARAR DIA
+   CLabel   m_cb_lWStrP;  CEdit   m_cb_iWStrP;    // Win Pause Minutes
+   // (DrawDown movido para RISCO 2 em v1.18 → m_c2_hdr3/lDD/lDDT/lDDPk)
+   // --- Filtro de Horário (v1.20) ---
+   CLabel   m_cb_hdr4;
+   CLabel   m_cb_lTFOn;  CButton m_cb_bTFOn;     // Filtro Horário ON/OFF
+   CLabel   m_cb_lTFSH;  CEdit   m_cb_iTFSH;     // Hora Início (0-23)
+   CLabel   m_cb_lTFSM;  CEdit   m_cb_iTFSM;     // Min Início (0-59)
+   CLabel   m_cb_lTFEH;  CEdit   m_cb_iTFEH;     // Hora Fim (0-23)
+   CLabel   m_cb_lTFEM;  CEdit   m_cb_iTFEM;     // Min Fim (0-59)
+   CLabel   m_cb_lTFCl;  CButton m_cb_bTFCl;     // Fechar ao Fim ON/OFF
+   // --- Fechar Antes do Fim da Sessão (v1.21) ---
+   CLabel   m_cb_hdr5;
+   CLabel   m_cb_lCBSOn;  CButton m_cb_bCBSOn;   // Prot. Fim Sessão ON/OFF
+   CLabel   m_cb_lCBSMin; CEdit   m_cb_iCBSMin;  // Minutos antes do fim
+
+   // --- BLOQUEIO 2: Filtro de Notícias (v1.22) ---
+   CLabel   m_cb2_hdr1;                           // "FILTRO NOTICIAS"
+   // Janela 1
+   CLabel   m_cb2_hdr2;                           // "Janela 1"
+   CLabel   m_cb2_lN1On;  CButton m_cb2_bN1On;   // toggle ON/OFF
+   CLabel   m_cb2_lN1SH;  CEdit   m_cb2_iN1SH;   // Hora Início
+   CLabel   m_cb2_lN1SM;  CEdit   m_cb2_iN1SM;   // Min Início
+   CLabel   m_cb2_lN1EH;  CEdit   m_cb2_iN1EH;   // Hora Fim
+   CLabel   m_cb2_lN1EM;  CEdit   m_cb2_iN1EM;   // Min Fim
+   // Janela 2
+   CLabel   m_cb2_hdr3;
+   CLabel   m_cb2_lN2On;  CButton m_cb2_bN2On;
+   CLabel   m_cb2_lN2SH;  CEdit   m_cb2_iN2SH;
+   CLabel   m_cb2_lN2SM;  CEdit   m_cb2_iN2SM;
+   CLabel   m_cb2_lN2EH;  CEdit   m_cb2_iN2EH;
+   CLabel   m_cb2_lN2EM;  CEdit   m_cb2_iN2EM;
+   // Janela 3
+   CLabel   m_cb2_hdr4;
+   CLabel   m_cb2_lN3On;  CButton m_cb2_bN3On;
+   CLabel   m_cb2_lN3SH;  CEdit   m_cb2_iN3SH;
+   CLabel   m_cb2_lN3SM;  CEdit   m_cb2_iN3SM;
+   CLabel   m_cb2_lN3EH;  CEdit   m_cb2_iN3EH;
+   CLabel   m_cb2_lN3EM;  CEdit   m_cb2_iN3EM;
 
    // --- Outros sub-page ---
    CLabel   m_co_hdr1;
@@ -378,6 +481,7 @@ private:
    // APLICAR + status
    CButton  m_cfg_btnApply;
    CLabel   m_cfg_status;
+   uint     m_cfgStatusExpiry;     // GetTickCount() em que a msg expira
 
    // Feature flags (definidos em CreateTabConfig)
    bool     m_cfg_hasTP;
@@ -390,17 +494,33 @@ private:
    bool     m_cfg_hasRange;     // SL usa Range?
 
    // Estado dos toggles/cycles
-   ENUM_TRADE_DIRECTION     m_cur_direction;
-   ENUM_CONFLICT_RESOLUTION m_cur_conflict;
-   ENUM_SL_TYPE             m_cur_slType;
-   ENUM_TP_TYPE             m_cur_tpType;
-   bool                     m_cur_debug;
-   bool                     m_cur_partialTP;
-   bool                     m_cur_compSL;
-   bool                     m_cur_compTP;
-   bool                     m_cur_compTrail;
-   bool                     m_cur_trailOn;
-   bool                     m_cur_beOn;
+   ENUM_TRADE_DIRECTION      m_cur_direction;
+   ENUM_CONFLICT_RESOLUTION  m_cur_conflict;
+   ENUM_SL_TYPE              m_cur_slType;
+   ENUM_TP_TYPE              m_cur_tpType;
+   bool                      m_cur_debug;
+   bool                      m_cur_partialTP;
+   bool                      m_cur_compSL;
+   bool                      m_cur_compTP;
+   bool                      m_cur_compTrail;
+   bool                      m_cur_trailOn;
+   bool                      m_cur_beOn;
+   bool                      m_cur_ddOn;
+   bool                      m_cur_lossStreakOn;
+   bool                      m_cur_winStreakOn;
+   bool                      m_cur_tfOn;
+   bool                      m_cur_tfClose;
+   bool                      m_cur_cbsOn;
+   // Novos estados (Parte 023)
+   ENUM_STREAK_ACTION        m_cur_lossStreakAction;
+   ENUM_STREAK_ACTION        m_cur_winStreakAction;
+   ENUM_DRAWDOWN_TYPE        m_cur_ddType;
+   ENUM_DRAWDOWN_PEAK_MODE   m_cur_ddPeakMode;
+   ENUM_PROFIT_TARGET_ACTION m_cur_profitTargetAction;
+   // Filtro de Notícias (v1.22)
+   bool                      m_cur_newsOn1;
+   bool                      m_cur_newsOn2;
+   bool                      m_cur_newsOn3;
 
    // ── Helpers privados ──
    bool              CreateLV(CLabel &lbl, CLabel &val, string ln, string en, string lt, int y);
@@ -449,6 +569,8 @@ private:
    // Estado visual RISCO (enable/disable campos por tipo SL/TP)
    void              RefreshRiscoState(void);
    void              RefreshRisco2State(void);
+   void              RefreshStreakState(void);
+   void              RefreshBloqTimeFilter(void);
    void              SetEditEnabled(CLabel &lbl, CEdit &inp, bool enable);
    void              SetButtonEnabled(CLabel &lbl, CButton &btn, bool enable);
 
@@ -474,6 +596,23 @@ private:
    void              OnClickCompTrail(void);
    void              OnClickTrailToggle(void);
    void              OnClickBEToggle(void);
+   void              OnClickDDToggle(void);
+   void              OnClickLossStreakToggle(void);
+   void              OnClickWinStreakToggle(void);
+   void              OnClickTFToggle(void);
+   void              OnClickTFClose(void);
+   void              OnClickCBSToggle(void);
+   void              RefreshBloqSessionEnd(void);
+   void              OnClickLossStreakAction(int selected);
+   void              OnClickWinStreakAction(int selected);
+   void              OnClickDDType(int selected);
+   void              OnClickDDPeakMode(int selected);
+   void              OnClickProfitTargetAction(int selected);
+   void              OnClickCfgBloq2(void);
+   void              OnClickNewsOn1(void);
+   void              OnClickNewsOn2(void);
+   void              OnClickNewsOn3(void);
+   void              RefreshNewsState(int w);
 
 protected:
    virtual bool      CreateButtonClose(void) { return true; }
@@ -519,7 +658,13 @@ CEPBotPanel::CEPBotPanel(void)
      m_cur_slType(SL_FIXED), m_cur_tpType(TP_NONE),
      m_cur_debug(false), m_cur_partialTP(false),
      m_cur_compSL(false), m_cur_compTP(false), m_cur_compTrail(false),
-     m_cur_trailOn(false), m_cur_beOn(false)
+     m_cur_trailOn(false), m_cur_beOn(false),
+     m_cur_ddOn(false), m_cur_lossStreakOn(false), m_cur_winStreakOn(false),
+     m_cur_tfOn(false), m_cur_tfClose(false), m_cur_cbsOn(false),
+     m_cur_lossStreakAction(STREAK_PAUSE), m_cur_winStreakAction(STREAK_PAUSE),
+     m_cur_ddType(DD_FINANCIAL), m_cur_ddPeakMode(DD_PEAK_REALIZED_ONLY),
+     m_cur_profitTargetAction(PROFIT_ACTION_STOP),
+     m_cfgStatusExpiry(0)
   {
   }
 
@@ -696,6 +841,7 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       if(sparam == m_cfg_btnRisco2.Name()) { m_cfg_btnRisco2.Pressed(false); OnClickCfgRisco2(); ChartRedraw(); return; }
       if(sparam == m_cfg_btnBloq.Name())   { m_cfg_btnBloq.Pressed(false);   OnClickCfgBloq();   ChartRedraw(); return; }
       if(sparam == m_cfg_btnOutros.Name()) { m_cfg_btnOutros.Pressed(false); OnClickCfgOutros(); ChartRedraw(); return; }
+      if(sparam == m_cfg_btnBloq2.Name())  { m_cfg_btnBloq2.Pressed(false);  OnClickCfgBloq2();  ChartRedraw(); return; }
 
       // CONFIG: APLICAR
       if(sparam == m_cfg_btnApply.Name())  { m_cfg_btnApply.Pressed(false); OnClickApply(); ChartRedraw(); return; }
@@ -712,11 +858,40 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       if(sparam == m_cr_bCSL.Name()) { OnClickCompSL();  ChartRedraw(); return; }
       if(sparam == m_cr_bCTP.Name()) { OnClickCompTP();  ChartRedraw(); return; }
 
+      // CONFIG: RISCO toggles (Partial TP agora em RISCO)
+      if(sparam == m_cr_bPTP.Name()) { OnClickPartialTP(); ChartRedraw(); return; }
+
       // CONFIG: RISCO 2 toggles
       if(sparam == m_c2_bTrlAct.Name()) { OnClickTrailToggle(); ChartRedraw(); return; }
       if(sparam == m_c2_bBEAct.Name())  { OnClickBEToggle();    ChartRedraw(); return; }
-      if(sparam == m_c2_bPTP.Name())    { OnClickPartialTP();   ChartRedraw(); return; }
       if(sparam == m_c2_bCTrl.Name())   { OnClickCompTrail();   ChartRedraw(); return; }
+      if(sparam == m_c2_bDDAct.Name())  { OnClickDDToggle();    ChartRedraw(); return; }
+
+      // CONFIG: BLOQUEIOS toggles
+      if(sparam == m_cb_bLStrOn.Name()) { OnClickLossStreakToggle(); ChartRedraw(); return; }
+      if(sparam == m_cb_bWStrOn.Name()) { OnClickWinStreakToggle();  ChartRedraw(); return; }
+      if(sparam == m_cb_bTFOn.Name())   { OnClickTFToggle();         ChartRedraw(); return; }
+      if(sparam == m_cb_bTFCl.Name())   { OnClickTFClose();          ChartRedraw(); return; }
+      if(sparam == m_cb_bCBSOn.Name())  { OnClickCBSToggle();        ChartRedraw(); return; }
+
+      // CONFIG: BLOQUEIOS radio groups (2 opções cada)
+      for(int i = 0; i < 2; i++)
+        {
+         if(sparam == m_cb_bLStrA[i].Name())  { OnClickLossStreakAction(i);   ChartRedraw(); return; }
+         if(sparam == m_cb_bWStrA[i].Name())  { OnClickWinStreakAction(i);    ChartRedraw(); return; }
+         if(sparam == m_cb_bPTA[i].Name())    { OnClickProfitTargetAction(i); ChartRedraw(); return; }
+        }
+      // CONFIG: RISCO 2 radio groups — DrawDown (movido de BLOQUEIOS em v1.18)
+      for(int i = 0; i < 2; i++)
+        {
+         if(sparam == m_c2_bDDT[i].Name())    { OnClickDDType(i);             ChartRedraw(); return; }
+         if(sparam == m_c2_bDDPk[i].Name())   { OnClickDDPeakMode(i);         ChartRedraw(); return; }
+        }
+
+      // CONFIG: BLOQUEIO 2 — news window toggles
+      if(sparam == m_cb2_bN1On.Name()) { m_cb2_bN1On.Pressed(false); OnClickNewsOn1(); ChartRedraw(); return; }
+      if(sparam == m_cb2_bN2On.Name()) { m_cb2_bN2On.Pressed(false); OnClickNewsOn2(); ChartRedraw(); return; }
+      if(sparam == m_cb2_bN3On.Name()) { m_cb2_bN3On.Pressed(false); OnClickNewsOn3(); ChartRedraw(); return; }
 
       // CONFIG: OUTROS toggles
       if(sparam == m_co_bConfl.Name()) { OnClickConflict(); ChartRedraw(); return; }
@@ -889,7 +1064,7 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
            {
             // Sub-page buttons + apply + status
             m_cfg_btnRisco.Show(); m_cfg_btnRisco2.Show();
-            m_cfg_btnBloq.Show(); m_cfg_btnOutros.Show();
+            m_cfg_btnBloq.Show(); m_cfg_btnOutros.Show(); m_cfg_btnBloq2.Show();
             m_cfg_btnApply.Show(); m_cfg_status.Show();
             // Show active sub-page
             ShowCfgPage(m_cfgPage);
@@ -897,12 +1072,13 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
          else
            {
             m_cfg_btnRisco.Hide(); m_cfg_btnRisco2.Hide();
-            m_cfg_btnBloq.Hide(); m_cfg_btnOutros.Hide();
+            m_cfg_btnBloq.Hide(); m_cfg_btnOutros.Hide(); m_cfg_btnBloq2.Hide();
             m_cfg_btnApply.Hide(); m_cfg_status.Hide();
             SetCfgPageVis(CFG_RISCO, false);
             SetCfgPageVis(CFG_RISCO2, false);
             SetCfgPageVis(CFG_BLOQUEIOS, false);
             SetCfgPageVis(CFG_OUTROS, false);
+            SetCfgPageVis(CFG_BLOQ2, false);
            }
          break;
         }
@@ -941,7 +1117,10 @@ void CEPBotPanel::Update(void)
       case TAB_RESULTADOS:  UpdateResultados();   break;
       case TAB_ESTRATEGIAS: UpdateEstrategias();  break;
       case TAB_FILTROS:     UpdateFiltros();      break;
-      case TAB_CONFIG:      /* user-editable */   break;
+      case TAB_CONFIG:
+         if(m_cfgStatusExpiry > 0 && GetTickCount() >= m_cfgStatusExpiry)
+           { m_cfg_status.Text(""); m_cfgStatusExpiry = 0; ChartRedraw(); }
+         break;
      }
   }
 

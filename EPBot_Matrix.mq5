@@ -2,13 +2,23 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.39 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.40 - Claude Parte 023 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.39"
+#property version   "1.40"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.40:                                                 |
+//| PANEL v1.17 + BLOCKERS v3.09 — CONFIG BLOQUEIOS EXPANDIDO (Parte 023): |
+//|    - Partial TP movido de RISCO 2 → RISCO (m_cr_bPTP etc.)       |
+//|    - BLOQUEIOS: radio Profit Target Action (PARAR|ATIVAR DD)      |
+//|    - BLOQUEIOS: radio Streak Action (PAUSAR|PARAR DIA) + pause min|
+//|    - BLOQUEIOS: radio DD Type (FINANCEIRO|PERCENTUAL)             |
+//|    - BLOQUEIOS: radio DD Peak Mode (SO REAL.|C/FLUTUANTE)         |
+//|    - Blockers v3.09: SetDrawdownType + SetDrawdownPeakMode        |
+//|    - RefreshStreakState: pausa fields visíveis só se PAUSAR ativo  |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.39:                                                 |
 //| PANEL v1.16 — RADIO BUTTONS + RISCO 2 (Claude Code):             |
@@ -227,7 +237,7 @@ bool g_tradingAllowed = true;  // Controle geral de trading
 int OnInit()
   {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.39 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v1.40 - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
 
 // ═══════════════════════════════════════════════════════════════
@@ -711,7 +721,7 @@ int OnInit()
 
          int chartWidth = (int)ChartGetInteger(0, CHART_WIDTH_IN_PIXELS);
          int x1 = chartWidth - PANEL_WIDTH - 10;
-         if(!g_panel.CreatePanel(0, "EPBotMatrix - Versão 1.39", 0, x1, 20, x1 + PANEL_WIDTH, 20 + PANEL_HEIGHT))
+         if(!g_panel.CreatePanel(0, "EPBotMatrix - Versão 1.40", 0, x1, 20, x1 + PANEL_WIDTH, 20 + PANEL_HEIGHT))
            {
             g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar painel GUI");
             delete g_panel;
@@ -733,7 +743,7 @@ int OnInit()
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
 
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.39 - PRONTO PARA OPERAR!");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.40 - PRONTO PARA OPERAR!");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Símbolo: " + _Symbol);
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
@@ -1794,5 +1804,5 @@ void OnTimer()
   }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.39                                   |
+//| FIM DO EA - EPBOT MATRIX v1.40                                   |
 //+------------------------------------------------------------------+
