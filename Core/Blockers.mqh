@@ -457,6 +457,7 @@ public:
    void              SetDrawdownValue(double newValue);
    void              SetDrawdownType(ENUM_DRAWDOWN_TYPE newType);
    void              SetDrawdownPeakMode(ENUM_DRAWDOWN_PEAK_MODE newMode);
+   void              TryActivateDrawdownNow(double dailyProfit);
    void              SetTimeFilter(bool enable, int startH, int startM, int endH, int endM);
    void              SetCloseOnEndTime(bool close);
    void              SetCloseBeforeSessionEnd(bool close, int minutes);
@@ -1337,6 +1338,25 @@ void CBlockers::SetDrawdownValue(double newValue)
       else
          Print("▶️ Bloqueio de drawdown liberado — novo limite será reavaliado no próximo tick");
      }
+  }
+
+//+------------------------------------------------------------------+
+//| Hot Reload — Ativa proteção de DD imediatamente se DD foi ligado |
+//| via painel sem meta de lucro configurada (fix: bug hot reload)   |
+//+------------------------------------------------------------------+
+void CBlockers::TryActivateDrawdownNow(double dailyProfit)
+  {
+   if(!m_enableDrawdown || m_drawdownProtectionActive)
+      return;
+
+   ActivateDrawdownProtection(dailyProfit, dailyProfit);
+
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🛡️ Drawdown ativado via hot reload — pico inicial: $" +
+         DoubleToString(m_dailyPeakProfit, 2));
+   else
+      Print("🛡️ Drawdown ativado via hot reload — pico inicial: $", m_dailyPeakProfit);
   }
 
 //+------------------------------------------------------------------+
@@ -2416,13 +2436,31 @@ double CBlockers::GetCurrentDrawdown()
    if(!m_drawdownProtectionActive || m_dailyPeakProfit <= 0)
       return 0.0;
 
-   double currentProfit = AccountInfoDouble(ACCOUNT_BALANCE) - m_initialBalance;
+   // Inclui floating + swap de posições abertas do EA, igual ao ShouldCloseByDrawdown()
+   // Evita inconsistência onde painel mostrava DD menor que o usado para fechar
+   double floating = 0.0, swap = 0.0;
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+     {
+      if(PositionGetSymbol(i) == _Symbol &&
+         PositionGetInteger(POSITION_MAGIC) == m_magicNumber)
+        {
+         floating += PositionGetDouble(POSITION_PROFIT);
+         swap     += PositionGetDouble(POSITION_SWAP);
+        }
+     }
 
-   if(currentProfit >= m_dailyPeakProfit)
+   double closedProfit = (m_logger != NULL) ? m_logger.GetDailyProfit() : 0.0;
+   double projectedProfit = closedProfit + floating + swap;
+
+   if(projectedProfit >= m_dailyPeakProfit)
       return 0.0;
 
-   double dd = ((m_dailyPeakProfit - currentProfit) / m_dailyPeakProfit) * 100.0;
-   return dd;
+   double currentDD = m_dailyPeakProfit - projectedProfit;
+
+   if(m_drawdownType == DD_FINANCIAL)
+      return currentDD;
+
+   return (currentDD / m_dailyPeakProfit) * 100.0;
   }
 
 //+------------------------------------------------------------------+

@@ -1567,6 +1567,9 @@ void CEPBotPanel::ApplyConfig(void)
             m_blockers.SetDrawdownValue(dd);
             m_blockers.SetDrawdownType(m_cur_ddType);
             m_blockers.SetDrawdownPeakMode(m_cur_ddPeakMode);
+            // Ativa proteção imediatamente se DD foi ligado via painel sem meta de lucro
+            double curDailyProfit = (m_logger != NULL) ? m_logger.GetDailyProfit() : 0.0;
+            m_blockers.TryActivateDrawdownNow(curDailyProfit);
            }
          else
             errors++;
