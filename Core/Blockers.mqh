@@ -2,12 +2,22 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.18 - Claude Parte 023 (Claude Code) |
+//|                     Versão 3.19 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.18"
+#property version   "3.19"
 #property strict
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.19 (Parte 024):
+// ✅ Fix: DD ativado via hot reload sem meta de lucro nunca ativava
+//    m_drawdownProtectionActive — ShouldCloseByDrawdown() retornava false
+//    imediatamente, ignorando o limite configurado via painel
+// + TryActivateDrawdownNow(dailyProfit): ativa proteção imediatamente
+//    ao ligar DD via hot reload, usando lucro diário atual como pico
+// ✅ Fix: GetCurrentDrawdown() usava ACCOUNT_BALANCE (sem floating) —
+//    corrigido para lucro projetado (fechados + floating + swap),
+//    consistente com ShouldCloseByDrawdown()
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.18 (Parte 023):
 // ✅ Fix: ShouldCloseOnEndTime() usava > endMinutes — fechava a posição somente

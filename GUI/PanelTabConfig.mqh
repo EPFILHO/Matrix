@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.23 - Claude Parte 023 (Claude Code) |
+//|                     Versão 1.24 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -14,6 +14,11 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.24 (Parte 024):
+// ✅ Fix: ApplyConfig() agora chama TryActivateDrawdownNow() após
+//    SetDrawdownValue() — ativa proteção de DD imediatamente quando
+//    ligado via painel sem meta de lucro configurada
+//
 // v1.23 (2026-03-03):
 // + ApplyConfig: seta m_cfgStatusExpiry = GetTickCount() + 10000 tanto
 //   no sucesso quanto no erro — mensagem desaparece automaticamente
