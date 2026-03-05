@@ -2,10 +2,14 @@
 //|                                              PanelTabStatus.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: STATUS — Create + Update                      |
-//|                     Versão 1.11 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.12 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba STATUS.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
+//
+// v1.12 (Parte 024):
+// + SIGNAL MANAGER movido de ESTRAT. → STATUS (abaixo de SINAIS)
+// + m_s_hdrSM, m_s_lStrats/eStrats, m_s_lFilts/eFilts, m_s_lConflict/eConflict
 
 //+------------------------------------------------------------------+
 //| ABA 0: STATUS — Criar controles                                   |
@@ -47,6 +51,15 @@ bool CEPBotPanel::CreateTabStatus(void)
    if(!CreateLV(m_s_lSignal, m_s_eSignal, "s_lSg", "s_eSg", "Ultimo Sinal:", y)) return false;
    y += PANEL_GAP_Y;
    if(!CreateLV(m_s_lBlocked, m_s_eBlocked, "s_lBk", "s_eBk", "Bloqueado por:", y)) return false;
+
+   y += PANEL_GAP_Y + PANEL_GAP_SECTION;
+   if(!CreateHdr(m_s_hdrSM, "s_hSM", "SIGNAL MANAGER", y)) return false;
+   y += PANEL_GAP_Y + 2;
+   if(!CreateLV(m_s_lStrats, m_s_eStrats, "s_lSt", "s_eSt", "Estrategias:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLV(m_s_lFilts, m_s_eFilts, "s_lFl", "s_eFl", "Filtros:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLV(m_s_lConflict, m_s_eConflict, "s_lCf", "s_eCf", "Modo Conflito:", y)) return false;
 
    return true;
   }
@@ -150,11 +163,20 @@ void CEPBotPanel::UpdateStatus(void)
       string blk = m_signalManager.GetLastBlockedBy();
       SetEV(m_s_eSignal, (src != "") ? src : "Nenhum", (src != "") ? CLR_VALUE : CLR_NEUTRAL);
       SetEV(m_s_eBlocked, (blk != "") ? blk : "Nenhum", (blk != "") ? CLR_WARNING : CLR_NEUTRAL);
+
+// ── Signal Manager ──
+      SetEV(m_s_eStrats, IntegerToString(m_signalManager.GetStrategyCount()), CLR_VALUE);
+      SetEV(m_s_eFilts,  IntegerToString(m_signalManager.GetFilterCount()),   CLR_VALUE);
+      string cm = (m_signalManager.GetConflictMode() == CONFLICT_PRIORITY) ? "Prioridade" : "Cancelar";
+      SetEV(m_s_eConflict, cm, CLR_VALUE);
      }
    else
      {
       SetEV(m_s_eSignal, "N/A", CLR_NEUTRAL);
       SetEV(m_s_eBlocked, "N/A", CLR_NEUTRAL);
+      SetEV(m_s_eStrats, "N/A", CLR_NEUTRAL);
+      SetEV(m_s_eFilts,  "N/A", CLR_NEUTRAL);
+      SetEV(m_s_eConflict, "N/A", CLR_NEUTRAL);
      }
   }
 

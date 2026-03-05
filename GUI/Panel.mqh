@@ -2,15 +2,29 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.23 - Claude Parte 023 (Claude Code) |
+//|                     Versão 1.24 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.23"
+#property version   "1.24"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.24 (Parte 024):
+// + Sub-páginas em ESTRAT.: [MA CROSS] [RSI]
+// + Sub-páginas em FILTROS: [TREND] [RSI]
+// + SIGNAL MANAGER movido de ESTRAT. → STATUS (abaixo de SINAIS)
+// + ENUM_ESTRAT_PAGE, ENUM_FILTROS_PAGE, ESTRAT_CONTENT_Y, FILTROS_CONTENT_Y
+// + m_estratPage, m_filtrosPage: estado das sub-páginas ativas
+// + m_e_btnMACross, m_e_btnRSI: botões sub-página ESTRAT.
+// + m_f_btnTrend, m_f_btnRSI: botões sub-página FILTROS
+// + m_s_hdrSM, m_s_lStrats/eStrats, m_s_lFilts/eFilts, m_s_lConflict/eConflict: SM na aba STATUS
+// + ShowEstratPage/SetEstratPageVis/UpdateEstratBtnStyles/OnClickEstratMACross/RSI
+// + ShowFiltrosPage/SetFiltrosPageVis/UpdateFiltrosBtnStyles/OnClickFiltrosTrend/RSI
+// + ReapplyTabVisibility: fix encavalamento sub-páginas ESTRAT./FILTROS
+// ═══════════════════════════════════════════════════════════════
+//
 // v1.23 (2026-03-03):
 // + Layout: COL_VALUE_X 195→150, COL_VALUE_W 210→255 (campos de valor
 //   ficam 45px mais próximos dos labels em todas as abas; borda direita
@@ -199,8 +213,10 @@
 #define CONTENT_TOP          32
 #define TAB_BTN_H            22
 
-// Layout CONFIG sub-páginas
+// Layout sub-páginas (CONFIG, ESTRAT., FILTROS)
 #define CFG_CONTENT_Y        (CONTENT_TOP + TAB_BTN_H + 6)
+#define ESTRAT_CONTENT_Y     (CONTENT_TOP + TAB_BTN_H + 6)
+#define FILTROS_CONTENT_Y    (CONTENT_TOP + TAB_BTN_H + 6)
 #define CFG_APPLY_Y          520
 
 // ═══════════════════════════════════════════════════════════════
@@ -250,6 +266,12 @@ enum ENUM_CONFIG_PAGE
   };
 #define CFG_PAGE_COUNT 5
 
+enum ENUM_ESTRAT_PAGE  { ESTRAT_MA_CROSS=0, ESTRAT_RSI=1 };
+#define ESTRAT_PAGE_COUNT 2
+
+enum ENUM_FILTROS_PAGE { FILTROS_TREND=0, FILTROS_RSI=1 };
+#define FILTROS_PAGE_COUNT 2
+
 //+------------------------------------------------------------------+
 //| Classe principal do painel                                        |
 //+------------------------------------------------------------------+
@@ -270,6 +292,8 @@ private:
    // ── Estado ──
    ENUM_PANEL_TAB     m_activeTab;
    ENUM_CONFIG_PAGE   m_cfgPage;
+   ENUM_ESTRAT_PAGE   m_estratPage;
+   ENUM_FILTROS_PAGE  m_filtrosPage;
    int                m_magicNumber;
    string             m_symbol;
 
@@ -307,6 +331,12 @@ private:
    CLabel  m_s_lSignal;        CLabel  m_s_eSignal;
    CLabel  m_s_lBlocked;       CLabel  m_s_eBlocked;
 
+   // SIGNAL MANAGER (movido de ESTRAT. — Parte 024)
+   CLabel  m_s_hdrSM;
+   CLabel  m_s_lStrats;        CLabel  m_s_eStrats;
+   CLabel  m_s_lFilts;         CLabel  m_s_eFilts;
+   CLabel  m_s_lConflict;      CLabel  m_s_eConflict;
+
    // ════════════════════════════════════════
    // ABA 1: RESULTADOS
    // ════════════════════════════════════════
@@ -335,11 +365,11 @@ private:
    // ════════════════════════════════════════
    // ABA 2: ESTRATEGIAS
    // ════════════════════════════════════════
-   CLabel  m_e_hdr1;
-   CLabel  m_e_lStratCnt;      CLabel  m_e_eStratCnt;
-   CLabel  m_e_lFiltCnt;       CLabel  m_e_eFiltCnt;
-   CLabel  m_e_lConflict;      CLabel  m_e_eConflict;
+   // Sub-page buttons
+   CButton m_e_btnMACross;
+   CButton m_e_btnRSI;
 
+   // MA CROSS sub-page
    CLabel  m_e_hdr2;
    CLabel  m_e_lMAStatus;      CLabel  m_e_eMAStatus;
    CLabel  m_e_lMAFast;        CLabel  m_e_eMAFast;
@@ -349,6 +379,7 @@ private:
    CLabel  m_e_lMAEntry;       CLabel  m_e_eMAEntry;
    CLabel  m_e_lMAExit;        CLabel  m_e_eMAExit;
 
+   // RSI sub-page
    CLabel  m_e_hdr3;
    CLabel  m_e_lRSIStatus;     CLabel  m_e_eRSIStatus;
    CLabel  m_e_lRSICurr;       CLabel  m_e_eRSICurr;
@@ -358,11 +389,17 @@ private:
    // ════════════════════════════════════════
    // ABA 3: FILTROS
    // ════════════════════════════════════════
+   // Sub-page buttons
+   CButton m_f_btnTrend;
+   CButton m_f_btnRSI;
+
+   // TREND sub-page
    CLabel  m_f_hdr1;
    CLabel  m_f_lTrendSt;       CLabel  m_f_eTrendSt;
    CLabel  m_f_lTrendMA;       CLabel  m_f_eTrendMA;
    CLabel  m_f_lTrendDist;     CLabel  m_f_eTrendDist;
 
+   // RSI sub-page
    CLabel  m_f_hdr2;
    CLabel  m_f_lRFiltSt;       CLabel  m_f_eRFiltSt;
    CLabel  m_f_lRFiltRSI;      CLabel  m_f_eRFiltRSI;
@@ -564,6 +601,20 @@ private:
    void              ShowCfgPage(ENUM_CONFIG_PAGE page);
    void              SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis);
    void              UpdateCfgBtnStyles(void);
+
+   // ESTRAT. sub-pages
+   void              ShowEstratPage(ENUM_ESTRAT_PAGE page);
+   void              SetEstratPageVis(ENUM_ESTRAT_PAGE page, bool vis);
+   void              UpdateEstratBtnStyles(void);
+   void              OnClickEstratMACross(void);
+   void              OnClickEstratRSI(void);
+
+   // FILTROS sub-pages
+   void              ShowFiltrosPage(ENUM_FILTROS_PAGE page);
+   void              SetFiltrosPageVis(ENUM_FILTROS_PAGE page, bool vis);
+   void              UpdateFiltrosBtnStyles(void);
+   void              OnClickFiltrosTrend(void);
+   void              OnClickFiltrosRSI(void);
    void              ApplyConfig(void);
 
    // Estado visual RISCO (enable/disable campos por tipo SL/TP)
@@ -645,6 +696,7 @@ public:
 //+------------------------------------------------------------------+
 CEPBotPanel::CEPBotPanel(void)
    : m_activeTab(TAB_STATUS), m_cfgPage(CFG_RISCO),
+     m_estratPage(ESTRAT_MA_CROSS), m_filtrosPage(FILTROS_TREND),
      m_logger(NULL), m_blockers(NULL), m_riskManager(NULL),
      m_tradeManager(NULL), m_signalManager(NULL),
      m_maCross(NULL), m_rsiStrategy(NULL),
@@ -836,6 +888,14 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       if(sparam == m_btnTab3.Name()) { m_btnTab3.Pressed(false); OnClickTab3(); ChartRedraw(); return; }
       if(sparam == m_btnTab4.Name()) { m_btnTab4.Pressed(false); OnClickTab4(); ChartRedraw(); return; }
 
+      // ESTRAT.: sub-páginas
+      if(sparam == m_e_btnMACross.Name()) { m_e_btnMACross.Pressed(false); OnClickEstratMACross(); ChartRedraw(); return; }
+      if(sparam == m_e_btnRSI.Name())     { m_e_btnRSI.Pressed(false);     OnClickEstratRSI();     ChartRedraw(); return; }
+
+      // FILTROS: sub-páginas
+      if(sparam == m_f_btnTrend.Name())   { m_f_btnTrend.Pressed(false); OnClickFiltrosTrend(); ChartRedraw(); return; }
+      if(sparam == m_f_btnRSI.Name())     { m_f_btnRSI.Pressed(false);   OnClickFiltrosRSI();   ChartRedraw(); return; }
+
       // CONFIG: sub-páginas
       if(sparam == m_cfg_btnRisco.Name())  { m_cfg_btnRisco.Pressed(false);  OnClickCfgRisco();  ChartRedraw(); return; }
       if(sparam == m_cfg_btnRisco2.Name()) { m_cfg_btnRisco2.Pressed(false); OnClickCfgRisco2(); ChartRedraw(); return; }
@@ -930,13 +990,29 @@ void CEPBotPanel::ReapplyTabVisibility(void)
       if(t != (int)m_activeTab)
          SetTabVis((ENUM_PANEL_TAB)t, false);
      }
-// Fix encavalamento: se CONFIG ativa, re-esconder sub-páginas inativas
+// Fix encavalamento: re-esconder sub-páginas inativas da aba ativa
    if(m_activeTab == TAB_CONFIG)
      {
       for(int p = 0; p < CFG_PAGE_COUNT; p++)
         {
          if(p != (int)m_cfgPage)
             SetCfgPageVis((ENUM_CONFIG_PAGE)p, false);
+        }
+     }
+   if(m_activeTab == TAB_ESTRATEGIAS)
+     {
+      for(int p = 0; p < ESTRAT_PAGE_COUNT; p++)
+        {
+         if(p != (int)m_estratPage)
+            SetEstratPageVis((ENUM_ESTRAT_PAGE)p, false);
+        }
+     }
+   if(m_activeTab == TAB_FILTROS)
+     {
+      for(int p = 0; p < FILTROS_PAGE_COUNT; p++)
+        {
+         if(p != (int)m_filtrosPage)
+            SetFiltrosPageVis((ENUM_FILTROS_PAGE)p, false);
         }
      }
   }
@@ -986,7 +1062,9 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
                     m_s_lPosProfit.Show(); m_s_ePosProfit.Show(); m_s_lBE.Show(); m_s_eBE.Show();
                     m_s_lTrail.Show(); m_s_eTrail.Show(); m_s_lPartial.Show(); m_s_ePartial.Show();
                     m_s_hdr3.Show(); m_s_lSignal.Show(); m_s_eSignal.Show();
-                    m_s_lBlocked.Show(); m_s_eBlocked.Show(); }
+                    m_s_lBlocked.Show(); m_s_eBlocked.Show();
+                    m_s_hdrSM.Show(); m_s_lStrats.Show(); m_s_eStrats.Show();
+                    m_s_lFilts.Show(); m_s_eFilts.Show(); m_s_lConflict.Show(); m_s_eConflict.Show(); }
          else    { m_s_hdr1.Hide(); m_s_lTrading.Hide(); m_s_eTrading.Hide();
                     m_s_lBlocker.Hide(); m_s_eBlocker.Hide(); m_s_lSpread.Hide(); m_s_eSpread.Hide();
                     m_s_lTime.Hide(); m_s_eTime.Hide();
@@ -995,7 +1073,9 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
                     m_s_lPosProfit.Hide(); m_s_ePosProfit.Hide(); m_s_lBE.Hide(); m_s_eBE.Hide();
                     m_s_lTrail.Hide(); m_s_eTrail.Hide(); m_s_lPartial.Hide(); m_s_ePartial.Hide();
                     m_s_hdr3.Hide(); m_s_lSignal.Hide(); m_s_eSignal.Hide();
-                    m_s_lBlocked.Hide(); m_s_eBlocked.Hide(); }
+                    m_s_lBlocked.Hide(); m_s_eBlocked.Hide();
+                    m_s_hdrSM.Hide(); m_s_lStrats.Hide(); m_s_eStrats.Hide();
+                    m_s_lFilts.Hide(); m_s_eFilts.Hide(); m_s_lConflict.Hide(); m_s_eConflict.Hide(); }
          break;
         }
       case TAB_RESULTADOS:
@@ -1026,36 +1106,32 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
         }
       case TAB_ESTRATEGIAS:
         {
-         if(vis) { m_e_hdr1.Show(); m_e_lStratCnt.Show(); m_e_eStratCnt.Show();
-                    m_e_lFiltCnt.Show(); m_e_eFiltCnt.Show(); m_e_lConflict.Show(); m_e_eConflict.Show();
-                    m_e_hdr2.Show(); m_e_lMAStatus.Show(); m_e_eMAStatus.Show();
-                    m_e_lMAFast.Show(); m_e_eMAFast.Show(); m_e_lMASlow.Show(); m_e_eMASlow.Show();
-                    m_e_lMACross.Show(); m_e_eMACross.Show(); m_e_lMACandles.Show(); m_e_eMACandles.Show();
-                    m_e_lMAEntry.Show(); m_e_eMAEntry.Show(); m_e_lMAExit.Show(); m_e_eMAExit.Show();
-                    m_e_hdr3.Show(); m_e_lRSIStatus.Show(); m_e_eRSIStatus.Show();
-                    m_e_lRSICurr.Show(); m_e_eRSICurr.Show(); m_e_lRSIMode.Show(); m_e_eRSIMode.Show();
-                    m_e_lRSILevels.Show(); m_e_eRSILevels.Show(); }
-         else    { m_e_hdr1.Hide(); m_e_lStratCnt.Hide(); m_e_eStratCnt.Hide();
-                    m_e_lFiltCnt.Hide(); m_e_eFiltCnt.Hide(); m_e_lConflict.Hide(); m_e_eConflict.Hide();
-                    m_e_hdr2.Hide(); m_e_lMAStatus.Hide(); m_e_eMAStatus.Hide();
-                    m_e_lMAFast.Hide(); m_e_eMAFast.Hide(); m_e_lMASlow.Hide(); m_e_eMASlow.Hide();
-                    m_e_lMACross.Hide(); m_e_eMACross.Hide(); m_e_lMACandles.Hide(); m_e_eMACandles.Hide();
-                    m_e_lMAEntry.Hide(); m_e_eMAEntry.Hide(); m_e_lMAExit.Hide(); m_e_eMAExit.Hide();
-                    m_e_hdr3.Hide(); m_e_lRSIStatus.Hide(); m_e_eRSIStatus.Hide();
-                    m_e_lRSICurr.Hide(); m_e_eRSICurr.Hide(); m_e_lRSIMode.Hide(); m_e_eRSIMode.Hide();
-                    m_e_lRSILevels.Hide(); m_e_eRSILevels.Hide(); }
+         if(vis)
+           {
+            m_e_btnMACross.Show(); m_e_btnRSI.Show();
+            ShowEstratPage(m_estratPage);
+           }
+         else
+           {
+            m_e_btnMACross.Hide(); m_e_btnRSI.Hide();
+            SetEstratPageVis(ESTRAT_MA_CROSS, false);
+            SetEstratPageVis(ESTRAT_RSI, false);
+           }
          break;
         }
       case TAB_FILTROS:
         {
-         if(vis) { m_f_hdr1.Show(); m_f_lTrendSt.Show(); m_f_eTrendSt.Show();
-                    m_f_lTrendMA.Show(); m_f_eTrendMA.Show(); m_f_lTrendDist.Show(); m_f_eTrendDist.Show();
-                    m_f_hdr2.Show(); m_f_lRFiltSt.Show(); m_f_eRFiltSt.Show();
-                    m_f_lRFiltRSI.Show(); m_f_eRFiltRSI.Show(); m_f_lRFiltMode.Show(); m_f_eRFiltMode.Show(); }
-         else    { m_f_hdr1.Hide(); m_f_lTrendSt.Hide(); m_f_eTrendSt.Hide();
-                    m_f_lTrendMA.Hide(); m_f_eTrendMA.Hide(); m_f_lTrendDist.Hide(); m_f_eTrendDist.Hide();
-                    m_f_hdr2.Hide(); m_f_lRFiltSt.Hide(); m_f_eRFiltSt.Hide();
-                    m_f_lRFiltRSI.Hide(); m_f_eRFiltRSI.Hide(); m_f_lRFiltMode.Hide(); m_f_eRFiltMode.Hide(); }
+         if(vis)
+           {
+            m_f_btnTrend.Show(); m_f_btnRSI.Show();
+            ShowFiltrosPage(m_filtrosPage);
+           }
+         else
+           {
+            m_f_btnTrend.Hide(); m_f_btnRSI.Hide();
+            SetFiltrosPageVis(FILTROS_TREND, false);
+            SetFiltrosPageVis(FILTROS_RSI, false);
+           }
          break;
         }
       case TAB_CONFIG:

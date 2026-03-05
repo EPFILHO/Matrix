@@ -2,13 +2,24 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.40 - Claude Parte 023 (Claude Code) |
+//|                     Versão 1.41 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.40"
+#property version   "1.41"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.41:                                                 |
+//| PANEL v1.24 + BLOCKERS v3.19 — SUB-PÁGINAS ESTRAT./FILTROS (Parte 024): |
+//|    - Sub-páginas em ESTRAT.: [MA CROSS] [RSI]                    |
+//|    - Sub-páginas em FILTROS: [TREND] [RSI]                       |
+//|    - SIGNAL MANAGER movido de ESTRAT. → STATUS (abaixo de SINAIS)|
+//|    - Fix: DD não fechava posição ao ativar via hot reload         |
+//|      (TryActivateDrawdownNow chama ActivateDrawdownProtection     |
+//|       imediatamente com lucro diário atual como pico inicial)     |
+//|    - Fix: GetCurrentDrawdown() inclui floating P/L (consistente  |
+//|      com ShouldCloseByDrawdown)                                   |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.40:                                                 |
 //| PANEL v1.17 + BLOCKERS v3.09 — CONFIG BLOQUEIOS EXPANDIDO (Parte 023): |
