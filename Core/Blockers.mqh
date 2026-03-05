@@ -714,14 +714,14 @@ bool CBlockers::Init(
      {
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "╔══════════════════════════════════════════════════════╗");
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║              VERSÃO COMPLETA v3.18                   ║");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║              VERSÃO COMPLETA v3.21                   ║");
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "╚══════════════════════════════════════════════════════╝");
      }
    else
      {
       Print("╔══════════════════════════════════════════════════════╗");
       Print("║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
-      Print("║              VERSÃO COMPLETA v3.18                   ║");
+      Print("║              VERSÃO COMPLETA v3.21                   ║");
       Print("╚══════════════════════════════════════════════════════╝");
      }
 
