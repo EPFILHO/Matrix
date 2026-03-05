@@ -1367,18 +1367,6 @@ void CBlockers::TryActivateDrawdownNow(double dailyProfit)
    if(!m_enableDrawdown || m_drawdownProtectionActive)
       return;
 
-// ✅ Fix v3.20: se m_initialBalance == 0 significa que o DD estava
-// desligado no Init e nunca foi setado. CheckDrawdownLimit() usaria
-// ACCOUNT_BALANCE - 0 = saldo total, corrompendo m_dailyPeakProfit.
-   if(m_initialBalance <= 0.0)
-     {
-      m_initialBalance = AccountInfoDouble(ACCOUNT_BALANCE);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-            "🔧 m_initialBalance setado via hot reload: $" +
-            DoubleToString(m_initialBalance, 2));
-     }
-
    ActivateDrawdownProtection(dailyProfit, dailyProfit);
 
    if(m_logger != NULL)
@@ -2797,11 +2785,29 @@ bool CBlockers::CheckDrawdownLimit()
    if(m_drawdownLimitReached)
       return false;
 
-   double currentProfit = AccountInfoDouble(ACCOUNT_BALANCE) - m_initialBalance;
+// ✅ v3.20: usa lucro do dia (fechados) + floating, consistente com
+// ShouldCloseByDrawdown() — não usa mais ACCOUNT_BALANCE - m_initialBalance
+// que causava corrupção do pico quando DD era ligado via hot reload
+// com EA iniciado sem DD (m_initialBalance == 0)
+   double dailyProfit = (m_logger != NULL) ? m_logger.GetDailyProfit() : 0.0;
 
-   if(currentProfit > m_dailyPeakProfit)
-      m_dailyPeakProfit = currentProfit;
+   double floating = 0.0, swap = 0.0;
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+     {
+      if(PositionGetSymbol(i) == _Symbol &&
+         PositionGetInteger(POSITION_MAGIC) == m_magicNumber)
+        {
+         floating += PositionGetDouble(POSITION_PROFIT);
+         swap     += PositionGetDouble(POSITION_SWAP);
+        }
+     }
+   double projectedProfit = dailyProfit + floating + swap;
 
+   double peakCandidate = (m_drawdownPeakMode == DD_PEAK_REALIZED_ONLY) ? dailyProfit : projectedProfit;
+   if(peakCandidate > m_dailyPeakProfit)
+      m_dailyPeakProfit = peakCandidate;
+
+   double currentProfit = projectedProfit;
    double currentDD = m_dailyPeakProfit - currentProfit;
    double ddLimit = 0;
 
