@@ -395,6 +395,7 @@ private:
    bool              m_streakPauseActive;
    datetime          m_streakPauseUntil;
    string            m_streakPauseReason;
+   bool              m_streakStopDayActive;   // flag para STREAK_STOP_DAY já ativado
 
    double            m_dailyPeakProfit;
    bool              m_drawdownProtectionActive;
@@ -667,6 +668,7 @@ CBlockers::CBlockers()
    m_streakPauseActive = false;
    m_streakPauseUntil = 0;
    m_streakPauseReason = "";
+   m_streakStopDayActive = false;
 
    m_dailyPeakProfit = 0.0;
    m_drawdownProtectionActive = false;
@@ -1125,6 +1127,7 @@ bool CBlockers::Init(
    m_streakPauseActive = false;
    m_streakPauseUntil = 0;
    m_streakPauseReason = "";
+   m_streakStopDayActive = false;
    m_dailyPeakProfit = 0.0;
    m_drawdownProtectionActive = false;
    m_drawdownLimitReached = false;
@@ -1288,11 +1291,12 @@ void CBlockers::SetStreakLimits(int maxLoss, ENUM_STREAK_ACTION lossAction, int 
    // Se há pausa ativa, verificar se ainda é válida com os novos limites.
    // Exemplo: pausa ativada com limit=1 (streak=2), usuário sobe para limit=3
    // → a pausa não seria mais justificada e deve ser cancelada.
+   bool streakStillBlocked = (m_maxLossStreak > 0 && m_currentLossStreak >= m_maxLossStreak) ||
+                             (m_maxWinStreak  > 0 && m_currentWinStreak  >= m_maxWinStreak);
+
    if(m_streakPauseActive)
      {
-      bool stillBlocked = (m_maxLossStreak > 0 && m_currentLossStreak >= m_maxLossStreak) ||
-                          (m_maxWinStreak  > 0 && m_currentWinStreak  >= m_maxWinStreak);
-      if(!stillBlocked)
+      if(!streakStillBlocked)
         {
          m_streakPauseActive  = false;
          m_streakPauseUntil   = 0;
@@ -1303,6 +1307,16 @@ void CBlockers::SetStreakLimits(int maxLoss, ENUM_STREAK_ACTION lossAction, int 
          else
             Print("▶️ Pausa de streak cancelada — sequência atual não viola o novo limite");
         }
+     }
+
+   if(m_streakStopDayActive && !streakStillBlocked)
+     {
+      m_streakStopDayActive = false;
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            "▶️ Stop-dia de streak cancelado — sequência atual não viola o novo limite");
+      else
+         Print("▶️ Stop-dia de streak cancelado — sequência atual não viola o novo limite");
      }
 
    // Só logar se houve mudança real
@@ -2451,6 +2465,7 @@ void CBlockers::ResetDaily()
    m_streakPauseActive = false;
    m_streakPauseUntil = 0;
    m_streakPauseReason = "";
+   m_streakStopDayActive = false;
    m_dailyPeakProfit = 0.0;
    m_drawdownProtectionActive = false;
    m_drawdownLimitReached = false;
@@ -2638,6 +2653,12 @@ bool CBlockers::CheckStreakLimit()
       return true;
 
 // ═══════════════════════════════════════════════════════════════
+// VERIFICAR SE STOP-DIA JÁ FOI ATIVADO (evita re-log a cada tick)
+// ═══════════════════════════════════════════════════════════════
+   if(m_streakStopDayActive)
+      return false;
+
+// ═══════════════════════════════════════════════════════════════
 // VERIFICAR SE PAUSA ESTÁ ATIVA
 // ═══════════════════════════════════════════════════════════════
    if(m_streakPauseActive)
@@ -2723,6 +2744,7 @@ bool CBlockers::CheckStreakLimit()
         }
       else
         {
+         m_streakStopDayActive = true;
          if(m_logger != NULL)
             m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK", "   🛑 EA PAUSADO até o FIM DO DIA");
          else
@@ -2774,6 +2796,7 @@ bool CBlockers::CheckStreakLimit()
         }
       else
         {
+         m_streakStopDayActive = true;
          if(m_logger != NULL)
            {
             m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK", "   🎯 META DE SEQUÊNCIA ATINGIDA!");
