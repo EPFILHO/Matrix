@@ -2,12 +2,20 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.19 - Claude Parte 024 (Claude Code) |
+//|                     Versão 3.20 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.19"
+#property version   "3.20"
 #property strict
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.20 (Parte 025):
+// ✅ Fix: m_dailyPeakProfit corrompido após hot reload com DD desligado
+//    no Init — m_initialBalance ficava 0, então CheckDrawdownLimit()
+//    calculava currentProfit = ACCOUNT_BALANCE - 0 = saldo total da
+//    conta (~R$1.220.586), sobrescrevendo o pico correto ($3.055)
+// + TryActivateDrawdownNow() agora seta m_initialBalance = ACCOUNT_BALANCE
+//    quando m_initialBalance == 0 (DD estava desligado no Init)
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.19 (Parte 024):
 // ✅ Fix: DD ativado via hot reload sem meta de lucro nunca ativava
@@ -1358,6 +1366,18 @@ void CBlockers::TryActivateDrawdownNow(double dailyProfit)
   {
    if(!m_enableDrawdown || m_drawdownProtectionActive)
       return;
+
+// ✅ Fix v3.20: se m_initialBalance == 0 significa que o DD estava
+// desligado no Init e nunca foi setado. CheckDrawdownLimit() usaria
+// ACCOUNT_BALANCE - 0 = saldo total, corrompendo m_dailyPeakProfit.
+   if(m_initialBalance <= 0.0)
+     {
+      m_initialBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            "🔧 m_initialBalance setado via hot reload: $" +
+            DoubleToString(m_initialBalance, 2));
+     }
 
    ActivateDrawdownProtection(dailyProfit, dailyProfit);
 
