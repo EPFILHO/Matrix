@@ -2,20 +2,22 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.20 - Claude Parte 025 (Claude Code) |
+//|                     Versão 3.20 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "3.20"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
-// CHANGELOG v3.20 (Parte 025):
-// ✅ Fix: m_dailyPeakProfit corrompido após hot reload com DD desligado
-//    no Init — m_initialBalance ficava 0, então CheckDrawdownLimit()
-//    calculava currentProfit = ACCOUNT_BALANCE - 0 = saldo total da
-//    conta (~R$1.220.586), sobrescrevendo o pico correto ($3.055)
-// + TryActivateDrawdownNow() agora seta m_initialBalance = ACCOUNT_BALANCE
-//    quando m_initialBalance == 0 (DD estava desligado no Init)
+// CHANGELOG v3.20 (Parte 024):
+// ✅ Fix: CheckDrawdownLimit() usava ACCOUNT_BALANCE - m_initialBalance
+//    para calcular lucro atual — quando EA iniciava com DD desligado,
+//    m_initialBalance ficava 0, corrompendo m_dailyPeakProfit com o
+//    saldo total da conta (~R$1.220.586) em vez do lucro do dia ($3.055)
+// + CheckDrawdownLimit() agora usa m_logger.GetDailyProfit() + floating
+//    (POSITION_PROFIT + POSITION_SWAP) — mesma lógica de
+//    ShouldCloseByDrawdown() e GetCurrentDrawdown(), sem dependência
+//    de m_initialBalance ou ACCOUNT_BALANCE
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.19 (Parte 024):
 // ✅ Fix: DD ativado via hot reload sem meta de lucro nunca ativava
