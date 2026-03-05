@@ -2,15 +2,25 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.25 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.26 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.25"
+#property version   "1.26"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.26 (Parte 025):
+// + CONFIG aba: nova sub-página CFG_ESTRAT (MA Cross hot/cold reload)
+//   CFG_PAGE_COUNT 5→6, CFG_ESTRAT=5
+// + m_cfg_btnEstrat: botão da sub-página
+// + m_ce_*: controles Fast/Slow Period, Method(4), TF(cycle), Entry(2), Exit(3)
+// + m_cur_maFastMethod/SlowMethod/FastTF/SlowTF/maEntry/maExit: state vars
+// + OnClickCfgEstrat, OnClickMAFastMethod/SlowMethod, OnClickMAFastTF/SlowTF
+// + OnClickMAEntry, OnClickMAExit, CycleTF, TFName, MAMethodToIndex, IndexToMAMethod
+// + ChartEvent: handlers para todos os novos botões
+//
 // v1.25 (Parte 024):
 // + Aba RESULTADOS/PROTECAO: novos CLabel members para DD expandido
 //   m_r_lDDLim/eDDLim (DD Limite), m_r_lDDMode/eDDMode (DD Modo Pico),
@@ -267,9 +277,10 @@ enum ENUM_CONFIG_PAGE
    CFG_RISCO2 = 1,
    CFG_BLOQUEIOS = 2,
    CFG_OUTROS = 3,
-   CFG_BLOQ2 = 4
+   CFG_BLOQ2 = 4,
+   CFG_ESTRAT = 5
   };
-#define CFG_PAGE_COUNT 5
+#define CFG_PAGE_COUNT 6
 
 enum ENUM_ESTRAT_PAGE  { ESTRAT_MA_CROSS=0, ESTRAT_RSI=1 };
 #define ESTRAT_PAGE_COUNT 2
@@ -422,6 +433,7 @@ private:
    CButton  m_cfg_btnBloq;
    CButton  m_cfg_btnOutros;
    CButton  m_cfg_btnBloq2;
+   CButton  m_cfg_btnEstrat;
 
    // --- Risco sub-page (SL/TP/Spread/PartialTP) ---
    CLabel   m_cr_hdr1;
@@ -523,6 +535,18 @@ private:
    CLabel   m_co_lDbg;    CButton m_co_bDbg;
    CLabel   m_co_lDbgCd;  CEdit   m_co_iDbgCd;
 
+   // --- Estrat sub-page (MA Cross hot/cold reload) ---
+   CLabel   m_ce_hdr1;
+   CLabel   m_ce_lFastP;   CEdit    m_ce_iFastP;
+   CLabel   m_ce_lFastM;   CButton  m_ce_bFastM[4];   // Radio: SMA|EMA|SMMA|LWMA
+   CLabel   m_ce_lFastTF;  CButton  m_ce_bFastTF;     // Cycle
+   CLabel   m_ce_lSlowP;   CEdit    m_ce_iSlowP;
+   CLabel   m_ce_lSlowM;   CButton  m_ce_bSlowM[4];   // Radio: SMA|EMA|SMMA|LWMA
+   CLabel   m_ce_lSlowTF;  CButton  m_ce_bSlowTF;     // Cycle
+   CLabel   m_ce_hdr2;
+   CLabel   m_ce_lEntry;   CButton  m_ce_bEntry[2];   // Radio: NEXT CANDLE|E2C
+   CLabel   m_ce_lExit;    CButton  m_ce_bExit[3];    // Radio: FCO|VM|TP-SL
+
    // APLICAR + status
    CButton  m_cfg_btnApply;
    CLabel   m_cfg_status;
@@ -566,6 +590,13 @@ private:
    bool                      m_cur_newsOn1;
    bool                      m_cur_newsOn2;
    bool                      m_cur_newsOn3;
+   // MA Cross ESTRAT (v1.26)
+   ENUM_MA_METHOD            m_cur_maFastMethod;
+   ENUM_MA_METHOD            m_cur_maSlowMethod;
+   ENUM_TIMEFRAMES           m_cur_maFastTF;
+   ENUM_TIMEFRAMES           m_cur_maSlowTF;
+   ENUM_ENTRY_MODE           m_cur_maEntry;
+   ENUM_EXIT_MODE            m_cur_maExit;
 
    // ── Helpers privados ──
    bool              CreateLV(CLabel &lbl, CLabel &val, string ln, string en, string lt, int y);
@@ -672,6 +703,17 @@ private:
    void              OnClickNewsOn2(void);
    void              OnClickNewsOn3(void);
    void              RefreshNewsState(int w);
+   void              OnClickCfgEstrat(void);
+   void              OnClickMAFastMethod(int i);
+   void              OnClickMASlowMethod(int i);
+   void              OnClickMAFastTF(void);
+   void              OnClickMASlowTF(void);
+   void              OnClickMAEntry(int i);
+   void              OnClickMAExit(int i);
+   static ENUM_TIMEFRAMES CycleTF(ENUM_TIMEFRAMES tf);
+   static string     TFName(ENUM_TIMEFRAMES tf);
+   static int        MAMethodToIndex(ENUM_MA_METHOD m);
+   static ENUM_MA_METHOD IndexToMAMethod(int i);
 
 protected:
    virtual bool      CreateButtonClose(void) { return true; }
@@ -964,6 +1006,26 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       // CONFIG: OUTROS toggles
       if(sparam == m_co_bConfl.Name()) { OnClickConflict(); ChartRedraw(); return; }
       if(sparam == m_co_bDbg.Name())   { OnClickDebug();    ChartRedraw(); return; }
+
+      // CONFIG: ESTRAT sub-página
+      if(sparam == m_cfg_btnEstrat.Name()) { m_cfg_btnEstrat.Pressed(false); OnClickCfgEstrat(); ChartRedraw(); return; }
+
+      // CONFIG: ESTRAT — MA Cross radio groups e cycles
+      for(int i = 0; i < 4; i++)
+        {
+         if(sparam == m_ce_bFastM[i].Name()) { OnClickMAFastMethod(i); ChartRedraw(); return; }
+         if(sparam == m_ce_bSlowM[i].Name()) { OnClickMASlowMethod(i); ChartRedraw(); return; }
+        }
+      for(int i = 0; i < 2; i++)
+        {
+         if(sparam == m_ce_bEntry[i].Name()) { OnClickMAEntry(i); ChartRedraw(); return; }
+        }
+      for(int i = 0; i < 3; i++)
+        {
+         if(sparam == m_ce_bExit[i].Name()) { OnClickMAExit(i); ChartRedraw(); return; }
+        }
+      if(sparam == m_ce_bFastTF.Name()) { OnClickMAFastTF(); ChartRedraw(); return; }
+      if(sparam == m_ce_bSlowTF.Name()) { OnClickMASlowTF(); ChartRedraw(); return; }
 
       // Não é nosso → cai pro CAppDialog abaixo
      }

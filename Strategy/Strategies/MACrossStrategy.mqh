@@ -154,6 +154,10 @@ public:
    bool              SetMAPeriods(int fastPeriod, int slowPeriod);
    bool              SetMAMethods(ENUM_MA_METHOD fastMethod, ENUM_MA_METHOD slowMethod);
    bool              SetMATimeframes(ENUM_TIMEFRAMES fastTF, ENUM_TIMEFRAMES slowTF);
+   // Setter combinado — reinicia indicadores apenas 1x
+   bool              SetMAParams(int fastPeriod, int slowPeriod,
+                                 ENUM_MA_METHOD fastMethod, ENUM_MA_METHOD slowMethod,
+                                 ENUM_TIMEFRAMES fastTF, ENUM_TIMEFRAMES slowTF);
 
    // ═══════════════════════════════════════════════════════════
    // GETTERS - Working values (valores atuais em uso)
@@ -754,6 +758,56 @@ bool CMACrossStrategy::SetMATimeframes(ENUM_TIMEFRAMES fastTF, ENUM_TIMEFRAMES s
    if(success)
      {
       string msg = "🔄 [MA Cross] Timeframes alterados";
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
+      else
+         Print(msg);
+     }
+
+   return success;
+  }
+
+//+------------------------------------------------------------------+
+//| COLD RELOAD combinado — atualiza tudo e reinicia indicadores 1x |
+//+------------------------------------------------------------------+
+bool CMACrossStrategy::SetMAParams(int fastPeriod, int slowPeriod,
+                                   ENUM_MA_METHOD fastMethod, ENUM_MA_METHOD slowMethod,
+                                   ENUM_TIMEFRAMES fastTF, ENUM_TIMEFRAMES slowTF)
+  {
+   if(fastPeriod <= 0 || slowPeriod <= 0 || fastPeriod >= slowPeriod)
+     {
+      string msg = "[MA Cross] SetMAParams: períodos inválidos Fast=" + IntegerToString(fastPeriod) +
+                   " Slow=" + IntegerToString(slowPeriod);
+      if(m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD", msg);
+      else
+         Print("❌ ", msg);
+      return false;
+     }
+
+   int oldFastP = m_fastPeriod, oldSlowP = m_slowPeriod;
+   ENUM_MA_METHOD oldFastM = m_fastMethod, oldSlowM = m_slowMethod;
+   ENUM_TIMEFRAMES oldFastTF = m_fastTimeframe, oldSlowTF = m_slowTimeframe;
+
+   m_fastPeriod    = fastPeriod;
+   m_slowPeriod    = slowPeriod;
+   m_fastMethod    = fastMethod;
+   m_slowMethod    = slowMethod;
+   m_fastTimeframe = fastTF;
+   m_slowTimeframe = slowTF;
+
+   Deinitialize();
+   bool success = Initialize();
+
+   if(success)
+     {
+      string msg = "🔄 [MA Cross] Params alterados:"
+                   " Fast " + IntegerToString(oldFastP) + "→" + IntegerToString(fastPeriod) +
+                   "/" + MAMethodToString(oldFastM) + "→" + MAMethodToString(fastMethod) +
+                   "/" + EnumToString(oldFastTF) + "→" + EnumToString(fastTF) +
+                   " | Slow " + IntegerToString(oldSlowP) + "→" + IntegerToString(slowPeriod) +
+                   "/" + MAMethodToString(oldSlowM) + "→" + MAMethodToString(slowMethod) +
+                   "/" + EnumToString(oldSlowTF) + "→" + EnumToString(slowTF);
       if(m_logger != NULL)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
       else

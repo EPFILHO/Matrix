@@ -2,18 +2,28 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.24 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.25 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
 //
-// Sub-páginas: RISCO | RISCO 2 | BLOQUEIOS | OUTROS | BLOQUEIO 2
+// Sub-páginas: RISCO | RISCO 2 | BLOQUEIOS | OUTROS | BLOQUEIO 2 | ESTRAT
 // Campos CEdit editáveis + botões de toggle/cycle
 // Botão APLICAR chama setters hot-reload nos módulos
 //
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.25 (Parte 025):
+// + Nova sub-página CFG_ESTRAT: MA Cross hot/cold reload via APLICAR
+// + Fast/Slow Period (CEdit), Fast/Slow Method (radio 4), Fast/Slow TF (cycle)
+// + Entry Mode (radio 2: NEXT CANDLE|2ND CANDLE), Exit Mode (radio 3: FCO|VM|TP-SL)
+// + Helpers: CycleTF, TFName, MAMethodToIndex, IndexToMAMethod
+// + Handlers: OnClickCfgEstrat, OnClickMAFastMethod/SlowMethod, OnClickMAFastTF/SlowTF
+//   OnClickMAEntry, OnClickMAExit
+// + PopulateConfig: inicializa campos ESTRAT do m_maCross ou inp_*
+// + ApplyConfig: chama SetMAParams (cold reload único) + SetEntryMode/ExitMode (hot)
+//
 // v1.24 (Parte 024):
 // ✅ Fix: ApplyConfig() agora chama TryActivateDrawdownNow() após
 //    SetDrawdownValue() — ativa proteção de DD imediatamente quando
@@ -329,6 +339,14 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!Add(m_cfg_btnOutros))
       return false;
 
+   if(!m_cfg_btnEstrat.Create(m_chart_id, PFX + "cfg_bE", m_subwin,
+                               5 + (sw + 2) * 5, sy, 5 + sw * 6 + 10, sy + TAB_BTN_H))
+      return false;
+   m_cfg_btnEstrat.Text("ESTRAT");
+   m_cfg_btnEstrat.FontSize(7);
+   if(!Add(m_cfg_btnEstrat))
+      return false;
+
 // ════════════════════════════════════════════════════════════
 // SUB-PÁGINA: RISCO (simplificada — SL/TP/Spread)
 // ════════════════════════════════════════════════════════════
@@ -621,6 +639,56 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLI(m_cb2_lN3EM, m_cb2_iN3EM, "cb2_lN3EM","cb2_iN3EM","Fim M:", y)) return false;
 
 // ════════════════════════════════════════════════════════════
+// SUB-PÁGINA: ESTRAT — MA Cross hot/cold reload
+// ════════════════════════════════════════════════════════════
+  {
+   int y = CFG_CONTENT_Y;
+
+   if(!CreateHdr(m_ce_hdr1, "ce_h1", "MA CROSS - MEDIAS MOVEIS", y)) return false;
+   y += PANEL_GAP_Y + 2;
+
+   if(!CreateLI(m_ce_lFastP, m_ce_iFastP, "ce_lFP", "ce_iFP", "Fast Period:", y)) return false;
+   y += PANEL_GAP_Y;
+   {
+    string fmTexts[] = {"SMA", "EMA", "SMMA", "LWMA"};
+    if(!CreateRadioGroup(m_ce_lFastM, m_ce_bFastM, "ce_lFM", "ce_bFM", "Fast Method:", fmTexts, 4, y))
+       return false;
+   }
+   y += PANEL_GAP_Y + 2;
+
+   if(!CreateLB(m_ce_lFastTF, m_ce_bFastTF, "ce_lFT", "ce_bFT", "Fast TF:", y)) return false;
+   y += PANEL_GAP_Y + 2;
+
+   y += PANEL_GAP_SECTION;
+   if(!CreateLI(m_ce_lSlowP, m_ce_iSlowP, "ce_lSP", "ce_iSP", "Slow Period:", y)) return false;
+   y += PANEL_GAP_Y;
+   {
+    string smTexts[] = {"SMA", "EMA", "SMMA", "LWMA"};
+    if(!CreateRadioGroup(m_ce_lSlowM, m_ce_bSlowM, "ce_lSM", "ce_bSM", "Slow Method:", smTexts, 4, y))
+       return false;
+   }
+   y += PANEL_GAP_Y + 2;
+
+   if(!CreateLB(m_ce_lSlowTF, m_ce_bSlowTF, "ce_lST2", "ce_bST2", "Slow TF:", y)) return false;
+   y += PANEL_GAP_Y + 2;
+
+   y += PANEL_GAP_SECTION;
+   if(!CreateHdr(m_ce_hdr2, "ce_h2", "SINAIS", y)) return false;
+   y += PANEL_GAP_Y + 2;
+   {
+    string entTexts[] = {"NEXT CANDLE", "2ND CANDLE"};
+    if(!CreateRadioGroup(m_ce_lEntry, m_ce_bEntry, "ce_lEN", "ce_bEN", "Entrada:", entTexts, 2, y))
+       return false;
+   }
+   y += PANEL_GAP_Y + 2;
+   {
+    string extTexts[] = {"FCO", "VM", "TP-SL"};
+    if(!CreateRadioGroup(m_ce_lExit, m_ce_bExit, "ce_lEX", "ce_bEX", "Saida:", extTexts, 3, y))
+       return false;
+   }
+  }
+
+// ════════════════════════════════════════════════════════════
 // APLICAR + STATUS (fixos, visíveis em todas sub-páginas)
 // ════════════════════════════════════════════════════════════
    if(!m_cfg_btnApply.Create(m_chart_id, PFX + "cfg_apply", m_subwin,
@@ -867,6 +935,42 @@ void CEPBotPanel::PopulateConfig(void)
    m_co_bDbg.Color(clrWhite);
 
    m_co_iDbgCd.Text(IntegerToString(inp_DebugCooldownSec));
+
+// ── MA Cross (ESTRAT) ──
+   {
+    ENUM_MA_METHOD  fm = (m_maCross != NULL) ? m_maCross.GetFastMethod()    : inp_FastMethod;
+    ENUM_MA_METHOD  sm = (m_maCross != NULL) ? m_maCross.GetSlowMethod()    : inp_SlowMethod;
+    ENUM_TIMEFRAMES ft = (m_maCross != NULL) ? m_maCross.GetFastTimeframe() : inp_FastTF;
+    ENUM_TIMEFRAMES st = (m_maCross != NULL) ? m_maCross.GetSlowTimeframe() : inp_SlowTF;
+    int             fp = (m_maCross != NULL) ? m_maCross.GetFastPeriod()    : inp_FastPeriod;
+    int             sp = (m_maCross != NULL) ? m_maCross.GetSlowPeriod()    : inp_SlowPeriod;
+    ENUM_ENTRY_MODE en = (m_maCross != NULL) ? m_maCross.GetEntryMode()     : inp_EntryMode;
+    ENUM_EXIT_MODE  ex = (m_maCross != NULL) ? m_maCross.GetExitMode()      : inp_ExitMode;
+
+    m_cur_maFastMethod = fm;
+    m_cur_maSlowMethod = sm;
+    m_cur_maFastTF     = ft;
+    m_cur_maSlowTF     = st;
+    m_cur_maEntry      = en;
+    m_cur_maExit       = ex;
+
+    m_ce_iFastP.Text(IntegerToString(fp));
+    m_ce_iSlowP.Text(IntegerToString(sp));
+
+    SetRadioSelection(m_ce_bFastM, 4, MAMethodToIndex(fm));
+    SetRadioSelection(m_ce_bSlowM, 4, MAMethodToIndex(sm));
+
+    m_ce_bFastTF.Text(TFName(ft));
+    m_ce_bFastTF.ColorBackground(C'50,80,140');
+    m_ce_bFastTF.Color(clrWhite);
+
+    m_ce_bSlowTF.Text(TFName(st));
+    m_ce_bSlowTF.ColorBackground(C'50,80,140');
+    m_ce_bSlowTF.Color(clrWhite);
+
+    SetRadioSelection(m_ce_bEntry, 2, (en == ENTRY_NEXT_CANDLE) ? 0 : 1);
+    SetRadioSelection(m_ce_bExit,  3, (ex == EXIT_FCO) ? 0 : (ex == EXIT_VM) ? 1 : 2);
+   }
 
 // ── Sub-página inicial ──
    ShowCfgPage(CFG_RISCO);
@@ -1214,6 +1318,36 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
            }
          break;
         }
+      case CFG_ESTRAT:
+        {
+         if(vis)
+           {
+            m_ce_hdr1.Show();
+            m_ce_lFastP.Show(); m_ce_iFastP.Show();
+            m_ce_lFastM.Show(); for(int i=0;i<4;i++) m_ce_bFastM[i].Show();
+            m_ce_lFastTF.Show(); m_ce_bFastTF.Show();
+            m_ce_lSlowP.Show(); m_ce_iSlowP.Show();
+            m_ce_lSlowM.Show(); for(int i=0;i<4;i++) m_ce_bSlowM[i].Show();
+            m_ce_lSlowTF.Show(); m_ce_bSlowTF.Show();
+            m_ce_hdr2.Show();
+            m_ce_lEntry.Show(); for(int i=0;i<2;i++) m_ce_bEntry[i].Show();
+            m_ce_lExit.Show(); for(int i=0;i<3;i++) m_ce_bExit[i].Show();
+           }
+         else
+           {
+            m_ce_hdr1.Hide();
+            m_ce_lFastP.Hide(); m_ce_iFastP.Hide();
+            m_ce_lFastM.Hide(); for(int i=0;i<4;i++) m_ce_bFastM[i].Hide();
+            m_ce_lFastTF.Hide(); m_ce_bFastTF.Hide();
+            m_ce_lSlowP.Hide(); m_ce_iSlowP.Hide();
+            m_ce_lSlowM.Hide(); for(int i=0;i<4;i++) m_ce_bSlowM[i].Hide();
+            m_ce_lSlowTF.Hide(); m_ce_bSlowTF.Hide();
+            m_ce_hdr2.Hide();
+            m_ce_lEntry.Hide(); for(int i=0;i<2;i++) m_ce_bEntry[i].Hide();
+            m_ce_lExit.Hide(); for(int i=0;i<3;i++) m_ce_bExit[i].Hide();
+           }
+         break;
+        }
      }
   }
 
@@ -1224,19 +1358,21 @@ void CEPBotPanel::UpdateCfgBtnStyles(void)
   {
    m_cfg_btnRisco.Pressed(false);  m_cfg_btnRisco2.Pressed(false);
    m_cfg_btnBloq.Pressed(false);   m_cfg_btnOutros.Pressed(false);
-   m_cfg_btnBloq2.Pressed(false);
+   m_cfg_btnBloq2.Pressed(false);  m_cfg_btnEstrat.Pressed(false);
 
    m_cfg_btnRisco.ColorBackground((m_cfgPage == CFG_RISCO)      ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
    m_cfg_btnRisco2.ColorBackground((m_cfgPage == CFG_RISCO2)    ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
    m_cfg_btnBloq.ColorBackground((m_cfgPage == CFG_BLOQUEIOS)   ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
    m_cfg_btnOutros.ColorBackground((m_cfgPage == CFG_OUTROS)    ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
    m_cfg_btnBloq2.ColorBackground((m_cfgPage == CFG_BLOQ2)      ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
+   m_cfg_btnEstrat.ColorBackground((m_cfgPage == CFG_ESTRAT)    ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
 
    m_cfg_btnRisco.Color((m_cfgPage == CFG_RISCO)      ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
    m_cfg_btnRisco2.Color((m_cfgPage == CFG_RISCO2)    ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
    m_cfg_btnBloq.Color((m_cfgPage == CFG_BLOQUEIOS)   ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
    m_cfg_btnOutros.Color((m_cfgPage == CFG_OUTROS)    ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
    m_cfg_btnBloq2.Color((m_cfgPage == CFG_BLOQ2)      ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
+   m_cfg_btnEstrat.Color((m_cfgPage == CFG_ESTRAT)    ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
   }
 
 //+------------------------------------------------------------------+
@@ -1247,6 +1383,7 @@ void CEPBotPanel::OnClickCfgRisco2(void)  { ShowCfgPage(CFG_RISCO2);    }
 void CEPBotPanel::OnClickCfgBloq(void)    { ShowCfgPage(CFG_BLOQUEIOS); }
 void CEPBotPanel::OnClickCfgOutros(void)  { ShowCfgPage(CFG_OUTROS);    }
 void CEPBotPanel::OnClickCfgBloq2(void)   { ShowCfgPage(CFG_BLOQ2);     }
+void CEPBotPanel::OnClickCfgEstrat(void)  { ShowCfgPage(CFG_ESTRAT);    }
 
 //+------------------------------------------------------------------+
 //| Toggle/Cycle handlers                                              |
@@ -1642,6 +1779,30 @@ void CEPBotPanel::ApplyConfig(void)
      }
 
 // ═══════════════════════════════════════════════
+// MA CROSS (ESTRAT)
+// ═══════════════════════════════════════════════
+   if(m_maCross != NULL)
+     {
+      int fastP = (int)StringToInteger(m_ce_iFastP.Text());
+      int slowP = (int)StringToInteger(m_ce_iSlowP.Text());
+
+      if(fastP > 0 && slowP > 0 && fastP < slowP)
+        {
+         // SetMAParams faz um único Deinitialize/Initialize para cold-reload
+         if(!m_maCross.SetMAParams(fastP, slowP,
+                                   m_cur_maFastMethod, m_cur_maSlowMethod,
+                                   m_cur_maFastTF, m_cur_maSlowTF))
+            errors++;
+        }
+      else
+         errors++;
+
+      // Hot-reload: entry e exit mode (sem reiniciar indicadores)
+      m_maCross.SetEntryMode(m_cur_maEntry);
+      m_maCross.SetExitMode(m_cur_maExit);
+     }
+
+// ═══════════════════════════════════════════════
 // FEEDBACK
 // ═══════════════════════════════════════════════
    if(errors == 0)
@@ -1939,6 +2100,90 @@ void CEPBotPanel::OnClickNewsOn3(void)
    m_cb2_bN3On.Text(m_cur_newsOn3 ? "ON" : "OFF");
    m_cb2_bN3On.ColorBackground(m_cur_newsOn3 ? C'30,120,70' : C'120,50,50');
    RefreshNewsState(3);
+  }
+
+//+------------------------------------------------------------------+
+//| Helpers ESTRAT — TF cycle, TF name, MA method mapping             |
+//+------------------------------------------------------------------+
+ENUM_TIMEFRAMES CEPBotPanel::CycleTF(ENUM_TIMEFRAMES tf)
+  {
+   static const ENUM_TIMEFRAMES tfs[] =
+     {PERIOD_CURRENT, PERIOD_M1, PERIOD_M5, PERIOD_M15, PERIOD_M30,
+      PERIOD_H1, PERIOD_H4, PERIOD_D1, PERIOD_W1, PERIOD_MN1};
+   int n = 10;
+   for(int i = 0; i < n; i++)
+      if(tfs[i] == tf)
+         return tfs[(i + 1) % n];
+   return PERIOD_CURRENT;
+  }
+
+string CEPBotPanel::TFName(ENUM_TIMEFRAMES tf)
+  {
+   switch(tf)
+     {
+      case PERIOD_CURRENT: return "CURRENT";
+      case PERIOD_M1:      return "M1";
+      case PERIOD_M5:      return "M5";
+      case PERIOD_M15:     return "M15";
+      case PERIOD_M30:     return "M30";
+      case PERIOD_H1:      return "H1";
+      case PERIOD_H4:      return "H4";
+      case PERIOD_D1:      return "D1";
+      case PERIOD_W1:      return "W1";
+      case PERIOD_MN1:     return "MN1";
+      default:             return "??";
+     }
+  }
+
+int CEPBotPanel::MAMethodToIndex(ENUM_MA_METHOD m)
+  {
+   return (m == MODE_SMA) ? 0 : (m == MODE_EMA) ? 1 : (m == MODE_SMMA) ? 2 : 3;
+  }
+
+ENUM_MA_METHOD CEPBotPanel::IndexToMAMethod(int i)
+  {
+   return (i == 0) ? MODE_SMA : (i == 1) ? MODE_EMA : (i == 2) ? MODE_SMMA : MODE_LWMA;
+  }
+
+//+------------------------------------------------------------------+
+//| ESTRAT — MA Cross click handlers                                   |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickMAFastMethod(int i)
+  {
+   m_cur_maFastMethod = IndexToMAMethod(i);
+   SetRadioSelection(m_ce_bFastM, 4, i);
+  }
+
+void CEPBotPanel::OnClickMASlowMethod(int i)
+  {
+   m_cur_maSlowMethod = IndexToMAMethod(i);
+   SetRadioSelection(m_ce_bSlowM, 4, i);
+  }
+
+void CEPBotPanel::OnClickMAFastTF(void)
+  {
+   m_ce_bFastTF.Pressed(false);
+   m_cur_maFastTF = CycleTF(m_cur_maFastTF);
+   m_ce_bFastTF.Text(TFName(m_cur_maFastTF));
+  }
+
+void CEPBotPanel::OnClickMASlowTF(void)
+  {
+   m_ce_bSlowTF.Pressed(false);
+   m_cur_maSlowTF = CycleTF(m_cur_maSlowTF);
+   m_ce_bSlowTF.Text(TFName(m_cur_maSlowTF));
+  }
+
+void CEPBotPanel::OnClickMAEntry(int i)
+  {
+   m_cur_maEntry = (i == 0) ? ENTRY_NEXT_CANDLE : ENTRY_2ND_CANDLE;
+   SetRadioSelection(m_ce_bEntry, 2, i);
+  }
+
+void CEPBotPanel::OnClickMAExit(int i)
+  {
+   m_cur_maExit = (i == 0) ? EXIT_FCO : (i == 1) ? EXIT_VM : EXIT_TP_SL;
+   SetRadioSelection(m_ce_bExit, 3, i);
   }
 
 //+------------------------------------------------------------------+
