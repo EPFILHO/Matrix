@@ -2,14 +2,19 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.24 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.25 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.24"
+#property version   "1.25"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
+// ═══════════════════════════════════════════════════════════════
+// v1.25 (Parte 024):
+// + Aba RESULTADOS/PROTECAO: novos CLabel members para DD expandido
+//   m_r_lDDLim/eDDLim (DD Limite), m_r_lDDMode/eDDMode (DD Modo Pico),
+//   m_r_lStreak/eStreak (Streak estado) + Show/Hide no SetTabVis()
 // ═══════════════════════════════════════════════════════════════
 // v1.24 (Parte 024):
 // + Sub-páginas em ESTRAT.: [MA CROSS] [RSI]
