@@ -2,12 +2,18 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.20 - Claude Parte 024 (Claude Code) |
+//|                     Versão 3.21 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.20"
+#property version   "3.21"
 #property strict
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.21 (Parte 024):
+// + Getters públicos para GUI RESULTADOS:
+//   DD: GetDrawdownType(), GetDrawdownValue(), GetDrawdownPeakMode()
+//   Streak: IsStreakControlEnabled(), GetMaxLossStreak(), GetMaxWinStreak(),
+//   GetLossStreakAction(), GetWinStreakAction(), GetLoss/WinPauseMinutes()
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.20 (Parte 024):
 // ✅ Fix: CheckDrawdownLimit() usava ACCOUNT_BALANCE - m_initialBalance
@@ -492,11 +498,21 @@ public:
    double            GetDailyPeakProfit() const { return m_dailyPeakProfit; }
    bool              IsDrawdownProtectionActive() const { return m_drawdownProtectionActive; }
    bool              IsDrawdownLimitReached() const { return m_drawdownLimitReached; }
+   ENUM_DRAWDOWN_TYPE      GetDrawdownType() const      { return m_drawdownType; }
+   double                  GetDrawdownValue() const     { return m_drawdownValue; }
+   ENUM_DRAWDOWN_PEAK_MODE GetDrawdownPeakMode() const  { return m_drawdownPeakMode; }
    ENUM_BLOCKER_REASON GetActiveBlocker() const { return m_currentBlocker; }
    bool              IsBlocked() const { return m_currentBlocker != BLOCKER_NONE; }
+   bool              IsStreakControlEnabled() const { return m_enableStreakControl; }
    bool              IsStreakPaused() const { return m_streakPauseActive; }
    datetime          GetStreakPauseUntil() const { return m_streakPauseUntil; }
    string            GetStreakPauseReason() const { return m_streakPauseReason; }
+   int               GetMaxLossStreak() const      { return m_maxLossStreak; }
+   int               GetMaxWinStreak() const       { return m_maxWinStreak; }
+   ENUM_STREAK_ACTION GetLossStreakAction() const   { return m_lossStreakAction; }
+   ENUM_STREAK_ACTION GetWinStreakAction() const    { return m_winStreakAction; }
+   int               GetLossPauseMinutes() const   { return m_lossPauseMinutes; }
+   int               GetWinPauseMinutes() const    { return m_winPauseMinutes; }
 
    // ═══════════════════════════════════════════════════════════════
    // GETTERS - CONFIGURAÇÃO (Working values)

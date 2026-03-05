@@ -357,8 +357,11 @@ private:
    CLabel  m_r_lPF;            CLabel  m_r_ePF;
 
    CLabel  m_r_hdr4;
+   CLabel  m_r_lDDLim;         CLabel  m_r_eDDLim;
+   CLabel  m_r_lDDMode;        CLabel  m_r_eDDMode;
    CLabel  m_r_lDD;            CLabel  m_r_eDD;
    CLabel  m_r_lPeak;          CLabel  m_r_ePeak;
+   CLabel  m_r_lStreak;        CLabel  m_r_eStreak;
    CLabel  m_r_lLossStrk;      CLabel  m_r_eLossStrk;
    CLabel  m_r_lWinStrk;       CLabel  m_r_eWinStrk;
 
@@ -1087,8 +1090,12 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
                     m_r_lDraws.Show(); m_r_eDraws.Show();
                     m_r_hdr3.Show(); m_r_lWinRate.Show(); m_r_eWinRate.Show();
                     m_r_lPayoff.Show(); m_r_ePayoff.Show(); m_r_lPF.Show(); m_r_ePF.Show();
-                    m_r_hdr4.Show(); m_r_lDD.Show(); m_r_eDD.Show();
+                    m_r_hdr4.Show();
+                    m_r_lDDLim.Show(); m_r_eDDLim.Show();
+                    m_r_lDDMode.Show(); m_r_eDDMode.Show();
+                    m_r_lDD.Show(); m_r_eDD.Show();
                     m_r_lPeak.Show(); m_r_ePeak.Show();
+                    m_r_lStreak.Show(); m_r_eStreak.Show();
                     m_r_lLossStrk.Show(); m_r_eLossStrk.Show();
                     m_r_lWinStrk.Show(); m_r_eWinStrk.Show(); }
          else    { m_r_hdr1.Hide(); m_r_lProfit.Hide(); m_r_eProfit.Hide();
@@ -1098,8 +1105,12 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
                     m_r_lDraws.Hide(); m_r_eDraws.Hide();
                     m_r_hdr3.Hide(); m_r_lWinRate.Hide(); m_r_eWinRate.Hide();
                     m_r_lPayoff.Hide(); m_r_ePayoff.Hide(); m_r_lPF.Hide(); m_r_ePF.Hide();
-                    m_r_hdr4.Hide(); m_r_lDD.Hide(); m_r_eDD.Hide();
+                    m_r_hdr4.Hide();
+                    m_r_lDDLim.Hide(); m_r_eDDLim.Hide();
+                    m_r_lDDMode.Hide(); m_r_eDDMode.Hide();
+                    m_r_lDD.Hide(); m_r_eDD.Hide();
                     m_r_lPeak.Hide(); m_r_ePeak.Hide();
+                    m_r_lStreak.Hide(); m_r_eStreak.Hide();
                     m_r_lLossStrk.Hide(); m_r_eLossStrk.Hide();
                     m_r_lWinStrk.Hide(); m_r_eWinStrk.Hide(); }
          break;
