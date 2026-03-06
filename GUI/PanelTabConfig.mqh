@@ -2,27 +2,22 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.25 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.24 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
 //
-// Sub-páginas: RISCO | RISCO 2 | BLOQUEIOS | OUTROS | BLOQUEIO 2 | ESTRAT
+// Sub-páginas: RISCO | RISCO 2 | BLOQUEIOS | OUTROS | BLOQUEIO 2
 // Campos CEdit editáveis + botões de toggle/cycle
 // Botão APLICAR chama setters hot-reload nos módulos
 //
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.25 (Parte 025):
-// + Nova sub-página CFG_ESTRAT: MA Cross hot/cold reload via APLICAR
-// + Fast/Slow Period (CEdit), Fast/Slow Method (radio 4), Fast/Slow TF (cycle)
-// + Entry Mode (radio 2: NEXT CANDLE|2ND CANDLE), Exit Mode (radio 3: FCO|VM|TP-SL)
-// + Helpers: CycleTF, TFName, MAMethodToIndex, IndexToMAMethod
-// + Handlers: OnClickCfgEstrat, OnClickMAFastMethod/SlowMethod, OnClickMAFastTF/SlowTF
-//   OnClickMAEntry, OnClickMAExit
-// + PopulateConfig: inicializa campos ESTRAT do m_maCross ou inp_*
-// + ApplyConfig: chama SetMAParams (cold reload único) + SetEntryMode/ExitMode (hot)
+// v1.24 (Parte 024):
+// ✅ Revert: Remove sub-página CFG_ESTRAT (movida para aba ESTRAT)
+//   MA Cross config agora na sub-página MA Cross da aba ESTRATEGIAS
+//   (em vez de sub-página CFG_ESTRAT na aba CONFIG)
 //
 // v1.24 (Parte 024):
 // ✅ Fix: ApplyConfig() agora chama TryActivateDrawdownNow() após

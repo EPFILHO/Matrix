@@ -2,7 +2,7 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.26 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.26 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.26"
@@ -11,13 +11,14 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.26 (Parte 025):
+// v1.26 (Parte 024):
 // + ESTRAT aba (MA Cross sub-página): campos editáveis hot/cold reload inline
 //   m_ce_*: Fast/Slow Period, Method(4), TF(cycle), Entry(2), Exit(3)
 //   m_e_btnApplyMA, m_e_statusMA, m_e_statusMAExpiry
 //   m_cur_maFastMethod/SlowMethod/FastTF/SlowTF/maEntry/maExit: state vars
 //   OnClickApplyMA, OnClickMAFastMethod/SlowMethod, OnClickMAFastTF/SlowTF
 //   OnClickMAEntry, OnClickMAExit, CycleTF, TFName, MAMethodToIndex, IndexToMAMethod
+//   Auto-clear m_e_statusMAExpiry no Update() switch TAB_ESTRATEGIAS
 //
 // v1.25 (Parte 024):
 // + Aba RESULTADOS/PROTECAO: novos CLabel members para DD expandido

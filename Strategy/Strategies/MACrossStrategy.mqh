@@ -2,10 +2,10 @@
 //|                                             MACrossStrategy.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                   Estratégia de Cruzamento de MAs - EPBot Matrix |
-//|                                   Versão 2.21 - Claude Parte 022 |
+//|                                   Versão 2.22 - Claude Parte 024 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.21"
+#property version   "2.22"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -14,6 +14,12 @@
 #include "../../Core/Logger.mqh"
 #include "../Base/StrategyBase.mqh"
 
+// ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.22 (Parte 024):
+// + SetMAParams(): setter combina periods + methods + timeframes
+//   (single Deinitialize/Initialize em vez de 3 chama separadas)
+// + Novo estado (m_cur_*): armazena current fast/slow method/TF
+//   para hot-reload via GUI sem reini indicadores
 // ═══════════════════════════════════════════════════════════════
 // NOVIDADES v2.21:
 // + Fix: CopyBuffer validação alterada de <= 0 para < 3

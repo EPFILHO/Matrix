@@ -2,12 +2,12 @@
 //|                                         PanelTabEstrategias.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: ESTRATEGIAS — Create + Update                 |
-//|                     Versão 1.13 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.13 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba ESTRATEGIAS.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
 //
-// v1.13 (Parte 025):
+// v1.13 (Parte 024):
 // + MA Cross sub-página: campos editáveis hot/cold reload inline
 //   Fast/Slow Period, Method(4), TF(cycle), Entry(2), Exit(3)
 //   Botão APLICAR próprio (m_e_btnApplyMA) + status (m_e_statusMA)
