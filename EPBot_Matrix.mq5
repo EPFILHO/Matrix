@@ -790,7 +790,8 @@ int OnInit()
         {
          g_panel.Init(g_logger, g_blockers, g_riskManager, g_tradeManager,
                       g_signalManager, g_maCrossStrategy, g_rsiStrategy,
-                      g_trendFilter, g_rsiFilter, inp_MagicNumber, _Symbol);
+                      g_trendFilter, g_rsiFilter, inp_MagicNumber, _Symbol,
+                      &g_rsiStrategy);
 
          int chartWidth = (int)ChartGetInteger(0, CHART_WIDTH_IN_PIXELS);
          int x1 = chartWidth - PANEL_WIDTH - 10;

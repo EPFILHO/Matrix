@@ -2,10 +2,10 @@
 //|                                                 RSIStrategy.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                                    Estratégia RSI - EPBot Matrix |
-//|                                   Versão 2.13 - Claude Parte 024 |
+//|                                   Versão 2.14 - Claude Parte 024 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.13"
+#property version   "2.14"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,11 @@
 #include "../Base/StrategyBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.14 (Parte 024):
+// + m_enabled removido — herdado de CStrategyBase v2.01
+// + SetEnabled override mantido (com logging via m_logger)
+// + GetEnabled herdado da base
+// ═══════════════════════════════════════════════════════════════════
 // NOVIDADES v2.13 (Parte 024):
 // + Setup(): m_enabled/m_inputEnabled não mais forçados a true
 //   Preserva estado do toggle definido antes do Setup()
@@ -95,7 +100,7 @@ private:
    double            m_overbought;
    double            m_middle;
    int               m_signal_shift;
-   bool              m_enabled;
+   // m_enabled: removido — herdado de CStrategyBase v2.01
 
    // ═══════════════════════════════════════════════════════════
    // MÉTODOS PRIVADOS
@@ -147,7 +152,7 @@ public:
    void              SetOverbought(double value);
    void              SetMiddle(double value);
    void              SetSignalShift(int value);
-   void              SetEnabled(bool value);
+   virtual void      SetEnabled(bool value) override;
 
    // ═══════════════════════════════════════════════════════════
    // COLD RELOAD - Parâmetros frios (reinicia indicadores)
@@ -171,7 +176,7 @@ public:
    double            GetOverbought() const { return m_overbought; }
    double            GetMiddle() const { return m_middle; }
    int               GetSignalShift() const { return m_signal_shift; }
-   bool              GetEnabled() const { return m_enabled; }
+   // GetEnabled(): herdado de CStrategyBase v2.01
 
    // ═══════════════════════════════════════════════════════════
    // GETTERS - Input values (valores originais da configuração)
@@ -217,7 +222,7 @@ CRSIStrategy::CRSIStrategy(int priority = 5) : CStrategyBase("RSI Strategy", pri
    m_overbought = 70.0;
    m_middle = 50.0;
    m_signal_shift = 1;
-   m_enabled = true;
+   // m_enabled: inicializado na base CStrategyBase(true)
 
    ArraySetAsSeries(m_rsi_buffer, true);
   }
