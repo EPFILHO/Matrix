@@ -2,12 +2,12 @@
 //|                                         PanelTabEstrategias.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: ESTRATEGIAS — Create + Update                 |
-//|                     Versão 1.14 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.14 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba ESTRATEGIAS.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
 //
-// v1.14 (Parte 025):
+// v1.14 (Parte 024):
 // ✅ MA Cross: remove labels de status Entrada/Saida (abaixo de Candles Apos)
 // ✅ MA Cross: NEXT CANDLE → PROX. CANDLE, 2ND CANDLE → 2o. CANDLE
 // ✅ MA Cross: legenda das siglas (FCO, VM, TP/SL) adicionada após SINAIS

@@ -2,7 +2,7 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.27 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.27 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.27"
@@ -11,7 +11,7 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.27 (Parte 025):
+// v1.27 (Parte 024):
 // + MA Cross: m_e_lMAEntry/eMAEntry/lMAExit/eMAExit → removidos
 //   Substituídos por m_e_lLeg1/lLeg2/lLeg3 (legenda FCO/VM/TP-SL)
 // + m_ce_bEntry comentário: NEXT CANDLE|2ND CANDLE → PROX. CANDLE|2o. CANDLE
