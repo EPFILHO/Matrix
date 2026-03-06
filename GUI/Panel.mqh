@@ -2,7 +2,7 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.28 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.29 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.28"
@@ -11,6 +11,10 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.29 (Parte 024):
+// + PanelTabEstrategias v1.17: toggle default OFF quando NULL, labels ON/OFF,
+//   UpdateEstrategias sincroniza toggle + estado "Suspenso"
+//
 // v1.28 (Parte 024):
 // + m_cr_lPTPHint: novo membro CLabel para dica visual TP=NENHUM + Partial TP
 //   na sub-página RISCO (criado em PanelTabConfig v1.25)

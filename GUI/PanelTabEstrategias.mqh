@@ -2,11 +2,17 @@
 //|                                         PanelTabEstrategias.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: ESTRATEGIAS — Create + Update                 |
-//|                     Versão 1.16 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.17 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
+// v1.17 (Parte 024):
+// + Toggle padrão OFF quando strategy == NULL (fallback era true → bug visual)
+// + Labels: LIGADO/DESLIGADO → ON/OFF (padronizado com aba CONFIG)
+// + UpdateEstrategias: toggle sincronizado via ApplyToggleStyle a cada Update()
+// + UpdateEstrategias: novo estado "Suspenso" quando IsInitialized() && !GetEnabled()
+//
 // v1.16 (Parte 024):
 // + MA Cross e RSI: botão toggle ON/OFF (m_e_btnMAToggle, m_e_btnRSIToggle)
-// + ApplyToggleStyle: verde (LIGADO) / vermelho (DESLIGADO)
+// + ApplyToggleStyle: verde (ON) / vermelho (OFF)
 // + Handlers: OnClickMAToggle, OnClickRSIToggle
 // + MACrossStrategy v2.23 e RSIStrategy v2.12: m_enabled, SetEnabled(), GetEnabled()
 //
@@ -67,7 +73,7 @@ bool CEPBotPanel::CreateTabEstrategias(void)
 
 // ── Toggle ON/OFF MA Cross ──
    {
-    bool maOn = (m_maCross != NULL) ? m_maCross.GetEnabled() : true;
+    bool maOn = (m_maCross != NULL) ? m_maCross.GetEnabled() : false;
     if(!m_e_btnMAToggle.Create(m_chart_id, PFX + "e_bMAOn", m_subwin,
                                COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 20))
        return false;
@@ -217,7 +223,7 @@ bool CEPBotPanel::CreateTabEstrategias(void)
 
 // ── Toggle ON/OFF RSI ──
    {
-    bool rsiOn = (m_rsiStrategy != NULL) ? m_rsiStrategy.GetEnabled() : true;
+    bool rsiOn = (m_rsiStrategy != NULL) ? m_rsiStrategy.GetEnabled() : false;
     if(!m_e_btnRSIToggle.Create(m_chart_id, PFX + "e_bRSOn", m_subwin,
                                 COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 20))
        return false;
@@ -545,7 +551,7 @@ void CEPBotPanel::OnClickApplyMA(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::ApplyToggleStyle(CButton &btn, bool enabled)
   {
-   btn.Text(enabled ? "LIGADO" : "DESLIGADO");
+   btn.Text(enabled ? "ON" : "OFF");
    btn.ColorBackground(enabled ? C'30,120,70' : C'160,40,40');
    btn.Color(clrWhite);
   }
@@ -637,18 +643,29 @@ void CEPBotPanel::UpdateEstrategias(void)
    if(m_estratPage == ESTRAT_MA_CROSS)
      {
 // ── MA Cross ──
+      ApplyToggleStyle(m_e_btnMAToggle, (m_maCross != NULL) ? m_maCross.GetEnabled() : false);
       if(m_maCross != NULL && m_maCross.IsInitialized())
         {
-         SetEV(m_e_eMAStatus, "Ativo (P:" + IntegerToString(m_maCross.GetPriority()) + ")", CLR_POSITIVE);
-         SetEV(m_e_eMAFast, DoubleToString(m_maCross.GetMAFast(), _Digits), CLR_VALUE);
-         SetEV(m_e_eMASlow, DoubleToString(m_maCross.GetMASlow(), _Digits), CLR_VALUE);
-
-         ENUM_SIGNAL_TYPE lastCross = m_maCross.GetLastCross();
-         string crossTxt = (lastCross == SIGNAL_BUY) ? "BUY" : (lastCross == SIGNAL_SELL) ? "SELL" : "Nenhum";
-         color crossClr = (lastCross == SIGNAL_BUY) ? CLR_POSITIVE : (lastCross == SIGNAL_SELL) ? CLR_NEGATIVE : CLR_NEUTRAL;
-         SetEV(m_e_eMACross, crossTxt, crossClr);
-         SetEV(m_e_eMACandles, IntegerToString(m_maCross.GetCandlesAfterCross()), CLR_VALUE);
-
+         bool maEnabled = m_maCross.GetEnabled();
+         if(maEnabled)
+           {
+            SetEV(m_e_eMAStatus, "Ativo (P:" + IntegerToString(m_maCross.GetPriority()) + ")", CLR_POSITIVE);
+            SetEV(m_e_eMAFast, DoubleToString(m_maCross.GetMAFast(), _Digits), CLR_VALUE);
+            SetEV(m_e_eMASlow, DoubleToString(m_maCross.GetMASlow(), _Digits), CLR_VALUE);
+            ENUM_SIGNAL_TYPE lastCross = m_maCross.GetLastCross();
+            string crossTxt = (lastCross == SIGNAL_BUY) ? "BUY" : (lastCross == SIGNAL_SELL) ? "SELL" : "Nenhum";
+            color crossClr = (lastCross == SIGNAL_BUY) ? CLR_POSITIVE : (lastCross == SIGNAL_SELL) ? CLR_NEGATIVE : CLR_NEUTRAL;
+            SetEV(m_e_eMACross, crossTxt, crossClr);
+            SetEV(m_e_eMACandles, IntegerToString(m_maCross.GetCandlesAfterCross()), CLR_VALUE);
+           }
+         else
+           {
+            SetEV(m_e_eMAStatus, "Suspenso", CLR_NEUTRAL);
+            SetEV(m_e_eMAFast, "--", CLR_NEUTRAL);
+            SetEV(m_e_eMASlow, "--", CLR_NEUTRAL);
+            SetEV(m_e_eMACross, "--", CLR_NEUTRAL);
+            SetEV(m_e_eMACandles, "--", CLR_NEUTRAL);
+           }
         }
       else
         {
@@ -662,13 +679,25 @@ void CEPBotPanel::UpdateEstrategias(void)
    else if(m_estratPage == ESTRAT_RSI)
      {
 // ── RSI Strategy ──
+      ApplyToggleStyle(m_e_btnRSIToggle, (m_rsiStrategy != NULL) ? m_rsiStrategy.GetEnabled() : false);
       if(m_rsiStrategy != NULL && m_rsiStrategy.IsInitialized())
         {
-         SetEV(m_e_eRSIStatus, "Ativo (P:" + IntegerToString(m_rsiStrategy.GetPriority()) + ")", CLR_POSITIVE);
-         SetEV(m_e_eRSICurr, DoubleToString(m_rsiStrategy.GetCurrentRSI(), 1), CLR_VALUE);
-         SetEV(m_e_eRSIMode, m_rsiStrategy.GetSignalModeText(), CLR_VALUE);
-         SetEV(m_e_eRSILevels, DoubleToString(m_rsiStrategy.GetOversold(), 0) + " / " +
-               DoubleToString(m_rsiStrategy.GetOverbought(), 0), CLR_VALUE);
+         bool rsiEnabled = m_rsiStrategy.GetEnabled();
+         if(rsiEnabled)
+           {
+            SetEV(m_e_eRSIStatus, "Ativo (P:" + IntegerToString(m_rsiStrategy.GetPriority()) + ")", CLR_POSITIVE);
+            SetEV(m_e_eRSICurr, DoubleToString(m_rsiStrategy.GetCurrentRSI(), 1), CLR_VALUE);
+            SetEV(m_e_eRSIMode, m_rsiStrategy.GetSignalModeText(), CLR_VALUE);
+            SetEV(m_e_eRSILevels, DoubleToString(m_rsiStrategy.GetOversold(), 0) + " / " +
+                  DoubleToString(m_rsiStrategy.GetOverbought(), 0), CLR_VALUE);
+           }
+         else
+           {
+            SetEV(m_e_eRSIStatus, "Suspenso", CLR_NEUTRAL);
+            SetEV(m_e_eRSICurr, "--", CLR_NEUTRAL);
+            SetEV(m_e_eRSIMode, "--", CLR_NEUTRAL);
+            SetEV(m_e_eRSILevels, "--", CLR_NEUTRAL);
+           }
         }
       else
         {
