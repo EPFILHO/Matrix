@@ -8,7 +8,7 @@
 // + MA Cross e RSI: botão toggle ON/OFF (m_e_btnMAToggle, m_e_btnRSIToggle)
 // + ApplyToggleStyle: verde (LIGADO) / vermelho (DESLIGADO)
 // + Handlers: OnClickMAToggle, OnClickRSIToggle
-// + MACrossStrategy v2.23: m_enabled, SetEnabled(), GetEnabled()
+// + MACrossStrategy v2.23 e RSIStrategy v2.12: m_enabled, SetEnabled(), GetEnabled()
 //
 // v1.15 (Parte 024):
 // + RSI sub-página: campos editáveis hot/cold reload inline

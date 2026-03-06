@@ -2,10 +2,10 @@
 //|                                                 RSIStrategy.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                                    Estratégia RSI - EPBot Matrix |
-//|                                   Versão 2.11 - Claude Parte 022 |
+//|                                   Versão 2.12 - Claude Parte 024 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.11"
+#property version   "2.12"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,10 @@
 #include "../Base/StrategyBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.12 (Parte 024):
+// + m_enabled: toggle ON/OFF da estratégia em runtime
+// + SetEnabled(bool), GetEnabled(): getter/setter para o painel GUI
+// ═══════════════════════════════════════════════════════════════════
 // NOVIDADES v2.11:
 // + Fix: CopyBuffer validação alterada de <= 0 para < count
 //   (previne acesso fora dos limites se indicador retorna dados incompletos)

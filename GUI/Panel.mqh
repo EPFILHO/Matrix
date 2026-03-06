@@ -16,7 +16,7 @@
 //   na sub-página RISCO (criado em PanelTabConfig v1.25)
 // + MA Cross e RSI: botões toggle ON/OFF (m_e_btnMAToggle, m_e_btnRSIToggle)
 //   OnClickMAToggle, OnClickRSIToggle, ApplyToggleStyle
-//   MACrossStrategy v2.23: m_enabled, SetEnabled(), GetEnabled()
+//   MACrossStrategy v2.23 e RSIStrategy v2.12: m_enabled, SetEnabled(), GetEnabled()
 //
 // v1.27 (Parte 024):
 // + MA Cross: m_e_lMAEntry/eMAEntry/lMAExit/eMAExit → removidos

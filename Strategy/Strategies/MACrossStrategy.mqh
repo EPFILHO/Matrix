@@ -15,6 +15,10 @@
 #include "../Base/StrategyBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.23 (Parte 024):
+// + m_enabled: toggle ON/OFF da estratégia em runtime
+// + SetEnabled(bool), GetEnabled(): getter/setter para o painel GUI
+// ═══════════════════════════════════════════════════════════════════
 // NOVIDADES v2.22 (Parte 024):
 // + SetMAParams(): setter combina periods + methods + timeframes
 //   (single Deinitialize/Initialize em vez de 3 chama separadas)
