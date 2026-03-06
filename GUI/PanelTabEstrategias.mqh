@@ -2,13 +2,16 @@
 //|                                         PanelTabEstrategias.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: ESTRATEGIAS — Create + Update                 |
-//|                     Versão 1.19 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.20 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
-// v1.19 (Parte 024):
-// + OnClickRSIToggle: hot-create — cria CRSIStrategy em runtime se NULL
-//   Usa params atuais do painel (period, TF, mode, OS, OB, mid)
-//   PRICE_CLOSE + shift=1 como defaults não expostos no painel
-//   m_rsiPanelOwned=true → destrutor do painel faz cleanup (RemoveStrategy + delete)
+// v1.20 (Parte 024):
+// + Toggle = estado PENDENTE visual — só aplica no APLICAR respectivo
+//   m_pendingMAEnabled / m_pendingRSIEnabled: flags de pending state
+//   OnClickMAToggle / OnClickRSIToggle: flip visual, sem SetEnabled()
+//   OnClickApplyMA: aplica m_pendingMAEnabled via SetEnabled()
+//   OnClickApplyRSI: hot-create se NULL+pending=true, senão SetEnabled()
+// + Status: apenas "Ativo" ou "Inativo" — "Suspenso" removido
+// + ApplyToggleStyle: volta a 2 params (sem avail/N/A)
 //
 // v1.18 (Parte 024):
 // + ApplyToggleStyle: parâmetro avail — exibe "N/A" (cinza) quando strategy==NULL
@@ -84,15 +87,13 @@ bool CEPBotPanel::CreateTabEstrategias(void)
    y += PANEL_GAP_Y + 2;
 
 // ── Toggle ON/OFF MA Cross ──
-   {
-    bool maOn = (m_maCross != NULL) ? m_maCross.GetEnabled() : false;
-    if(!m_e_btnMAToggle.Create(m_chart_id, PFX + "e_bMAOn", m_subwin,
-                               COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 20))
-       return false;
-    m_e_btnMAToggle.FontSize(8);
-    if(!Add(m_e_btnMAToggle)) return false;
-    ApplyToggleStyle(m_e_btnMAToggle, maOn);
-   }
+   m_pendingMAEnabled = (m_maCross != NULL) ? m_maCross.GetEnabled() : false;
+   if(!m_e_btnMAToggle.Create(m_chart_id, PFX + "e_bMAOn", m_subwin,
+                              COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 20))
+      return false;
+   m_e_btnMAToggle.FontSize(8);
+   if(!Add(m_e_btnMAToggle)) return false;
+   ApplyToggleStyle(m_e_btnMAToggle, m_pendingMAEnabled);
    y += 24;
 
    if(!CreateLV(m_e_lMAStatus, m_e_eMAStatus, "e_lMS", "e_eMS", "Status:", y)) return false;
@@ -234,15 +235,13 @@ bool CEPBotPanel::CreateTabEstrategias(void)
    y += PANEL_GAP_Y + 2;
 
 // ── Toggle ON/OFF RSI ──
-   {
-    bool rsiOn = (m_rsiStrategy != NULL) ? m_rsiStrategy.GetEnabled() : false;
-    if(!m_e_btnRSIToggle.Create(m_chart_id, PFX + "e_bRSOn", m_subwin,
-                                COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 20))
-       return false;
-    m_e_btnRSIToggle.FontSize(8);
-    if(!Add(m_e_btnRSIToggle)) return false;
-    ApplyToggleStyle(m_e_btnRSIToggle, rsiOn);
-   }
+   m_pendingRSIEnabled = (m_rsiStrategy != NULL) ? m_rsiStrategy.GetEnabled() : false;
+   if(!m_e_btnRSIToggle.Create(m_chart_id, PFX + "e_bRSOn", m_subwin,
+                               COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 20))
+      return false;
+   m_e_btnRSIToggle.FontSize(8);
+   if(!Add(m_e_btnRSIToggle)) return false;
+   ApplyToggleStyle(m_e_btnRSIToggle, m_pendingRSIEnabled);
    y += 24;
 
    if(!CreateLV(m_e_lRSIStatus, m_e_eRSIStatus, "e_lRS", "e_eRS", "Status:", y)) return false;
@@ -565,6 +564,9 @@ void CEPBotPanel::OnClickApplyMA(void)
    m_maCross.SetEntryMode(m_cur_maEntry);
    m_maCross.SetExitMode(m_cur_maExit);
 
+   // Aplica estado do toggle
+   m_maCross.SetEnabled(m_pendingMAEnabled);
+
    if(errors == 0)
      {
       m_e_statusMA.Text("Aplicado com sucesso!");
@@ -582,61 +584,26 @@ void CEPBotPanel::OnClickApplyMA(void)
 //+------------------------------------------------------------------+
 //| ApplyToggleStyle — aplica estilo verde/vermelho ao botão toggle   |
 //+------------------------------------------------------------------+
-void CEPBotPanel::ApplyToggleStyle(CButton &btn, bool enabled, bool avail = true)
+void CEPBotPanel::ApplyToggleStyle(CButton &btn, bool enabled)
   {
-   btn.Text(avail ? (enabled ? "ON" : "OFF") : "N/A");
-   btn.ColorBackground(avail ? (enabled ? C'30,120,70' : C'160,40,40') : C'75,75,75');
+   btn.Text(enabled ? "ON" : "OFF");
+   btn.ColorBackground(enabled ? C'30,120,70' : C'160,40,40');
    btn.Color(clrWhite);
   }
 
 //+------------------------------------------------------------------+
-//| Toggles ON/OFF das estratégias                                    |
+//| Toggles ON/OFF — apenas estado visual pendente, aplica no APLICAR |
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickMAToggle(void)
   {
-   if(m_maCross == NULL) return;
-   bool newState = !m_maCross.GetEnabled();
-   m_maCross.SetEnabled(newState);
-   ApplyToggleStyle(m_e_btnMAToggle, newState);
+   m_pendingMAEnabled = !m_pendingMAEnabled;
+   ApplyToggleStyle(m_e_btnMAToggle, m_pendingMAEnabled);
   }
 
 void CEPBotPanel::OnClickRSIToggle(void)
   {
-// ── Hot-create: strategy não existe → cria com params atuais do painel ──
-   if(m_rsiStrategy == NULL)
-     {
-      int    period = (int)StringToInteger(m_re_iPeriod.Text());
-      double os     = StringToDouble(m_re_iOversold.Text());
-      double ob     = StringToDouble(m_re_iOverbought.Text());
-      double mid    = StringToDouble(m_re_iMiddle.Text());
-      if(period <= 0) period = 14;
-      if(os  <= 0)   os  = 30.0;
-      if(ob  <= 0)   ob  = 70.0;
-      if(mid <= 0)   mid = 50.0;
-
-      CRSIStrategy *rsi = new CRSIStrategy();
-      if(rsi == NULL) return;
-
-      if(!rsi.Setup(m_logger, m_symbol, m_cur_rsiTF, period,
-                    PRICE_CLOSE, m_cur_rsiMode, os, ob, mid, 1))
-        { delete rsi; return; }
-
-      if(!rsi.Initialize())
-        { delete rsi; return; }
-
-      if(m_signalManager != NULL)
-         m_signalManager.AddStrategy(rsi);
-
-      m_rsiStrategy   = rsi;
-      m_rsiPanelOwned = true;
-      ApplyToggleStyle(m_e_btnRSIToggle, true, true);
-      return;
-     }
-
-// ── Já existe: apenas alterna enabled ──
-   bool newState = !m_rsiStrategy.GetEnabled();
-   m_rsiStrategy.SetEnabled(newState);
-   ApplyToggleStyle(m_e_btnRSIToggle, newState, true);
+   m_pendingRSIEnabled = !m_pendingRSIEnabled;
+   ApplyToggleStyle(m_e_btnRSIToggle, m_pendingRSIEnabled);
   }
 
 //+------------------------------------------------------------------+
@@ -661,26 +628,71 @@ void CEPBotPanel::OnClickRSITF(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickApplyRSI(void)
   {
-   if(m_rsiStrategy == NULL) return;
+// ── Hot-create: strategy NULL e usuário quer ligar ──
+   if(m_rsiStrategy == NULL)
+     {
+      if(!m_pendingRSIEnabled)
+        {
+         m_e_statusRSI.Text("RSI inativo.");
+         m_e_statusRSI.Color(CLR_NEUTRAL);
+         m_e_statusRSIExpiry = GetTickCount() + 5000;
+         ChartRedraw();
+         return;
+        }
 
+      int    period = (int)StringToInteger(m_re_iPeriod.Text());
+      double os     = StringToDouble(m_re_iOversold.Text());
+      double ob     = StringToDouble(m_re_iOverbought.Text());
+      double mid    = StringToDouble(m_re_iMiddle.Text());
+      if(period <= 0) period = 14;
+      if(os  <= 0) os  = 30.0;
+      if(ob  <= 0) ob  = 70.0;
+      if(mid <= 0) mid = 50.0;
+
+      CRSIStrategy *rsi = new CRSIStrategy();
+      if(rsi == NULL)
+        {
+         m_e_statusRSI.Text("Erro ao criar RSI!");
+         m_e_statusRSI.Color(CLR_NEGATIVE);
+         m_e_statusRSIExpiry = GetTickCount() + 10000;
+         ChartRedraw();
+         return;
+        }
+
+      if(!rsi.Setup(m_logger, m_symbol, m_cur_rsiTF, period,
+                    PRICE_CLOSE, m_cur_rsiMode, os, ob, mid, 1) ||
+         !rsi.Initialize())
+        {
+         delete rsi;
+         m_e_statusRSI.Text("Falha ao inicializar RSI!");
+         m_e_statusRSI.Color(CLR_NEGATIVE);
+         m_e_statusRSIExpiry = GetTickCount() + 10000;
+         ChartRedraw();
+         return;
+        }
+
+      if(m_signalManager != NULL)
+         m_signalManager.AddStrategy(rsi);
+
+      m_rsiStrategy   = rsi;
+      m_rsiPanelOwned = true;
+      m_e_statusRSI.Text("RSI criado e ativado!");
+      m_e_statusRSI.Color(CLR_POSITIVE);
+      m_e_statusRSIExpiry = GetTickCount() + 10000;
+      ChartRedraw();
+      return;
+     }
+
+// ── Strategy já existe: aplica params + estado do toggle ──
    int errors = 0;
 
-   // Cold reload: Period
    int period = (int)StringToInteger(m_re_iPeriod.Text());
-   if(period >= 2)
-     {
-      if(!m_rsiStrategy.SetPeriod(period)) errors++;
-     }
-   else
-      errors++;
+   if(period >= 2) { if(!m_rsiStrategy.SetPeriod(period)) errors++; }
+   else errors++;
 
-   // Cold reload: Timeframe
    m_rsiStrategy.SetTimeframe(m_cur_rsiTF);
-
-   // Hot reload: Signal Mode
    m_rsiStrategy.SetSignalMode(m_cur_rsiMode);
 
-   // Hot reload: Níveis
    double os = StringToDouble(m_re_iOversold.Text());
    double ob = StringToDouble(m_re_iOverbought.Text());
    double mi = StringToDouble(m_re_iMiddle.Text());
@@ -688,6 +700,8 @@ void CEPBotPanel::OnClickApplyRSI(void)
    if(os > 0 && os < 100) m_rsiStrategy.SetOversold(os);   else errors++;
    if(ob > 0 && ob < 100) m_rsiStrategy.SetOverbought(ob); else errors++;
    if(mi > 0 && mi < 100) m_rsiStrategy.SetMiddle(mi);     else errors++;
+
+   m_rsiStrategy.SetEnabled(m_pendingRSIEnabled);
 
    if(errors == 0)
      {
@@ -711,29 +725,17 @@ void CEPBotPanel::UpdateEstrategias(void)
    if(m_estratPage == ESTRAT_MA_CROSS)
      {
 // ── MA Cross ──
-      ApplyToggleStyle(m_e_btnMAToggle, (m_maCross != NULL) ? m_maCross.GetEnabled() : false, m_maCross != NULL);
-      if(m_maCross != NULL && m_maCross.IsInitialized())
+      ApplyToggleStyle(m_e_btnMAToggle, m_pendingMAEnabled);
+      if(m_maCross != NULL && m_maCross.IsInitialized() && m_maCross.GetEnabled())
         {
-         bool maEnabled = m_maCross.GetEnabled();
-         if(maEnabled)
-           {
-            SetEV(m_e_eMAStatus, "Ativo (P:" + IntegerToString(m_maCross.GetPriority()) + ")", CLR_POSITIVE);
-            SetEV(m_e_eMAFast, DoubleToString(m_maCross.GetMAFast(), _Digits), CLR_VALUE);
-            SetEV(m_e_eMASlow, DoubleToString(m_maCross.GetMASlow(), _Digits), CLR_VALUE);
-            ENUM_SIGNAL_TYPE lastCross = m_maCross.GetLastCross();
-            string crossTxt = (lastCross == SIGNAL_BUY) ? "BUY" : (lastCross == SIGNAL_SELL) ? "SELL" : "Nenhum";
-            color crossClr = (lastCross == SIGNAL_BUY) ? CLR_POSITIVE : (lastCross == SIGNAL_SELL) ? CLR_NEGATIVE : CLR_NEUTRAL;
-            SetEV(m_e_eMACross, crossTxt, crossClr);
-            SetEV(m_e_eMACandles, IntegerToString(m_maCross.GetCandlesAfterCross()), CLR_VALUE);
-           }
-         else
-           {
-            SetEV(m_e_eMAStatus, "Suspenso", CLR_NEUTRAL);
-            SetEV(m_e_eMAFast, "--", CLR_NEUTRAL);
-            SetEV(m_e_eMASlow, "--", CLR_NEUTRAL);
-            SetEV(m_e_eMACross, "--", CLR_NEUTRAL);
-            SetEV(m_e_eMACandles, "--", CLR_NEUTRAL);
-           }
+         SetEV(m_e_eMAStatus, "Ativo (P:" + IntegerToString(m_maCross.GetPriority()) + ")", CLR_POSITIVE);
+         SetEV(m_e_eMAFast, DoubleToString(m_maCross.GetMAFast(), _Digits), CLR_VALUE);
+         SetEV(m_e_eMASlow, DoubleToString(m_maCross.GetMASlow(), _Digits), CLR_VALUE);
+         ENUM_SIGNAL_TYPE lastCross = m_maCross.GetLastCross();
+         string crossTxt = (lastCross == SIGNAL_BUY) ? "BUY" : (lastCross == SIGNAL_SELL) ? "SELL" : "Nenhum";
+         color crossClr = (lastCross == SIGNAL_BUY) ? CLR_POSITIVE : (lastCross == SIGNAL_SELL) ? CLR_NEGATIVE : CLR_NEUTRAL;
+         SetEV(m_e_eMACross, crossTxt, crossClr);
+         SetEV(m_e_eMACandles, IntegerToString(m_maCross.GetCandlesAfterCross()), CLR_VALUE);
         }
       else
         {
@@ -747,26 +749,15 @@ void CEPBotPanel::UpdateEstrategias(void)
    else if(m_estratPage == ESTRAT_RSI)
      {
 // ── RSI Strategy ──
-      ApplyToggleStyle(m_e_btnRSIToggle, (m_rsiStrategy != NULL) ? m_rsiStrategy.GetEnabled() : false, m_rsiStrategy != NULL);
+      ApplyToggleStyle(m_e_btnRSIToggle, m_pendingRSIEnabled);
       m_re_lModeDesc.Text(RSIModeDesc(m_cur_rsiMode));
-      if(m_rsiStrategy != NULL && m_rsiStrategy.IsInitialized())
+      if(m_rsiStrategy != NULL && m_rsiStrategy.IsInitialized() && m_rsiStrategy.GetEnabled())
         {
-         bool rsiEnabled = m_rsiStrategy.GetEnabled();
-         if(rsiEnabled)
-           {
-            SetEV(m_e_eRSIStatus, "Ativo (P:" + IntegerToString(m_rsiStrategy.GetPriority()) + ")", CLR_POSITIVE);
-            SetEV(m_e_eRSICurr, DoubleToString(m_rsiStrategy.GetCurrentRSI(), 1), CLR_VALUE);
-            SetEV(m_e_eRSIMode, m_rsiStrategy.GetSignalModeText(), CLR_VALUE);
-            SetEV(m_e_eRSILevels, DoubleToString(m_rsiStrategy.GetOversold(), 0) + " / " +
-                  DoubleToString(m_rsiStrategy.GetOverbought(), 0), CLR_VALUE);
-           }
-         else
-           {
-            SetEV(m_e_eRSIStatus, "Suspenso", CLR_NEUTRAL);
-            SetEV(m_e_eRSICurr, "--", CLR_NEUTRAL);
-            SetEV(m_e_eRSIMode, "--", CLR_NEUTRAL);
-            SetEV(m_e_eRSILevels, "--", CLR_NEUTRAL);
-           }
+         SetEV(m_e_eRSIStatus, "Ativo (P:" + IntegerToString(m_rsiStrategy.GetPriority()) + ")", CLR_POSITIVE);
+         SetEV(m_e_eRSICurr, DoubleToString(m_rsiStrategy.GetCurrentRSI(), 1), CLR_VALUE);
+         SetEV(m_e_eRSIMode, m_rsiStrategy.GetSignalModeText(), CLR_VALUE);
+         SetEV(m_e_eRSILevels, DoubleToString(m_rsiStrategy.GetOversold(), 0) + " / " +
+               DoubleToString(m_rsiStrategy.GetOverbought(), 0), CLR_VALUE);
         }
       else
         {

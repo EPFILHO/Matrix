@@ -2,7 +2,7 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.31 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.32 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.28"
@@ -11,10 +11,14 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.32 (Parte 024):
+// + m_pendingMAEnabled / m_pendingRSIEnabled: estado pendente dos toggles
+// + PanelTabEstrategias v1.20: toggle visual-only, ApplyStyle sem avail,
+//   hot-create RSI movido para OnClickApplyRSI, status só Ativo/Inativo
+//
 // v1.31 (Parte 024):
 // + m_rsiPanelOwned: flag para estratégia criada em runtime pelo painel
 // + ~CEPBotPanel: cleanup de estratégia criada pelo painel (RemoveStrategy + delete)
-// + PanelTabEstrategias v1.19: hot-create RSI no toggle quando NULL
 //
 // v1.30 (Parte 024):
 // + PanelTabEstrategias v1.18: ApplyToggleStyle avail param (N/A cinza)
@@ -333,7 +337,9 @@ private:
    CSignalManager    *m_signalManager;
    CMACrossStrategy  *m_maCross;
    CRSIStrategy      *m_rsiStrategy;
-   bool               m_rsiPanelOwned;  // true quando criada pelo painel (não pelo EA)
+   bool               m_rsiPanelOwned;    // true quando criada pelo painel (não pelo EA)
+   bool               m_pendingMAEnabled;  // estado pendente do toggle MA (antes de APLICAR)
+   bool               m_pendingRSIEnabled; // estado pendente do toggle RSI (antes de APLICAR)
    CTrendFilter      *m_trendFilter;
    CRSIFilter        *m_rsiFilter;
 
@@ -775,7 +781,7 @@ private:
    static string     RSIModeDesc(ENUM_RSI_SIGNAL_MODE mode);
    void              OnClickMAToggle(void);
    void              OnClickRSIToggle(void);
-   void              ApplyToggleStyle(CButton &btn, bool enabled, bool avail = true);
+   void              ApplyToggleStyle(CButton &btn, bool enabled);
 
 protected:
    virtual bool      CreateButtonClose(void) { return true; }
@@ -812,6 +818,7 @@ CEPBotPanel::CEPBotPanel(void)
      m_logger(NULL), m_blockers(NULL), m_riskManager(NULL),
      m_tradeManager(NULL), m_signalManager(NULL),
      m_maCross(NULL), m_rsiStrategy(NULL), m_rsiPanelOwned(false),
+     m_pendingMAEnabled(false), m_pendingRSIEnabled(false),
      m_trendFilter(NULL), m_rsiFilter(NULL),
      m_magicNumber(0), m_symbol(""),
      m_origDragTrade(true), m_origMouseScroll(true), m_mouseOverPanel(false),
