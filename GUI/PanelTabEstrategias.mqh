@@ -2,18 +2,14 @@
 //|                                         PanelTabEstrategias.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: ESTRATEGIAS — Create + Update                 |
-//|                     Versão 1.14 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.15 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
-// Implementações de CEPBotPanel para a aba ESTRATEGIAS.
-// Incluído por Panel.mqh — NÃO incluir diretamente.
-//
-// v1.14 (Parte 024):
-// ✅ MA Cross: remove labels de status Entrada/Saida (abaixo de Candles Apos)
-// ✅ MA Cross: NEXT CANDLE → PROX. CANDLE, 2ND CANDLE → 2o. CANDLE
-// ✅ MA Cross: legenda das siglas (FCO, VM, TP/SL) adicionada após SINAIS
-// ✅ MA Cross: botão APLICAR MA CROSS movido para posição fixa CFG_APPLY_Y (=520)
-// ✅ MA Cross: legenda movida para segunda coluna (COL_VALUE_X)
-// ✅ MA Cross: "Fast TF" e "Slow TF" mudados para "Fast Time Frame" e "Slow Time Frame"
+// v1.15 (Parte 024):
+// + RSI sub-página: campos editáveis hot/cold reload inline
+//   Period(edit), TF(cycle), Mode(radio 3), Oversold, Overbought, Middle
+//   Botão APLICAR próprio (m_e_btnApplyRSI) + status (m_e_statusRSI)
+// + Helpers: RSIModeToIndex, IndexToRSIMode
+// + Handlers: OnClickApplyRSI, OnClickRSIMode, OnClickRSITF
 //
 // v1.13 (Parte 024):
 // + MA Cross sub-página: campos editáveis hot/cold reload inline
@@ -206,6 +202,78 @@ bool CEPBotPanel::CreateTabEstrategias(void)
    if(!CreateLV(m_e_lRSIMode, m_e_eRSIMode, "e_lRM", "e_eRM", "Modo:", y)) return false;
    y += PANEL_GAP_Y;
    if(!CreateLV(m_e_lRSILevels, m_e_eRSILevels, "e_lRL", "e_eRL", "Niveis:", y)) return false;
+   y += PANEL_GAP_Y + 2;
+
+// ── CONFIGURAÇÕES EDITÁVEIS RSI ──
+   y += PANEL_GAP_SECTION;
+   if(!CreateHdr(m_re_hdr1, "re_h1", "CONFIGURACOES", y)) return false;
+   y += PANEL_GAP_Y + 2;
+
+   if(!CreateLI(m_re_lPeriod, m_re_iPeriod, "re_lPD", "re_iPD", "Periodo:", y)) return false;
+   y += PANEL_GAP_Y;
+
+   if(!CreateLB(m_re_lTF, m_re_bTF, "re_lTF", "re_bTF", "Time Frame:", y)) return false;
+   y += PANEL_GAP_Y + 2;
+
+   y += PANEL_GAP_SECTION;
+   {
+    string modeTexts[] = {"CROSS.", "ZONE", "MEDIO"};
+    if(!CreateRadioGroup(m_re_lMode, m_re_bMode, "re_lMD", "re_bMD", "Modo:", modeTexts, 3, y))
+       return false;
+   }
+   y += PANEL_GAP_Y + 2;
+
+   y += PANEL_GAP_SECTION;
+   if(!CreateLI(m_re_lOversold,   m_re_iOversold,   "re_lOS", "re_iOS", "Oversold:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_re_lOverbought, m_re_iOverbought, "re_lOB", "re_iOB", "Overbought:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_re_lMiddle, m_re_iMiddle, "re_lMI", "re_iMI", "Medio:", y)) return false;
+   y += PANEL_GAP_Y + 8;
+
+// ── BOTÃO APLICAR RSI (posição fixa) ──
+   if(!m_e_btnApplyRSI.Create(m_chart_id, PFX + "e_applyRSI", m_subwin,
+                               COL_LABEL_X, CFG_APPLY_Y,
+                               COL_VALUE_X + COL_VALUE_W, CFG_APPLY_Y + 24))
+      return false;
+   m_e_btnApplyRSI.Text("APLICAR RSI");
+   m_e_btnApplyRSI.FontSize(9);
+   m_e_btnApplyRSI.ColorBackground(C'30,80,140');
+   m_e_btnApplyRSI.Color(clrWhite);
+   if(!Add(m_e_btnApplyRSI))
+      return false;
+
+   if(!m_e_statusRSI.Create(m_chart_id, PFX + "e_stRSI", m_subwin,
+                             COL_LABEL_X, CFG_APPLY_Y + 28,
+                             COL_VALUE_X + COL_VALUE_W, CFG_APPLY_Y + 28 + PANEL_GAP_Y))
+      return false;
+   m_e_statusRSI.Text("");
+   m_e_statusRSI.FontSize(8);
+   m_e_statusRSI.Color(CLR_NEUTRAL);
+   if(!Add(m_e_statusRSI))
+      return false;
+
+// ── Preenche campos RSI com valores iniciais ──
+   {
+    int                  rp  = (m_rsiStrategy != NULL) ? m_rsiStrategy.GetPeriod()      : 14;
+    ENUM_TIMEFRAMES      rt  = (m_rsiStrategy != NULL) ? m_rsiStrategy.GetTimeframe()   : PERIOD_CURRENT;
+    ENUM_RSI_SIGNAL_MODE rm  = (m_rsiStrategy != NULL) ? m_rsiStrategy.GetSignalMode()  : RSI_MODE_CROSSOVER;
+    double               ros = (m_rsiStrategy != NULL) ? m_rsiStrategy.GetOversold()    : 30.0;
+    double               rob = (m_rsiStrategy != NULL) ? m_rsiStrategy.GetOverbought()  : 70.0;
+    double               rmi = (m_rsiStrategy != NULL) ? m_rsiStrategy.GetMiddle()      : 50.0;
+
+    m_cur_rsiTF   = rt;
+    m_cur_rsiMode = rm;
+
+    m_re_iPeriod.Text(IntegerToString(rp));
+    m_re_iOversold.Text(DoubleToString(ros, 1));
+    m_re_iOverbought.Text(DoubleToString(rob, 1));
+    m_re_iMiddle.Text(DoubleToString(rmi, 1));
+    m_re_bTF.Text(TFName(rt));
+    m_re_bTF.ColorBackground(C'50,80,140'); m_re_bTF.Color(clrWhite);
+    SetRadioSelection(m_re_bMode, 3, RSIModeToIndex(rm));
+   }
+   m_e_statusRSIExpiry = 0;
 
 // ── Sub-página inicial ──
    ShowEstratPage(ESTRAT_MA_CROSS);
@@ -259,12 +327,34 @@ void CEPBotPanel::SetEstratPageVis(ENUM_ESTRAT_PAGE page, bool vis)
            }
          break;
       case ESTRAT_RSI:
-         if(vis) { m_e_hdr3.Show(); m_e_lRSIStatus.Show(); m_e_eRSIStatus.Show();
-                    m_e_lRSICurr.Show(); m_e_eRSICurr.Show(); m_e_lRSIMode.Show(); m_e_eRSIMode.Show();
-                    m_e_lRSILevels.Show(); m_e_eRSILevels.Show(); }
-         else    { m_e_hdr3.Hide(); m_e_lRSIStatus.Hide(); m_e_eRSIStatus.Hide();
-                    m_e_lRSICurr.Hide(); m_e_eRSICurr.Hide(); m_e_lRSIMode.Hide(); m_e_eRSIMode.Hide();
-                    m_e_lRSILevels.Hide(); m_e_eRSILevels.Hide(); }
+         if(vis)
+           {
+            m_e_hdr3.Show(); m_e_lRSIStatus.Show(); m_e_eRSIStatus.Show();
+            m_e_lRSICurr.Show(); m_e_eRSICurr.Show(); m_e_lRSIMode.Show(); m_e_eRSIMode.Show();
+            m_e_lRSILevels.Show(); m_e_eRSILevels.Show();
+            m_re_hdr1.Show();
+            m_re_lPeriod.Show(); m_re_iPeriod.Show();
+            m_re_lTF.Show(); m_re_bTF.Show();
+            m_re_lMode.Show(); for(int i=0;i<3;i++) m_re_bMode[i].Show();
+            m_re_lOversold.Show(); m_re_iOversold.Show();
+            m_re_lOverbought.Show(); m_re_iOverbought.Show();
+            m_re_lMiddle.Show(); m_re_iMiddle.Show();
+            m_e_btnApplyRSI.Show(); m_e_statusRSI.Show();
+           }
+         else
+           {
+            m_e_hdr3.Hide(); m_e_lRSIStatus.Hide(); m_e_eRSIStatus.Hide();
+            m_e_lRSICurr.Hide(); m_e_eRSICurr.Hide(); m_e_lRSIMode.Hide(); m_e_eRSIMode.Hide();
+            m_e_lRSILevels.Hide(); m_e_eRSILevels.Hide();
+            m_re_hdr1.Hide();
+            m_re_lPeriod.Hide(); m_re_iPeriod.Hide();
+            m_re_lTF.Hide(); m_re_bTF.Hide();
+            m_re_lMode.Hide(); for(int i=0;i<3;i++) m_re_bMode[i].Hide();
+            m_re_lOversold.Hide(); m_re_iOversold.Hide();
+            m_re_lOverbought.Hide(); m_re_iOverbought.Hide();
+            m_re_lMiddle.Hide(); m_re_iMiddle.Hide();
+            m_e_btnApplyRSI.Hide(); m_e_statusRSI.Hide();
+           }
          break;
      }
   }
@@ -339,6 +429,12 @@ int CEPBotPanel::MAMethodToIndex(ENUM_MA_METHOD m)
 ENUM_MA_METHOD CEPBotPanel::IndexToMAMethod(int i)
   { return (i == 0) ? MODE_SMA : (i == 1) ? MODE_EMA : (i == 2) ? MODE_SMMA : MODE_LWMA; }
 
+int CEPBotPanel::RSIModeToIndex(ENUM_RSI_SIGNAL_MODE m)
+  { return (m == RSI_MODE_CROSSOVER) ? 0 : (m == RSI_MODE_ZONE) ? 1 : 2; }
+
+ENUM_RSI_SIGNAL_MODE CEPBotPanel::IndexToRSIMode(int i)
+  { return (i == 0) ? RSI_MODE_CROSSOVER : (i == 1) ? RSI_MODE_ZONE : RSI_MODE_MIDDLE; }
+
 //+------------------------------------------------------------------+
 //| MA Cross — handlers de clique dos campos editáveis                |
 //+------------------------------------------------------------------+
@@ -405,6 +501,66 @@ void CEPBotPanel::OnClickApplyMA(void)
       m_e_statusMA.Color(CLR_NEGATIVE);
      }
    m_e_statusMAExpiry = GetTickCount() + 10000;
+   ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
+//| RSI — handlers de clique dos campos editáveis                     |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickRSIMode(int i)
+  { m_cur_rsiMode = IndexToRSIMode(i); SetRadioSelection(m_re_bMode, 3, i); }
+
+void CEPBotPanel::OnClickRSITF(void)
+  {
+   m_re_bTF.Pressed(false);
+   m_cur_rsiTF = CycleTF(m_cur_rsiTF);
+   m_re_bTF.Text(TFName(m_cur_rsiTF));
+  }
+
+//+------------------------------------------------------------------+
+//| OnClickApplyRSI — aplica configurações RSI                        |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickApplyRSI(void)
+  {
+   if(m_rsiStrategy == NULL) return;
+
+   int errors = 0;
+
+   // Cold reload: Period
+   int period = (int)StringToInteger(m_re_iPeriod.Text());
+   if(period >= 2)
+     {
+      if(!m_rsiStrategy.SetPeriod(period)) errors++;
+     }
+   else
+      errors++;
+
+   // Cold reload: Timeframe
+   m_rsiStrategy.SetTimeframe(m_cur_rsiTF);
+
+   // Hot reload: Signal Mode
+   m_rsiStrategy.SetSignalMode(m_cur_rsiMode);
+
+   // Hot reload: Níveis
+   double os = StringToDouble(m_re_iOversold.Text());
+   double ob = StringToDouble(m_re_iOverbought.Text());
+   double mi = StringToDouble(m_re_iMiddle.Text());
+
+   if(os > 0 && os < 100) m_rsiStrategy.SetOversold(os);   else errors++;
+   if(ob > 0 && ob < 100) m_rsiStrategy.SetOverbought(ob); else errors++;
+   if(mi > 0 && mi < 100) m_rsiStrategy.SetMiddle(mi);     else errors++;
+
+   if(errors == 0)
+     {
+      m_e_statusRSI.Text("Aplicado com sucesso!");
+      m_e_statusRSI.Color(CLR_POSITIVE);
+     }
+   else
+     {
+      m_e_statusRSI.Text("Valores invalidos (Period>=2, Niveis 0-100)");
+      m_e_statusRSI.Color(CLR_NEGATIVE);
+     }
+   m_e_statusRSIExpiry = GetTickCount() + 10000;
    ChartRedraw();
   }
 
