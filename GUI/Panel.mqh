@@ -12,6 +12,8 @@
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
 // v1.28 (Parte 024):
+// + m_cr_lPTPHint: novo membro CLabel para dica visual TP=NENHUM + Partial TP
+//   na sub-página RISCO (criado em PanelTabConfig v1.25)
 // + MA Cross e RSI: botões toggle ON/OFF (m_e_btnMAToggle, m_e_btnRSIToggle)
 //   OnClickMAToggle, OnClickRSIToggle, ApplyToggleStyle
 //   MACrossStrategy v2.23: m_enabled, SetEnabled(), GetEnabled()
