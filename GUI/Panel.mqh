@@ -15,6 +15,13 @@
 // + MA Cross: m_e_lMAEntry/eMAEntry/lMAExit/eMAExit → removidos
 //   Substituídos por m_e_lLeg1/lLeg2/lLeg3 (legenda FCO/VM/TP-SL)
 // + m_ce_bEntry comentário: NEXT CANDLE|2ND CANDLE → PROX. CANDLE|2o. CANDLE
+// + RSI sub-página: campos editáveis hot/cold reload
+//   m_re_*: Period(edit), TF(cycle), Mode(radio 3), Oversold, Overbought, Middle
+//   m_e_btnApplyRSI, m_e_statusRSI, m_e_statusRSIExpiry
+//   m_cur_rsiTF, m_cur_rsiMode: state vars
+//   OnClickApplyRSI, OnClickRSIMode, OnClickRSITF,
+//   RSIModeToIndex, IndexToRSIMode: helpers
+//   Auto-clear m_e_statusRSIExpiry no Update() switch TAB_ESTRATEGIAS
 //
 // v1.26 (Parte 024):
 // + ESTRAT aba (MA Cross sub-página): campos editáveis hot/cold reload inline
