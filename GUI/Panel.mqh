@@ -2,7 +2,7 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.30 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.31 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.28"
@@ -11,6 +11,11 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.31 (Parte 024):
+// + m_rsiPanelOwned: flag para estratégia criada em runtime pelo painel
+// + ~CEPBotPanel: cleanup de estratégia criada pelo painel (RemoveStrategy + delete)
+// + PanelTabEstrategias v1.19: hot-create RSI no toggle quando NULL
+//
 // v1.30 (Parte 024):
 // + PanelTabEstrategias v1.18: ApplyToggleStyle avail param (N/A cinza)
 //   m_re_lModeDesc: legenda dinâmica CROSS/ZONE/MEDIO, RSIModeDesc()
@@ -328,6 +333,7 @@ private:
    CSignalManager    *m_signalManager;
    CMACrossStrategy  *m_maCross;
    CRSIStrategy      *m_rsiStrategy;
+   bool               m_rsiPanelOwned;  // true quando criada pelo painel (não pelo EA)
    CTrendFilter      *m_trendFilter;
    CRSIFilter        *m_rsiFilter;
 
@@ -805,7 +811,7 @@ CEPBotPanel::CEPBotPanel(void)
      m_estratPage(ESTRAT_MA_CROSS), m_filtrosPage(FILTROS_TREND),
      m_logger(NULL), m_blockers(NULL), m_riskManager(NULL),
      m_tradeManager(NULL), m_signalManager(NULL),
-     m_maCross(NULL), m_rsiStrategy(NULL),
+     m_maCross(NULL), m_rsiStrategy(NULL), m_rsiPanelOwned(false),
      m_trendFilter(NULL), m_rsiFilter(NULL),
      m_magicNumber(0), m_symbol(""),
      m_origDragTrade(true), m_origMouseScroll(true), m_mouseOverPanel(false),
@@ -831,6 +837,13 @@ CEPBotPanel::CEPBotPanel(void)
 
 CEPBotPanel::~CEPBotPanel(void)
   {
+   if(m_rsiPanelOwned && m_rsiStrategy != NULL)
+     {
+      if(m_signalManager != NULL)
+         m_signalManager.RemoveStrategy("RSI Strategy");
+      delete m_rsiStrategy;
+      m_rsiStrategy = NULL;
+     }
    ChartSetInteger(0, CHART_DRAG_TRADE_LEVELS, m_origDragTrade);
    ChartSetInteger(0, CHART_MOUSE_SCROLL, m_origMouseScroll);
   }

@@ -2,10 +2,16 @@
 //|                                         PanelTabEstrategias.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: ESTRATEGIAS — Create + Update                 |
-//|                     Versão 1.18 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.19 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
+// v1.19 (Parte 024):
+// + OnClickRSIToggle: hot-create — cria CRSIStrategy em runtime se NULL
+//   Usa params atuais do painel (period, TF, mode, OS, OB, mid)
+//   PRICE_CLOSE + shift=1 como defaults não expostos no painel
+//   m_rsiPanelOwned=true → destrutor do painel faz cleanup (RemoveStrategy + delete)
+//
 // v1.18 (Parte 024):
-// + ApplyToggleStyle: 3o. parâmetro avail — exibe "N/A" (cinza) quando strategy==NULL
+// + ApplyToggleStyle: parâmetro avail — exibe "N/A" (cinza) quando strategy==NULL
 // + Legenda dinâmica de modos RSI: m_re_lModeDesc (CLabel, font 7)
 //   RSIModeDesc(): texto explicativo para CROSS/ZONE/MEDIO
 //   Atualiza em OnClickRSIMode e UpdateEstrategias
@@ -596,10 +602,41 @@ void CEPBotPanel::OnClickMAToggle(void)
 
 void CEPBotPanel::OnClickRSIToggle(void)
   {
-   if(m_rsiStrategy == NULL) return;
+// ── Hot-create: strategy não existe → cria com params atuais do painel ──
+   if(m_rsiStrategy == NULL)
+     {
+      int    period = (int)StringToInteger(m_re_iPeriod.Text());
+      double os     = StringToDouble(m_re_iOversold.Text());
+      double ob     = StringToDouble(m_re_iOverbought.Text());
+      double mid    = StringToDouble(m_re_iMiddle.Text());
+      if(period <= 0) period = 14;
+      if(os  <= 0)   os  = 30.0;
+      if(ob  <= 0)   ob  = 70.0;
+      if(mid <= 0)   mid = 50.0;
+
+      CRSIStrategy *rsi = new CRSIStrategy();
+      if(rsi == NULL) return;
+
+      if(!rsi.Setup(m_logger, m_symbol, m_cur_rsiTF, period,
+                    PRICE_CLOSE, m_cur_rsiMode, os, ob, mid, 1))
+        { delete rsi; return; }
+
+      if(!rsi.Initialize())
+        { delete rsi; return; }
+
+      if(m_signalManager != NULL)
+         m_signalManager.AddStrategy(rsi);
+
+      m_rsiStrategy   = rsi;
+      m_rsiPanelOwned = true;
+      ApplyToggleStyle(m_e_btnRSIToggle, true, true);
+      return;
+     }
+
+// ── Já existe: apenas alterna enabled ──
    bool newState = !m_rsiStrategy.GetEnabled();
    m_rsiStrategy.SetEnabled(newState);
-   ApplyToggleStyle(m_e_btnRSIToggle, newState);
+   ApplyToggleStyle(m_e_btnRSIToggle, newState, true);
   }
 
 //+------------------------------------------------------------------+
