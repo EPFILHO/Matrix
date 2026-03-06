@@ -2,8 +2,14 @@
 //|                                         PanelTabEstrategias.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: ESTRATEGIAS — Create + Update                 |
-//|                     Versão 1.15 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.16 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
+// v1.16 (Parte 024):
+// + MA Cross e RSI: botão toggle ON/OFF (m_e_btnMAToggle, m_e_btnRSIToggle)
+// + ApplyToggleStyle: verde (LIGADO) / vermelho (DESLIGADO)
+// + Handlers: OnClickMAToggle, OnClickRSIToggle
+// + MACrossStrategy v2.23: m_enabled, SetEnabled(), GetEnabled()
+//
 // v1.15 (Parte 024):
 // + RSI sub-página: campos editáveis hot/cold reload inline
 //   Period(edit), TF(cycle), Mode(radio 3), Oversold, Overbought, Middle
@@ -58,6 +64,19 @@ bool CEPBotPanel::CreateTabEstrategias(void)
 
    if(!CreateHdr(m_e_hdr2, "e_h2", "MA CROSS STRATEGY", y)) return false;
    y += PANEL_GAP_Y + 2;
+
+// ── Toggle ON/OFF MA Cross ──
+   {
+    bool maOn = (m_maCross != NULL) ? m_maCross.GetEnabled() : true;
+    if(!m_e_btnMAToggle.Create(m_chart_id, PFX + "e_bMAOn", m_subwin,
+                               COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 20))
+       return false;
+    m_e_btnMAToggle.FontSize(8);
+    if(!Add(m_e_btnMAToggle)) return false;
+    ApplyToggleStyle(m_e_btnMAToggle, maOn);
+   }
+   y += 24;
+
    if(!CreateLV(m_e_lMAStatus, m_e_eMAStatus, "e_lMS", "e_eMS", "Status:", y)) return false;
    y += PANEL_GAP_Y;
    if(!CreateLV(m_e_lMAFast, m_e_eMAFast, "e_lMF", "e_eMF", "MA Rapida:", y)) return false;
@@ -195,6 +214,19 @@ bool CEPBotPanel::CreateTabEstrategias(void)
 
    if(!CreateHdr(m_e_hdr3, "e_h3", "RSI STRATEGY", y)) return false;
    y += PANEL_GAP_Y + 2;
+
+// ── Toggle ON/OFF RSI ──
+   {
+    bool rsiOn = (m_rsiStrategy != NULL) ? m_rsiStrategy.GetEnabled() : true;
+    if(!m_e_btnRSIToggle.Create(m_chart_id, PFX + "e_bRSOn", m_subwin,
+                                COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 20))
+       return false;
+    m_e_btnRSIToggle.FontSize(8);
+    if(!Add(m_e_btnRSIToggle)) return false;
+    ApplyToggleStyle(m_e_btnRSIToggle, rsiOn);
+   }
+   y += 24;
+
    if(!CreateLV(m_e_lRSIStatus, m_e_eRSIStatus, "e_lRS", "e_eRS", "Status:", y)) return false;
    y += PANEL_GAP_Y;
    if(!CreateLV(m_e_lRSICurr, m_e_eRSICurr, "e_lRC", "e_eRC", "RSI Atual:", y)) return false;
@@ -291,7 +323,8 @@ void CEPBotPanel::SetEstratPageVis(ENUM_ESTRAT_PAGE page, bool vis)
       case ESTRAT_MA_CROSS:
          if(vis)
            {
-            m_e_hdr2.Show(); m_e_lMAStatus.Show(); m_e_eMAStatus.Show();
+            m_e_hdr2.Show(); m_e_btnMAToggle.Show();
+            m_e_lMAStatus.Show(); m_e_eMAStatus.Show();
             m_e_lMAFast.Show(); m_e_eMAFast.Show(); m_e_lMASlow.Show(); m_e_eMASlow.Show();
             m_e_lMACross.Show(); m_e_eMACross.Show(); m_e_lMACandles.Show(); m_e_eMACandles.Show();
             m_ce_hdr1.Show();
@@ -309,7 +342,8 @@ void CEPBotPanel::SetEstratPageVis(ENUM_ESTRAT_PAGE page, bool vis)
            }
          else
            {
-            m_e_hdr2.Hide(); m_e_lMAStatus.Hide(); m_e_eMAStatus.Hide();
+            m_e_hdr2.Hide(); m_e_btnMAToggle.Hide();
+            m_e_lMAStatus.Hide(); m_e_eMAStatus.Hide();
             m_e_lMAFast.Hide(); m_e_eMAFast.Hide(); m_e_lMASlow.Hide(); m_e_eMASlow.Hide();
             m_e_lMACross.Hide(); m_e_eMACross.Hide(); m_e_lMACandles.Hide(); m_e_eMACandles.Hide();
             m_ce_hdr1.Hide();
@@ -329,7 +363,8 @@ void CEPBotPanel::SetEstratPageVis(ENUM_ESTRAT_PAGE page, bool vis)
       case ESTRAT_RSI:
          if(vis)
            {
-            m_e_hdr3.Show(); m_e_lRSIStatus.Show(); m_e_eRSIStatus.Show();
+            m_e_hdr3.Show(); m_e_btnRSIToggle.Show();
+            m_e_lRSIStatus.Show(); m_e_eRSIStatus.Show();
             m_e_lRSICurr.Show(); m_e_eRSICurr.Show(); m_e_lRSIMode.Show(); m_e_eRSIMode.Show();
             m_e_lRSILevels.Show(); m_e_eRSILevels.Show();
             m_re_hdr1.Show();
@@ -343,7 +378,8 @@ void CEPBotPanel::SetEstratPageVis(ENUM_ESTRAT_PAGE page, bool vis)
            }
          else
            {
-            m_e_hdr3.Hide(); m_e_lRSIStatus.Hide(); m_e_eRSIStatus.Hide();
+            m_e_hdr3.Hide(); m_e_btnRSIToggle.Hide();
+            m_e_lRSIStatus.Hide(); m_e_eRSIStatus.Hide();
             m_e_lRSICurr.Hide(); m_e_eRSICurr.Hide(); m_e_lRSIMode.Hide(); m_e_eRSIMode.Hide();
             m_e_lRSILevels.Hide(); m_e_eRSILevels.Hide();
             m_re_hdr1.Hide();
@@ -502,6 +538,35 @@ void CEPBotPanel::OnClickApplyMA(void)
      }
    m_e_statusMAExpiry = GetTickCount() + 10000;
    ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
+//| ApplyToggleStyle — aplica estilo verde/vermelho ao botão toggle   |
+//+------------------------------------------------------------------+
+void CEPBotPanel::ApplyToggleStyle(CButton &btn, bool enabled)
+  {
+   btn.Text(enabled ? "LIGADO" : "DESLIGADO");
+   btn.ColorBackground(enabled ? C'30,120,70' : C'160,40,40');
+   btn.Color(clrWhite);
+  }
+
+//+------------------------------------------------------------------+
+//| Toggles ON/OFF das estratégias                                    |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickMAToggle(void)
+  {
+   if(m_maCross == NULL) return;
+   bool newState = !m_maCross.GetEnabled();
+   m_maCross.SetEnabled(newState);
+   ApplyToggleStyle(m_e_btnMAToggle, newState);
+  }
+
+void CEPBotPanel::OnClickRSIToggle(void)
+  {
+   if(m_rsiStrategy == NULL) return;
+   bool newState = !m_rsiStrategy.GetEnabled();
+   m_rsiStrategy.SetEnabled(newState);
+   ApplyToggleStyle(m_e_btnRSIToggle, newState);
   }
 
 //+------------------------------------------------------------------+

@@ -2,15 +2,20 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.27 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.28 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.27"
+#property version   "1.28"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.28 (Parte 024):
+// + MA Cross e RSI: botões toggle ON/OFF (m_e_btnMAToggle, m_e_btnRSIToggle)
+//   OnClickMAToggle, OnClickRSIToggle, ApplyToggleStyle
+//   MACrossStrategy v2.23: m_enabled, SetEnabled(), GetEnabled()
+//
 // v1.27 (Parte 024):
 // + MA Cross: m_e_lMAEntry/eMAEntry/lMAExit/eMAExit → removidos
 //   Substituídos por m_e_lLeg1/lLeg2/lLeg3 (legenda FCO/VM/TP-SL)
@@ -400,6 +405,7 @@ private:
 
    // MA CROSS sub-page — display read-only
    CLabel  m_e_hdr2;
+   CButton m_e_btnMAToggle;                              // Toggle ON/OFF (v1.28)
    CLabel  m_e_lMAStatus;      CLabel  m_e_eMAStatus;
    CLabel  m_e_lMAFast;        CLabel  m_e_eMAFast;
    CLabel  m_e_lMASlow;        CLabel  m_e_eMASlow;
@@ -425,6 +431,7 @@ private:
 
    // RSI sub-page — display read-only
    CLabel  m_e_hdr3;
+   CButton m_e_btnRSIToggle;                             // Toggle ON/OFF (v1.28)
    CLabel  m_e_lRSIStatus;     CLabel  m_e_eRSIStatus;
    CLabel  m_e_lRSICurr;       CLabel  m_e_eRSICurr;
    CLabel  m_e_lRSIMode;       CLabel  m_e_eRSIMode;
@@ -746,6 +753,9 @@ private:
    void              OnClickRSITF(void);
    static int        RSIModeToIndex(ENUM_RSI_SIGNAL_MODE m);
    static ENUM_RSI_SIGNAL_MODE IndexToRSIMode(int i);
+   void              OnClickMAToggle(void);
+   void              OnClickRSIToggle(void);
+   void              ApplyToggleStyle(CButton &btn, bool enabled);
 
 protected:
    virtual bool      CreateButtonClose(void) { return true; }
@@ -1041,6 +1051,10 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       // CONFIG: OUTROS toggles
       if(sparam == m_co_bConfl.Name()) { OnClickConflict(); ChartRedraw(); return; }
       if(sparam == m_co_bDbg.Name())   { OnClickDebug();    ChartRedraw(); return; }
+
+      // ESTRAT: toggles ON/OFF
+      if(sparam == m_e_btnMAToggle.Name())  { m_e_btnMAToggle.Pressed(false);  OnClickMAToggle();  ChartRedraw(); return; }
+      if(sparam == m_e_btnRSIToggle.Name()) { m_e_btnRSIToggle.Pressed(false); OnClickRSIToggle(); ChartRedraw(); return; }
 
       // ESTRAT: MA Cross — campos editáveis e botão APLICAR
       if(sparam == m_e_btnApplyMA.Name()) { m_e_btnApplyMA.Pressed(false); OnClickApplyMA(); ChartRedraw(); return; }

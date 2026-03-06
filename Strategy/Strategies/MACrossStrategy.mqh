@@ -2,10 +2,10 @@
 //|                                             MACrossStrategy.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                   Estratégia de Cruzamento de MAs - EPBot Matrix |
-//|                                   Versão 2.22 - Claude Parte 024 |
+//|                                   Versão 2.23 - Claude Parte 024 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.22"
+#property version   "2.23"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -85,6 +85,7 @@ private:
 
    ENUM_ENTRY_MODE   m_entryMode;
    ENUM_EXIT_MODE    m_exitMode;
+   bool              m_enabled;          // v2.23: toggle ON/OFF da estratégia
 
    // ═══════════════════════════════════════════════════════════
    // CONTROLE DE CRUZAMENTO (estado interno - não duplica)
@@ -137,7 +138,7 @@ public:
    //+------------------------------------------------------------------+
    virtual ENUM_SIGNAL_TYPE GetExitSignal(ENUM_POSITION_TYPE currentPosition) override
      {
-      if(!m_isInitialized)
+      if(!m_isInitialized || !m_enabled)
          return SIGNAL_NONE;
 
       // EXIT_TP_SL: Strategy NÃO gerencia saída
@@ -153,6 +154,8 @@ public:
    // ═══════════════════════════════════════════════════════════
    bool              SetEntryMode(ENUM_ENTRY_MODE mode);
    bool              SetExitMode(ENUM_EXIT_MODE mode);
+   void              SetEnabled(bool value) { m_enabled = value; }
+   bool              GetEnabled() const     { return m_enabled; }
 
    // ═══════════════════════════════════════════════════════════
    // COLD RELOAD - Parâmetros frios (reinicia indicadores)
@@ -246,6 +249,7 @@ CMACrossStrategy::CMACrossStrategy(int priority = 0) : CStrategyBase("MA Cross S
    m_lastCrossSignal = SIGNAL_NONE;
    m_candlesAfterCross = 0;
    m_lastCheckBarTime = 0;
+   m_enabled = true;
 
    ArraySetAsSeries(m_maFast, true);
    ArraySetAsSeries(m_maSlow, true);
@@ -523,6 +527,9 @@ ENUM_SIGNAL_TYPE CMACrossStrategy::DetectCross()
 //+------------------------------------------------------------------+
 ENUM_SIGNAL_TYPE CMACrossStrategy::GetSignal()
   {
+   if(!m_enabled)
+      return SIGNAL_NONE;
+
    if(!m_isInitialized)
      {
       string msg = "[MA Cross] Tentativa de obter sinal sem estar inicializado";
