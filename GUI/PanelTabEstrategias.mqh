@@ -12,6 +12,8 @@
 // ✅ MA Cross: NEXT CANDLE → PROX. CANDLE, 2ND CANDLE → 2o. CANDLE
 // ✅ MA Cross: legenda das siglas (FCO, VM, TP/SL) adicionada após SINAIS
 // ✅ MA Cross: botão APLICAR MA CROSS movido para posição fixa CFG_APPLY_Y (=520)
+// ✅ MA Cross: legenda movida para segunda coluna (COL_VALUE_X)
+// ✅ MA Cross: "Fast TF" e "Slow TF" mudados para "Fast Time Frame" e "Slow Time Frame"
 //
 // v1.13 (Parte 024):
 // + MA Cross sub-página: campos editáveis hot/cold reload inline
@@ -84,7 +86,7 @@ bool CEPBotPanel::CreateTabEstrategias(void)
        return false;
    }
    y += PANEL_GAP_Y + 2;
-   if(!CreateLB(m_ce_lFastTF, m_ce_bFastTF, "ce_lFT", "ce_bFT", "Fast TF:", y)) return false;
+   if(!CreateLB(m_ce_lFastTF, m_ce_bFastTF, "ce_lFT", "ce_bFT", "Fast Time Frame:", y)) return false;
    y += PANEL_GAP_Y + 2;
 
    y += PANEL_GAP_SECTION;
@@ -96,7 +98,7 @@ bool CEPBotPanel::CreateTabEstrategias(void)
        return false;
    }
    y += PANEL_GAP_Y + 2;
-   if(!CreateLB(m_ce_lSlowTF, m_ce_bSlowTF, "ce_lST2", "ce_bST2", "Slow TF:", y)) return false;
+   if(!CreateLB(m_ce_lSlowTF, m_ce_bSlowTF, "ce_lST2", "ce_bST2", "Slow Time Frame:", y)) return false;
    y += PANEL_GAP_Y + 2;
 
    y += PANEL_GAP_SECTION;
@@ -117,7 +119,7 @@ bool CEPBotPanel::CreateTabEstrategias(void)
 
 // ── LEGENDA DAS SIGLAS ──
    if(!m_e_lLeg1.Create(m_chart_id, PFX + "e_leg1", m_subwin,
-                         COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + PANEL_GAP_Y))
+                         COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + PANEL_GAP_Y))
       return false;
    m_e_lLeg1.Text("FCO - Fechar no Cruzamento Oposto");
    m_e_lLeg1.FontSize(7);
@@ -126,7 +128,7 @@ bool CEPBotPanel::CreateTabEstrategias(void)
    y += PANEL_GAP_Y;
 
    if(!m_e_lLeg2.Create(m_chart_id, PFX + "e_leg2", m_subwin,
-                         COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + PANEL_GAP_Y))
+                         COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + PANEL_GAP_Y))
       return false;
    m_e_lLeg2.Text("VM - Virar a mao");
    m_e_lLeg2.FontSize(7);
@@ -135,7 +137,7 @@ bool CEPBotPanel::CreateTabEstrategias(void)
    y += PANEL_GAP_Y;
 
    if(!m_e_lLeg3.Create(m_chart_id, PFX + "e_leg3", m_subwin,
-                         COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + PANEL_GAP_Y))
+                         COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + PANEL_GAP_Y))
       return false;
    m_e_lLeg3.Text("TP/SL - Sair no TP/SL configurados");
    m_e_lLeg3.FontSize(7);
