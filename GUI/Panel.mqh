@@ -5,16 +5,17 @@
 //|                     Versão 1.32 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.28"
+#property version   "1.32"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.32 (Parte 024):
+// v1.32 (Parte 024 - atualizado):
 // + m_pendingMAEnabled / m_pendingRSIEnabled: estado pendente dos toggles
 // + PanelTabEstrategias v1.20: toggle visual-only, ApplyStyle sem avail,
 //   hot-create RSI movido para OnClickApplyRSI, status só Ativo/Inativo
+// + FIX: m_e_statusMAExpiry inicializado a 0 no construtor (estava undefined)
 //
 // v1.31 (Parte 024):
 // + m_rsiPanelOwned: flag para estratégia criada em runtime pelo painel

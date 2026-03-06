@@ -2,12 +2,16 @@
 //|                                                       Inputs.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                   Sistema de Inputs Centralizados - EPBot Matrix |
-//|                     Versão 1.05 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.06 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.05"
+#property version   "1.06"
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v1.06:
+// ✅ TODO: inp_MACrossMinDistance não passa ao Setup()
+//    Documentação de débito técnico para próximas releases
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v1.05:
 // ✅ Novo input inp_ShowPanel (Seção 008 - Painel GUI):
