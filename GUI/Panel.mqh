@@ -497,6 +497,7 @@ private:
    CLabel   m_cr_lTP1d;   CEdit    m_cr_iTP1d;
    CLabel   m_cr_lTP2p;   CEdit    m_cr_iTP2p;
    CLabel   m_cr_lTP2d;   CEdit    m_cr_iTP2d;
+   CLabel   m_cr_lPTPHint;  // Dica: TP=NENHUM + Partial TP sem alvo final
 
    // --- Risco 2 sub-page (Trailing/BE/DrawDown) ---
    CLabel   m_c2_hdr1;
