@@ -12,14 +12,12 @@
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
 // v1.26 (Parte 025):
-// + CONFIG aba: nova sub-página CFG_ESTRAT (MA Cross hot/cold reload)
-//   CFG_PAGE_COUNT 5→6, CFG_ESTRAT=5
-// + m_cfg_btnEstrat: botão da sub-página
-// + m_ce_*: controles Fast/Slow Period, Method(4), TF(cycle), Entry(2), Exit(3)
-// + m_cur_maFastMethod/SlowMethod/FastTF/SlowTF/maEntry/maExit: state vars
-// + OnClickCfgEstrat, OnClickMAFastMethod/SlowMethod, OnClickMAFastTF/SlowTF
-// + OnClickMAEntry, OnClickMAExit, CycleTF, TFName, MAMethodToIndex, IndexToMAMethod
-// + ChartEvent: handlers para todos os novos botões
+// + ESTRAT aba (MA Cross sub-página): campos editáveis hot/cold reload inline
+//   m_ce_*: Fast/Slow Period, Method(4), TF(cycle), Entry(2), Exit(3)
+//   m_e_btnApplyMA, m_e_statusMA, m_e_statusMAExpiry
+//   m_cur_maFastMethod/SlowMethod/FastTF/SlowTF/maEntry/maExit: state vars
+//   OnClickApplyMA, OnClickMAFastMethod/SlowMethod, OnClickMAFastTF/SlowTF
+//   OnClickMAEntry, OnClickMAExit, CycleTF, TFName, MAMethodToIndex, IndexToMAMethod
 //
 // v1.25 (Parte 024):
 // + Aba RESULTADOS/PROTECAO: novos CLabel members para DD expandido
@@ -277,10 +275,9 @@ enum ENUM_CONFIG_PAGE
    CFG_RISCO2 = 1,
    CFG_BLOQUEIOS = 2,
    CFG_OUTROS = 3,
-   CFG_BLOQ2 = 4,
-   CFG_ESTRAT = 5
+   CFG_BLOQ2 = 4
   };
-#define CFG_PAGE_COUNT 6
+#define CFG_PAGE_COUNT 5
 
 enum ENUM_ESTRAT_PAGE  { ESTRAT_MA_CROSS=0, ESTRAT_RSI=1 };
 #define ESTRAT_PAGE_COUNT 2
@@ -388,7 +385,7 @@ private:
    CButton m_e_btnMACross;
    CButton m_e_btnRSI;
 
-   // MA CROSS sub-page
+   // MA CROSS sub-page — display read-only
    CLabel  m_e_hdr2;
    CLabel  m_e_lMAStatus;      CLabel  m_e_eMAStatus;
    CLabel  m_e_lMAFast;        CLabel  m_e_eMAFast;
@@ -397,6 +394,20 @@ private:
    CLabel  m_e_lMACandles;     CLabel  m_e_eMACandles;
    CLabel  m_e_lMAEntry;       CLabel  m_e_eMAEntry;
    CLabel  m_e_lMAExit;        CLabel  m_e_eMAExit;
+   // MA CROSS sub-page — config editável (hot/cold reload)
+   CLabel   m_ce_hdr1;
+   CLabel   m_ce_lFastP;   CEdit    m_ce_iFastP;
+   CLabel   m_ce_lFastM;   CButton  m_ce_bFastM[4];   // Radio: SMA|EMA|SMMA|LWMA
+   CLabel   m_ce_lFastTF;  CButton  m_ce_bFastTF;     // Cycle
+   CLabel   m_ce_lSlowP;   CEdit    m_ce_iSlowP;
+   CLabel   m_ce_lSlowM;   CButton  m_ce_bSlowM[4];   // Radio: SMA|EMA|SMMA|LWMA
+   CLabel   m_ce_lSlowTF;  CButton  m_ce_bSlowTF;     // Cycle
+   CLabel   m_ce_hdr2;
+   CLabel   m_ce_lEntry;   CButton  m_ce_bEntry[2];   // Radio: NEXT CANDLE|2ND CANDLE
+   CLabel   m_ce_lExit;    CButton  m_ce_bExit[3];    // Radio: FCO|VM|TP-SL
+   CButton  m_e_btnApplyMA;
+   CLabel   m_e_statusMA;
+   uint     m_e_statusMAExpiry;
 
    // RSI sub-page
    CLabel  m_e_hdr3;
@@ -433,7 +444,6 @@ private:
    CButton  m_cfg_btnBloq;
    CButton  m_cfg_btnOutros;
    CButton  m_cfg_btnBloq2;
-   CButton  m_cfg_btnEstrat;
 
    // --- Risco sub-page (SL/TP/Spread/PartialTP) ---
    CLabel   m_cr_hdr1;
@@ -534,18 +544,6 @@ private:
    CLabel   m_co_lConfl;  CButton m_co_bConfl;
    CLabel   m_co_lDbg;    CButton m_co_bDbg;
    CLabel   m_co_lDbgCd;  CEdit   m_co_iDbgCd;
-
-   // --- Estrat sub-page (MA Cross hot/cold reload) ---
-   CLabel   m_ce_hdr1;
-   CLabel   m_ce_lFastP;   CEdit    m_ce_iFastP;
-   CLabel   m_ce_lFastM;   CButton  m_ce_bFastM[4];   // Radio: SMA|EMA|SMMA|LWMA
-   CLabel   m_ce_lFastTF;  CButton  m_ce_bFastTF;     // Cycle
-   CLabel   m_ce_lSlowP;   CEdit    m_ce_iSlowP;
-   CLabel   m_ce_lSlowM;   CButton  m_ce_bSlowM[4];   // Radio: SMA|EMA|SMMA|LWMA
-   CLabel   m_ce_lSlowTF;  CButton  m_ce_bSlowTF;     // Cycle
-   CLabel   m_ce_hdr2;
-   CLabel   m_ce_lEntry;   CButton  m_ce_bEntry[2];   // Radio: NEXT CANDLE|E2C
-   CLabel   m_ce_lExit;    CButton  m_ce_bExit[3];    // Radio: FCO|VM|TP-SL
 
    // APLICAR + status
    CButton  m_cfg_btnApply;
@@ -703,7 +701,7 @@ private:
    void              OnClickNewsOn2(void);
    void              OnClickNewsOn3(void);
    void              RefreshNewsState(int w);
-   void              OnClickCfgEstrat(void);
+   void              OnClickApplyMA(void);
    void              OnClickMAFastMethod(int i);
    void              OnClickMASlowMethod(int i);
    void              OnClickMAFastTF(void);
@@ -1007,10 +1005,9 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       if(sparam == m_co_bConfl.Name()) { OnClickConflict(); ChartRedraw(); return; }
       if(sparam == m_co_bDbg.Name())   { OnClickDebug();    ChartRedraw(); return; }
 
-      // CONFIG: ESTRAT sub-página
-      if(sparam == m_cfg_btnEstrat.Name()) { m_cfg_btnEstrat.Pressed(false); OnClickCfgEstrat(); ChartRedraw(); return; }
+      // ESTRAT: MA Cross — campos editáveis e botão APLICAR
+      if(sparam == m_e_btnApplyMA.Name()) { m_e_btnApplyMA.Pressed(false); OnClickApplyMA(); ChartRedraw(); return; }
 
-      // CONFIG: ESTRAT — MA Cross radio groups e cycles
       for(int i = 0; i < 4; i++)
         {
          if(sparam == m_ce_bFastM[i].Name()) { OnClickMAFastMethod(i); ChartRedraw(); return; }
@@ -1269,7 +1266,11 @@ void CEPBotPanel::Update(void)
      {
       case TAB_STATUS:      UpdateStatus();       break;
       case TAB_RESULTADOS:  UpdateResultados();   break;
-      case TAB_ESTRATEGIAS: UpdateEstrategias();  break;
+      case TAB_ESTRATEGIAS:
+         UpdateEstrategias();
+         if(m_e_statusMAExpiry > 0 && GetTickCount() >= m_e_statusMAExpiry)
+           { m_e_statusMA.Text(""); m_e_statusMAExpiry = 0; ChartRedraw(); }
+         break;
       case TAB_FILTROS:     UpdateFiltros();      break;
       case TAB_CONFIG:
          if(m_cfgStatusExpiry > 0 && GetTickCount() >= m_cfgStatusExpiry)
