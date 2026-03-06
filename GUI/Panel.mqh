@@ -416,12 +416,23 @@ private:
    CLabel   m_e_statusMA;
    uint     m_e_statusMAExpiry;
 
-   // RSI sub-page
+   // RSI sub-page — display read-only
    CLabel  m_e_hdr3;
    CLabel  m_e_lRSIStatus;     CLabel  m_e_eRSIStatus;
    CLabel  m_e_lRSICurr;       CLabel  m_e_eRSICurr;
    CLabel  m_e_lRSIMode;       CLabel  m_e_eRSIMode;
    CLabel  m_e_lRSILevels;     CLabel  m_e_eRSILevels;
+   // RSI sub-page — config editável (hot/cold reload)
+   CLabel   m_re_hdr1;                                // CONFIGURACOES header
+   CLabel   m_re_lPeriod;   CEdit    m_re_iPeriod;    // Período
+   CLabel   m_re_lTF;       CButton  m_re_bTF;        // Timeframe (cycle)
+   CLabel   m_re_lMode;     CButton  m_re_bMode[3];   // Radio: Crossover|Zone|Middle
+   CLabel   m_re_lOversold; CEdit    m_re_iOversold;   // Nível Oversold
+   CLabel   m_re_lOverbought; CEdit  m_re_iOverbought; // Nível Overbought
+   CLabel   m_re_lMiddle;   CEdit    m_re_iMiddle;     // Nível Médio
+   CButton  m_e_btnApplyRSI;
+   CLabel   m_e_statusRSI;
+   uint     m_e_statusRSIExpiry;
 
    // ════════════════════════════════════════
    // ABA 3: FILTROS
@@ -602,6 +613,9 @@ private:
    ENUM_TIMEFRAMES           m_cur_maSlowTF;
    ENUM_ENTRY_MODE           m_cur_maEntry;
    ENUM_EXIT_MODE            m_cur_maExit;
+   // RSI ESTRAT (v1.15)
+   ENUM_TIMEFRAMES           m_cur_rsiTF;
+   ENUM_RSI_SIGNAL_MODE      m_cur_rsiMode;
 
    // ── Helpers privados ──
    bool              CreateLV(CLabel &lbl, CLabel &val, string ln, string en, string lt, int y);
@@ -719,6 +733,12 @@ private:
    static string     TFName(ENUM_TIMEFRAMES tf);
    static int        MAMethodToIndex(ENUM_MA_METHOD m);
    static ENUM_MA_METHOD IndexToMAMethod(int i);
+   // RSI ESTRAT handlers
+   void              OnClickApplyRSI(void);
+   void              OnClickRSIMode(int i);
+   void              OnClickRSITF(void);
+   static int        RSIModeToIndex(ENUM_RSI_SIGNAL_MODE m);
+   static ENUM_RSI_SIGNAL_MODE IndexToRSIMode(int i);
 
 protected:
    virtual bool      CreateButtonClose(void) { return true; }
@@ -771,7 +791,10 @@ CEPBotPanel::CEPBotPanel(void)
      m_cur_lossStreakAction(STREAK_PAUSE), m_cur_winStreakAction(STREAK_PAUSE),
      m_cur_ddType(DD_FINANCIAL), m_cur_ddPeakMode(DD_PEAK_REALIZED_ONLY),
      m_cur_profitTargetAction(PROFIT_ACTION_STOP),
-     m_cfgStatusExpiry(0)
+     m_cfgStatusExpiry(0),
+     m_e_statusRSIExpiry(0),
+     m_cur_rsiTF(PERIOD_CURRENT),
+     m_cur_rsiMode(RSI_MODE_CROSSOVER)
   {
   }
 
@@ -1031,6 +1054,14 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       if(sparam == m_ce_bFastTF.Name()) { OnClickMAFastTF(); ChartRedraw(); return; }
       if(sparam == m_ce_bSlowTF.Name()) { OnClickMASlowTF(); ChartRedraw(); return; }
 
+      // ESTRAT: RSI — campos editáveis e botão APLICAR
+      if(sparam == m_e_btnApplyRSI.Name()) { m_e_btnApplyRSI.Pressed(false); OnClickApplyRSI(); ChartRedraw(); return; }
+      if(sparam == m_re_bTF.Name()) { OnClickRSITF(); ChartRedraw(); return; }
+      for(int i = 0; i < 3; i++)
+        {
+         if(sparam == m_re_bMode[i].Name()) { OnClickRSIMode(i); ChartRedraw(); return; }
+        }
+
       // Não é nosso → cai pro CAppDialog abaixo
      }
 
@@ -1277,6 +1308,8 @@ void CEPBotPanel::Update(void)
          UpdateEstrategias();
          if(m_e_statusMAExpiry > 0 && GetTickCount() >= m_e_statusMAExpiry)
            { m_e_statusMA.Text(""); m_e_statusMAExpiry = 0; ChartRedraw(); }
+         if(m_e_statusRSIExpiry > 0 && GetTickCount() >= m_e_statusRSIExpiry)
+           { m_e_statusRSI.Text(""); m_e_statusRSIExpiry = 0; ChartRedraw(); }
          break;
       case TAB_FILTROS:     UpdateFiltros();      break;
       case TAB_CONFIG:
