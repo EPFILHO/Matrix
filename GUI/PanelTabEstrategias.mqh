@@ -2,8 +2,14 @@
 //|                                         PanelTabEstrategias.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: ESTRATEGIAS — Create + Update                 |
-//|                     Versão 1.17 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.18 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
+// v1.18 (Parte 024):
+// + ApplyToggleStyle: 3o. parâmetro avail — exibe "N/A" (cinza) quando strategy==NULL
+// + Legenda dinâmica de modos RSI: m_re_lModeDesc (CLabel, font 7)
+//   RSIModeDesc(): texto explicativo para CROSS/ZONE/MEDIO
+//   Atualiza em OnClickRSIMode e UpdateEstrategias
+//
 // v1.17 (Parte 024):
 // + Toggle padrão OFF quando strategy == NULL (fallback era true → bug visual)
 // + Labels: LIGADO/DESLIGADO → ON/OFF (padronizado com aba CONFIG)
@@ -261,6 +267,16 @@ bool CEPBotPanel::CreateTabEstrategias(void)
    }
    y += PANEL_GAP_Y + 2;
 
+// ── Legenda dinâmica do modo selecionado ──
+   if(!m_re_lModeDesc.Create(m_chart_id, PFX + "re_lMDesc", m_subwin,
+                              COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+      return false;
+   m_re_lModeDesc.FontSize(7);
+   m_re_lModeDesc.Color(CLR_NEUTRAL);
+   m_re_lModeDesc.Text(RSIModeDesc(RSI_MODE_CROSSOVER));
+   if(!Add(m_re_lModeDesc)) return false;
+   y += 15;
+
    y += PANEL_GAP_SECTION;
    if(!CreateLI(m_re_lOversold,   m_re_iOversold,   "re_lOS", "re_iOS", "Oversold:", y)) return false;
    y += PANEL_GAP_Y;
@@ -376,7 +392,7 @@ void CEPBotPanel::SetEstratPageVis(ENUM_ESTRAT_PAGE page, bool vis)
             m_re_hdr1.Show();
             m_re_lPeriod.Show(); m_re_iPeriod.Show();
             m_re_lTF.Show(); m_re_bTF.Show();
-            m_re_lMode.Show(); for(int i=0;i<3;i++) m_re_bMode[i].Show();
+            m_re_lMode.Show(); for(int i=0;i<3;i++) m_re_bMode[i].Show(); m_re_lModeDesc.Show();
             m_re_lOversold.Show(); m_re_iOversold.Show();
             m_re_lOverbought.Show(); m_re_iOverbought.Show();
             m_re_lMiddle.Show(); m_re_iMiddle.Show();
@@ -391,7 +407,7 @@ void CEPBotPanel::SetEstratPageVis(ENUM_ESTRAT_PAGE page, bool vis)
             m_re_hdr1.Hide();
             m_re_lPeriod.Hide(); m_re_iPeriod.Hide();
             m_re_lTF.Hide(); m_re_bTF.Hide();
-            m_re_lMode.Hide(); for(int i=0;i<3;i++) m_re_bMode[i].Hide();
+            m_re_lMode.Hide(); for(int i=0;i<3;i++) m_re_bMode[i].Hide(); m_re_lModeDesc.Hide();
             m_re_lOversold.Hide(); m_re_iOversold.Hide();
             m_re_lOverbought.Hide(); m_re_iOverbought.Hide();
             m_re_lMiddle.Hide(); m_re_iMiddle.Hide();
@@ -445,6 +461,17 @@ ENUM_TIMEFRAMES CEPBotPanel::CycleTF(ENUM_TIMEFRAMES tf)
       if(tfs[i] == tf)
          return tfs[(i + 1) % 10];
    return PERIOD_CURRENT;
+  }
+
+string CEPBotPanel::RSIModeDesc(ENUM_RSI_SIGNAL_MODE mode)
+  {
+   switch(mode)
+     {
+      case RSI_MODE_CROSSOVER: return "CROSS: sinal no cruzamento do nivel OS/OB";
+      case RSI_MODE_ZONE:      return "ZONE: sinal enquanto RSI esta na zona OS/OB";
+      case RSI_MODE_MIDDLE:    return "MEDIO: sinal no cruzamento da linha central (50)";
+      default:                 return "";
+     }
   }
 
 string CEPBotPanel::TFName(ENUM_TIMEFRAMES tf)
@@ -549,10 +576,10 @@ void CEPBotPanel::OnClickApplyMA(void)
 //+------------------------------------------------------------------+
 //| ApplyToggleStyle — aplica estilo verde/vermelho ao botão toggle   |
 //+------------------------------------------------------------------+
-void CEPBotPanel::ApplyToggleStyle(CButton &btn, bool enabled)
+void CEPBotPanel::ApplyToggleStyle(CButton &btn, bool enabled, bool avail = true)
   {
-   btn.Text(enabled ? "ON" : "OFF");
-   btn.ColorBackground(enabled ? C'30,120,70' : C'160,40,40');
+   btn.Text(avail ? (enabled ? "ON" : "OFF") : "N/A");
+   btn.ColorBackground(avail ? (enabled ? C'30,120,70' : C'160,40,40') : C'75,75,75');
    btn.Color(clrWhite);
   }
 
@@ -579,7 +606,11 @@ void CEPBotPanel::OnClickRSIToggle(void)
 //| RSI — handlers de clique dos campos editáveis                     |
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickRSIMode(int i)
-  { m_cur_rsiMode = IndexToRSIMode(i); SetRadioSelection(m_re_bMode, 3, i); }
+  {
+   m_cur_rsiMode = IndexToRSIMode(i);
+   SetRadioSelection(m_re_bMode, 3, i);
+   m_re_lModeDesc.Text(RSIModeDesc(m_cur_rsiMode));
+  }
 
 void CEPBotPanel::OnClickRSITF(void)
   {
@@ -643,7 +674,7 @@ void CEPBotPanel::UpdateEstrategias(void)
    if(m_estratPage == ESTRAT_MA_CROSS)
      {
 // ── MA Cross ──
-      ApplyToggleStyle(m_e_btnMAToggle, (m_maCross != NULL) ? m_maCross.GetEnabled() : false);
+      ApplyToggleStyle(m_e_btnMAToggle, (m_maCross != NULL) ? m_maCross.GetEnabled() : false, m_maCross != NULL);
       if(m_maCross != NULL && m_maCross.IsInitialized())
         {
          bool maEnabled = m_maCross.GetEnabled();
@@ -679,7 +710,8 @@ void CEPBotPanel::UpdateEstrategias(void)
    else if(m_estratPage == ESTRAT_RSI)
      {
 // ── RSI Strategy ──
-      ApplyToggleStyle(m_e_btnRSIToggle, (m_rsiStrategy != NULL) ? m_rsiStrategy.GetEnabled() : false);
+      ApplyToggleStyle(m_e_btnRSIToggle, (m_rsiStrategy != NULL) ? m_rsiStrategy.GetEnabled() : false, m_rsiStrategy != NULL);
+      m_re_lModeDesc.Text(RSIModeDesc(m_cur_rsiMode));
       if(m_rsiStrategy != NULL && m_rsiStrategy.IsInitialized())
         {
          bool rsiEnabled = m_rsiStrategy.GetEnabled();

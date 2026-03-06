@@ -2,7 +2,7 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.29 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.30 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.28"
@@ -11,6 +11,11 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.30 (Parte 024):
+// + PanelTabEstrategias v1.18: ApplyToggleStyle avail param (N/A cinza)
+//   m_re_lModeDesc: legenda dinâmica CROSS/ZONE/MEDIO, RSIModeDesc()
+// + Panel.mqh: declaração RSIModeDesc() + m_re_lModeDesc membro
+//
 // v1.29 (Parte 024):
 // + PanelTabEstrategias v1.17: toggle default OFF quando NULL, labels ON/OFF,
 //   UpdateEstrategias sincroniza toggle + estado "Suspenso"
@@ -447,6 +452,7 @@ private:
    CLabel   m_re_lPeriod;   CEdit    m_re_iPeriod;    // Período
    CLabel   m_re_lTF;       CButton  m_re_bTF;        // Timeframe (cycle)
    CLabel   m_re_lMode;     CButton  m_re_bMode[3];   // Radio: Crossover|Zone|Middle
+   CLabel   m_re_lModeDesc;                           // Legenda dinâmica do modo selecionado
    CLabel   m_re_lOversold; CEdit    m_re_iOversold;   // Nível Oversold
    CLabel   m_re_lOverbought; CEdit  m_re_iOverbought; // Nível Overbought
    CLabel   m_re_lMiddle;   CEdit    m_re_iMiddle;     // Nível Médio
@@ -760,9 +766,10 @@ private:
    void              OnClickRSITF(void);
    static int        RSIModeToIndex(ENUM_RSI_SIGNAL_MODE m);
    static ENUM_RSI_SIGNAL_MODE IndexToRSIMode(int i);
+   static string     RSIModeDesc(ENUM_RSI_SIGNAL_MODE mode);
    void              OnClickMAToggle(void);
    void              OnClickRSIToggle(void);
-   void              ApplyToggleStyle(CButton &btn, bool enabled);
+   void              ApplyToggleStyle(CButton &btn, bool enabled, bool avail = true);
 
 protected:
    virtual bool      CreateButtonClose(void) { return true; }
