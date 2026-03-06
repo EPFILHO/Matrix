@@ -2,15 +2,20 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.26 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.27 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.26"
+#property version   "1.27"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.27 (Parte 025):
+// + MA Cross: m_e_lMAEntry/eMAEntry/lMAExit/eMAExit → removidos
+//   Substituídos por m_e_lLeg1/lLeg2/lLeg3 (legenda FCO/VM/TP-SL)
+// + m_ce_bEntry comentário: NEXT CANDLE|2ND CANDLE → PROX. CANDLE|2o. CANDLE
+//
 // v1.26 (Parte 024):
 // + ESTRAT aba (MA Cross sub-página): campos editáveis hot/cold reload inline
 //   m_ce_*: Fast/Slow Period, Method(4), TF(cycle), Entry(2), Exit(3)
@@ -393,8 +398,9 @@ private:
    CLabel  m_e_lMASlow;        CLabel  m_e_eMASlow;
    CLabel  m_e_lMACross;       CLabel  m_e_eMACross;
    CLabel  m_e_lMACandles;     CLabel  m_e_eMACandles;
-   CLabel  m_e_lMAEntry;       CLabel  m_e_eMAEntry;
-   CLabel  m_e_lMAExit;        CLabel  m_e_eMAExit;
+   CLabel  m_e_lLeg1;           // Legenda: FCO
+   CLabel  m_e_lLeg2;           // Legenda: VM
+   CLabel  m_e_lLeg3;           // Legenda: TP/SL
    // MA CROSS sub-page — config editável (hot/cold reload)
    CLabel   m_ce_hdr1;
    CLabel   m_ce_lFastP;   CEdit    m_ce_iFastP;
@@ -404,7 +410,7 @@ private:
    CLabel   m_ce_lSlowM;   CButton  m_ce_bSlowM[4];   // Radio: SMA|EMA|SMMA|LWMA
    CLabel   m_ce_lSlowTF;  CButton  m_ce_bSlowTF;     // Cycle
    CLabel   m_ce_hdr2;
-   CLabel   m_ce_lEntry;   CButton  m_ce_bEntry[2];   // Radio: NEXT CANDLE|2ND CANDLE
+   CLabel   m_ce_lEntry;   CButton  m_ce_bEntry[2];   // Radio: PROX. CANDLE|2o. CANDLE
    CLabel   m_ce_lExit;    CButton  m_ce_bExit[3];    // Radio: FCO|VM|TP-SL
    CButton  m_e_btnApplyMA;
    CLabel   m_e_statusMA;

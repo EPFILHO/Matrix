@@ -2,10 +2,16 @@
 //|                                         PanelTabEstrategias.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: ESTRATEGIAS — Create + Update                 |
-//|                     Versão 1.13 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.14 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba ESTRATEGIAS.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
+//
+// v1.14 (Parte 025):
+// ✅ MA Cross: remove labels de status Entrada/Saida (abaixo de Candles Apos)
+// ✅ MA Cross: NEXT CANDLE → PROX. CANDLE, 2ND CANDLE → 2o. CANDLE
+// ✅ MA Cross: legenda das siglas (FCO, VM, TP/SL) adicionada após SINAIS
+// ✅ MA Cross: botão APLICAR MA CROSS movido para posição fixa CFG_APPLY_Y (=520)
 //
 // v1.13 (Parte 024):
 // + MA Cross sub-página: campos editáveis hot/cold reload inline
@@ -63,10 +69,6 @@ bool CEPBotPanel::CreateTabEstrategias(void)
    if(!CreateLV(m_e_lMACross, m_e_eMACross, "e_lMC", "e_eMC", "Ultimo Cruz.:", y)) return false;
    y += PANEL_GAP_Y;
    if(!CreateLV(m_e_lMACandles, m_e_eMACandles, "e_lMN", "e_eMN", "Candles Apos:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_e_lMAEntry, m_e_eMAEntry, "e_lME", "e_eME", "Entrada:", y)) return false;
-   y += PANEL_GAP_Y;
-   if(!CreateLV(m_e_lMAExit, m_e_eMAExit, "e_lMX", "e_eMX", "Saida:", y)) return false;
    y += PANEL_GAP_Y + 2;
 
 // ── CONFIGURAÇÕES EDITÁVEIS ──
@@ -101,7 +103,7 @@ bool CEPBotPanel::CreateTabEstrategias(void)
    if(!CreateHdr(m_ce_hdr2, "ce_h2", "SINAIS", y)) return false;
    y += PANEL_GAP_Y + 2;
    {
-    string entTexts[] = {"NEXT CANDLE", "2ND CANDLE"};
+    string entTexts[] = {"PROX. CANDLE", "2o. CANDLE"};
     if(!CreateRadioGroup(m_ce_lEntry, m_ce_bEntry, "ce_lEN", "ce_bEN", "Entrada:", entTexts, 2, y))
        return false;
    }
@@ -111,12 +113,39 @@ bool CEPBotPanel::CreateTabEstrategias(void)
     if(!CreateRadioGroup(m_ce_lExit, m_ce_bExit, "ce_lEX", "ce_bEX", "Saida:", extTexts, 3, y))
        return false;
    }
-   y += PANEL_GAP_Y + 4;
+   y += PANEL_GAP_Y + 8;
 
-// ── BOTÃO APLICAR MA CROSS ──
+// ── LEGENDA DAS SIGLAS ──
+   if(!m_e_lLeg1.Create(m_chart_id, PFX + "e_leg1", m_subwin,
+                         COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + PANEL_GAP_Y))
+      return false;
+   m_e_lLeg1.Text("FCO - Fechar no Cruzamento Oposto");
+   m_e_lLeg1.FontSize(7);
+   m_e_lLeg1.Color(CLR_NEUTRAL);
+   if(!Add(m_e_lLeg1)) return false;
+   y += PANEL_GAP_Y;
+
+   if(!m_e_lLeg2.Create(m_chart_id, PFX + "e_leg2", m_subwin,
+                         COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + PANEL_GAP_Y))
+      return false;
+   m_e_lLeg2.Text("VM - Virar a mao");
+   m_e_lLeg2.FontSize(7);
+   m_e_lLeg2.Color(CLR_NEUTRAL);
+   if(!Add(m_e_lLeg2)) return false;
+   y += PANEL_GAP_Y;
+
+   if(!m_e_lLeg3.Create(m_chart_id, PFX + "e_leg3", m_subwin,
+                         COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + PANEL_GAP_Y))
+      return false;
+   m_e_lLeg3.Text("TP/SL - Sair no TP/SL configurados");
+   m_e_lLeg3.FontSize(7);
+   m_e_lLeg3.Color(CLR_NEUTRAL);
+   if(!Add(m_e_lLeg3)) return false;
+
+// ── BOTÃO APLICAR MA CROSS (posição fixa, igual ao CONFIG) ──
    if(!m_e_btnApplyMA.Create(m_chart_id, PFX + "e_applyMA", m_subwin,
-                              COL_LABEL_X, y,
-                              COL_VALUE_X + COL_VALUE_W, y + 24))
+                              COL_LABEL_X, CFG_APPLY_Y,
+                              COL_VALUE_X + COL_VALUE_W, CFG_APPLY_Y + 24))
       return false;
    m_e_btnApplyMA.Text("APLICAR MA CROSS");
    m_e_btnApplyMA.FontSize(9);
@@ -124,11 +153,10 @@ bool CEPBotPanel::CreateTabEstrategias(void)
    m_e_btnApplyMA.Color(clrWhite);
    if(!Add(m_e_btnApplyMA))
       return false;
-   y += 28;
 
    if(!m_e_statusMA.Create(m_chart_id, PFX + "e_stMA", m_subwin,
-                            COL_LABEL_X, y,
-                            COL_VALUE_X + COL_VALUE_W, y + PANEL_GAP_Y))
+                            COL_LABEL_X, CFG_APPLY_Y + 28,
+                            COL_VALUE_X + COL_VALUE_W, CFG_APPLY_Y + 28 + PANEL_GAP_Y))
       return false;
    m_e_statusMA.Text("");
    m_e_statusMA.FontSize(8);
@@ -196,7 +224,6 @@ void CEPBotPanel::SetEstratPageVis(ENUM_ESTRAT_PAGE page, bool vis)
             m_e_hdr2.Show(); m_e_lMAStatus.Show(); m_e_eMAStatus.Show();
             m_e_lMAFast.Show(); m_e_eMAFast.Show(); m_e_lMASlow.Show(); m_e_eMASlow.Show();
             m_e_lMACross.Show(); m_e_eMACross.Show(); m_e_lMACandles.Show(); m_e_eMACandles.Show();
-            m_e_lMAEntry.Show(); m_e_eMAEntry.Show(); m_e_lMAExit.Show(); m_e_eMAExit.Show();
             m_ce_hdr1.Show();
             m_ce_lFastP.Show(); m_ce_iFastP.Show();
             m_ce_lFastM.Show(); for(int i=0;i<4;i++) m_ce_bFastM[i].Show();
@@ -207,6 +234,7 @@ void CEPBotPanel::SetEstratPageVis(ENUM_ESTRAT_PAGE page, bool vis)
             m_ce_hdr2.Show();
             m_ce_lEntry.Show(); for(int i=0;i<2;i++) m_ce_bEntry[i].Show();
             m_ce_lExit.Show();  for(int i=0;i<3;i++) m_ce_bExit[i].Show();
+            m_e_lLeg1.Show(); m_e_lLeg2.Show(); m_e_lLeg3.Show();
             m_e_btnApplyMA.Show(); m_e_statusMA.Show();
            }
          else
@@ -214,7 +242,6 @@ void CEPBotPanel::SetEstratPageVis(ENUM_ESTRAT_PAGE page, bool vis)
             m_e_hdr2.Hide(); m_e_lMAStatus.Hide(); m_e_eMAStatus.Hide();
             m_e_lMAFast.Hide(); m_e_eMAFast.Hide(); m_e_lMASlow.Hide(); m_e_eMASlow.Hide();
             m_e_lMACross.Hide(); m_e_eMACross.Hide(); m_e_lMACandles.Hide(); m_e_eMACandles.Hide();
-            m_e_lMAEntry.Hide(); m_e_eMAEntry.Hide(); m_e_lMAExit.Hide(); m_e_eMAExit.Hide();
             m_ce_hdr1.Hide();
             m_ce_lFastP.Hide(); m_ce_iFastP.Hide();
             m_ce_lFastM.Hide(); for(int i=0;i<4;i++) m_ce_bFastM[i].Hide();
@@ -225,6 +252,7 @@ void CEPBotPanel::SetEstratPageVis(ENUM_ESTRAT_PAGE page, bool vis)
             m_ce_hdr2.Hide();
             m_ce_lEntry.Hide(); for(int i=0;i<2;i++) m_ce_bEntry[i].Hide();
             m_ce_lExit.Hide();  for(int i=0;i<3;i++) m_ce_bExit[i].Hide();
+            m_e_lLeg1.Hide(); m_e_lLeg2.Hide(); m_e_lLeg3.Hide();
             m_e_btnApplyMA.Hide(); m_e_statusMA.Hide();
            }
          break;
@@ -398,12 +426,6 @@ void CEPBotPanel::UpdateEstrategias(void)
          SetEV(m_e_eMACross, crossTxt, crossClr);
          SetEV(m_e_eMACandles, IntegerToString(m_maCross.GetCandlesAfterCross()), CLR_VALUE);
 
-         string entryTxt = (m_maCross.GetEntryMode() == ENTRY_NEXT_CANDLE) ? "Next Candle" : "2nd Candle";
-         SetEV(m_e_eMAEntry, entryTxt, CLR_VALUE);
-
-         ENUM_EXIT_MODE em = m_maCross.GetExitMode();
-         string exitTxt = (em == EXIT_FCO) ? "FCO" : (em == EXIT_VM) ? "VM" : "TP/SL";
-         SetEV(m_e_eMAExit, exitTxt, CLR_VALUE);
         }
       else
         {
@@ -412,8 +434,6 @@ void CEPBotPanel::UpdateEstrategias(void)
          SetEV(m_e_eMASlow, "--", CLR_NEUTRAL);
          SetEV(m_e_eMACross, "--", CLR_NEUTRAL);
          SetEV(m_e_eMACandles, "--", CLR_NEUTRAL);
-         SetEV(m_e_eMAEntry, "--", CLR_NEUTRAL);
-         SetEV(m_e_eMAExit, "--", CLR_NEUTRAL);
         }
      }
    else if(m_estratPage == ESTRAT_RSI)
