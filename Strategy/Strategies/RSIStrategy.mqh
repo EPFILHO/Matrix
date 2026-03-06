@@ -2,10 +2,10 @@
 //|                                                 RSIStrategy.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                                    Estratégia RSI - EPBot Matrix |
-//|                                   Versão 2.12 - Claude Parte 024 |
+//|                                   Versão 2.13 - Claude Parte 024 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.12"
+#property version   "2.13"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,11 @@
 #include "../Base/StrategyBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.13 (Parte 024):
+// + Setup(): m_enabled/m_inputEnabled não mais forçados a true
+//   Preserva estado do toggle definido antes do Setup()
+//   (fix: clicar APLICAR não reativava strategy desligada pelo usuário)
+// ═══════════════════════════════════════════════════════════════════
 // NOVIDADES v2.12 (Parte 024):
 // + m_enabled: toggle ON/OFF da estratégia em runtime
 // + SetEnabled(bool), GetEnabled(): getter/setter para o painel GUI
@@ -246,7 +251,7 @@ bool CRSIStrategy::Setup(CLogger* logger, string symbol, ENUM_TIMEFRAMES timefra
    m_inputOverbought = overbought;
    m_inputMiddle = middle;
    m_inputSignalShift = signal_shift;
-   m_inputEnabled = true;
+   // m_inputEnabled: não forçado — preserva estado antes do Setup()
 
 // ═══════════════════════════════════════════════════════════
 // INICIALIZAR WORKING PARAMETERS (começam iguais aos inputs)
@@ -260,7 +265,7 @@ bool CRSIStrategy::Setup(CLogger* logger, string symbol, ENUM_TIMEFRAMES timefra
    m_overbought = overbought;
    m_middle = middle;
    m_signal_shift = signal_shift;
-   m_enabled = true;
+   // m_enabled: não forçado — preserva estado do toggle (SetEnabled antes de Setup)
 
    return true;
   }

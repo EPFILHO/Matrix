@@ -202,6 +202,7 @@ input int    inp_SlowPeriod = 21;                       // Período MA Lenta
 input ENUM_MA_METHOD inp_SlowMethod = MODE_EMA;         // Método MA Lenta
 input ENUM_APPLIED_PRICE inp_SlowApplied = PRICE_CLOSE; // Preço MA Lenta
 input ENUM_TIMEFRAMES inp_SlowTF = PERIOD_CURRENT;      // Timeframe MA Lenta
+// TODO: inp_MACrossMinDistance declarado mas não passado ao MACrossStrategy::Setup() — integrar ou remover
 input int    inp_MACrossMinDistance = 0;                // Distância Mínima entre MAs (0=desativado)
 input ENUM_ENTRY_MODE inp_EntryMode = ENTRY_NEXT_CANDLE; // Modo de Entrada
 input ENUM_EXIT_MODE inp_ExitMode = EXIT_TP_SL;       // Modo de Saída

@@ -836,6 +836,7 @@ CEPBotPanel::CEPBotPanel(void)
      m_cur_ddType(DD_FINANCIAL), m_cur_ddPeakMode(DD_PEAK_REALIZED_ONLY),
      m_cur_profitTargetAction(PROFIT_ACTION_STOP),
      m_cfgStatusExpiry(0),
+     m_e_statusMAExpiry(0),
      m_e_statusRSIExpiry(0),
      m_cur_rsiTF(PERIOD_CURRENT),
      m_cur_rsiMode(RSI_MODE_CROSSOVER)
