@@ -238,7 +238,7 @@ bool CEPBotPanel::CreateTabEstrategias(void)
       return false;
    m_e_btnApplyRSI.Text("APLICAR RSI");
    m_e_btnApplyRSI.FontSize(9);
-   m_e_btnApplyRSI.ColorBackground(C'30,80,140');
+   m_e_btnApplyRSI.ColorBackground(C'30,120,70');
    m_e_btnApplyRSI.Color(clrWhite);
    if(!Add(m_e_btnApplyRSI))
       return false;
