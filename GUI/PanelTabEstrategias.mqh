@@ -319,7 +319,7 @@ string CEPBotPanel::TFName(ENUM_TIMEFRAMES tf)
   {
    switch(tf)
      {
-      case PERIOD_CURRENT: return "CURRENT";
+      case PERIOD_CURRENT: return "ATUAL";
       case PERIOD_M1:      return "M1";
       case PERIOD_M5:      return "M5";
       case PERIOD_M15:     return "M15";
