@@ -17,9 +17,6 @@
 // v1.24 (Parte 024):
 // ✅ Revert: Remove sub-página CFG_ESTRAT (movida para aba ESTRAT)
 //   MA Cross config agora na sub-página MA Cross da aba ESTRATEGIAS
-//   (em vez de sub-página CFG_ESTRAT na aba CONFIG)
-//
-// v1.24 (Parte 024):
 // ✅ Fix: ApplyConfig() agora chama TryActivateDrawdownNow() após
 //    SetDrawdownValue() — ativa proteção de DD imediatamente quando
 //    ligado via painel sem meta de lucro configurada
