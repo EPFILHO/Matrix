@@ -2,15 +2,20 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.32 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.33 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.32"
+#property version   "1.33"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.33 (Parte 024 - fix compilação):
+// + FIX: removido CRSIStrategy** (MQL5 não suporta ponteiro-para-ponteiro)
+// + Adicionados getters GetRSIStrategy() e IsRSIPanelOwned() para sync EA↔Panel
+// + Destrutor não deleta RSI panel-owned (EA sincroniza e deleta em OnDeinit)
+//
 // v1.32 (Parte 024 - atualizado):
 // + m_pendingMAEnabled / m_pendingRSIEnabled: estado pendente dos toggles
 // + PanelTabEstrategias v1.20: toggle visual-only, ApplyStyle sem avail,
@@ -338,7 +343,7 @@ private:
    CSignalManager    *m_signalManager;
    CMACrossStrategy  *m_maCross;
    CRSIStrategy      *m_rsiStrategy;
-   CRSIStrategy     **m_rsiGlobalPtr;     // ponteiro para g_rsiStrategy do EA (v1.32)
+   // (v1.33: removido m_rsiGlobalPtr — MQL5 não suporta **)
    bool               m_rsiPanelOwned;    // true quando criada pelo painel (não pelo EA)
    bool               m_pendingMAEnabled;  // estado pendente do toggle MA (antes de APLICAR)
    bool               m_pendingRSIEnabled; // estado pendente do toggle RSI (antes de APLICAR)
@@ -796,8 +801,7 @@ public:
                           CTradeManager *trade, CSignalManager *signal,
                           CMACrossStrategy *maCross, CRSIStrategy *rsi,
                           CTrendFilter *trend, CRSIFilter *rsiFilt,
-                          int magic, string symbol,
-                          CRSIStrategy **rsiGlobalPtr = NULL);
+                          int magic, string symbol);
 
    bool              CreatePanel(long chart, string name, int subwin,
                                  int x1, int y1, int x2, int y2);
@@ -810,6 +814,10 @@ public:
 public:
    virtual void      ChartEvent(const int id, const long &lparam,
                                 const double &dparam, const string &sparam);
+
+   // Getters para sincronização EA ↔ Panel (v1.33)
+   CRSIStrategy*     GetRSIStrategy(void)  const { return m_rsiStrategy;  }
+   bool              IsRSIPanelOwned(void)  const { return m_rsiPanelOwned; }
   };
 
 //+------------------------------------------------------------------+
@@ -820,7 +828,7 @@ CEPBotPanel::CEPBotPanel(void)
      m_estratPage(ESTRAT_MA_CROSS), m_filtrosPage(FILTROS_TREND),
      m_logger(NULL), m_blockers(NULL), m_riskManager(NULL),
      m_tradeManager(NULL), m_signalManager(NULL),
-     m_maCross(NULL), m_rsiStrategy(NULL), m_rsiGlobalPtr(NULL), m_rsiPanelOwned(false),
+     m_maCross(NULL), m_rsiStrategy(NULL), m_rsiPanelOwned(false),
      m_pendingMAEnabled(false), m_pendingRSIEnabled(false),
      m_trendFilter(NULL), m_rsiFilter(NULL),
      m_magicNumber(0), m_symbol(""),
@@ -852,11 +860,9 @@ CEPBotPanel::~CEPBotPanel(void)
      {
       if(m_signalManager != NULL)
          m_signalManager.RemoveStrategy("RSI Strategy");
-      delete m_rsiStrategy;
+      // NÃO deletar aqui — EA sincroniza via GetRSIStrategy()
+      // e deleta em OnDeinit (evita dangling pointer)
       m_rsiStrategy = NULL;
-      // Limpar ponteiro global do EA para evitar dangling pointer
-      if(m_rsiGlobalPtr != NULL)
-         *m_rsiGlobalPtr = NULL;
      }
    ChartSetInteger(0, CHART_DRAG_TRADE_LEVELS, m_origDragTrade);
    ChartSetInteger(0, CHART_MOUSE_SCROLL, m_origMouseScroll);
@@ -869,8 +875,7 @@ bool CEPBotPanel::Init(CLogger *logger, CBlockers *blockers, CRiskManager *risk,
                        CTradeManager *trade, CSignalManager *signal,
                        CMACrossStrategy *maCross, CRSIStrategy *rsi,
                        CTrendFilter *trend, CRSIFilter *rsiFilt,
-                       int magic, string symbol,
-                       CRSIStrategy **rsiGlobalPtr = NULL)
+                       int magic, string symbol)
   {
    m_logger       = logger;
    m_blockers     = blockers;
@@ -883,7 +888,6 @@ bool CEPBotPanel::Init(CLogger *logger, CBlockers *blockers, CRiskManager *risk,
    m_rsiFilter    = rsiFilt;
    m_magicNumber  = magic;
    m_symbol       = symbol;
-   m_rsiGlobalPtr = rsiGlobalPtr;
    return true;
   }
 

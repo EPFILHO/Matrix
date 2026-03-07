@@ -2,13 +2,17 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.41 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.42 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.41"
+#property version   "1.42"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.42 (Parte 024 - fix compilação):                   |
+//| FIX: removido &g_rsiStrategy (MQL5 não suporta address-of ptr)  |
+//| FIX: sincronização RSI via getters em OnChartEvent e OnDeinit   |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.41 (atualizado — Parte 024 revisão):               |
 //| Fix: CleanupAll() — previne memory leak em INIT_FAILED           |
@@ -790,12 +794,11 @@ int OnInit()
         {
          g_panel.Init(g_logger, g_blockers, g_riskManager, g_tradeManager,
                       g_signalManager, g_maCrossStrategy, g_rsiStrategy,
-                      g_trendFilter, g_rsiFilter, inp_MagicNumber, _Symbol,
-                      &g_rsiStrategy);
+                      g_trendFilter, g_rsiFilter, inp_MagicNumber, _Symbol);
 
          int chartWidth = (int)ChartGetInteger(0, CHART_WIDTH_IN_PIXELS);
          int x1 = chartWidth - PANEL_WIDTH - 10;
-         if(!g_panel.CreatePanel(0, "EPBotMatrix - Versão 1.41", 0, x1, 20, x1 + PANEL_WIDTH, 20 + PANEL_HEIGHT))
+         if(!g_panel.CreatePanel(0, "EPBotMatrix - Versão 1.42", 0, x1, 20, x1 + PANEL_WIDTH, 20 + PANEL_HEIGHT))
            {
             g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar painel GUI");
             delete g_panel;
@@ -854,9 +857,16 @@ void OnDeinit(const int reason)
 // LIMPEZA SEGURA - Ordem inversa da inicialização
 // ═══════════════════════════════════════════════════════════════
 
-// ETAPA 0: Destruir painel GUI (ANTES dos módulos)
+// ETAPA 0: Sincronizar ponteiro RSI antes de destruir painel (v1.42)
    if(g_panel != NULL)
      {
+      // Se panel hot-criou RSI, garantir que g_rsiStrategy aponta para ele
+      if(g_panel.IsRSIPanelOwned())
+        {
+         CRSIStrategy *panelRSI = g_panel.GetRSIStrategy();
+         if(panelRSI != NULL)
+            g_rsiStrategy = panelRSI;
+        }
       g_panel.Destroy(reason);
       delete g_panel;
       g_panel = NULL;
@@ -1862,6 +1872,11 @@ void OnChartEvent(const int id, const long &lparam,
      {
       g_panel.ChartEvent(id, lparam, dparam, sparam);
 
+      // Sincronizar g_rsiStrategy se panel hot-criou RSI (v1.42)
+      CRSIStrategy *panelRSI = g_panel.GetRSIStrategy();
+      if(panelRSI != NULL && panelRSI != g_rsiStrategy)
+         g_rsiStrategy = panelRSI;
+
       // Proteção: desabilita arrasto de SL/TP quando mouse sobre o painel
       if(id == CHARTEVENT_MOUSE_MOVE)
          g_panel.MouseProtection((int)lparam, (int)dparam);
@@ -1878,5 +1893,5 @@ void OnTimer()
   }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.41                                   |
+//| FIM DO EA - EPBOT MATRIX v1.42                                   |
 //+------------------------------------------------------------------+

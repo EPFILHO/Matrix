@@ -677,9 +677,7 @@ void CEPBotPanel::OnClickApplyRSI(void)
       m_rsiStrategy   = rsi;
       m_rsiPanelOwned = true;
 
-      // Sincronizar ponteiro global do EA (v1.32)
-      if(m_rsiGlobalPtr != NULL)
-         *m_rsiGlobalPtr = rsi;
+      // Sincronização com g_rsiStrategy feita via GetRSIStrategy() no EA (v1.33)
       m_e_statusRSI.Text("RSI criado e ativado!");
       m_e_statusRSI.Color(CLR_POSITIVE);
       m_e_statusRSIExpiry = GetTickCount() + 10000;
