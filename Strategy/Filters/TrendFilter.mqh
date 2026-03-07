@@ -673,7 +673,7 @@ double CTrendFilter::GetMA(int shift = 0)
 
 double CTrendFilter::GetDistanceFromMA()
   {
-   if(!m_isInitialized || !UpdateIndicators())
+   if(!m_isInitialized || !UpdateIndicators() || ArraySize(m_ma) == 0)
       return 0.0;
 
    double currentPrice = iClose(_Symbol, PERIOD_CURRENT, 0);
