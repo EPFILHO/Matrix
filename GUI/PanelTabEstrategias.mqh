@@ -2,14 +2,19 @@
 //|                                         PanelTabEstrategias.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: ESTRATEGIAS — Create + Update                 |
-//|                     Versão 1.20 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.21 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
+// v1.21 (Parte 024):
+// + Removido hot-create de RSI: OnClickApplyRSI() retorna mensagem
+//   "RSI inativo (ative inp_UseRSI)" quando m_rsiStrategy == NULL
+// + Padrão igual ao MACross: sem criação dinâmica em runtime
+//
 // v1.20 (Parte 024):
 // + Toggle = estado PENDENTE visual — só aplica no APLICAR respectivo
 //   m_pendingMAEnabled / m_pendingRSIEnabled: flags de pending state
 //   OnClickMAToggle / OnClickRSIToggle: flip visual, sem SetEnabled()
 //   OnClickApplyMA: aplica m_pendingMAEnabled via SetEnabled()
-//   OnClickApplyRSI: hot-create se NULL+pending=true, senão SetEnabled()
+//   OnClickApplyRSI: aplica params + SetEnabled()
 // + Status: apenas "Ativo" ou "Inativo" — "Suspenso" removido
 // + ApplyToggleStyle: volta a 2 params (sem avail/N/A)
 //
@@ -628,59 +633,12 @@ void CEPBotPanel::OnClickRSITF(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickApplyRSI(void)
   {
-// ── Hot-create: strategy NULL e usuário quer ligar ──
+// ── Strategy NULL: RSI não foi ativado nos inputs do EA ──
    if(m_rsiStrategy == NULL)
      {
-      if(!m_pendingRSIEnabled)
-        {
-         m_e_statusRSI.Text("RSI inativo.");
-         m_e_statusRSI.Color(CLR_NEUTRAL);
-         m_e_statusRSIExpiry = GetTickCount() + 5000;
-         ChartRedraw();
-         return;
-        }
-
-      int    period = (int)StringToInteger(m_re_iPeriod.Text());
-      double os     = StringToDouble(m_re_iOversold.Text());
-      double ob     = StringToDouble(m_re_iOverbought.Text());
-      double mid    = StringToDouble(m_re_iMiddle.Text());
-      if(period <= 0) period = 14;
-      if(os  <= 0) os  = 30.0;
-      if(ob  <= 0) ob  = 70.0;
-      if(mid <= 0) mid = 50.0;
-
-      CRSIStrategy *rsi = new CRSIStrategy();
-      if(rsi == NULL)
-        {
-         m_e_statusRSI.Text("Erro ao criar RSI!");
-         m_e_statusRSI.Color(CLR_NEGATIVE);
-         m_e_statusRSIExpiry = GetTickCount() + 10000;
-         ChartRedraw();
-         return;
-        }
-
-      if(!rsi.Setup(m_logger, m_symbol, m_cur_rsiTF, period,
-                    PRICE_CLOSE, m_cur_rsiMode, os, ob, mid, 1) ||
-         !rsi.Initialize())
-        {
-         delete rsi;
-         m_e_statusRSI.Text("Falha ao inicializar RSI!");
-         m_e_statusRSI.Color(CLR_NEGATIVE);
-         m_e_statusRSIExpiry = GetTickCount() + 10000;
-         ChartRedraw();
-         return;
-        }
-
-      if(m_signalManager != NULL)
-         m_signalManager.AddStrategy(rsi);
-
-      m_rsiStrategy   = rsi;
-      m_rsiPanelOwned = true;
-
-      // Sincronização com g_rsiStrategy feita via GetRSIStrategy() no EA (v1.33)
-      m_e_statusRSI.Text("RSI criado e ativado!");
-      m_e_statusRSI.Color(CLR_POSITIVE);
-      m_e_statusRSIExpiry = GetTickCount() + 10000;
+      m_e_statusRSI.Text("RSI inativo (ative inp_UseRSI).");
+      m_e_statusRSI.Color(CLR_NEUTRAL);
+      m_e_statusRSIExpiry = GetTickCount() + 5000;
       ChartRedraw();
       return;
      }

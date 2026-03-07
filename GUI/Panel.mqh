@@ -2,29 +2,22 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.33 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.34 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.33"
+#property version   "1.34"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.34 (Parte 024):
+// + Removido hot-create de RSI: m_rsiPanelOwned, GetRSIStrategy(), IsRSIPanelOwned()
+// + Padrão igual ao MACross: RSI só existe se inp_UseRSI=true no init
+//
 // v1.33 (Parte 024 - fix compilação):
 // + FIX: removido CRSIStrategy** (MQL5 não suporta ponteiro-para-ponteiro)
 // + Adicionados getters GetRSIStrategy() e IsRSIPanelOwned() para sync EA↔Panel
-// + Destrutor não deleta RSI panel-owned (EA sincroniza e deleta em OnDeinit)
-//
-// v1.32 (Parte 024 - atualizado):
-// + m_pendingMAEnabled / m_pendingRSIEnabled: estado pendente dos toggles
-// + PanelTabEstrategias v1.20: toggle visual-only, ApplyStyle sem avail,
-//   hot-create RSI movido para OnClickApplyRSI, status só Ativo/Inativo
-// + FIX: m_e_statusMAExpiry inicializado a 0 no construtor (estava undefined)
-//
-// v1.31 (Parte 024):
-// + m_rsiPanelOwned: flag para estratégia criada em runtime pelo painel
-// + ~CEPBotPanel: cleanup de estratégia criada pelo painel (RemoveStrategy + delete)
 //
 // v1.30 (Parte 024):
 // + PanelTabEstrategias v1.18: ApplyToggleStyle avail param (N/A cinza)
@@ -344,7 +337,6 @@ private:
    CMACrossStrategy  *m_maCross;
    CRSIStrategy      *m_rsiStrategy;
    // (v1.33: removido m_rsiGlobalPtr — MQL5 não suporta **)
-   bool               m_rsiPanelOwned;    // true quando criada pelo painel (não pelo EA)
    bool               m_pendingMAEnabled;  // estado pendente do toggle MA (antes de APLICAR)
    bool               m_pendingRSIEnabled; // estado pendente do toggle RSI (antes de APLICAR)
    CTrendFilter      *m_trendFilter;
@@ -815,9 +807,6 @@ public:
    virtual void      ChartEvent(const int id, const long &lparam,
                                 const double &dparam, const string &sparam);
 
-   // Getters para sincronização EA ↔ Panel (v1.33)
-   CRSIStrategy*     GetRSIStrategy(void)  const { return m_rsiStrategy;  }
-   bool              IsRSIPanelOwned(void)  const { return m_rsiPanelOwned; }
   };
 
 //+------------------------------------------------------------------+
@@ -828,7 +817,7 @@ CEPBotPanel::CEPBotPanel(void)
      m_estratPage(ESTRAT_MA_CROSS), m_filtrosPage(FILTROS_TREND),
      m_logger(NULL), m_blockers(NULL), m_riskManager(NULL),
      m_tradeManager(NULL), m_signalManager(NULL),
-     m_maCross(NULL), m_rsiStrategy(NULL), m_rsiPanelOwned(false),
+     m_maCross(NULL), m_rsiStrategy(NULL),
      m_pendingMAEnabled(false), m_pendingRSIEnabled(false),
      m_trendFilter(NULL), m_rsiFilter(NULL),
      m_magicNumber(0), m_symbol(""),
@@ -856,14 +845,6 @@ CEPBotPanel::CEPBotPanel(void)
 
 CEPBotPanel::~CEPBotPanel(void)
   {
-   if(m_rsiPanelOwned && m_rsiStrategy != NULL)
-     {
-      if(m_signalManager != NULL)
-         m_signalManager.RemoveStrategy("RSI Strategy");
-      // NÃO deletar aqui — EA sincroniza via GetRSIStrategy()
-      // e deleta em OnDeinit (evita dangling pointer)
-      m_rsiStrategy = NULL;
-     }
    ChartSetInteger(0, CHART_DRAG_TRADE_LEVELS, m_origDragTrade);
    ChartSetInteger(0, CHART_MOUSE_SCROLL, m_origMouseScroll);
   }

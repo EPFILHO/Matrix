@@ -2,13 +2,17 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.42 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.43 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.42"
+#property version   "1.43"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.43 (Parte 024):                                     |
+//| Removido hot-create de RSI: sync de ponteiro em OnDeinit e       |
+//| OnChartEvent eliminado — padrão igual ao MACross                 |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.42 (Parte 024 - fix compilação):                   |
 //| FIX: removido &g_rsiStrategy (MQL5 não suporta address-of ptr)  |
@@ -798,7 +802,7 @@ int OnInit()
 
          int chartWidth = (int)ChartGetInteger(0, CHART_WIDTH_IN_PIXELS);
          int x1 = chartWidth - PANEL_WIDTH - 10;
-         if(!g_panel.CreatePanel(0, "EPBotMatrix - Versão 1.42", 0, x1, 20, x1 + PANEL_WIDTH, 20 + PANEL_HEIGHT))
+         if(!g_panel.CreatePanel(0, "EPBotMatrix - Versão 1.43", 0, x1, 20, x1 + PANEL_WIDTH, 20 + PANEL_HEIGHT))
            {
             g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar painel GUI");
             delete g_panel;
@@ -857,16 +861,9 @@ void OnDeinit(const int reason)
 // LIMPEZA SEGURA - Ordem inversa da inicialização
 // ═══════════════════════════════════════════════════════════════
 
-// ETAPA 0: Sincronizar ponteiro RSI antes de destruir painel (v1.42)
+// ETAPA 0: Destruir painel
    if(g_panel != NULL)
      {
-      // Se panel hot-criou RSI, garantir que g_rsiStrategy aponta para ele
-      if(g_panel.IsRSIPanelOwned())
-        {
-         CRSIStrategy *panelRSI = g_panel.GetRSIStrategy();
-         if(panelRSI != NULL)
-            g_rsiStrategy = panelRSI;
-        }
       g_panel.Destroy(reason);
       delete g_panel;
       g_panel = NULL;
@@ -1871,11 +1868,6 @@ void OnChartEvent(const int id, const long &lparam,
    if(g_panel != NULL)
      {
       g_panel.ChartEvent(id, lparam, dparam, sparam);
-
-      // Sincronizar g_rsiStrategy se panel hot-criou RSI (v1.42)
-      CRSIStrategy *panelRSI = g_panel.GetRSIStrategy();
-      if(panelRSI != NULL && panelRSI != g_rsiStrategy)
-         g_rsiStrategy = panelRSI;
 
       // Proteção: desabilita arrasto de SL/TP quando mouse sobre o painel
       if(id == CHARTEVENT_MOUSE_MOVE)
