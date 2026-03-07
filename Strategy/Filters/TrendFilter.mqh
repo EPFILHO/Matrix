@@ -2,10 +2,10 @@
 //|                                                  TrendFilter.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                      Filtro de Tendência por MA - EPBot Matrix   |
-//|                                   Versão 2.16 - Claude Parte 022 |
+//|                                   Versão 2.17 - Claude Parte 024 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.16"
+#property version   "2.17"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,7 +15,13 @@
 #include "../Base/FilterBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
-// NOVIDADES v2.16:
+// NOVIDADES v2.17 (Parte 024):
+// + Fix: GetDistanceFromMA() guard ArraySize(m_ma)==0
+//   Quando filtro desativado, handle=INVALID_HANDLE, UpdateIndicators()
+//   retorna true sem popular m_ma[] → acesso a m_ma[0] causava
+//   "array out of range" ao abrir sub-página TREND no painel.
+//
+// NOVIDADES v2.16 (Parte 022):
 // + Fix: CopyBuffer validação alterada de <= 0 para < 3
 // + Fix: m_maReady resetado para false quando CopyBuffer falha
 //   (evita uso de dados antigos se indicador ficar temporariamente indisponível)
