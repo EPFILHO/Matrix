@@ -6,9 +6,14 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.43"
+#property version   "1.44"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.44 (Parte 024):                                     |
+//| "Sempre criar" estratégias e filtros no OnInit:                  |
+//| inp_Use* define estado inicial (ativo/inativo), não a criação    |
+//| Toggle ON/OFF via GUI funciona sempre, sem hot-create            |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.43 (Parte 024):                                     |
 //| Removido hot-create de RSI: sync de ponteiro em OnDeinit e       |
@@ -294,7 +299,7 @@ void CleanupAll()
 int OnInit()
   {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.43 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v1.44 - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
 
 // ═══════════════════════════════════════════════════════════════
@@ -565,221 +570,197 @@ int OnInit()
 // ETAPA 6: CRIAR E REGISTRAR ESTRATÉGIAS
 // ═══════════════════════════════════════════════════════════════
 
-//--- 6.1: MA CROSS STRATEGY
-   if(inp_UseMACross)
+//--- 6.1: MA CROSS STRATEGY (sempre criada; inp_UseMACross define estado inicial)
+   g_maCrossStrategy = new CMACrossStrategy();
+   if(g_maCrossStrategy == NULL)
      {
-      g_maCrossStrategy = new CMACrossStrategy();
-      if(g_maCrossStrategy == NULL)
-        {
-         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar MACrossStrategy!");
-         CleanupAll();
-         return INIT_FAILED;
-        }
-
-      if(!g_maCrossStrategy.Setup(
-            g_logger,
-            inp_FastPeriod,
-            inp_FastMethod,
-            inp_FastApplied,
-            inp_FastTF,
-            inp_SlowPeriod,
-            inp_SlowMethod,
-            inp_SlowApplied,
-            inp_SlowTF,
-            inp_EntryMode,
-            inp_ExitMode
-         ))
-        {
-         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar MACrossStrategy!");
-         CleanupAll();
-         return INIT_FAILED;
-        }
-
-      // Inicializar a estratégia
-      if(!g_maCrossStrategy.Initialize())
-        {
-         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar MACrossStrategy!");
-         CleanupAll();
-         return INIT_FAILED;
-        }
-
-      // Definir prioridade ANTES de adicionar
-      g_maCrossStrategy.SetPriority(inp_MACrossPriority);
-
-      if(!g_signalManager.AddStrategy(g_maCrossStrategy))
-        {
-         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao registrar MACrossStrategy no SignalManager!");
-         CleanupAll();
-         return INIT_FAILED;
-        }
-
-      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT",
-                   "MACrossStrategy criada e registrada - Prioridade: " + IntegerToString(inp_MACrossPriority));
-     }
-   else
-     {
-      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "MACrossStrategy desativada");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar MACrossStrategy!");
+      CleanupAll();
+      return INIT_FAILED;
      }
 
-//--- 6.2: RSI STRATEGY
-   if(inp_UseRSI)
+   if(!g_maCrossStrategy.Setup(
+         g_logger,
+         inp_FastPeriod,
+         inp_FastMethod,
+         inp_FastApplied,
+         inp_FastTF,
+         inp_SlowPeriod,
+         inp_SlowMethod,
+         inp_SlowApplied,
+         inp_SlowTF,
+         inp_EntryMode,
+         inp_ExitMode
+      ))
      {
-      g_rsiStrategy = new CRSIStrategy();
-      if(g_rsiStrategy == NULL)
-        {
-         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar RSIStrategy!");
-         CleanupAll();
-         return INIT_FAILED;
-        }
-
-      if(!g_rsiStrategy.Setup(
-            g_logger,
-            _Symbol,
-            inp_RSITF,
-            inp_RSIPeriod,
-            inp_RSIApplied,
-            inp_RSIMode,
-            inp_RSIOversold,
-            inp_RSIOverbought,
-            inp_RSIMidLevel,
-            inp_RSISignalShift
-         ))
-        {
-         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar RSIStrategy!");
-         CleanupAll();
-         return INIT_FAILED;
-        }
-
-      // Inicializar a estratégia
-      if(!g_rsiStrategy.Initialize())
-        {
-         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar RSIStrategy!");
-         CleanupAll();
-         return INIT_FAILED;
-        }
-
-      // Definir prioridade ANTES de adicionar
-      g_rsiStrategy.SetPriority(inp_RSIPriority);
-
-      if(!g_signalManager.AddStrategy(g_rsiStrategy))
-        {
-         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao registrar RSIStrategy no SignalManager!");
-         CleanupAll();
-         return INIT_FAILED;
-        }
-
-      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT",
-                   "RSIStrategy criada e registrada - Prioridade: " + IntegerToString(inp_RSIPriority));
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar MACrossStrategy!");
+      CleanupAll();
+      return INIT_FAILED;
      }
-   else
+
+   if(!g_maCrossStrategy.Initialize())
      {
-      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "RSIStrategy desativada");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar MACrossStrategy!");
+      CleanupAll();
+      return INIT_FAILED;
      }
+
+   g_maCrossStrategy.SetEnabled(inp_UseMACross);
+   g_maCrossStrategy.SetPriority(inp_MACrossPriority);
+
+   if(!g_signalManager.AddStrategy(g_maCrossStrategy))
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao registrar MACrossStrategy no SignalManager!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT",
+                "MACrossStrategy registrada" + (inp_UseMACross ? " (ATIVA)" : " (INATIVA)") +
+                " - Prioridade: " + IntegerToString(inp_MACrossPriority));
+
+//--- 6.2: RSI STRATEGY (sempre criada; inp_UseRSI define estado inicial)
+   g_rsiStrategy = new CRSIStrategy();
+   if(g_rsiStrategy == NULL)
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar RSIStrategy!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   if(!g_rsiStrategy.Setup(
+         g_logger,
+         _Symbol,
+         inp_RSITF,
+         inp_RSIPeriod,
+         inp_RSIApplied,
+         inp_RSIMode,
+         inp_RSIOversold,
+         inp_RSIOverbought,
+         inp_RSIMidLevel,
+         inp_RSISignalShift
+      ))
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar RSIStrategy!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   if(!g_rsiStrategy.Initialize())
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar RSIStrategy!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   g_rsiStrategy.SetEnabled(inp_UseRSI);
+   g_rsiStrategy.SetPriority(inp_RSIPriority);
+
+   if(!g_signalManager.AddStrategy(g_rsiStrategy))
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao registrar RSIStrategy no SignalManager!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT",
+                "RSIStrategy registrada" + (inp_UseRSI ? " (ATIVA)" : " (INATIVA)") +
+                " - Prioridade: " + IntegerToString(inp_RSIPriority));
 
 // ═══════════════════════════════════════════════════════════════
 // ETAPA 7: CRIAR E REGISTRAR FILTROS
 // ═══════════════════════════════════════════════════════════════
 
-//--- 7.1: TREND FILTER
-// ✅ CRIAR se filtro direcional OU zona neutra estiverem ativos
-   if(inp_UseTrendFilter || inp_TrendMinDistance > 0)
+//--- 7.1: TREND FILTER (sempre criado; inp_UseTrendFilter/inp_TrendMinDistance definem estado inicial)
+   g_trendFilter = new CTrendFilter();
+   if(g_trendFilter == NULL)
      {
-      g_trendFilter = new CTrendFilter();
-      if(g_trendFilter == NULL)
-        {
-         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar TrendFilter!");
-         CleanupAll();
-         return INIT_FAILED;
-        }
-
-      if(!g_trendFilter.Setup(
-            g_logger,
-            inp_UseTrendFilter,      // Filtro direcional
-            inp_TrendMAPeriod,       // Período MA
-            inp_TrendMAMethod,       // Método MA
-            inp_TrendMAApplied,      // Preço aplicado
-            inp_TrendMATF,           // Timeframe
-            inp_TrendMinDistance     // Zona neutra (0=off)
-         ))
-        {
-         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar TrendFilter!");
-         CleanupAll();
-         return INIT_FAILED;
-        }
-
-      // Inicializar o filtro
-      if(!g_trendFilter.Initialize())
-        {
-         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar TrendFilter!");
-         CleanupAll();
-         return INIT_FAILED;
-        }
-
-      if(!g_signalManager.AddFilter(g_trendFilter))
-        {
-         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao registrar TrendFilter no SignalManager!");
-         CleanupAll();
-         return INIT_FAILED;
-        }
-
-      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "TrendFilter criado e registrado");
-     }
-   else
-     {
-      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "TrendFilter desativado (ambos os modos OFF)");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar TrendFilter!");
+      CleanupAll();
+      return INIT_FAILED;
      }
 
-//--- 7.2: RSI FILTER
-   if(inp_UseRSIFilter)
+   if(!g_trendFilter.Setup(
+         g_logger,
+         inp_UseTrendFilter,      // Filtro direcional
+         inp_TrendMAPeriod,       // Período MA
+         inp_TrendMAMethod,       // Método MA
+         inp_TrendMAApplied,      // Preço aplicado
+         inp_TrendMATF,           // Timeframe
+         inp_TrendMinDistance     // Zona neutra (0=off)
+      ))
      {
-      g_rsiFilter = new CRSIFilter();
-      if(g_rsiFilter == NULL)
-        {
-         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar RSIFilter!");
-         CleanupAll();
-         return INIT_FAILED;
-        }
-
-      if(!g_rsiFilter.Setup(
-            g_logger,
-            _Symbol,
-            inp_RSIFilterTF,
-            inp_RSIFilterPeriod,
-            inp_RSIFilterApplied,
-            inp_RSIFilterMode,
-            inp_RSIFilterOversold,
-            inp_RSIFilterOverbought,
-            inp_RSIFilterLowerNeutral,
-            inp_RSIFilterUpperNeutral,
-            inp_RSIFilterShift
-         ))
-        {
-         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar RSIFilter!");
-         CleanupAll();
-         return INIT_FAILED;
-        }
-
-      // Inicializar o filtro
-      if(!g_rsiFilter.Initialize())
-        {
-         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar RSIFilter!");
-         CleanupAll();
-         return INIT_FAILED;
-        }
-
-      if(!g_signalManager.AddFilter(g_rsiFilter))
-        {
-         g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao registrar RSIFilter no SignalManager!");
-         CleanupAll();
-         return INIT_FAILED;
-        }
-
-      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "RSIFilter criado e registrado");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar TrendFilter!");
+      CleanupAll();
+      return INIT_FAILED;
      }
-   else
+
+   if(!g_trendFilter.Initialize())
      {
-      g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "RSIFilter desativado");
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar TrendFilter!");
+      CleanupAll();
+      return INIT_FAILED;
      }
+
+   g_trendFilter.SetEnabled(inp_UseTrendFilter || inp_TrendMinDistance > 0);
+
+   if(!g_signalManager.AddFilter(g_trendFilter))
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao registrar TrendFilter no SignalManager!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT",
+                "TrendFilter registrado" +
+                ((inp_UseTrendFilter || inp_TrendMinDistance > 0) ? " (ATIVO)" : " (INATIVO)"));
+
+//--- 7.2: RSI FILTER (sempre criado; inp_UseRSIFilter define estado inicial)
+   g_rsiFilter = new CRSIFilter();
+   if(g_rsiFilter == NULL)
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar RSIFilter!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   if(!g_rsiFilter.Setup(
+         g_logger,
+         _Symbol,
+         inp_RSIFilterTF,
+         inp_RSIFilterPeriod,
+         inp_RSIFilterApplied,
+         inp_RSIFilterMode,
+         inp_RSIFilterOversold,
+         inp_RSIFilterOverbought,
+         inp_RSIFilterLowerNeutral,
+         inp_RSIFilterUpperNeutral,
+         inp_RSIFilterShift
+      ))
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar RSIFilter!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   if(!g_rsiFilter.Initialize())
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar RSIFilter!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   g_rsiFilter.SetEnabled(inp_UseRSIFilter);
+
+   if(!g_signalManager.AddFilter(g_rsiFilter))
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao registrar RSIFilter no SignalManager!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT",
+                "RSIFilter registrado" + (inp_UseRSIFilter ? " (ATIVO)" : " (INATIVO)"));
 
 // ═══════════════════════════════════════════════════════════════
 // ETAPA 8: CONFIGURAÇÕES FINAIS
@@ -802,7 +783,7 @@ int OnInit()
 
          int chartWidth = (int)ChartGetInteger(0, CHART_WIDTH_IN_PIXELS);
          int x1 = chartWidth - PANEL_WIDTH - 10;
-         if(!g_panel.CreatePanel(0, "EPBotMatrix - Versão 1.43", 0, x1, 20, x1 + PANEL_WIDTH, 20 + PANEL_HEIGHT))
+         if(!g_panel.CreatePanel(0, "EPBotMatrix - Versão 1.44", 0, x1, 20, x1 + PANEL_WIDTH, 20 + PANEL_HEIGHT))
            {
             g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar painel GUI");
             delete g_panel;
@@ -824,7 +805,7 @@ int OnInit()
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
 
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.43 - PRONTO PARA OPERAR!");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.44 - PRONTO PARA OPERAR!");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Símbolo: " + _Symbol);
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(inp_MagicNumber));

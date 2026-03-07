@@ -2,7 +2,7 @@
 //|                                         PanelTabEstrategias.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: ESTRATEGIAS — Create + Update                 |
-//|                     Versão 1.21 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.22 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 // v1.21 (Parte 024):
 // + Removido hot-create de RSI: OnClickApplyRSI() retorna mensagem
@@ -57,6 +57,11 @@
 // + ShowEstratPage, SetEstratPageVis, UpdateEstratBtnStyles
 // + OnClickEstratMACross, OnClickEstratRSI
 
+//+------------------------------------------------------------------+
+// v1.22 (Parte 024):
+// + Removidos guards NULL de OnClickApplyMA e OnClickApplyRSI:
+//   estratégias sempre existem — inp_Use* só define estado inicial
+//
 //+------------------------------------------------------------------+
 //| ABA 2: ESTRATEGIAS — Criar controles                              |
 //+------------------------------------------------------------------+
@@ -548,8 +553,6 @@ void CEPBotPanel::OnClickMAExit(int i)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickApplyMA(void)
   {
-   if(m_maCross == NULL) return;
-
    int errors = 0;
 
    int fastP = (int)StringToInteger(m_ce_iFastP.Text());
@@ -633,17 +636,6 @@ void CEPBotPanel::OnClickRSITF(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickApplyRSI(void)
   {
-// ── Strategy NULL: RSI não foi ativado nos inputs do EA ──
-   if(m_rsiStrategy == NULL)
-     {
-      m_e_statusRSI.Text("RSI inativo (ative inp_UseRSI).");
-      m_e_statusRSI.Color(CLR_NEUTRAL);
-      m_e_statusRSIExpiry = GetTickCount() + 5000;
-      ChartRedraw();
-      return;
-     }
-
-// ── Strategy já existe: aplica params + estado do toggle ──
    int errors = 0;
 
    int period = (int)StringToInteger(m_re_iPeriod.Text());
