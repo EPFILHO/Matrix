@@ -2,12 +2,16 @@
 //|                                                       Inputs.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                   Sistema de Inputs Centralizados - EPBot Matrix |
-//|                     Versão 1.05 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.06 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.05"
+#property version   "1.06"
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v1.06:
+// ✅ TODO: inp_MACrossMinDistance não passa ao Setup()
+//    Documentação de débito técnico para próximas releases
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v1.05:
 // ✅ Novo input inp_ShowPanel (Seção 008 - Painel GUI):
@@ -202,6 +206,7 @@ input int    inp_SlowPeriod = 21;                       // Período MA Lenta
 input ENUM_MA_METHOD inp_SlowMethod = MODE_EMA;         // Método MA Lenta
 input ENUM_APPLIED_PRICE inp_SlowApplied = PRICE_CLOSE; // Preço MA Lenta
 input ENUM_TIMEFRAMES inp_SlowTF = PERIOD_CURRENT;      // Timeframe MA Lenta
+// TODO: inp_MACrossMinDistance declarado mas não passado ao MACrossStrategy::Setup() — integrar ou remover
 input int    inp_MACrossMinDistance = 0;                // Distância Mínima entre MAs (0=desativado)
 input ENUM_ENTRY_MODE inp_EntryMode = ENTRY_NEXT_CANDLE; // Modo de Entrada
 input ENUM_EXIT_MODE inp_ExitMode = EXIT_TP_SL;       // Modo de Saída

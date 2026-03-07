@@ -2,12 +2,38 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.18 - Claude Parte 023 (Claude Code) |
+//|                     Versão 3.21 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.18"
+#property version   "3.21"
 #property strict
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.21 (Parte 024):
+// + Getters públicos para GUI RESULTADOS:
+//   DD: GetDrawdownType(), GetDrawdownValue(), GetDrawdownPeakMode()
+//   Streak: IsStreakControlEnabled(), GetMaxLossStreak(), GetMaxWinStreak(),
+//   GetLossStreakAction(), GetWinStreakAction(), GetLoss/WinPauseMinutes()
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.20 (Parte 024):
+// ✅ Fix: CheckDrawdownLimit() usava ACCOUNT_BALANCE - m_initialBalance
+//    para calcular lucro atual — quando EA iniciava com DD desligado,
+//    m_initialBalance ficava 0, corrompendo m_dailyPeakProfit com o
+//    saldo total da conta (~R$1.220.586) em vez do lucro do dia ($3.055)
+// + CheckDrawdownLimit() agora usa m_logger.GetDailyProfit() + floating
+//    (POSITION_PROFIT + POSITION_SWAP) — mesma lógica de
+//    ShouldCloseByDrawdown() e GetCurrentDrawdown(), sem dependência
+//    de m_initialBalance ou ACCOUNT_BALANCE
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.19 (Parte 024):
+// ✅ Fix: DD ativado via hot reload sem meta de lucro nunca ativava
+//    m_drawdownProtectionActive — ShouldCloseByDrawdown() retornava false
+//    imediatamente, ignorando o limite configurado via painel
+// + TryActivateDrawdownNow(dailyProfit): ativa proteção imediatamente
+//    ao ligar DD via hot reload, usando lucro diário atual como pico
+// ✅ Fix: GetCurrentDrawdown() usava ACCOUNT_BALANCE (sem floating) —
+//    corrigido para lucro projetado (fechados + floating + swap),
+//    consistente com ShouldCloseByDrawdown()
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.18 (Parte 023):
 // ✅ Fix: ShouldCloseOnEndTime() usava > endMinutes — fechava a posição somente
@@ -369,6 +395,7 @@ private:
    bool              m_streakPauseActive;
    datetime          m_streakPauseUntil;
    string            m_streakPauseReason;
+   bool              m_streakStopDayActive;   // flag para STREAK_STOP_DAY já ativado
 
    double            m_dailyPeakProfit;
    bool              m_drawdownProtectionActive;
@@ -457,6 +484,7 @@ public:
    void              SetDrawdownValue(double newValue);
    void              SetDrawdownType(ENUM_DRAWDOWN_TYPE newType);
    void              SetDrawdownPeakMode(ENUM_DRAWDOWN_PEAK_MODE newMode);
+   void              TryActivateDrawdownNow(double dailyProfit);
    void              SetTimeFilter(bool enable, int startH, int startM, int endH, int endM);
    void              SetCloseOnEndTime(bool close);
    void              SetCloseBeforeSessionEnd(bool close, int minutes);
@@ -471,11 +499,21 @@ public:
    double            GetDailyPeakProfit() const { return m_dailyPeakProfit; }
    bool              IsDrawdownProtectionActive() const { return m_drawdownProtectionActive; }
    bool              IsDrawdownLimitReached() const { return m_drawdownLimitReached; }
+   ENUM_DRAWDOWN_TYPE      GetDrawdownType() const      { return m_drawdownType; }
+   double                  GetDrawdownValue() const     { return m_drawdownValue; }
+   ENUM_DRAWDOWN_PEAK_MODE GetDrawdownPeakMode() const  { return m_drawdownPeakMode; }
    ENUM_BLOCKER_REASON GetActiveBlocker() const { return m_currentBlocker; }
    bool              IsBlocked() const { return m_currentBlocker != BLOCKER_NONE; }
+   bool              IsStreakControlEnabled() const { return m_enableStreakControl; }
    bool              IsStreakPaused() const { return m_streakPauseActive; }
    datetime          GetStreakPauseUntil() const { return m_streakPauseUntil; }
    string            GetStreakPauseReason() const { return m_streakPauseReason; }
+   int               GetMaxLossStreak() const      { return m_maxLossStreak; }
+   int               GetMaxWinStreak() const       { return m_maxWinStreak; }
+   ENUM_STREAK_ACTION GetLossStreakAction() const   { return m_lossStreakAction; }
+   ENUM_STREAK_ACTION GetWinStreakAction() const    { return m_winStreakAction; }
+   int               GetLossPauseMinutes() const   { return m_lossPauseMinutes; }
+   int               GetWinPauseMinutes() const    { return m_winPauseMinutes; }
 
    // ═══════════════════════════════════════════════════════════════
    // GETTERS - CONFIGURAÇÃO (Working values)
@@ -630,6 +668,7 @@ CBlockers::CBlockers()
    m_streakPauseActive = false;
    m_streakPauseUntil = 0;
    m_streakPauseReason = "";
+   m_streakStopDayActive = false;
 
    m_dailyPeakProfit = 0.0;
    m_drawdownProtectionActive = false;
@@ -677,14 +716,14 @@ bool CBlockers::Init(
      {
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "╔══════════════════════════════════════════════════════╗");
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║              VERSÃO COMPLETA v3.18                   ║");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║              VERSÃO COMPLETA v3.21                   ║");
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "╚══════════════════════════════════════════════════════╝");
      }
    else
      {
       Print("╔══════════════════════════════════════════════════════╗");
       Print("║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
-      Print("║              VERSÃO COMPLETA v3.18                   ║");
+      Print("║              VERSÃO COMPLETA v3.21                   ║");
       Print("╚══════════════════════════════════════════════════════╝");
      }
 
@@ -1088,6 +1127,7 @@ bool CBlockers::Init(
    m_streakPauseActive = false;
    m_streakPauseUntil = 0;
    m_streakPauseReason = "";
+   m_streakStopDayActive = false;
    m_dailyPeakProfit = 0.0;
    m_drawdownProtectionActive = false;
    m_drawdownLimitReached = false;
@@ -1251,11 +1291,12 @@ void CBlockers::SetStreakLimits(int maxLoss, ENUM_STREAK_ACTION lossAction, int 
    // Se há pausa ativa, verificar se ainda é válida com os novos limites.
    // Exemplo: pausa ativada com limit=1 (streak=2), usuário sobe para limit=3
    // → a pausa não seria mais justificada e deve ser cancelada.
+   bool streakStillBlocked = (m_maxLossStreak > 0 && m_currentLossStreak >= m_maxLossStreak) ||
+                             (m_maxWinStreak  > 0 && m_currentWinStreak  >= m_maxWinStreak);
+
    if(m_streakPauseActive)
      {
-      bool stillBlocked = (m_maxLossStreak > 0 && m_currentLossStreak >= m_maxLossStreak) ||
-                          (m_maxWinStreak  > 0 && m_currentWinStreak  >= m_maxWinStreak);
-      if(!stillBlocked)
+      if(!streakStillBlocked)
         {
          m_streakPauseActive  = false;
          m_streakPauseUntil   = 0;
@@ -1266,6 +1307,16 @@ void CBlockers::SetStreakLimits(int maxLoss, ENUM_STREAK_ACTION lossAction, int 
          else
             Print("▶️ Pausa de streak cancelada — sequência atual não viola o novo limite");
         }
+     }
+
+   if(m_streakStopDayActive && !streakStillBlocked)
+     {
+      m_streakStopDayActive = false;
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            "▶️ Stop-dia de streak cancelado — sequência atual não viola o novo limite");
+      else
+         Print("▶️ Stop-dia de streak cancelado — sequência atual não viola o novo limite");
      }
 
    // Só logar se houve mudança real
@@ -1337,6 +1388,25 @@ void CBlockers::SetDrawdownValue(double newValue)
       else
          Print("▶️ Bloqueio de drawdown liberado — novo limite será reavaliado no próximo tick");
      }
+  }
+
+//+------------------------------------------------------------------+
+//| Hot Reload — Ativa proteção de DD imediatamente se DD foi ligado |
+//| via painel sem meta de lucro configurada (fix: bug hot reload)   |
+//+------------------------------------------------------------------+
+void CBlockers::TryActivateDrawdownNow(double dailyProfit)
+  {
+   if(!m_enableDrawdown || m_drawdownProtectionActive)
+      return;
+
+   ActivateDrawdownProtection(dailyProfit, dailyProfit);
+
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🛡️ Drawdown ativado via hot reload — pico inicial: $" +
+         DoubleToString(m_dailyPeakProfit, 2));
+   else
+      Print("🛡️ Drawdown ativado via hot reload — pico inicial: $", m_dailyPeakProfit);
   }
 
 //+------------------------------------------------------------------+
@@ -2395,6 +2465,7 @@ void CBlockers::ResetDaily()
    m_streakPauseActive = false;
    m_streakPauseUntil = 0;
    m_streakPauseReason = "";
+   m_streakStopDayActive = false;
    m_dailyPeakProfit = 0.0;
    m_drawdownProtectionActive = false;
    m_drawdownLimitReached = false;
@@ -2416,13 +2487,31 @@ double CBlockers::GetCurrentDrawdown()
    if(!m_drawdownProtectionActive || m_dailyPeakProfit <= 0)
       return 0.0;
 
-   double currentProfit = AccountInfoDouble(ACCOUNT_BALANCE) - m_initialBalance;
+   // Inclui floating + swap de posições abertas do EA, igual ao ShouldCloseByDrawdown()
+   // Evita inconsistência onde painel mostrava DD menor que o usado para fechar
+   double floating = 0.0, swap = 0.0;
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+     {
+      if(PositionGetSymbol(i) == _Symbol &&
+         PositionGetInteger(POSITION_MAGIC) == m_magicNumber)
+        {
+         floating += PositionGetDouble(POSITION_PROFIT);
+         swap     += PositionGetDouble(POSITION_SWAP);
+        }
+     }
 
-   if(currentProfit >= m_dailyPeakProfit)
+   double closedProfit = (m_logger != NULL) ? m_logger.GetDailyProfit() : 0.0;
+   double projectedProfit = closedProfit + floating + swap;
+
+   if(projectedProfit >= m_dailyPeakProfit)
       return 0.0;
 
-   double dd = ((m_dailyPeakProfit - currentProfit) / m_dailyPeakProfit) * 100.0;
-   return dd;
+   double currentDD = m_dailyPeakProfit - projectedProfit;
+
+   if(m_drawdownType == DD_FINANCIAL)
+      return currentDD;
+
+   return (currentDD / m_dailyPeakProfit) * 100.0;
   }
 
 //+------------------------------------------------------------------+
@@ -2564,6 +2653,12 @@ bool CBlockers::CheckStreakLimit()
       return true;
 
 // ═══════════════════════════════════════════════════════════════
+// VERIFICAR SE STOP-DIA JÁ FOI ATIVADO (evita re-log a cada tick)
+// ═══════════════════════════════════════════════════════════════
+   if(m_streakStopDayActive)
+      return false;
+
+// ═══════════════════════════════════════════════════════════════
 // VERIFICAR SE PAUSA ESTÁ ATIVA
 // ═══════════════════════════════════════════════════════════════
    if(m_streakPauseActive)
@@ -2649,6 +2744,7 @@ bool CBlockers::CheckStreakLimit()
         }
       else
         {
+         m_streakStopDayActive = true;
          if(m_logger != NULL)
             m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK", "   🛑 EA PAUSADO até o FIM DO DIA");
          else
@@ -2700,6 +2796,7 @@ bool CBlockers::CheckStreakLimit()
         }
       else
         {
+         m_streakStopDayActive = true;
          if(m_logger != NULL)
            {
             m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STREAK", "   🎯 META DE SEQUÊNCIA ATINGIDA!");
@@ -2729,11 +2826,29 @@ bool CBlockers::CheckDrawdownLimit()
    if(m_drawdownLimitReached)
       return false;
 
-   double currentProfit = AccountInfoDouble(ACCOUNT_BALANCE) - m_initialBalance;
+// ✅ v3.20: usa lucro do dia (fechados) + floating, consistente com
+// ShouldCloseByDrawdown() — não usa mais ACCOUNT_BALANCE - m_initialBalance
+// que causava corrupção do pico quando DD era ligado via hot reload
+// com EA iniciado sem DD (m_initialBalance == 0)
+   double dailyProfit = (m_logger != NULL) ? m_logger.GetDailyProfit() : 0.0;
 
-   if(currentProfit > m_dailyPeakProfit)
-      m_dailyPeakProfit = currentProfit;
+   double floating = 0.0, swap = 0.0;
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+     {
+      if(PositionGetSymbol(i) == _Symbol &&
+         PositionGetInteger(POSITION_MAGIC) == m_magicNumber)
+        {
+         floating += PositionGetDouble(POSITION_PROFIT);
+         swap     += PositionGetDouble(POSITION_SWAP);
+        }
+     }
+   double projectedProfit = dailyProfit + floating + swap;
 
+   double peakCandidate = (m_drawdownPeakMode == DD_PEAK_REALIZED_ONLY) ? dailyProfit : projectedProfit;
+   if(peakCandidate > m_dailyPeakProfit)
+      m_dailyPeakProfit = peakCandidate;
+
+   double currentProfit = projectedProfit;
    double currentDD = m_dailyPeakProfit - currentProfit;
    double ddLimit = 0;
 

@@ -2,10 +2,17 @@
 //|                                          PanelTabResultados.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: RESULTADOS — Create + Update                  |
-//|                     Versão 1.11 - Claude Parte 022 (Claude Code) |
+//|                     Versão 1.12 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba RESULTADOS.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
+//
+// v1.12 (Parte 024):
+// ✅ Fix: "Drawdown Atual: 180.00%" — GetCurrentDrawdown() retorna $ mas
+//    GUI appendava "%" — corrigido para "$180.00 / $200.00"
+// + Seção PROTECAO expandida: DD Limite (tipo+valor), DD Modo Pico,
+//   DD Atual (valor/limite), Streak (ativado/desativado/pausado),
+//   Seq. Perdas/Ganhos com limite e ação (Pausar Xmin / Parar dia)
 
 //+------------------------------------------------------------------+
 //| ABA 1: RESULTADOS — Criar controles                               |
@@ -45,9 +52,15 @@ bool CEPBotPanel::CreateTabResultados(void)
    y += PANEL_GAP_Y + PANEL_GAP_SECTION;
    if(!CreateHdr(m_r_hdr4, "r_h4", "PROTECAO", y)) return false;
    y += PANEL_GAP_Y + 2;
-   if(!CreateLV(m_r_lDD, m_r_eDD, "r_lDD", "r_eDD", "Drawdown Atual:", y)) return false;
+   if(!CreateLV(m_r_lDDLim, m_r_eDDLim, "r_lDL", "r_eDL", "DD Limite:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLV(m_r_lDDMode, m_r_eDDMode, "r_lDM", "r_eDM", "DD Modo Pico:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLV(m_r_lDD, m_r_eDD, "r_lDD", "r_eDD", "DD Atual:", y)) return false;
    y += PANEL_GAP_Y;
    if(!CreateLV(m_r_lPeak, m_r_ePeak, "r_lPk", "r_ePk", "Pico Lucro Dia:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLV(m_r_lStreak, m_r_eStreak, "r_lSk", "r_eSk", "Streak:", y)) return false;
    y += PANEL_GAP_Y;
    if(!CreateLV(m_r_lLossStrk, m_r_eLossStrk, "r_lLS", "r_eLS", "Seq. Perdas:", y)) return false;
    y += PANEL_GAP_Y;
@@ -101,19 +114,93 @@ void CEPBotPanel::UpdateResultados(void)
    SetEV(m_r_ePF, (grossL > 0) ? DoubleToString(pf, 2) : (grossP > 0) ? "INF" : "0.00",
          (pf >= 1.5) ? CLR_POSITIVE : (pf >= 1.0) ? CLR_WARNING : CLR_NEGATIVE);
 
-// ── Proteção ──
+// ── Proteção: Drawdown ──
    if(m_blockers != NULL)
      {
-      double dd = m_blockers.GetCurrentDrawdown();
-      double peak = m_blockers.GetDailyPeakProfit();
-      int lossStrk = m_blockers.GetCurrentLossStreak();
-      int winStrk  = m_blockers.GetCurrentWinStreak();
+      if(m_blockers.IsDrawdownProtectionActive() || m_blockers.GetDrawdownValue() > 0)
+        {
+         ENUM_DRAWDOWN_TYPE ddType = m_blockers.GetDrawdownType();
+         double ddVal = m_blockers.GetDrawdownValue();
 
-      SetEV(m_r_eDD, DoubleToString(dd, 2) + "%",
-            (dd == 0) ? CLR_POSITIVE : (dd > 50) ? CLR_NEGATIVE : CLR_WARNING);
-      SetEV(m_r_ePeak, "$" + DoubleToString(peak, 2), CLR_VALUE);
-      SetEV(m_r_eLossStrk, IntegerToString(lossStrk), (lossStrk >= 3) ? CLR_NEGATIVE : CLR_VALUE);
-      SetEV(m_r_eWinStrk, IntegerToString(winStrk), (winStrk >= 3) ? CLR_POSITIVE : CLR_VALUE);
+         // DD Limite
+         if(ddType == DD_FINANCIAL)
+            SetEV(m_r_eDDLim, "$" + DoubleToString(ddVal, 2) + " (Financeiro)", CLR_VALUE);
+         else
+            SetEV(m_r_eDDLim, DoubleToString(ddVal, 1) + "% (Percentual)", CLR_VALUE);
+
+         // DD Modo Pico
+         if(m_blockers.GetDrawdownPeakMode() == DD_PEAK_REALIZED_ONLY)
+            SetEV(m_r_eDDMode, "So Realizado", CLR_VALUE);
+         else
+            SetEV(m_r_eDDMode, "C/ Flutuante", CLR_VALUE);
+
+         // DD Atual: "valor / limite"
+         double dd = m_blockers.GetCurrentDrawdown();
+         if(ddType == DD_FINANCIAL)
+            SetEV(m_r_eDD, "$" + DoubleToString(dd, 2) + " / $" + DoubleToString(ddVal, 2),
+                  (dd == 0) ? CLR_POSITIVE : (dd >= ddVal) ? CLR_NEGATIVE : CLR_WARNING);
+         else
+            SetEV(m_r_eDD, DoubleToString(dd, 1) + "% / " + DoubleToString(ddVal, 1) + "%",
+                  (dd == 0) ? CLR_POSITIVE : (dd >= ddVal) ? CLR_NEGATIVE : CLR_WARNING);
+        }
+      else
+        {
+         SetEV(m_r_eDDLim,  "--", CLR_VALUE);
+         SetEV(m_r_eDDMode, "--", CLR_VALUE);
+         SetEV(m_r_eDD,     "--", CLR_VALUE);
+        }
+
+      // Pico (sempre mostra)
+      SetEV(m_r_ePeak, "$" + DoubleToString(m_blockers.GetDailyPeakProfit(), 2), CLR_VALUE);
+
+      // ── Proteção: Streak ──
+      if(m_blockers.IsStreakControlEnabled())
+        {
+         if(m_blockers.IsStreakPaused())
+           {
+            MqlDateTime pauseTime;
+            TimeToStruct(m_blockers.GetStreakPauseUntil(), pauseTime);
+            SetEV(m_r_eStreak, StringFormat("PAUSADO ate %02d:%02d", pauseTime.hour, pauseTime.min), CLR_WARNING);
+           }
+         else
+            SetEV(m_r_eStreak, "ATIVADO", CLR_POSITIVE);
+
+         // Seq. Perdas: "4 / 5 (Pausar 5min)"
+         int maxL = m_blockers.GetMaxLossStreak();
+         int curL = m_blockers.GetCurrentLossStreak();
+         if(maxL > 0)
+           {
+            string actionL = (m_blockers.GetLossStreakAction() == STREAK_PAUSE)
+               ? "Pausar " + IntegerToString(m_blockers.GetLossPauseMinutes()) + "min"
+               : "Parar dia";
+            SetEV(m_r_eLossStrk,
+               IntegerToString(curL) + " / " + IntegerToString(maxL) + " (" + actionL + ")",
+               (curL >= maxL) ? CLR_NEGATIVE : CLR_VALUE);
+           }
+         else
+            SetEV(m_r_eLossStrk, IntegerToString(curL) + " (sem limite)", CLR_VALUE);
+
+         // Seq. Ganhos: "0 / 3 (Parar dia)"
+         int maxW = m_blockers.GetMaxWinStreak();
+         int curW = m_blockers.GetCurrentWinStreak();
+         if(maxW > 0)
+           {
+            string actionW = (m_blockers.GetWinStreakAction() == STREAK_PAUSE)
+               ? "Pausar " + IntegerToString(m_blockers.GetWinPauseMinutes()) + "min"
+               : "Parar dia";
+            SetEV(m_r_eWinStrk,
+               IntegerToString(curW) + " / " + IntegerToString(maxW) + " (" + actionW + ")",
+               (curW >= maxW) ? CLR_NEGATIVE : CLR_VALUE);
+           }
+         else
+            SetEV(m_r_eWinStrk, IntegerToString(curW) + " (sem limite)", CLR_VALUE);
+        }
+      else
+        {
+         SetEV(m_r_eStreak, "DESATIVADO", CLR_VALUE);
+         SetEV(m_r_eLossStrk, IntegerToString(m_blockers.GetCurrentLossStreak()) + " (sem limite)", CLR_VALUE);
+         SetEV(m_r_eWinStrk, IntegerToString(m_blockers.GetCurrentWinStreak()) + " (sem limite)", CLR_VALUE);
+        }
      }
   }
 //+------------------------------------------------------------------+

@@ -2,10 +2,10 @@
 //|                                                  TrendFilter.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                      Filtro de Tendência por MA - EPBot Matrix   |
-//|                                   Versão 2.16 - Claude Parte 022 |
+//|                                   Versão 2.19 - Claude Parte 024 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.16"
+#property version   "2.19"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,7 +15,23 @@
 #include "../Base/FilterBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
-// NOVIDADES v2.16:
+// NOVIDADES v2.19 (Parte 024):
+// + SetMAApplied(ENUM_APPLIED_PRICE): cold reload do applied price
+// + SetMACold(period, method, tf, applied): setter combinado — 1 única reinicialização
+//   Reverte todos os parâmetros se Initialize() falhar
+//
+// NOVIDADES v2.18 (Parte 024):
+// + SetMATimeframe(ENUM_TIMEFRAMES tf): cold reload do timeframe da MA
+//   Segue padrão de SetMAPeriod/SetMAMethod: Deinitialize→Initialize
+//   Reverte para valor anterior se Initialize() falhar
+//
+// NOVIDADES v2.17 (Parte 024):
+// + Fix: GetDistanceFromMA() guard ArraySize(m_ma)==0
+//   Quando filtro desativado, handle=INVALID_HANDLE, UpdateIndicators()
+//   retorna true sem popular m_ma[] → acesso a m_ma[0] causava
+//   "array out of range" ao abrir sub-página TREND no painel.
+//
+// NOVIDADES v2.16 (Parte 022):
 // + Fix: CopyBuffer validação alterada de <= 0 para < 3
 // + Fix: m_maReady resetado para false quando CopyBuffer falha
 //   (evita uso de dados antigos se indicador ficar temporariamente indisponível)
@@ -139,6 +155,11 @@ public:
    // ═══════════════════════════════════════════════════════════
    bool              SetMAPeriod(int period);
    bool              SetMAMethod(ENUM_MA_METHOD method);
+   bool              SetMATimeframe(ENUM_TIMEFRAMES tf);
+   bool              SetMAApplied(ENUM_APPLIED_PRICE applied);
+   // Setter combinado — reinicia indicadores apenas 1x
+   bool              SetMACold(int period, ENUM_MA_METHOD method,
+                               ENUM_TIMEFRAMES tf, ENUM_APPLIED_PRICE applied);
 
    // ═══════════════════════════════════════════════════════════
    // GETTERS - Working values (valores atuais em uso)
@@ -661,6 +682,114 @@ bool CTrendFilter::SetMAMethod(ENUM_MA_METHOD method)
   }
 
 //+------------------------------------------------------------------+
+//| COLD RELOAD - Alterar timeframe da MA (v2.18)                    |
+//+------------------------------------------------------------------+
+bool CTrendFilter::SetMATimeframe(ENUM_TIMEFRAMES tf)
+  {
+   ENUM_TIMEFRAMES oldTF = m_maTimeframe;
+   m_maTimeframe = tf;
+
+   Deinitialize();
+   bool success = Initialize();
+
+   if(success)
+     {
+      string msg = "🔄 [Trend Filter] Timeframe MA alterado (reiniciado)";
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
+      else
+         Print(msg);
+     }
+   else
+     {
+      m_maTimeframe = oldTF;   // reverter se falhou
+     }
+
+   return success;
+  }
+
+//+------------------------------------------------------------------+
+//| COLD RELOAD - Alterar applied price da MA (v2.19)                |
+//+------------------------------------------------------------------+
+bool CTrendFilter::SetMAApplied(ENUM_APPLIED_PRICE applied)
+  {
+   ENUM_APPLIED_PRICE oldApplied = m_maApplied;
+   m_maApplied = applied;
+
+   Deinitialize();
+   bool success = Initialize();
+
+   if(!success)
+      m_maApplied = oldApplied;   // reverter se falhou
+   else
+     {
+      string msg = "🔄 [Trend Filter] Applied price alterado: " +
+                   EnumToString(oldApplied) + " → " + EnumToString(applied) + " (reiniciado)";
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
+      else
+         Print(msg);
+     }
+
+   return success;
+  }
+
+//+------------------------------------------------------------------+
+//| COLD RELOAD - Setter combinado: 1 única reinicialização (v2.19)  |
+//+------------------------------------------------------------------+
+bool CTrendFilter::SetMACold(int period, ENUM_MA_METHOD method,
+                              ENUM_TIMEFRAMES tf, ENUM_APPLIED_PRICE applied)
+  {
+   if(period <= 0)
+     {
+      string msg = "[Trend Filter] SetMACold: período inválido " + IntegerToString(period);
+      if(m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD", msg);
+      else
+         Print("❌ ", msg);
+      return false;
+     }
+
+   int                oldPeriod  = m_maPeriod;
+   ENUM_MA_METHOD     oldMethod  = m_maMethod;
+   ENUM_TIMEFRAMES    oldTF      = m_maTimeframe;
+   ENUM_APPLIED_PRICE oldApplied = m_maApplied;
+
+   m_maPeriod    = period;
+   m_maMethod    = method;
+   m_maTimeframe = tf;
+   m_maApplied   = applied;
+
+   Deinitialize();
+   bool success = Initialize();
+
+   if(!success)
+     {
+      // reverter tudo se falhou
+      m_maPeriod    = oldPeriod;
+      m_maMethod    = oldMethod;
+      m_maTimeframe = oldTF;
+      m_maApplied   = oldApplied;
+      Deinitialize();
+      Initialize();
+     }
+   else
+     {
+      string msg = StringFormat("🔄 [Trend Filter] Cold reload: MA %d→%d / %s→%s / %s→%s / %s→%s",
+                                oldPeriod, period,
+                                EnumToString(oldMethod), EnumToString(method),
+                                EnumToString(oldTF), EnumToString(tf),
+                                EnumToString(oldApplied), EnumToString(applied));
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
+      else
+         Print(msg);
+     }
+
+   return success;
+  }
+
+//+------------------------------------------------------------------+
 //| Getters                                                           |
 //+------------------------------------------------------------------+
 double CTrendFilter::GetMA(int shift = 0)
@@ -673,7 +802,7 @@ double CTrendFilter::GetMA(int shift = 0)
 
 double CTrendFilter::GetDistanceFromMA()
   {
-   if(!m_isInitialized || !UpdateIndicators())
+   if(!m_isInitialized || !UpdateIndicators() || ArraySize(m_ma) == 0)
       return 0.0;
 
    double currentPrice = iClose(_Symbol, PERIOD_CURRENT, 0);

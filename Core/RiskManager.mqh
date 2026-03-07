@@ -2,10 +2,10 @@
 //|                                                  RiskManager.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                       Sistema de Cálculo de Risco - EPBot Matrix |
-//|                  Versão 3.14 - Claude Parte 022 (Claude Code)    |
+//|                  Versão 3.15 - Claude Parte 024 (Claude Code)    |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.14"
+#property version   "3.15"
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
@@ -56,6 +56,11 @@
 // + SetTPType(ENUM_TP_TYPE) — troca tipo TP em runtime (NENHUM/FIXO/ATR)
 // + SetRangeMultiplier(double) — altera multiplicador Range em runtime
 // + Criação automática de handle ATR quando tipo muda para ATR
+//
+// NOVIDADES v3.15 (Parte 024):
+// + Fix: TP_NONE é agora sempre respeitado em CalculateTPPrice()
+//   Antes: Partial TP ativo forçava TP fixo como fallback, ignorando TP=NENHUM
+//   Agora: TP_NONE retorna 0 independente do Partial TP; log de info emitido
 // ═══════════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
@@ -1216,41 +1221,19 @@ double CRiskManager::CalculateSLPrice(ENUM_ORDER_TYPE orderType, double entryPri
   }
 
 //+------------------------------------------------------------------+
-//| Calcular preço de Take Profit (v3.11 - TP FALLBACK)             |
+//| Calcular preço de Take Profit (v3.12 - respeita TP_NONE)        |
 //+------------------------------------------------------------------+
 double CRiskManager::CalculateTPPrice(ENUM_ORDER_TYPE orderType, double entryPrice)
   {
-   // ═══════════════════════════════════════════════════════════════
-   // 🆕 v3.11: PARTIAL TP ATIVO → USA TP FIXO COMO FALLBACK
-   // ═══════════════════════════════════════════════════════════════
-   if(m_usePartialTP)
-     {
-      double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
-      double tpDistance = m_fixedTP * point;
-      
-      double tpPrice = 0;
-      if(orderType == ORDER_TYPE_BUY)
-         tpPrice = entryPrice + tpDistance;
-      else
-         tpPrice = entryPrice - tpDistance;
-      
-      // Normalizar
-      tpPrice = NormalizePrice(tpPrice);
-      
-      // Log informativo
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
-            "🎯 Partial TP ativo - TP Fixo como fallback: " + 
-            DoubleToString(tpDistance/point, 1) + " pts");
-      
-      return tpPrice;  // ← RETORNA AQUI!
-     }
-   
-   // ═══════════════════════════════════════════════════════════════
-   // SEM PARTIAL TP: LÓGICA NORMAL (código existente)
-   // ═══════════════════════════════════════════════════════════════
+   // TP_NONE é sempre respeitado — inclusive com Partial TP ativo.
+   // O usuário assume o risco: a posição restante é gerida por trailing/sinal.
    if(m_tpType == TP_NONE)
+     {
+      if(m_usePartialTP && m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
+            "ℹ Partial TP ativo sem TP final — saída gerida por trailing/sinal");
       return 0;
+     }
    
    double point = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
    double spread = SymbolInfoInteger(m_symbol, SYMBOL_SPREAD) * point;

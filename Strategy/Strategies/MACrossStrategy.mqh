@@ -2,10 +2,10 @@
 //|                                             MACrossStrategy.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                   Estratégia de Cruzamento de MAs - EPBot Matrix |
-//|                                   Versão 2.21 - Claude Parte 022 |
+//|                                   Versão 2.25 - Claude Parte 024 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.21"
+#property version   "2.25"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -14,6 +14,26 @@
 #include "../../Core/Logger.mqh"
 #include "../Base/StrategyBase.mqh"
 
+// ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.25 (Parte 024):
+// + SetMAParams: novos parâmetros fastApplied/slowApplied (default PRICE_CLOSE)
+//   Compatível com chamadas antigas (parâmetros opcionais)
+//   Permite configurar o preço (CLOSE/OPEN/HIGH/LOW/MEDIAN/TYPICAL)
+//   via painel de controle sem reinit extra.
+//
+// NOVIDADES v2.24 (Parte 024):
+// + m_enabled removido — herdado de CStrategyBase v2.01
+// + SetEnabled/GetEnabled herdados (polimorfismo via base)
+// ═══════════════════════════════════════════════════════════════════
+// NOVIDADES v2.23 (Parte 024):
+// + m_enabled: toggle ON/OFF da estratégia em runtime
+// + SetEnabled(bool), GetEnabled(): getter/setter para o painel GUI
+// ═══════════════════════════════════════════════════════════════════
+// NOVIDADES v2.22 (Parte 024):
+// + SetMAParams(): setter combina periods + methods + timeframes
+//   (single Deinitialize/Initialize em vez de 3 chama separadas)
+// + Novo estado (m_cur_*): armazena current fast/slow method/TF
+//   para hot-reload via GUI sem reini indicadores
 // ═══════════════════════════════════════════════════════════════
 // NOVIDADES v2.21:
 // + Fix: CopyBuffer validação alterada de <= 0 para < 3
@@ -79,6 +99,7 @@ private:
 
    ENUM_ENTRY_MODE   m_entryMode;
    ENUM_EXIT_MODE    m_exitMode;
+   // m_enabled: removido — herdado de CStrategyBase v2.01
 
    // ═══════════════════════════════════════════════════════════
    // CONTROLE DE CRUZAMENTO (estado interno - não duplica)
@@ -131,7 +152,7 @@ public:
    //+------------------------------------------------------------------+
    virtual ENUM_SIGNAL_TYPE GetExitSignal(ENUM_POSITION_TYPE currentPosition) override
      {
-      if(!m_isInitialized)
+      if(!m_isInitialized || !m_enabled)
          return SIGNAL_NONE;
 
       // EXIT_TP_SL: Strategy NÃO gerencia saída
@@ -147,6 +168,7 @@ public:
    // ═══════════════════════════════════════════════════════════
    bool              SetEntryMode(ENUM_ENTRY_MODE mode);
    bool              SetExitMode(ENUM_EXIT_MODE mode);
+   // SetEnabled/GetEnabled: herdados de CStrategyBase v2.01
 
    // ═══════════════════════════════════════════════════════════
    // COLD RELOAD - Parâmetros frios (reinicia indicadores)
@@ -154,6 +176,12 @@ public:
    bool              SetMAPeriods(int fastPeriod, int slowPeriod);
    bool              SetMAMethods(ENUM_MA_METHOD fastMethod, ENUM_MA_METHOD slowMethod);
    bool              SetMATimeframes(ENUM_TIMEFRAMES fastTF, ENUM_TIMEFRAMES slowTF);
+   // Setter combinado — reinicia indicadores apenas 1x
+   bool              SetMAParams(int fastPeriod, int slowPeriod,
+                                 ENUM_MA_METHOD fastMethod, ENUM_MA_METHOD slowMethod,
+                                 ENUM_TIMEFRAMES fastTF, ENUM_TIMEFRAMES slowTF,
+                                 ENUM_APPLIED_PRICE fastApplied = PRICE_CLOSE,
+                                 ENUM_APPLIED_PRICE slowApplied = PRICE_CLOSE);
 
    // ═══════════════════════════════════════════════════════════
    // GETTERS - Working values (valores atuais em uso)
@@ -236,6 +264,7 @@ CMACrossStrategy::CMACrossStrategy(int priority = 0) : CStrategyBase("MA Cross S
    m_lastCrossSignal = SIGNAL_NONE;
    m_candlesAfterCross = 0;
    m_lastCheckBarTime = 0;
+   // m_enabled: inicializado na base CStrategyBase(true)
 
    ArraySetAsSeries(m_maFast, true);
    ArraySetAsSeries(m_maSlow, true);
@@ -513,6 +542,9 @@ ENUM_SIGNAL_TYPE CMACrossStrategy::DetectCross()
 //+------------------------------------------------------------------+
 ENUM_SIGNAL_TYPE CMACrossStrategy::GetSignal()
   {
+   if(!m_enabled)
+      return SIGNAL_NONE;
+
    if(!m_isInitialized)
      {
       string msg = "[MA Cross] Tentativa de obter sinal sem estar inicializado";
@@ -754,6 +786,60 @@ bool CMACrossStrategy::SetMATimeframes(ENUM_TIMEFRAMES fastTF, ENUM_TIMEFRAMES s
    if(success)
      {
       string msg = "🔄 [MA Cross] Timeframes alterados";
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
+      else
+         Print(msg);
+     }
+
+   return success;
+  }
+
+//+------------------------------------------------------------------+
+//| COLD RELOAD combinado — atualiza tudo e reinicia indicadores 1x |
+//+------------------------------------------------------------------+
+bool CMACrossStrategy::SetMAParams(int fastPeriod, int slowPeriod,
+                                   ENUM_MA_METHOD fastMethod, ENUM_MA_METHOD slowMethod,
+                                   ENUM_TIMEFRAMES fastTF, ENUM_TIMEFRAMES slowTF,
+                                   ENUM_APPLIED_PRICE fastApplied,
+                                   ENUM_APPLIED_PRICE slowApplied)
+  {
+   if(fastPeriod <= 0 || slowPeriod <= 0 || fastPeriod >= slowPeriod)
+     {
+      string msg = "[MA Cross] SetMAParams: períodos inválidos Fast=" + IntegerToString(fastPeriod) +
+                   " Slow=" + IntegerToString(slowPeriod);
+      if(m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD", msg);
+      else
+         Print("❌ ", msg);
+      return false;
+     }
+
+   int oldFastP = m_fastPeriod, oldSlowP = m_slowPeriod;
+   ENUM_MA_METHOD oldFastM = m_fastMethod, oldSlowM = m_slowMethod;
+   ENUM_TIMEFRAMES oldFastTF = m_fastTimeframe, oldSlowTF = m_slowTimeframe;
+
+   m_fastPeriod    = fastPeriod;
+   m_slowPeriod    = slowPeriod;
+   m_fastMethod    = fastMethod;
+   m_slowMethod    = slowMethod;
+   m_fastTimeframe = fastTF;
+   m_slowTimeframe = slowTF;
+   m_fastApplied   = fastApplied;
+   m_slowApplied   = slowApplied;
+
+   Deinitialize();
+   bool success = Initialize();
+
+   if(success)
+     {
+      string msg = "🔄 [MA Cross] Params alterados:"
+                   " Fast " + IntegerToString(oldFastP) + "→" + IntegerToString(fastPeriod) +
+                   "/" + MAMethodToString(oldFastM) + "→" + MAMethodToString(fastMethod) +
+                   "/" + EnumToString(oldFastTF) + "→" + EnumToString(fastTF) +
+                   " | Slow " + IntegerToString(oldSlowP) + "→" + IntegerToString(slowPeriod) +
+                   "/" + MAMethodToString(oldSlowM) + "→" + MAMethodToString(slowMethod) +
+                   "/" + EnumToString(oldSlowTF) + "→" + EnumToString(slowTF);
       if(m_logger != NULL)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
       else

@@ -2,10 +2,10 @@
 //|                                               SignalManager.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                   Gerenciador de Sinais e Filtros - EPBot Matrix |
-//|                                   Versão 2.12 - Claude Parte 022 |
+//|                                   Versão 2.13 - Claude Parte 024 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.12"
+#property version   "2.13"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,11 @@
 #include "Base/StrategyBase.mqh"
 #include "Base/FilterBase.mqh"
 
+// ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.13 (Parte 024):
+// + StrategyItem.enabled removido — usa strategy.GetEnabled()
+// + Enable/DisableStrategy agora chamam strategy.SetEnabled()
+// + Flags unificados: GUI e SignalManager usam o mesmo m_enabled
 // ═══════════════════════════════════════════════════════════════
 // NOVIDADES v2.12:
 // + Fix: ResolveConflict() agora usa parâmetro 'count' no loop de
@@ -45,7 +50,7 @@ enum ENUM_CONFLICT_RESOLUTION
 struct StrategyItem
   {
    CStrategyBase*    strategy;   // Ponteiro para estratégia
-   bool              enabled;              // Ativa/inativa (working variable)
+   // enabled removido v2.13 — usa strategy.GetEnabled() (CStrategyBase v2.01)
   };
 
 //+------------------------------------------------------------------+
@@ -144,7 +149,7 @@ public:
       // Percorrer strategies e verificar se alguma quer sair
       for(int i = 0; i < m_strategyCount; i++)
         {
-         if(m_strategies[i].enabled && m_strategies[i].strategy != NULL)
+         if(m_strategies[i].strategy != NULL && m_strategies[i].strategy.GetEnabled())
            {
             ENUM_SIGNAL_TYPE exitSignal = m_strategies[i].strategy.GetExitSignal(currentPosition);
 
@@ -267,7 +272,6 @@ bool CSignalManager::AddStrategy(CStrategyBase* strategy)
 
    ArrayResize(m_strategies, m_strategyCount + 1);
    m_strategies[m_strategyCount].strategy = strategy;
-   m_strategies[m_strategyCount].enabled = true;
    m_strategyCount++;
 
    string msg = "✅ [Signal Manager] Estratégia adicionada: '" + strategy.GetName() +
@@ -329,7 +333,8 @@ bool CSignalManager::EnableStrategy(string strategyName)
       return false;
      }
 
-   m_strategies[index].enabled = true;
+   if(m_strategies[index].strategy != NULL)
+      m_strategies[index].strategy.SetEnabled(true);
 
    string msg = "✅ [Signal Manager] Estratégia habilitada: '" + strategyName + "'";
    if(m_logger != NULL)
@@ -356,7 +361,8 @@ bool CSignalManager::DisableStrategy(string strategyName)
       return false;
      }
 
-   m_strategies[index].enabled = false;
+   if(m_strategies[index].strategy != NULL)
+      m_strategies[index].strategy.SetEnabled(false);
 
    string msg = "⏸️ [Signal Manager] Estratégia desabilitada: '" + strategyName + "'";
    if(m_logger != NULL)
@@ -725,8 +731,8 @@ ENUM_SIGNAL_TYPE CSignalManager::ResolveConflict(ENUM_SIGNAL_TYPE &signals[], in
 
    for(int i = 0; i < count; i++)
      {
-      if(m_strategies[i].enabled &&
-         m_strategies[i].strategy != NULL &&
+      if(m_strategies[i].strategy != NULL &&
+         m_strategies[i].strategy.GetEnabled() &&
          signals[i] != SIGNAL_NONE)
         {
          int priority = m_strategies[i].strategy.GetPriority();
@@ -785,7 +791,7 @@ ENUM_SIGNAL_TYPE CSignalManager::GetRawSignal()
 
    for(int i = 0; i < m_strategyCount; i++)
      {
-      if(m_strategies[i].enabled && m_strategies[i].strategy != NULL)
+      if(m_strategies[i].strategy != NULL && m_strategies[i].strategy.GetEnabled())
         {
          signals[i] = m_strategies[i].strategy.GetSignal();
         }
@@ -813,7 +819,7 @@ ENUM_SIGNAL_TYPE CSignalManager::GetSignal()
    int validSignals = 0;
    for(int i = 0; i < m_strategyCount; i++)
      {
-      if(m_strategies[i].enabled && m_strategies[i].strategy != NULL)
+      if(m_strategies[i].strategy != NULL && m_strategies[i].strategy.GetEnabled())
         {
          signals[i] = m_strategies[i].strategy.GetSignal();
 
@@ -866,7 +872,7 @@ void CSignalManager::PrintStatus()
         {
          if(m_strategies[i].strategy != NULL)
            {
-            string status = m_strategies[i].enabled ? "✅" : "⏸️";
+            string status = m_strategies[i].strategy.GetEnabled() ? "✅" : "⏸️";
             int priority = m_strategies[i].strategy.GetPriority();
             m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "INFO",
                          "  " + IntegerToString(i+1) + ". " + status + " " + m_strategies[i].strategy.GetName() +
@@ -901,7 +907,7 @@ void CSignalManager::PrintStatus()
         {
          if(m_strategies[i].strategy != NULL)
            {
-            string status = m_strategies[i].enabled ? "✅" : "⏸️";
+            string status = m_strategies[i].strategy.GetEnabled() ? "✅" : "⏸️";
             int priority = m_strategies[i].strategy.GetPriority();
             Print("  ", i+1, ". ", status, " ", m_strategies[i].strategy.GetName(),
                   " (Prioridade: ", priority, ")");

@@ -2,9 +2,10 @@
 //|                                                 StrategyBase.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                                Interface Base para Estratégias   |
+//|                                   Versão 2.01 - Claude Parte 024 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.00"
+#property version   "2.01"
 #property strict
 
 //+------------------------------------------------------------------+
@@ -45,13 +46,15 @@ protected:
    string            m_strategyName;      // Nome da estratégia
    bool              m_isInitialized;     // Flag de inicialização
    int               m_priority;          // Prioridade da estratégia (maior = mais importante)
+   bool              m_enabled;           // v2.01: toggle ON/OFF centralizado (herança)
 
 public:
    // Construtor
                      CStrategyBase(string name, int priority = 0) :
                      m_strategyName(name),
                      m_isInitialized(false),
-                     m_priority(priority) {}
+                     m_priority(priority),
+                     m_enabled(true) {}
 
    // Destrutor virtual
    virtual          ~CStrategyBase() {}
@@ -100,4 +103,8 @@ public:
    // Prioridade (usado no SignalManager para resolver conflitos)
    int               GetPriority() const { return m_priority; }
    void              SetPriority(int priority) { m_priority = priority; }
+
+   // v2.01: Toggle ON/OFF (override nas filhas para logging)
+   virtual void      SetEnabled(bool v) { m_enabled = v; }
+   bool              GetEnabled() const { return m_enabled; }
   };

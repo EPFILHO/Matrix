@@ -2,15 +2,98 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.23 - Claude Parte 023 (Claude Code) |
+//|                     Versão 1.36 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.23"
+#property version   "1.36"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.36 (Parte 024):
+// + Price (CLOSE/OPEN/HIGH/LOW/MEDIAN/TYPICAL) para MA Cross (Fast+Slow) e TrendFilter
+//   m_ce_lFastPrice/m_ce_bFastPrice, m_ce_lSlowPrice/m_ce_bSlowPrice
+//   m_ft_lPrice/m_ft_bPrice; state vars m_cur_maFastPrice/SlowPrice/trendPrice
+//   OnClickMAFastPrice, OnClickMASlowPrice, OnClickTrendPrice
+//   AppliedPriceShortText, CycleAppliedPrice: helpers estáticos
+//
+// v1.35 (Parte 024):
+// + Toggle ON/OFF + APLICAR para TrendFilter e RSIFilter (aba FILTROS)
+//   m_f_btnTrendToggle, m_f_btnApplyTrend, m_ft_*: Período MA, Método, TF, Zona Neutra
+//   m_f_btnRSIFiltToggle, m_f_btnApplyRSIFilt, m_frf_*: Período, TF, Modo, Oversold, Overbought
+// + m_pendingTrendEnabled, m_pendingRSIFiltEnabled: flags de pending state
+// + m_cur_trendMethod, m_cur_trendTF, m_cur_rsiFiltMode, m_cur_rsiFiltTF
+// + m_f_statusTrendExpiry, m_f_statusRSIFiltExpiry: expiração de mensagens
+// + OnClickTrendToggle/ApplyTrend/TrendMethod/TrendTF
+// + OnClickRSIFiltToggle/ApplyRSIFilt/RSIFiltTF/RSIFiltMode
+// + RSIFiltModeText, MAMethodShortText: helpers estáticos
+// + OnEvent: novo bloco de eventos para botões FILTROS
+//
+// v1.34 (Parte 024):
+// + Removido hot-create de RSI: m_rsiPanelOwned, GetRSIStrategy(), IsRSIPanelOwned()
+// + Padrão igual ao MACross: RSI só existe se inp_UseRSI=true no init
+//
+// v1.33 (Parte 024 - fix compilação):
+// + FIX: removido CRSIStrategy** (MQL5 não suporta ponteiro-para-ponteiro)
+// + Adicionados getters GetRSIStrategy() e IsRSIPanelOwned() para sync EA↔Panel
+//
+// v1.30 (Parte 024):
+// + PanelTabEstrategias v1.18: ApplyToggleStyle avail param (N/A cinza)
+//   m_re_lModeDesc: legenda dinâmica CROSS/ZONE/MEDIO, RSIModeDesc()
+// + Panel.mqh: declaração RSIModeDesc() + m_re_lModeDesc membro
+//
+// v1.29 (Parte 024):
+// + PanelTabEstrategias v1.17: toggle default OFF quando NULL, labels ON/OFF,
+//   UpdateEstrategias sincroniza toggle + estado "Suspenso"
+//
+// v1.28 (Parte 024):
+// + m_cr_lPTPHint: novo membro CLabel para dica visual TP=NENHUM + Partial TP
+//   na sub-página RISCO (criado em PanelTabConfig v1.25)
+// + MA Cross e RSI: botões toggle ON/OFF (m_e_btnMAToggle, m_e_btnRSIToggle)
+//   OnClickMAToggle, OnClickRSIToggle, ApplyToggleStyle
+//   MACrossStrategy v2.23 e RSIStrategy v2.12: m_enabled, SetEnabled(), GetEnabled()
+//
+// v1.27 (Parte 024):
+// + MA Cross: m_e_lMAEntry/eMAEntry/lMAExit/eMAExit → removidos
+//   Substituídos por m_e_lLeg1/lLeg2/lLeg3 (legenda FCO/VM/TP-SL)
+// + m_ce_bEntry comentário: NEXT CANDLE|2ND CANDLE → PROX. CANDLE|2o. CANDLE
+// + RSI sub-página: campos editáveis hot/cold reload
+//   m_re_*: Period(edit), TF(cycle), Mode(radio 3), Oversold, Overbought, Middle
+//   m_e_btnApplyRSI, m_e_statusRSI, m_e_statusRSIExpiry
+//   m_cur_rsiTF, m_cur_rsiMode: state vars
+//   OnClickApplyRSI, OnClickRSIMode, OnClickRSITF,
+//   RSIModeToIndex, IndexToRSIMode: helpers
+//   Auto-clear m_e_statusRSIExpiry no Update() switch TAB_ESTRATEGIAS
+//
+// v1.26 (Parte 024):
+// + ESTRAT aba (MA Cross sub-página): campos editáveis hot/cold reload inline
+//   m_ce_*: Fast/Slow Period, Method(4), TF(cycle), Entry(2), Exit(3)
+//   m_e_btnApplyMA, m_e_statusMA, m_e_statusMAExpiry
+//   m_cur_maFastMethod/SlowMethod/FastTF/SlowTF/maEntry/maExit: state vars
+//   OnClickApplyMA, OnClickMAFastMethod/SlowMethod, OnClickMAFastTF/SlowTF
+//   OnClickMAEntry, OnClickMAExit, CycleTF, TFName, MAMethodToIndex, IndexToMAMethod
+//   Auto-clear m_e_statusMAExpiry no Update() switch TAB_ESTRATEGIAS
+//
+// v1.25 (Parte 024):
+// + Aba RESULTADOS/PROTECAO: novos CLabel members para DD expandido
+//   m_r_lDDLim/eDDLim (DD Limite), m_r_lDDMode/eDDMode (DD Modo Pico),
+//   m_r_lStreak/eStreak (Streak estado) + Show/Hide no SetTabVis()
+// ═══════════════════════════════════════════════════════════════
+// v1.24 (Parte 024):
+// + Sub-páginas em ESTRAT.: [MA CROSS] [RSI]
+// + Sub-páginas em FILTROS: [TREND] [RSI]
+// + SIGNAL MANAGER movido de ESTRAT. → STATUS (abaixo de SINAIS)
+// + ENUM_ESTRAT_PAGE, ENUM_FILTROS_PAGE, ESTRAT_CONTENT_Y, FILTROS_CONTENT_Y
+// + m_estratPage, m_filtrosPage: estado das sub-páginas ativas
+// + m_e_btnMACross, m_e_btnRSI: botões sub-página ESTRAT.
+// + m_f_btnTrend, m_f_btnRSI: botões sub-página FILTROS
+// + m_s_hdrSM, m_s_lStrats/eStrats, m_s_lFilts/eFilts, m_s_lConflict/eConflict: SM na aba STATUS
+// + ShowEstratPage/SetEstratPageVis/UpdateEstratBtnStyles/OnClickEstratMACross/RSI
+// + ShowFiltrosPage/SetFiltrosPageVis/UpdateFiltrosBtnStyles/OnClickFiltrosTrend/RSI
+// + ReapplyTabVisibility: fix encavalamento sub-páginas ESTRAT./FILTROS
+// ═══════════════════════════════════════════════════════════════
+//
 // v1.23 (2026-03-03):
 // + Layout: COL_VALUE_X 195→150, COL_VALUE_W 210→255 (campos de valor
 //   ficam 45px mais próximos dos labels em todas as abas; borda direita
@@ -199,8 +282,10 @@
 #define CONTENT_TOP          32
 #define TAB_BTN_H            22
 
-// Layout CONFIG sub-páginas
+// Layout sub-páginas (CONFIG, ESTRAT., FILTROS)
 #define CFG_CONTENT_Y        (CONTENT_TOP + TAB_BTN_H + 6)
+#define ESTRAT_CONTENT_Y     (CONTENT_TOP + TAB_BTN_H + 6)
+#define FILTROS_CONTENT_Y    (CONTENT_TOP + TAB_BTN_H + 6)
 #define CFG_APPLY_Y          520
 
 // ═══════════════════════════════════════════════════════════════
@@ -250,6 +335,12 @@ enum ENUM_CONFIG_PAGE
   };
 #define CFG_PAGE_COUNT 5
 
+enum ENUM_ESTRAT_PAGE  { ESTRAT_MA_CROSS=0, ESTRAT_RSI=1 };
+#define ESTRAT_PAGE_COUNT 2
+
+enum ENUM_FILTROS_PAGE { FILTROS_TREND=0, FILTROS_RSI=1 };
+#define FILTROS_PAGE_COUNT 2
+
 //+------------------------------------------------------------------+
 //| Classe principal do painel                                        |
 //+------------------------------------------------------------------+
@@ -264,12 +355,26 @@ private:
    CSignalManager    *m_signalManager;
    CMACrossStrategy  *m_maCross;
    CRSIStrategy      *m_rsiStrategy;
+   // (v1.33: removido m_rsiGlobalPtr — MQL5 não suporta **)
+   bool               m_pendingMAEnabled;       // estado pendente do toggle MA (antes de APLICAR)
+   bool               m_pendingRSIEnabled;      // estado pendente do toggle RSI (antes de APLICAR)
+   bool               m_pendingTrendEnabled;    // estado pendente do toggle TrendFilter
+   bool               m_pendingRSIFiltEnabled;  // estado pendente do toggle RSIFilter
+   ENUM_MA_METHOD     m_cur_trendMethod;         // método MA selecionado no painel
+   ENUM_TIMEFRAMES    m_cur_trendTF;             // TF selecionado no painel (TrendFilter)
+   ENUM_APPLIED_PRICE m_cur_trendPrice;          // applied price selecionado (TrendFilter)
+   ENUM_RSI_FILTER_MODE m_cur_rsiFiltMode;       // modo RSI Filter selecionado
+   ENUM_TIMEFRAMES    m_cur_rsiFiltTF;           // TF selecionado (RSI Filter)
+   uint               m_f_statusTrendExpiry;     // expiração da msg de status TrendFilter
+   uint               m_f_statusRSIFiltExpiry;   // expiração da msg de status RSIFilter
    CTrendFilter      *m_trendFilter;
    CRSIFilter        *m_rsiFilter;
 
    // ── Estado ──
    ENUM_PANEL_TAB     m_activeTab;
    ENUM_CONFIG_PAGE   m_cfgPage;
+   ENUM_ESTRAT_PAGE   m_estratPage;
+   ENUM_FILTROS_PAGE  m_filtrosPage;
    int                m_magicNumber;
    string             m_symbol;
 
@@ -307,6 +412,12 @@ private:
    CLabel  m_s_lSignal;        CLabel  m_s_eSignal;
    CLabel  m_s_lBlocked;       CLabel  m_s_eBlocked;
 
+   // SIGNAL MANAGER (movido de ESTRAT. — Parte 024)
+   CLabel  m_s_hdrSM;
+   CLabel  m_s_lStrats;        CLabel  m_s_eStrats;
+   CLabel  m_s_lFilts;         CLabel  m_s_eFilts;
+   CLabel  m_s_lConflict;      CLabel  m_s_eConflict;
+
    // ════════════════════════════════════════
    // ABA 1: RESULTADOS
    // ════════════════════════════════════════
@@ -327,46 +438,107 @@ private:
    CLabel  m_r_lPF;            CLabel  m_r_ePF;
 
    CLabel  m_r_hdr4;
+   CLabel  m_r_lDDLim;         CLabel  m_r_eDDLim;
+   CLabel  m_r_lDDMode;        CLabel  m_r_eDDMode;
    CLabel  m_r_lDD;            CLabel  m_r_eDD;
    CLabel  m_r_lPeak;          CLabel  m_r_ePeak;
+   CLabel  m_r_lStreak;        CLabel  m_r_eStreak;
    CLabel  m_r_lLossStrk;      CLabel  m_r_eLossStrk;
    CLabel  m_r_lWinStrk;       CLabel  m_r_eWinStrk;
 
    // ════════════════════════════════════════
    // ABA 2: ESTRATEGIAS
    // ════════════════════════════════════════
-   CLabel  m_e_hdr1;
-   CLabel  m_e_lStratCnt;      CLabel  m_e_eStratCnt;
-   CLabel  m_e_lFiltCnt;       CLabel  m_e_eFiltCnt;
-   CLabel  m_e_lConflict;      CLabel  m_e_eConflict;
+   // Sub-page buttons
+   CButton m_e_btnMACross;
+   CButton m_e_btnRSI;
 
+   // MA CROSS sub-page — display read-only
    CLabel  m_e_hdr2;
+   CButton m_e_btnMAToggle;                              // Toggle ON/OFF (v1.28)
    CLabel  m_e_lMAStatus;      CLabel  m_e_eMAStatus;
    CLabel  m_e_lMAFast;        CLabel  m_e_eMAFast;
    CLabel  m_e_lMASlow;        CLabel  m_e_eMASlow;
    CLabel  m_e_lMACross;       CLabel  m_e_eMACross;
    CLabel  m_e_lMACandles;     CLabel  m_e_eMACandles;
-   CLabel  m_e_lMAEntry;       CLabel  m_e_eMAEntry;
-   CLabel  m_e_lMAExit;        CLabel  m_e_eMAExit;
+   CLabel  m_e_lLeg1;           // Legenda: FCO
+   CLabel  m_e_lLeg2;           // Legenda: VM
+   CLabel  m_e_lLeg3;           // Legenda: TP/SL
+   // MA CROSS sub-page — config editável (hot/cold reload)
+   CLabel   m_ce_hdr1;
+   CLabel   m_ce_lFastP;      CEdit    m_ce_iFastP;
+   CLabel   m_ce_lFastM;      CButton  m_ce_bFastM[4];   // Radio: SMA|EMA|SMMA|LWMA
+   CLabel   m_ce_lFastTF;     CButton  m_ce_bFastTF;     // Cycle
+   CLabel   m_ce_lFastPrice;  CButton  m_ce_bFastPrice;  // Cycle Price
+   CLabel   m_ce_lSlowP;      CEdit    m_ce_iSlowP;
+   CLabel   m_ce_lSlowM;      CButton  m_ce_bSlowM[4];   // Radio: SMA|EMA|SMMA|LWMA
+   CLabel   m_ce_lSlowTF;     CButton  m_ce_bSlowTF;     // Cycle
+   CLabel   m_ce_lSlowPrice;  CButton  m_ce_bSlowPrice;  // Cycle Price
+   CLabel   m_ce_hdr2;
+   CLabel   m_ce_lEntry;   CButton  m_ce_bEntry[2];   // Radio: PROX. CANDLE|2o. CANDLE
+   CLabel   m_ce_lExit;    CButton  m_ce_bExit[3];    // Radio: FCO|VM|TP-SL
+   CButton  m_e_btnApplyMA;
+   CLabel   m_e_statusMA;
+   uint     m_e_statusMAExpiry;
 
+   // RSI sub-page — display read-only
    CLabel  m_e_hdr3;
+   CButton m_e_btnRSIToggle;                             // Toggle ON/OFF (v1.28)
    CLabel  m_e_lRSIStatus;     CLabel  m_e_eRSIStatus;
    CLabel  m_e_lRSICurr;       CLabel  m_e_eRSICurr;
    CLabel  m_e_lRSIMode;       CLabel  m_e_eRSIMode;
    CLabel  m_e_lRSILevels;     CLabel  m_e_eRSILevels;
+   // RSI sub-page — config editável (hot/cold reload)
+   CLabel   m_re_hdr1;                                // CONFIGURACOES header
+   CLabel   m_re_lPeriod;   CEdit    m_re_iPeriod;    // Período
+   CLabel   m_re_lTF;       CButton  m_re_bTF;        // Timeframe (cycle)
+   CLabel   m_re_lMode;     CButton  m_re_bMode[3];   // Radio: Crossover|Zone|Middle
+   CLabel   m_re_lModeDesc;                           // Legenda dinâmica do modo selecionado
+   CLabel   m_re_lOversold; CEdit    m_re_iOversold;   // Nível Oversold
+   CLabel   m_re_lOverbought; CEdit  m_re_iOverbought; // Nível Overbought
+   CLabel   m_re_lMiddle;   CEdit    m_re_iMiddle;     // Nível Médio
+   CButton  m_e_btnApplyRSI;
+   CLabel   m_e_statusRSI;
+   uint     m_e_statusRSIExpiry;
 
    // ════════════════════════════════════════
    // ABA 3: FILTROS
    // ════════════════════════════════════════
+   // Sub-page buttons
+   CButton m_f_btnTrend;
+   CButton m_f_btnRSI;
+
+   // TREND sub-page — display
    CLabel  m_f_hdr1;
    CLabel  m_f_lTrendSt;       CLabel  m_f_eTrendSt;
    CLabel  m_f_lTrendMA;       CLabel  m_f_eTrendMA;
    CLabel  m_f_lTrendDist;     CLabel  m_f_eTrendDist;
+   // TREND sub-page — config
+   CLabel   m_ft_hdrConf;
+   CButton  m_f_btnTrendToggle;
+   CLabel   m_ft_lPeriod;      CEdit    m_ft_iPeriod;
+   CLabel   m_ft_lMethod;      CButton  m_ft_bMethod[4];  // Radio: SMA|EMA|SMMA|LWMA
+   CLabel   m_ft_lTF;          CButton  m_ft_bTF;
+   CLabel   m_ft_lPrice;       CButton  m_ft_bPrice;   // Cycle Price
+   CLabel   m_ft_lNeutDist;    CEdit    m_ft_iNeutDist;
+   CButton  m_f_btnApplyTrend;
+   CLabel   m_f_statusTrend;
 
+   // RSI FILTER sub-page — display
    CLabel  m_f_hdr2;
    CLabel  m_f_lRFiltSt;       CLabel  m_f_eRFiltSt;
    CLabel  m_f_lRFiltRSI;      CLabel  m_f_eRFiltRSI;
    CLabel  m_f_lRFiltMode;     CLabel  m_f_eRFiltMode;
+   // RSI FILTER sub-page — config
+   CLabel   m_frf_hdrConf;
+   CButton  m_f_btnRSIFiltToggle;
+   CLabel   m_frf_lPeriod;     CEdit    m_frf_iPeriod;
+   CLabel   m_frf_lTF;         CButton  m_frf_bTF;
+   CLabel   m_frf_lMode;       CButton  m_frf_bMode[3];
+   CLabel   m_frf_lOversold;   CEdit    m_frf_iOversold;
+   CLabel   m_frf_lOverbought; CEdit    m_frf_iOverbought;
+   CButton  m_f_btnApplyRSIFilt;
+   CLabel   m_f_statusRSIFilt;
 
    // ════════════════════════════════════════
    // ABA 4: CONFIG — Hot Reload
@@ -398,6 +570,7 @@ private:
    CLabel   m_cr_lTP1d;   CEdit    m_cr_iTP1d;
    CLabel   m_cr_lTP2p;   CEdit    m_cr_iTP2p;
    CLabel   m_cr_lTP2d;   CEdit    m_cr_iTP2d;
+   CLabel   m_cr_lPTPHint;  // Dica: TP=NENHUM + Partial TP sem alvo final
 
    // --- Risco 2 sub-page (Trailing/BE/DrawDown) ---
    CLabel   m_c2_hdr1;
@@ -521,6 +694,18 @@ private:
    bool                      m_cur_newsOn1;
    bool                      m_cur_newsOn2;
    bool                      m_cur_newsOn3;
+   // MA Cross ESTRAT (v1.26)
+   ENUM_MA_METHOD            m_cur_maFastMethod;
+   ENUM_MA_METHOD            m_cur_maSlowMethod;
+   ENUM_TIMEFRAMES           m_cur_maFastTF;
+   ENUM_TIMEFRAMES           m_cur_maSlowTF;
+   ENUM_APPLIED_PRICE        m_cur_maFastPrice;
+   ENUM_APPLIED_PRICE        m_cur_maSlowPrice;
+   ENUM_ENTRY_MODE           m_cur_maEntry;
+   ENUM_EXIT_MODE            m_cur_maExit;
+   // RSI ESTRAT (v1.15)
+   ENUM_TIMEFRAMES           m_cur_rsiTF;
+   ENUM_RSI_SIGNAL_MODE      m_cur_rsiMode;
 
    // ── Helpers privados ──
    bool              CreateLV(CLabel &lbl, CLabel &val, string ln, string en, string lt, int y);
@@ -564,6 +749,35 @@ private:
    void              ShowCfgPage(ENUM_CONFIG_PAGE page);
    void              SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis);
    void              UpdateCfgBtnStyles(void);
+
+   // ESTRAT. sub-pages
+   void              ShowEstratPage(ENUM_ESTRAT_PAGE page);
+   void              SetEstratPageVis(ENUM_ESTRAT_PAGE page, bool vis);
+   void              UpdateEstratBtnStyles(void);
+   void              OnClickEstratMACross(void);
+   void              OnClickEstratRSI(void);
+
+   // FILTROS sub-pages
+   void              ShowFiltrosPage(ENUM_FILTROS_PAGE page);
+   void              SetFiltrosPageVis(ENUM_FILTROS_PAGE page, bool vis);
+   void              UpdateFiltrosBtnStyles(void);
+   void              OnClickFiltrosTrend(void);
+   void              OnClickFiltrosRSI(void);
+   // FILTROS — Trend Filter toggle/apply
+   void              OnClickTrendToggle(void);
+   void              OnClickApplyTrend(void);
+   void              OnClickTrendMethod(int i);
+   void              OnClickTrendTF(void);
+   void              OnClickTrendPrice(void);
+   // FILTROS — RSI Filter toggle/apply
+   void              OnClickRSIFiltToggle(void);
+   void              OnClickApplyRSIFilt(void);
+   void              OnClickRSIFiltTF(void);
+   void              OnClickRSIFiltMode(int i);
+   static string     RSIFiltModeText(ENUM_RSI_FILTER_MODE mode);
+   static string     MAMethodShortText(ENUM_MA_METHOD method);
+   static string     AppliedPriceShortText(ENUM_APPLIED_PRICE price);
+   static ENUM_APPLIED_PRICE CycleAppliedPrice(ENUM_APPLIED_PRICE cur);
    void              ApplyConfig(void);
 
    // Estado visual RISCO (enable/disable campos por tipo SL/TP)
@@ -613,6 +827,29 @@ private:
    void              OnClickNewsOn2(void);
    void              OnClickNewsOn3(void);
    void              RefreshNewsState(int w);
+   void              OnClickApplyMA(void);
+   void              OnClickMAFastMethod(int i);
+   void              OnClickMASlowMethod(int i);
+   void              OnClickMAFastTF(void);
+   void              OnClickMASlowTF(void);
+   void              OnClickMAFastPrice(void);
+   void              OnClickMASlowPrice(void);
+   void              OnClickMAEntry(int i);
+   void              OnClickMAExit(int i);
+   static ENUM_TIMEFRAMES CycleTF(ENUM_TIMEFRAMES tf);
+   static string     TFName(ENUM_TIMEFRAMES tf);
+   static int        MAMethodToIndex(ENUM_MA_METHOD m);
+   static ENUM_MA_METHOD IndexToMAMethod(int i);
+   // RSI ESTRAT handlers
+   void              OnClickApplyRSI(void);
+   void              OnClickRSIMode(int i);
+   void              OnClickRSITF(void);
+   static int        RSIModeToIndex(ENUM_RSI_SIGNAL_MODE m);
+   static ENUM_RSI_SIGNAL_MODE IndexToRSIMode(int i);
+   static string     RSIModeDesc(ENUM_RSI_SIGNAL_MODE mode);
+   void              OnClickMAToggle(void);
+   void              OnClickRSIToggle(void);
+   void              ApplyToggleStyle(CButton &btn, bool enabled);
 
 protected:
    virtual bool      CreateButtonClose(void) { return true; }
@@ -638,6 +875,7 @@ public:
 public:
    virtual void      ChartEvent(const int id, const long &lparam,
                                 const double &dparam, const string &sparam);
+
   };
 
 //+------------------------------------------------------------------+
@@ -645,9 +883,15 @@ public:
 //+------------------------------------------------------------------+
 CEPBotPanel::CEPBotPanel(void)
    : m_activeTab(TAB_STATUS), m_cfgPage(CFG_RISCO),
+     m_estratPage(ESTRAT_MA_CROSS), m_filtrosPage(FILTROS_TREND),
      m_logger(NULL), m_blockers(NULL), m_riskManager(NULL),
      m_tradeManager(NULL), m_signalManager(NULL),
      m_maCross(NULL), m_rsiStrategy(NULL),
+     m_pendingMAEnabled(false), m_pendingRSIEnabled(false),
+     m_pendingTrendEnabled(false), m_pendingRSIFiltEnabled(false),
+     m_cur_trendMethod(MODE_SMA), m_cur_trendTF(PERIOD_CURRENT),
+     m_cur_rsiFiltMode(RSI_FILTER_ZONE), m_cur_rsiFiltTF(PERIOD_CURRENT),
+     m_f_statusTrendExpiry(0), m_f_statusRSIFiltExpiry(0),
      m_trendFilter(NULL), m_rsiFilter(NULL),
      m_magicNumber(0), m_symbol(""),
      m_origDragTrade(true), m_origMouseScroll(true), m_mouseOverPanel(false),
@@ -664,7 +908,13 @@ CEPBotPanel::CEPBotPanel(void)
      m_cur_lossStreakAction(STREAK_PAUSE), m_cur_winStreakAction(STREAK_PAUSE),
      m_cur_ddType(DD_FINANCIAL), m_cur_ddPeakMode(DD_PEAK_REALIZED_ONLY),
      m_cur_profitTargetAction(PROFIT_ACTION_STOP),
-     m_cfgStatusExpiry(0)
+     m_cfgStatusExpiry(0),
+     m_e_statusMAExpiry(0),
+     m_e_statusRSIExpiry(0),
+     m_cur_rsiTF(PERIOD_CURRENT),
+     m_cur_rsiMode(RSI_MODE_CROSSOVER),
+     m_cur_maFastPrice(PRICE_CLOSE), m_cur_maSlowPrice(PRICE_CLOSE),
+     m_cur_trendPrice(PRICE_CLOSE)
   {
   }
 
@@ -836,6 +1086,31 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       if(sparam == m_btnTab3.Name()) { m_btnTab3.Pressed(false); OnClickTab3(); ChartRedraw(); return; }
       if(sparam == m_btnTab4.Name()) { m_btnTab4.Pressed(false); OnClickTab4(); ChartRedraw(); return; }
 
+      // ESTRAT.: sub-páginas
+      if(sparam == m_e_btnMACross.Name()) { m_e_btnMACross.Pressed(false); OnClickEstratMACross(); ChartRedraw(); return; }
+      if(sparam == m_e_btnRSI.Name())     { m_e_btnRSI.Pressed(false);     OnClickEstratRSI();     ChartRedraw(); return; }
+
+      // FILTROS: sub-páginas
+      if(sparam == m_f_btnTrend.Name())   { m_f_btnTrend.Pressed(false); OnClickFiltrosTrend(); ChartRedraw(); return; }
+      if(sparam == m_f_btnRSI.Name())     { m_f_btnRSI.Pressed(false);   OnClickFiltrosRSI();   ChartRedraw(); return; }
+      // FILTROS: Trend Filter — toggle + apply + cycle buttons
+      if(sparam == m_f_btnTrendToggle.Name())  { m_f_btnTrendToggle.Pressed(false);  OnClickTrendToggle();  ChartRedraw(); return; }
+      if(sparam == m_f_btnApplyTrend.Name())   { m_f_btnApplyTrend.Pressed(false);   OnClickApplyTrend();   ChartRedraw(); return; }
+      for(int i = 0; i < 4; i++)
+        {
+         if(sparam == m_ft_bMethod[i].Name()) { OnClickTrendMethod(i); ChartRedraw(); return; }
+        }
+      if(sparam == m_ft_bTF.Name())            { OnClickTrendTF();     ChartRedraw(); return; }
+      if(sparam == m_ft_bPrice.Name())         { OnClickTrendPrice();  ChartRedraw(); return; }
+      // FILTROS: RSI Filter — toggle + apply + cycle/radio buttons
+      if(sparam == m_f_btnRSIFiltToggle.Name()) { m_f_btnRSIFiltToggle.Pressed(false); OnClickRSIFiltToggle(); ChartRedraw(); return; }
+      if(sparam == m_f_btnApplyRSIFilt.Name())  { m_f_btnApplyRSIFilt.Pressed(false);  OnClickApplyRSIFilt();  ChartRedraw(); return; }
+      if(sparam == m_frf_bTF.Name())            { OnClickRSIFiltTF(); ChartRedraw(); return; }
+      for(int i = 0; i < 3; i++)
+        {
+         if(sparam == m_frf_bMode[i].Name()) { OnClickRSIFiltMode(i); ChartRedraw(); return; }
+        }
+
       // CONFIG: sub-páginas
       if(sparam == m_cfg_btnRisco.Name())  { m_cfg_btnRisco.Pressed(false);  OnClickCfgRisco();  ChartRedraw(); return; }
       if(sparam == m_cfg_btnRisco2.Name()) { m_cfg_btnRisco2.Pressed(false); OnClickCfgRisco2(); ChartRedraw(); return; }
@@ -897,6 +1172,39 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       if(sparam == m_co_bConfl.Name()) { OnClickConflict(); ChartRedraw(); return; }
       if(sparam == m_co_bDbg.Name())   { OnClickDebug();    ChartRedraw(); return; }
 
+      // ESTRAT: toggles ON/OFF
+      if(sparam == m_e_btnMAToggle.Name())  { m_e_btnMAToggle.Pressed(false);  OnClickMAToggle();  ChartRedraw(); return; }
+      if(sparam == m_e_btnRSIToggle.Name()) { m_e_btnRSIToggle.Pressed(false); OnClickRSIToggle(); ChartRedraw(); return; }
+
+      // ESTRAT: MA Cross — campos editáveis e botão APLICAR
+      if(sparam == m_e_btnApplyMA.Name()) { m_e_btnApplyMA.Pressed(false); OnClickApplyMA(); ChartRedraw(); return; }
+
+      for(int i = 0; i < 4; i++)
+        {
+         if(sparam == m_ce_bFastM[i].Name()) { OnClickMAFastMethod(i); ChartRedraw(); return; }
+         if(sparam == m_ce_bSlowM[i].Name()) { OnClickMASlowMethod(i); ChartRedraw(); return; }
+        }
+      for(int i = 0; i < 2; i++)
+        {
+         if(sparam == m_ce_bEntry[i].Name()) { OnClickMAEntry(i); ChartRedraw(); return; }
+        }
+      for(int i = 0; i < 3; i++)
+        {
+         if(sparam == m_ce_bExit[i].Name()) { OnClickMAExit(i); ChartRedraw(); return; }
+        }
+      if(sparam == m_ce_bFastTF.Name())    { OnClickMAFastTF();    ChartRedraw(); return; }
+      if(sparam == m_ce_bSlowTF.Name())    { OnClickMASlowTF();    ChartRedraw(); return; }
+      if(sparam == m_ce_bFastPrice.Name()) { OnClickMAFastPrice(); ChartRedraw(); return; }
+      if(sparam == m_ce_bSlowPrice.Name()) { OnClickMASlowPrice(); ChartRedraw(); return; }
+
+      // ESTRAT: RSI — campos editáveis e botão APLICAR
+      if(sparam == m_e_btnApplyRSI.Name()) { m_e_btnApplyRSI.Pressed(false); OnClickApplyRSI(); ChartRedraw(); return; }
+      if(sparam == m_re_bTF.Name()) { OnClickRSITF(); ChartRedraw(); return; }
+      for(int i = 0; i < 3; i++)
+        {
+         if(sparam == m_re_bMode[i].Name()) { OnClickRSIMode(i); ChartRedraw(); return; }
+        }
+
       // Não é nosso → cai pro CAppDialog abaixo
      }
 
@@ -930,13 +1238,29 @@ void CEPBotPanel::ReapplyTabVisibility(void)
       if(t != (int)m_activeTab)
          SetTabVis((ENUM_PANEL_TAB)t, false);
      }
-// Fix encavalamento: se CONFIG ativa, re-esconder sub-páginas inativas
+// Fix encavalamento: re-esconder sub-páginas inativas da aba ativa
    if(m_activeTab == TAB_CONFIG)
      {
       for(int p = 0; p < CFG_PAGE_COUNT; p++)
         {
          if(p != (int)m_cfgPage)
             SetCfgPageVis((ENUM_CONFIG_PAGE)p, false);
+        }
+     }
+   if(m_activeTab == TAB_ESTRATEGIAS)
+     {
+      for(int p = 0; p < ESTRAT_PAGE_COUNT; p++)
+        {
+         if(p != (int)m_estratPage)
+            SetEstratPageVis((ENUM_ESTRAT_PAGE)p, false);
+        }
+     }
+   if(m_activeTab == TAB_FILTROS)
+     {
+      for(int p = 0; p < FILTROS_PAGE_COUNT; p++)
+        {
+         if(p != (int)m_filtrosPage)
+            SetFiltrosPageVis((ENUM_FILTROS_PAGE)p, false);
         }
      }
   }
@@ -986,7 +1310,9 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
                     m_s_lPosProfit.Show(); m_s_ePosProfit.Show(); m_s_lBE.Show(); m_s_eBE.Show();
                     m_s_lTrail.Show(); m_s_eTrail.Show(); m_s_lPartial.Show(); m_s_ePartial.Show();
                     m_s_hdr3.Show(); m_s_lSignal.Show(); m_s_eSignal.Show();
-                    m_s_lBlocked.Show(); m_s_eBlocked.Show(); }
+                    m_s_lBlocked.Show(); m_s_eBlocked.Show();
+                    m_s_hdrSM.Show(); m_s_lStrats.Show(); m_s_eStrats.Show();
+                    m_s_lFilts.Show(); m_s_eFilts.Show(); m_s_lConflict.Show(); m_s_eConflict.Show(); }
          else    { m_s_hdr1.Hide(); m_s_lTrading.Hide(); m_s_eTrading.Hide();
                     m_s_lBlocker.Hide(); m_s_eBlocker.Hide(); m_s_lSpread.Hide(); m_s_eSpread.Hide();
                     m_s_lTime.Hide(); m_s_eTime.Hide();
@@ -995,7 +1321,9 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
                     m_s_lPosProfit.Hide(); m_s_ePosProfit.Hide(); m_s_lBE.Hide(); m_s_eBE.Hide();
                     m_s_lTrail.Hide(); m_s_eTrail.Hide(); m_s_lPartial.Hide(); m_s_ePartial.Hide();
                     m_s_hdr3.Hide(); m_s_lSignal.Hide(); m_s_eSignal.Hide();
-                    m_s_lBlocked.Hide(); m_s_eBlocked.Hide(); }
+                    m_s_lBlocked.Hide(); m_s_eBlocked.Hide();
+                    m_s_hdrSM.Hide(); m_s_lStrats.Hide(); m_s_eStrats.Hide();
+                    m_s_lFilts.Hide(); m_s_eFilts.Hide(); m_s_lConflict.Hide(); m_s_eConflict.Hide(); }
          break;
         }
       case TAB_RESULTADOS:
@@ -1007,8 +1335,12 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
                     m_r_lDraws.Show(); m_r_eDraws.Show();
                     m_r_hdr3.Show(); m_r_lWinRate.Show(); m_r_eWinRate.Show();
                     m_r_lPayoff.Show(); m_r_ePayoff.Show(); m_r_lPF.Show(); m_r_ePF.Show();
-                    m_r_hdr4.Show(); m_r_lDD.Show(); m_r_eDD.Show();
+                    m_r_hdr4.Show();
+                    m_r_lDDLim.Show(); m_r_eDDLim.Show();
+                    m_r_lDDMode.Show(); m_r_eDDMode.Show();
+                    m_r_lDD.Show(); m_r_eDD.Show();
                     m_r_lPeak.Show(); m_r_ePeak.Show();
+                    m_r_lStreak.Show(); m_r_eStreak.Show();
                     m_r_lLossStrk.Show(); m_r_eLossStrk.Show();
                     m_r_lWinStrk.Show(); m_r_eWinStrk.Show(); }
          else    { m_r_hdr1.Hide(); m_r_lProfit.Hide(); m_r_eProfit.Hide();
@@ -1018,44 +1350,44 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
                     m_r_lDraws.Hide(); m_r_eDraws.Hide();
                     m_r_hdr3.Hide(); m_r_lWinRate.Hide(); m_r_eWinRate.Hide();
                     m_r_lPayoff.Hide(); m_r_ePayoff.Hide(); m_r_lPF.Hide(); m_r_ePF.Hide();
-                    m_r_hdr4.Hide(); m_r_lDD.Hide(); m_r_eDD.Hide();
+                    m_r_hdr4.Hide();
+                    m_r_lDDLim.Hide(); m_r_eDDLim.Hide();
+                    m_r_lDDMode.Hide(); m_r_eDDMode.Hide();
+                    m_r_lDD.Hide(); m_r_eDD.Hide();
                     m_r_lPeak.Hide(); m_r_ePeak.Hide();
+                    m_r_lStreak.Hide(); m_r_eStreak.Hide();
                     m_r_lLossStrk.Hide(); m_r_eLossStrk.Hide();
                     m_r_lWinStrk.Hide(); m_r_eWinStrk.Hide(); }
          break;
         }
       case TAB_ESTRATEGIAS:
         {
-         if(vis) { m_e_hdr1.Show(); m_e_lStratCnt.Show(); m_e_eStratCnt.Show();
-                    m_e_lFiltCnt.Show(); m_e_eFiltCnt.Show(); m_e_lConflict.Show(); m_e_eConflict.Show();
-                    m_e_hdr2.Show(); m_e_lMAStatus.Show(); m_e_eMAStatus.Show();
-                    m_e_lMAFast.Show(); m_e_eMAFast.Show(); m_e_lMASlow.Show(); m_e_eMASlow.Show();
-                    m_e_lMACross.Show(); m_e_eMACross.Show(); m_e_lMACandles.Show(); m_e_eMACandles.Show();
-                    m_e_lMAEntry.Show(); m_e_eMAEntry.Show(); m_e_lMAExit.Show(); m_e_eMAExit.Show();
-                    m_e_hdr3.Show(); m_e_lRSIStatus.Show(); m_e_eRSIStatus.Show();
-                    m_e_lRSICurr.Show(); m_e_eRSICurr.Show(); m_e_lRSIMode.Show(); m_e_eRSIMode.Show();
-                    m_e_lRSILevels.Show(); m_e_eRSILevels.Show(); }
-         else    { m_e_hdr1.Hide(); m_e_lStratCnt.Hide(); m_e_eStratCnt.Hide();
-                    m_e_lFiltCnt.Hide(); m_e_eFiltCnt.Hide(); m_e_lConflict.Hide(); m_e_eConflict.Hide();
-                    m_e_hdr2.Hide(); m_e_lMAStatus.Hide(); m_e_eMAStatus.Hide();
-                    m_e_lMAFast.Hide(); m_e_eMAFast.Hide(); m_e_lMASlow.Hide(); m_e_eMASlow.Hide();
-                    m_e_lMACross.Hide(); m_e_eMACross.Hide(); m_e_lMACandles.Hide(); m_e_eMACandles.Hide();
-                    m_e_lMAEntry.Hide(); m_e_eMAEntry.Hide(); m_e_lMAExit.Hide(); m_e_eMAExit.Hide();
-                    m_e_hdr3.Hide(); m_e_lRSIStatus.Hide(); m_e_eRSIStatus.Hide();
-                    m_e_lRSICurr.Hide(); m_e_eRSICurr.Hide(); m_e_lRSIMode.Hide(); m_e_eRSIMode.Hide();
-                    m_e_lRSILevels.Hide(); m_e_eRSILevels.Hide(); }
+         if(vis)
+           {
+            m_e_btnMACross.Show(); m_e_btnRSI.Show();
+            ShowEstratPage(m_estratPage);
+           }
+         else
+           {
+            m_e_btnMACross.Hide(); m_e_btnRSI.Hide();
+            SetEstratPageVis(ESTRAT_MA_CROSS, false);
+            SetEstratPageVis(ESTRAT_RSI, false);
+           }
          break;
         }
       case TAB_FILTROS:
         {
-         if(vis) { m_f_hdr1.Show(); m_f_lTrendSt.Show(); m_f_eTrendSt.Show();
-                    m_f_lTrendMA.Show(); m_f_eTrendMA.Show(); m_f_lTrendDist.Show(); m_f_eTrendDist.Show();
-                    m_f_hdr2.Show(); m_f_lRFiltSt.Show(); m_f_eRFiltSt.Show();
-                    m_f_lRFiltRSI.Show(); m_f_eRFiltRSI.Show(); m_f_lRFiltMode.Show(); m_f_eRFiltMode.Show(); }
-         else    { m_f_hdr1.Hide(); m_f_lTrendSt.Hide(); m_f_eTrendSt.Hide();
-                    m_f_lTrendMA.Hide(); m_f_eTrendMA.Hide(); m_f_lTrendDist.Hide(); m_f_eTrendDist.Hide();
-                    m_f_hdr2.Hide(); m_f_lRFiltSt.Hide(); m_f_eRFiltSt.Hide();
-                    m_f_lRFiltRSI.Hide(); m_f_eRFiltRSI.Hide(); m_f_lRFiltMode.Hide(); m_f_eRFiltMode.Hide(); }
+         if(vis)
+           {
+            m_f_btnTrend.Show(); m_f_btnRSI.Show();
+            ShowFiltrosPage(m_filtrosPage);
+           }
+         else
+           {
+            m_f_btnTrend.Hide(); m_f_btnRSI.Hide();
+            SetFiltrosPageVis(FILTROS_TREND, false);
+            SetFiltrosPageVis(FILTROS_RSI, false);
+           }
          break;
         }
       case TAB_CONFIG:
@@ -1115,8 +1447,20 @@ void CEPBotPanel::Update(void)
      {
       case TAB_STATUS:      UpdateStatus();       break;
       case TAB_RESULTADOS:  UpdateResultados();   break;
-      case TAB_ESTRATEGIAS: UpdateEstrategias();  break;
-      case TAB_FILTROS:     UpdateFiltros();      break;
+      case TAB_ESTRATEGIAS:
+         UpdateEstrategias();
+         if(m_e_statusMAExpiry > 0 && GetTickCount() >= m_e_statusMAExpiry)
+           { m_e_statusMA.Text(""); m_e_statusMAExpiry = 0; ChartRedraw(); }
+         if(m_e_statusRSIExpiry > 0 && GetTickCount() >= m_e_statusRSIExpiry)
+           { m_e_statusRSI.Text(""); m_e_statusRSIExpiry = 0; ChartRedraw(); }
+         break;
+      case TAB_FILTROS:
+         UpdateFiltros();
+         if(m_f_statusTrendExpiry > 0 && GetTickCount() >= m_f_statusTrendExpiry)
+           { m_f_statusTrend.Text(""); m_f_statusTrendExpiry = 0; ChartRedraw(); }
+         if(m_f_statusRSIFiltExpiry > 0 && GetTickCount() >= m_f_statusRSIFiltExpiry)
+           { m_f_statusRSIFilt.Text(""); m_f_statusRSIFiltExpiry = 0; ChartRedraw(); }
+         break;
       case TAB_CONFIG:
          if(m_cfgStatusExpiry > 0 && GetTickCount() >= m_cfgStatusExpiry)
            { m_cfg_status.Text(""); m_cfgStatusExpiry = 0; ChartRedraw(); }

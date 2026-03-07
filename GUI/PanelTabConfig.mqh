@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.23 - Claude Parte 023 (Claude Code) |
+//|                     Versão 1.25 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -14,6 +14,17 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.25 (2026-03-06):
+// + Dica visual m_cr_lPTPHint abaixo de TP2 Dist na sub-página RISCO:
+//   "⚠ TP=NENHUM + Partial: apenas TP1/TP2 têm alvo. O restante sai por trailing ou sinal."
+//
+// v1.24 (Parte 024):
+// ✅ Revert: Remove sub-página CFG_ESTRAT (movida para aba ESTRAT)
+//   MA Cross config agora na sub-página MA Cross da aba ESTRATEGIAS
+// ✅ Fix: ApplyConfig() agora chama TryActivateDrawdownNow() após
+//    SetDrawdownValue() — ativa proteção de DD imediatamente quando
+//    ligado via painel sem meta de lucro configurada
+//
 // v1.23 (2026-03-03):
 // + ApplyConfig: seta m_cfgStatusExpiry = GetTickCount() + 10000 tanto
 //   no sucesso quanto no erro — mensagem desaparece automaticamente
@@ -394,7 +405,17 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLI(m_cr_lTP2p, m_cr_iTP2p, "cr_l2p", "cr_i2p", "TP2 %:", y)) return false;
    y += PANEL_GAP_Y;
    if(!CreateLI(m_cr_lTP2d, m_cr_iTP2d, "cr_l2d", "cr_i2d", "TP2 Dist (pts):", y)) return false;
-   y += PANEL_GAP_Y;
+   y += PANEL_GAP_Y + 2;
+
+// Dica: TP=NENHUM com Partial TP ativo
+   if(!m_cr_lPTPHint.Create(m_chart_id, PFX + "cr_lPTPHint", m_subwin,
+                             COL_LABEL_X, y, COL_LABEL_X + PANEL_WIDTH - 20, y + PANEL_GAP_Y * 2))
+      return false;
+   m_cr_lPTPHint.Text("⚠ TP=NENHUM + Partial: apenas TP1/TP2 têm alvo. O restante sai por trailing ou sinal.");
+   m_cr_lPTPHint.Color(CLR_WARNING);
+   m_cr_lPTPHint.FontSize(7);
+   if(!Add(m_cr_lPTPHint)) return false;
+   y += PANEL_GAP_Y * 2;
 
 // ════════════════════════════════════════════════════════════
 // SUB-PÁGINA: RISCO 2 (Trailing/BE)
@@ -1007,6 +1028,7 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_cr_lTP1d.Show(); m_cr_iTP1d.Show();
             m_cr_lTP2p.Show(); m_cr_iTP2p.Show();
             m_cr_lTP2d.Show(); m_cr_iTP2d.Show();
+            m_cr_lPTPHint.Show();
             RefreshRiscoState();
            }
          else
@@ -1027,6 +1049,7 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_cr_lTP1d.Hide(); m_cr_iTP1d.Hide();
             m_cr_lTP2p.Hide(); m_cr_iTP2p.Hide();
             m_cr_lTP2d.Hide(); m_cr_iTP2d.Hide();
+            m_cr_lPTPHint.Hide();
            }
          break;
         }
@@ -1567,6 +1590,9 @@ void CEPBotPanel::ApplyConfig(void)
             m_blockers.SetDrawdownValue(dd);
             m_blockers.SetDrawdownType(m_cur_ddType);
             m_blockers.SetDrawdownPeakMode(m_cur_ddPeakMode);
+            // Ativa proteção imediatamente se DD foi ligado via painel sem meta de lucro
+            double curDailyProfit = (m_logger != NULL) ? m_logger.GetDailyProfit() : 0.0;
+            m_blockers.TryActivateDrawdownNow(curDailyProfit);
            }
          else
             errors++;
@@ -1633,6 +1659,7 @@ void CEPBotPanel::ApplyConfig(void)
       if(cd >= 0) m_logger.SetDebugCooldown(cd); else errors++;
      }
 
+// ═══════════════════════════════════════════════
 // ═══════════════════════════════════════════════
 // FEEDBACK
 // ═══════════════════════════════════════════════
