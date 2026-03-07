@@ -2,15 +2,22 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.35 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.36 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.35"
+#property version   "1.36"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.36 (Parte 024):
+// + Price (CLOSE/OPEN/HIGH/LOW/MEDIAN/TYPICAL) para MA Cross (Fast+Slow) e TrendFilter
+//   m_ce_lFastPrice/m_ce_bFastPrice, m_ce_lSlowPrice/m_ce_bSlowPrice
+//   m_ft_lPrice/m_ft_bPrice; state vars m_cur_maFastPrice/SlowPrice/trendPrice
+//   OnClickMAFastPrice, OnClickMASlowPrice, OnClickTrendPrice
+//   AppliedPriceShortText, CycleAppliedPrice: helpers estáticos
+//
 // v1.35 (Parte 024):
 // + Toggle ON/OFF + APLICAR para TrendFilter e RSIFilter (aba FILTROS)
 //   m_f_btnTrendToggle, m_f_btnApplyTrend, m_ft_*: Período MA, Método, TF, Zona Neutra
@@ -355,6 +362,7 @@ private:
    bool               m_pendingRSIFiltEnabled;  // estado pendente do toggle RSIFilter
    ENUM_MA_METHOD     m_cur_trendMethod;         // método MA selecionado no painel
    ENUM_TIMEFRAMES    m_cur_trendTF;             // TF selecionado no painel (TrendFilter)
+   ENUM_APPLIED_PRICE m_cur_trendPrice;          // applied price selecionado (TrendFilter)
    ENUM_RSI_FILTER_MODE m_cur_rsiFiltMode;       // modo RSI Filter selecionado
    ENUM_TIMEFRAMES    m_cur_rsiFiltTF;           // TF selecionado (RSI Filter)
    uint               m_f_statusTrendExpiry;     // expiração da msg de status TrendFilter
@@ -458,12 +466,14 @@ private:
    CLabel  m_e_lLeg3;           // Legenda: TP/SL
    // MA CROSS sub-page — config editável (hot/cold reload)
    CLabel   m_ce_hdr1;
-   CLabel   m_ce_lFastP;   CEdit    m_ce_iFastP;
-   CLabel   m_ce_lFastM;   CButton  m_ce_bFastM[4];   // Radio: SMA|EMA|SMMA|LWMA
-   CLabel   m_ce_lFastTF;  CButton  m_ce_bFastTF;     // Cycle
-   CLabel   m_ce_lSlowP;   CEdit    m_ce_iSlowP;
-   CLabel   m_ce_lSlowM;   CButton  m_ce_bSlowM[4];   // Radio: SMA|EMA|SMMA|LWMA
-   CLabel   m_ce_lSlowTF;  CButton  m_ce_bSlowTF;     // Cycle
+   CLabel   m_ce_lFastP;      CEdit    m_ce_iFastP;
+   CLabel   m_ce_lFastM;      CButton  m_ce_bFastM[4];   // Radio: SMA|EMA|SMMA|LWMA
+   CLabel   m_ce_lFastTF;     CButton  m_ce_bFastTF;     // Cycle
+   CLabel   m_ce_lFastPrice;  CButton  m_ce_bFastPrice;  // Cycle Price
+   CLabel   m_ce_lSlowP;      CEdit    m_ce_iSlowP;
+   CLabel   m_ce_lSlowM;      CButton  m_ce_bSlowM[4];   // Radio: SMA|EMA|SMMA|LWMA
+   CLabel   m_ce_lSlowTF;     CButton  m_ce_bSlowTF;     // Cycle
+   CLabel   m_ce_lSlowPrice;  CButton  m_ce_bSlowPrice;  // Cycle Price
    CLabel   m_ce_hdr2;
    CLabel   m_ce_lEntry;   CButton  m_ce_bEntry[2];   // Radio: PROX. CANDLE|2o. CANDLE
    CLabel   m_ce_lExit;    CButton  m_ce_bExit[3];    // Radio: FCO|VM|TP-SL
@@ -509,6 +519,7 @@ private:
    CLabel   m_ft_lPeriod;      CEdit    m_ft_iPeriod;
    CLabel   m_ft_lMethod;      CButton  m_ft_bMethod;
    CLabel   m_ft_lTF;          CButton  m_ft_bTF;
+   CLabel   m_ft_lPrice;       CButton  m_ft_bPrice;   // Cycle Price
    CLabel   m_ft_lNeutDist;    CEdit    m_ft_iNeutDist;
    CButton  m_f_btnApplyTrend;
    CLabel   m_f_statusTrend;
@@ -688,6 +699,8 @@ private:
    ENUM_MA_METHOD            m_cur_maSlowMethod;
    ENUM_TIMEFRAMES           m_cur_maFastTF;
    ENUM_TIMEFRAMES           m_cur_maSlowTF;
+   ENUM_APPLIED_PRICE        m_cur_maFastPrice;
+   ENUM_APPLIED_PRICE        m_cur_maSlowPrice;
    ENUM_ENTRY_MODE           m_cur_maEntry;
    ENUM_EXIT_MODE            m_cur_maExit;
    // RSI ESTRAT (v1.15)
@@ -755,6 +768,7 @@ private:
    void              OnClickApplyTrend(void);
    void              OnClickTrendMethod(void);
    void              OnClickTrendTF(void);
+   void              OnClickTrendPrice(void);
    // FILTROS — RSI Filter toggle/apply
    void              OnClickRSIFiltToggle(void);
    void              OnClickApplyRSIFilt(void);
@@ -762,6 +776,8 @@ private:
    void              OnClickRSIFiltMode(int i);
    static string     RSIFiltModeText(ENUM_RSI_FILTER_MODE mode);
    static string     MAMethodShortText(ENUM_MA_METHOD method);
+   static string     AppliedPriceShortText(ENUM_APPLIED_PRICE price);
+   static ENUM_APPLIED_PRICE CycleAppliedPrice(ENUM_APPLIED_PRICE cur);
    void              ApplyConfig(void);
 
    // Estado visual RISCO (enable/disable campos por tipo SL/TP)
@@ -816,6 +832,8 @@ private:
    void              OnClickMASlowMethod(int i);
    void              OnClickMAFastTF(void);
    void              OnClickMASlowTF(void);
+   void              OnClickMAFastPrice(void);
+   void              OnClickMASlowPrice(void);
    void              OnClickMAEntry(int i);
    void              OnClickMAExit(int i);
    static ENUM_TIMEFRAMES CycleTF(ENUM_TIMEFRAMES tf);
@@ -894,7 +912,9 @@ CEPBotPanel::CEPBotPanel(void)
      m_e_statusMAExpiry(0),
      m_e_statusRSIExpiry(0),
      m_cur_rsiTF(PERIOD_CURRENT),
-     m_cur_rsiMode(RSI_MODE_CROSSOVER)
+     m_cur_rsiMode(RSI_MODE_CROSSOVER),
+     m_cur_maFastPrice(PRICE_CLOSE), m_cur_maSlowPrice(PRICE_CLOSE),
+     m_cur_trendPrice(PRICE_CLOSE)
   {
   }
 
@@ -1078,6 +1098,7 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       if(sparam == m_f_btnApplyTrend.Name())   { m_f_btnApplyTrend.Pressed(false);   OnClickApplyTrend();   ChartRedraw(); return; }
       if(sparam == m_ft_bMethod.Name())        { OnClickTrendMethod(); ChartRedraw(); return; }
       if(sparam == m_ft_bTF.Name())            { OnClickTrendTF();     ChartRedraw(); return; }
+      if(sparam == m_ft_bPrice.Name())         { OnClickTrendPrice();  ChartRedraw(); return; }
       // FILTROS: RSI Filter — toggle + apply + cycle/radio buttons
       if(sparam == m_f_btnRSIFiltToggle.Name()) { m_f_btnRSIFiltToggle.Pressed(false); OnClickRSIFiltToggle(); ChartRedraw(); return; }
       if(sparam == m_f_btnApplyRSIFilt.Name())  { m_f_btnApplyRSIFilt.Pressed(false);  OnClickApplyRSIFilt();  ChartRedraw(); return; }
@@ -1168,8 +1189,10 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
         {
          if(sparam == m_ce_bExit[i].Name()) { OnClickMAExit(i); ChartRedraw(); return; }
         }
-      if(sparam == m_ce_bFastTF.Name()) { OnClickMAFastTF(); ChartRedraw(); return; }
-      if(sparam == m_ce_bSlowTF.Name()) { OnClickMASlowTF(); ChartRedraw(); return; }
+      if(sparam == m_ce_bFastTF.Name())    { OnClickMAFastTF();    ChartRedraw(); return; }
+      if(sparam == m_ce_bSlowTF.Name())    { OnClickMASlowTF();    ChartRedraw(); return; }
+      if(sparam == m_ce_bFastPrice.Name()) { OnClickMAFastPrice(); ChartRedraw(); return; }
+      if(sparam == m_ce_bSlowPrice.Name()) { OnClickMASlowPrice(); ChartRedraw(); return; }
 
       // ESTRAT: RSI — campos editáveis e botão APLICAR
       if(sparam == m_e_btnApplyRSI.Name()) { m_e_btnApplyRSI.Pressed(false); OnClickApplyRSI(); ChartRedraw(); return; }

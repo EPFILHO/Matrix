@@ -2,8 +2,16 @@
 //|                                         PanelTabEstrategias.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: ESTRATEGIAS — Create + Update                 |
-//|                     Versão 1.22 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.23 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
+// v1.23 (Parte 024):
+// + Price selector (cycle) para Fast MA e Slow MA: CLOSE/OPEN/HIGH/LOW/MEDIAN/TYPICAL
+//   m_ce_lFastPrice/m_ce_bFastPrice, m_ce_lSlowPrice/m_ce_bSlowPrice
+//   OnClickMAFastPrice, OnClickMASlowPrice
+//   AppliedPriceShortText, CycleAppliedPrice: helpers estáticos
+//   OnClickApplyMA: passa m_cur_maFastPrice/SlowPrice para SetMAParams
+//   SetEstratPageVis: show/hide dos novos botões
+//
 // v1.22 (Parte 024):
 // + Removidos guards NULL de OnClickApplyMA e OnClickApplyRSI:
 //   estratégias sempre existem — inp_Use* só define estado inicial
@@ -131,6 +139,8 @@ bool CEPBotPanel::CreateTabEstrategias(void)
    y += PANEL_GAP_Y + 2;
    if(!CreateLB(m_ce_lFastTF, m_ce_bFastTF, "ce_lFT", "ce_bFT", "Fast Time Frame:", y)) return false;
    y += PANEL_GAP_Y + 2;
+   if(!CreateLB(m_ce_lFastPrice, m_ce_bFastPrice, "ce_lFPr", "ce_bFPr", "Fast Price:", y)) return false;
+   y += PANEL_GAP_Y + 2;
 
    y += PANEL_GAP_SECTION;
    if(!CreateLI(m_ce_lSlowP, m_ce_iSlowP, "ce_lSP", "ce_iSP", "Slow Period:", y)) return false;
@@ -142,6 +152,8 @@ bool CEPBotPanel::CreateTabEstrategias(void)
    }
    y += PANEL_GAP_Y + 2;
    if(!CreateLB(m_ce_lSlowTF, m_ce_bSlowTF, "ce_lST2", "ce_bST2", "Slow Time Frame:", y)) return false;
+   y += PANEL_GAP_Y + 2;
+   if(!CreateLB(m_ce_lSlowPrice, m_ce_bSlowPrice, "ce_lSPr", "ce_bSPr", "Slow Price:", y)) return false;
    y += PANEL_GAP_Y + 2;
 
    y += PANEL_GAP_SECTION;
@@ -211,10 +223,12 @@ bool CEPBotPanel::CreateTabEstrategias(void)
 
 // ── Preenche campos com valores iniciais ──
    {
-    ENUM_MA_METHOD  fm = (m_maCross != NULL) ? m_maCross.GetFastMethod()    : inp_FastMethod;
-    ENUM_MA_METHOD  sm = (m_maCross != NULL) ? m_maCross.GetSlowMethod()    : inp_SlowMethod;
-    ENUM_TIMEFRAMES ft = (m_maCross != NULL) ? m_maCross.GetFastTimeframe() : inp_FastTF;
-    ENUM_TIMEFRAMES st = (m_maCross != NULL) ? m_maCross.GetSlowTimeframe() : inp_SlowTF;
+    ENUM_MA_METHOD     fm  = (m_maCross != NULL) ? m_maCross.GetFastMethod()    : inp_FastMethod;
+    ENUM_MA_METHOD     sm  = (m_maCross != NULL) ? m_maCross.GetSlowMethod()    : inp_SlowMethod;
+    ENUM_TIMEFRAMES    ft  = (m_maCross != NULL) ? m_maCross.GetFastTimeframe() : inp_FastTF;
+    ENUM_TIMEFRAMES    st  = (m_maCross != NULL) ? m_maCross.GetSlowTimeframe() : inp_SlowTF;
+    ENUM_APPLIED_PRICE fpr = (m_maCross != NULL) ? m_maCross.GetFastApplied()   : PRICE_CLOSE;
+    ENUM_APPLIED_PRICE spr = (m_maCross != NULL) ? m_maCross.GetSlowApplied()   : PRICE_CLOSE;
     int             fp = (m_maCross != NULL) ? m_maCross.GetFastPeriod()    : inp_FastPeriod;
     int             sp = (m_maCross != NULL) ? m_maCross.GetSlowPeriod()    : inp_SlowPeriod;
     ENUM_ENTRY_MODE en = (m_maCross != NULL) ? m_maCross.GetEntryMode()     : inp_EntryMode;
@@ -222,14 +236,17 @@ bool CEPBotPanel::CreateTabEstrategias(void)
 
     m_cur_maFastMethod = fm;  m_cur_maSlowMethod = sm;
     m_cur_maFastTF     = ft;  m_cur_maSlowTF     = st;
+    m_cur_maFastPrice  = fpr; m_cur_maSlowPrice  = spr;
     m_cur_maEntry      = en;  m_cur_maExit       = ex;
 
     m_ce_iFastP.Text(IntegerToString(fp));
     m_ce_iSlowP.Text(IntegerToString(sp));
     SetRadioSelection(m_ce_bFastM, 4, MAMethodToIndex(fm));
     SetRadioSelection(m_ce_bSlowM, 4, MAMethodToIndex(sm));
-    m_ce_bFastTF.Text(TFName(ft));  m_ce_bFastTF.ColorBackground(C'50,80,140'); m_ce_bFastTF.Color(clrWhite);
-    m_ce_bSlowTF.Text(TFName(st));  m_ce_bSlowTF.ColorBackground(C'50,80,140'); m_ce_bSlowTF.Color(clrWhite);
+    m_ce_bFastTF.Text(TFName(ft));      m_ce_bFastTF.ColorBackground(C'50,80,140');    m_ce_bFastTF.Color(clrWhite);
+    m_ce_bSlowTF.Text(TFName(st));      m_ce_bSlowTF.ColorBackground(C'50,80,140');    m_ce_bSlowTF.Color(clrWhite);
+    m_ce_bFastPrice.Text(AppliedPriceShortText(fpr)); m_ce_bFastPrice.ColorBackground(C'50,80,140'); m_ce_bFastPrice.Color(clrWhite);
+    m_ce_bSlowPrice.Text(AppliedPriceShortText(spr)); m_ce_bSlowPrice.ColorBackground(C'50,80,140'); m_ce_bSlowPrice.Color(clrWhite);
     SetRadioSelection(m_ce_bEntry, 2, (en == ENTRY_NEXT_CANDLE) ? 0 : 1);
     SetRadioSelection(m_ce_bExit,  3, (ex == EXIT_FCO) ? 0 : (ex == EXIT_VM) ? 1 : 2);
    }
@@ -366,10 +383,10 @@ void CEPBotPanel::SetEstratPageVis(ENUM_ESTRAT_PAGE page, bool vis)
             m_ce_hdr1.Show();
             m_ce_lFastP.Show(); m_ce_iFastP.Show();
             m_ce_lFastM.Show(); for(int i=0;i<4;i++) m_ce_bFastM[i].Show();
-            m_ce_lFastTF.Show(); m_ce_bFastTF.Show();
+            m_ce_lFastTF.Show(); m_ce_bFastTF.Show(); m_ce_lFastPrice.Show(); m_ce_bFastPrice.Show();
             m_ce_lSlowP.Show(); m_ce_iSlowP.Show();
             m_ce_lSlowM.Show(); for(int i=0;i<4;i++) m_ce_bSlowM[i].Show();
-            m_ce_lSlowTF.Show(); m_ce_bSlowTF.Show();
+            m_ce_lSlowTF.Show(); m_ce_bSlowTF.Show(); m_ce_lSlowPrice.Show(); m_ce_bSlowPrice.Show();
             m_ce_hdr2.Show();
             m_ce_lEntry.Show(); for(int i=0;i<2;i++) m_ce_bEntry[i].Show();
             m_ce_lExit.Show();  for(int i=0;i<3;i++) m_ce_bExit[i].Show();
@@ -385,10 +402,10 @@ void CEPBotPanel::SetEstratPageVis(ENUM_ESTRAT_PAGE page, bool vis)
             m_ce_hdr1.Hide();
             m_ce_lFastP.Hide(); m_ce_iFastP.Hide();
             m_ce_lFastM.Hide(); for(int i=0;i<4;i++) m_ce_bFastM[i].Hide();
-            m_ce_lFastTF.Hide(); m_ce_bFastTF.Hide();
+            m_ce_lFastTF.Hide(); m_ce_bFastTF.Hide(); m_ce_lFastPrice.Hide(); m_ce_bFastPrice.Hide();
             m_ce_lSlowP.Hide(); m_ce_iSlowP.Hide();
             m_ce_lSlowM.Hide(); for(int i=0;i<4;i++) m_ce_bSlowM[i].Hide();
-            m_ce_lSlowTF.Hide(); m_ce_bSlowTF.Hide();
+            m_ce_lSlowTF.Hide(); m_ce_bSlowTF.Hide(); m_ce_lSlowPrice.Hide(); m_ce_bSlowPrice.Hide();
             m_ce_hdr2.Hide();
             m_ce_lEntry.Hide(); for(int i=0;i<2;i++) m_ce_bEntry[i].Hide();
             m_ce_lExit.Hide();  for(int i=0;i<3;i++) m_ce_bExit[i].Hide();
@@ -541,6 +558,51 @@ void CEPBotPanel::OnClickMASlowTF(void)
    m_ce_bSlowTF.Text(TFName(m_cur_maSlowTF));
   }
 
+void CEPBotPanel::OnClickMAFastPrice(void)
+  {
+   m_ce_bFastPrice.Pressed(false);
+   m_cur_maFastPrice = CycleAppliedPrice(m_cur_maFastPrice);
+   m_ce_bFastPrice.Text(AppliedPriceShortText(m_cur_maFastPrice));
+  }
+
+void CEPBotPanel::OnClickMASlowPrice(void)
+  {
+   m_ce_bSlowPrice.Pressed(false);
+   m_cur_maSlowPrice = CycleAppliedPrice(m_cur_maSlowPrice);
+   m_ce_bSlowPrice.Text(AppliedPriceShortText(m_cur_maSlowPrice));
+  }
+
+//+------------------------------------------------------------------+
+//| AppliedPriceShortText — texto curto para applied price            |
+//+------------------------------------------------------------------+
+string CEPBotPanel::AppliedPriceShortText(ENUM_APPLIED_PRICE price)
+  {
+   switch(price)
+     {
+      case PRICE_CLOSE:    return "CLOSE";
+      case PRICE_OPEN:     return "OPEN";
+      case PRICE_HIGH:     return "HIGH";
+      case PRICE_LOW:      return "LOW";
+      case PRICE_MEDIAN:   return "MEDIAN";
+      case PRICE_TYPICAL:  return "TYPICAL";
+      case PRICE_WEIGHTED: return "WGTD.";
+     }
+   return "CLOSE";
+  }
+
+//+------------------------------------------------------------------+
+//| CycleAppliedPrice — avança para o próximo applied price           |
+//+------------------------------------------------------------------+
+ENUM_APPLIED_PRICE CEPBotPanel::CycleAppliedPrice(ENUM_APPLIED_PRICE cur)
+  {
+   ENUM_APPLIED_PRICE seq[] = {PRICE_CLOSE, PRICE_OPEN, PRICE_HIGH,
+                               PRICE_LOW,   PRICE_MEDIAN, PRICE_TYPICAL};
+   int count = ArraySize(seq);
+   for(int i = 0; i < count; i++)
+      if(seq[i] == cur) return seq[(i + 1) % count];
+   return PRICE_CLOSE;
+  }
+
 void CEPBotPanel::OnClickMAEntry(int i)
   { m_cur_maEntry = (i == 0) ? ENTRY_NEXT_CANDLE : ENTRY_2ND_CANDLE; SetRadioSelection(m_ce_bEntry, 2, i); }
 
@@ -561,7 +623,8 @@ void CEPBotPanel::OnClickApplyMA(void)
      {
       if(!m_maCross.SetMAParams(fastP, slowP,
                                 m_cur_maFastMethod, m_cur_maSlowMethod,
-                                m_cur_maFastTF, m_cur_maSlowTF))
+                                m_cur_maFastTF, m_cur_maSlowTF,
+                                m_cur_maFastPrice, m_cur_maSlowPrice))
          errors++;
      }
    else

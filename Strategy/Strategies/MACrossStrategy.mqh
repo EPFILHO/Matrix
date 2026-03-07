@@ -2,10 +2,10 @@
 //|                                             MACrossStrategy.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                   Estratégia de Cruzamento de MAs - EPBot Matrix |
-//|                                   Versão 2.24 - Claude Parte 024 |
+//|                                   Versão 2.25 - Claude Parte 024 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.24"
+#property version   "2.25"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,12 @@
 #include "../Base/StrategyBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.25 (Parte 024):
+// + SetMAParams: novos parâmetros fastApplied/slowApplied (default PRICE_CLOSE)
+//   Compatível com chamadas antigas (parâmetros opcionais)
+//   Permite configurar o preço (CLOSE/OPEN/HIGH/LOW/MEDIAN/TYPICAL)
+//   via painel de controle sem reinit extra.
+//
 // NOVIDADES v2.24 (Parte 024):
 // + m_enabled removido — herdado de CStrategyBase v2.01
 // + SetEnabled/GetEnabled herdados (polimorfismo via base)
@@ -173,7 +179,9 @@ public:
    // Setter combinado — reinicia indicadores apenas 1x
    bool              SetMAParams(int fastPeriod, int slowPeriod,
                                  ENUM_MA_METHOD fastMethod, ENUM_MA_METHOD slowMethod,
-                                 ENUM_TIMEFRAMES fastTF, ENUM_TIMEFRAMES slowTF);
+                                 ENUM_TIMEFRAMES fastTF, ENUM_TIMEFRAMES slowTF,
+                                 ENUM_APPLIED_PRICE fastApplied = PRICE_CLOSE,
+                                 ENUM_APPLIED_PRICE slowApplied = PRICE_CLOSE);
 
    // ═══════════════════════════════════════════════════════════
    // GETTERS - Working values (valores atuais em uso)
@@ -792,7 +800,9 @@ bool CMACrossStrategy::SetMATimeframes(ENUM_TIMEFRAMES fastTF, ENUM_TIMEFRAMES s
 //+------------------------------------------------------------------+
 bool CMACrossStrategy::SetMAParams(int fastPeriod, int slowPeriod,
                                    ENUM_MA_METHOD fastMethod, ENUM_MA_METHOD slowMethod,
-                                   ENUM_TIMEFRAMES fastTF, ENUM_TIMEFRAMES slowTF)
+                                   ENUM_TIMEFRAMES fastTF, ENUM_TIMEFRAMES slowTF,
+                                   ENUM_APPLIED_PRICE fastApplied,
+                                   ENUM_APPLIED_PRICE slowApplied)
   {
    if(fastPeriod <= 0 || slowPeriod <= 0 || fastPeriod >= slowPeriod)
      {
@@ -815,6 +825,8 @@ bool CMACrossStrategy::SetMAParams(int fastPeriod, int slowPeriod,
    m_slowMethod    = slowMethod;
    m_fastTimeframe = fastTF;
    m_slowTimeframe = slowTF;
+   m_fastApplied   = fastApplied;
+   m_slowApplied   = slowApplied;
 
    Deinitialize();
    bool success = Initialize();

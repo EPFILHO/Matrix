@@ -2,10 +2,16 @@
 //|                                            PanelTabFiltros.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: FILTROS — Create + Update                     |
-//|                     Versão 1.13 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.14 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba FILTROS.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
+//
+// v1.14 (Parte 024):
+// + Price selector (cycle) para TrendFilter: CLOSE/OPEN/HIGH/LOW/MEDIAN/TYPICAL
+//   m_ft_lPrice/m_ft_bPrice; m_cur_trendPrice state var
+//   OnClickTrendPrice: usa CycleAppliedPrice + AppliedPriceShortText
+//   OnClickApplyTrend: substituído 3 cold reloads por SetMACold() (1 única reinit)
 //
 // v1.13 (Parte 024):
 // + Toggle ON/OFF + botão APLICAR para TrendFilter e RSIFilter
@@ -103,6 +109,16 @@ bool CEPBotPanel::CreateTabFiltros(void)
     if(!CreateLB(m_ft_lTF, m_ft_bTF, "ft_lTF", "ft_bTF", "Time Frame:", y)) return false;
     m_ft_bTF.Text(TFName(tf));
     m_ft_bTF.ColorBackground(C'50,80,140'); m_ft_bTF.Color(clrWhite);
+   }
+   y += PANEL_GAP_Y + 2;
+
+// Applied Price (cycle)
+   {
+    ENUM_APPLIED_PRICE pr = (m_trendFilter != NULL) ? m_trendFilter.GetMAApplied() : PRICE_CLOSE;
+    m_cur_trendPrice = pr;
+    if(!CreateLB(m_ft_lPrice, m_ft_bPrice, "ft_lPr", "ft_bPr", "Price:", y)) return false;
+    m_ft_bPrice.Text(AppliedPriceShortText(pr));
+    m_ft_bPrice.ColorBackground(C'50,80,140'); m_ft_bPrice.Color(clrWhite);
    }
    y += PANEL_GAP_Y + 2;
 
@@ -254,6 +270,7 @@ void CEPBotPanel::SetFiltrosPageVis(ENUM_FILTROS_PAGE page, bool vis)
             m_ft_lPeriod.Show(); m_ft_iPeriod.Show();
             m_ft_lMethod.Show(); m_ft_bMethod.Show();
             m_ft_lTF.Show(); m_ft_bTF.Show();
+            m_ft_lPrice.Show(); m_ft_bPrice.Show();
             m_ft_lNeutDist.Show(); m_ft_iNeutDist.Show();
             m_f_btnApplyTrend.Show(); m_f_statusTrend.Show();
            }
@@ -265,6 +282,7 @@ void CEPBotPanel::SetFiltrosPageVis(ENUM_FILTROS_PAGE page, bool vis)
             m_ft_lPeriod.Hide(); m_ft_iPeriod.Hide();
             m_ft_lMethod.Hide(); m_ft_bMethod.Hide();
             m_ft_lTF.Hide(); m_ft_bTF.Hide();
+            m_ft_lPrice.Hide(); m_ft_bPrice.Hide();
             m_ft_lNeutDist.Hide(); m_ft_iNeutDist.Hide();
             m_f_btnApplyTrend.Hide(); m_f_statusTrend.Hide();
            }
@@ -412,18 +430,17 @@ void CEPBotPanel::OnClickApplyTrend(void)
      }
    if(errors > 0) return;
 
-// Aplicar — ordem: SetEnabled primeiro, depois parâmetros
+// Hot reload primeiro (sem reinit)
    m_trendFilter.SetEnabled(m_pendingTrendEnabled);
    m_trendFilter.SetTrendFilterEnabled(m_pendingTrendEnabled);
    m_trendFilter.SetNeutralDistance(neutDist);
 
-// Cold reload: período, método e TF chamam Deinitialize/Initialize internamente
-   bool periodOk = m_trendFilter.SetMAPeriod(period);
-   bool methodOk = m_trendFilter.SetMAMethod(m_cur_trendMethod);
-   bool tfOk     = m_trendFilter.SetMATimeframe(m_cur_trendTF);
+// Cold reload: SetMACold faz 1 única reinicialização com todos os parâmetros frios
+   bool coldOk = m_trendFilter.SetMACold(period, m_cur_trendMethod,
+                                          m_cur_trendTF, m_cur_trendPrice);
 
    string msg = "Aplicado" + (m_pendingTrendEnabled ? " [ON]" : " [OFF]");
-   if(!periodOk || !methodOk || !tfOk)
+   if(!coldOk)
       msg += " (aviso: falha cold reload)";
    m_f_statusTrend.Text(msg);
    m_f_statusTrend.Color(CLR_POSITIVE);
@@ -456,6 +473,15 @@ void CEPBotPanel::OnClickTrendTF(void)
    cur = (cur + 1) % count;
    m_cur_trendTF = tfs[cur];
    m_ft_bTF.Text(TFName(m_cur_trendTF));
+  }
+
+//+------------------------------------------------------------------+
+//| TREND FILTER — Price: cycle de applied price                      |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickTrendPrice(void)
+  {
+   m_cur_trendPrice = CycleAppliedPrice(m_cur_trendPrice);
+   m_ft_bPrice.Text(AppliedPriceShortText(m_cur_trendPrice));
   }
 
 //+------------------------------------------------------------------+
