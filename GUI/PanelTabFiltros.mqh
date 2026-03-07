@@ -2,10 +2,14 @@
 //|                                            PanelTabFiltros.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: FILTROS — Create + Update                     |
-//|                     Versão 1.14 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.15 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba FILTROS.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
+//
+// v1.15 (Parte 024):
+// + NULL guard em OnClickApplyTrend e OnClickApplyRSIFilt:
+//   se filtro == NULL, exibe msg de erro no status e retorna — sem crash
 //
 // v1.14 (Parte 024):
 // + Price selector (cycle) para TrendFilter: CLOSE/OPEN/HIGH/LOW/MEDIAN/TYPICAL
@@ -410,6 +414,8 @@ void CEPBotPanel::OnClickTrendToggle(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickApplyTrend(void)
   {
+   if(m_trendFilter == NULL)
+     { m_f_statusTrend.Text("Filtro nao disponivel"); m_f_statusTrend.Color(CLR_NEGATIVE); m_f_statusTrendExpiry = GetTickCount() + 10000; return; }
    int    period = (int)StringToInteger(m_ft_iPeriod.Text());
    double neutDist = StringToDouble(m_ft_iNeutDist.Text());
 
@@ -497,6 +503,8 @@ void CEPBotPanel::OnClickRSIFiltToggle(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickApplyRSIFilt(void)
   {
+   if(m_rsiFilter == NULL)
+     { m_f_statusRSIFilt.Text("Filtro nao disponivel"); m_f_statusRSIFilt.Color(CLR_NEGATIVE); m_f_statusRSIFiltExpiry = GetTickCount() + 10000; return; }
    int    period     = (int)StringToInteger(m_frf_iPeriod.Text());
    double oversold   = StringToDouble(m_frf_iOversold.Text());
    double overbought = StringToDouble(m_frf_iOverbought.Text());

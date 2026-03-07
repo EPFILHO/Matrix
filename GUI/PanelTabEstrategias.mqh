@@ -2,8 +2,12 @@
 //|                                         PanelTabEstrategias.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: ESTRATEGIAS — Create + Update                 |
-//|                     Versão 1.23 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.24 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
+// v1.24 (Parte 024):
+// + NULL guard em OnClickApplyMA e OnClickApplyRSI:
+//   se strategy == NULL, exibe msg de erro no status e retorna — sem crash
+//
 // v1.23 (Parte 024):
 // + Price selector (cycle) para Fast MA e Slow MA: CLOSE/OPEN/HIGH/LOW/MEDIAN/TYPICAL
 //   m_ce_lFastPrice/m_ce_bFastPrice, m_ce_lSlowPrice/m_ce_bSlowPrice
@@ -614,6 +618,8 @@ void CEPBotPanel::OnClickMAExit(int i)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickApplyMA(void)
   {
+   if(m_maCross == NULL)
+     { m_e_statusMA.Text("Estrategia nao disponivel"); m_e_statusMA.Color(CLR_NEGATIVE); m_e_statusMAExpiry = GetTickCount() + 10000; return; }
    int errors = 0;
 
    int fastP = (int)StringToInteger(m_ce_iFastP.Text());
@@ -698,6 +704,8 @@ void CEPBotPanel::OnClickRSITF(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickApplyRSI(void)
   {
+   if(m_rsiStrategy == NULL)
+     { m_e_statusRSI.Text("Estrategia nao disponivel"); m_e_statusRSI.Color(CLR_NEGATIVE); m_e_statusRSIExpiry = GetTickCount() + 10000; return; }
    int errors = 0;
 
    int period = (int)StringToInteger(m_re_iPeriod.Text());
