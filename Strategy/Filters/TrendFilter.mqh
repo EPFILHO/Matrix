@@ -2,10 +2,10 @@
 //|                                                  TrendFilter.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                      Filtro de Tendência por MA - EPBot Matrix   |
-//|                                   Versão 2.17 - Claude Parte 024 |
+//|                                   Versão 2.18 - Claude Parte 024 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.17"
+#property version   "2.18"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,11 @@
 #include "../Base/FilterBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.18 (Parte 024):
+// + SetMATimeframe(ENUM_TIMEFRAMES tf): cold reload do timeframe da MA
+//   Segue padrão de SetMAPeriod/SetMAMethod: Deinitialize→Initialize
+//   Reverte para valor anterior se Initialize() falhar
+//
 // NOVIDADES v2.17 (Parte 024):
 // + Fix: GetDistanceFromMA() guard ArraySize(m_ma)==0
 //   Quando filtro desativado, handle=INVALID_HANDLE, UpdateIndicators()
@@ -145,6 +150,7 @@ public:
    // ═══════════════════════════════════════════════════════════
    bool              SetMAPeriod(int period);
    bool              SetMAMethod(ENUM_MA_METHOD method);
+   bool              SetMATimeframe(ENUM_TIMEFRAMES tf);
 
    // ═══════════════════════════════════════════════════════════
    // GETTERS - Working values (valores atuais em uso)
@@ -661,6 +667,33 @@ bool CTrendFilter::SetMAMethod(ENUM_MA_METHOD method)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
       else
          Print(msg);
+     }
+
+   return success;
+  }
+
+//+------------------------------------------------------------------+
+//| COLD RELOAD - Alterar timeframe da MA (v2.18)                    |
+//+------------------------------------------------------------------+
+bool CTrendFilter::SetMATimeframe(ENUM_TIMEFRAMES tf)
+  {
+   ENUM_TIMEFRAMES oldTF = m_maTimeframe;
+   m_maTimeframe = tf;
+
+   Deinitialize();
+   bool success = Initialize();
+
+   if(success)
+     {
+      string msg = "🔄 [Trend Filter] Timeframe MA alterado (reiniciado)";
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
+      else
+         Print(msg);
+     }
+   else
+     {
+      m_maTimeframe = oldTF;   // reverter se falhou
      }
 
    return success;

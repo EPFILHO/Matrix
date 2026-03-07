@@ -2,15 +2,27 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.34 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.35 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.34"
+#property version   "1.35"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.35 (Parte 024):
+// + Toggle ON/OFF + APLICAR para TrendFilter e RSIFilter (aba FILTROS)
+//   m_f_btnTrendToggle, m_f_btnApplyTrend, m_ft_*: Período MA, Método, TF, Zona Neutra
+//   m_f_btnRSIFiltToggle, m_f_btnApplyRSIFilt, m_frf_*: Período, TF, Modo, Oversold, Overbought
+// + m_pendingTrendEnabled, m_pendingRSIFiltEnabled: flags de pending state
+// + m_cur_trendMethod, m_cur_trendTF, m_cur_rsiFiltMode, m_cur_rsiFiltTF
+// + m_f_statusTrendExpiry, m_f_statusRSIFiltExpiry: expiração de mensagens
+// + OnClickTrendToggle/ApplyTrend/TrendMethod/TrendTF
+// + OnClickRSIFiltToggle/ApplyRSIFilt/RSIFiltTF/RSIFiltMode
+// + RSIFiltModeText, MAMethodShortText: helpers estáticos
+// + OnEvent: novo bloco de eventos para botões FILTROS
+//
 // v1.34 (Parte 024):
 // + Removido hot-create de RSI: m_rsiPanelOwned, GetRSIStrategy(), IsRSIPanelOwned()
 // + Padrão igual ao MACross: RSI só existe se inp_UseRSI=true no init
@@ -337,8 +349,16 @@ private:
    CMACrossStrategy  *m_maCross;
    CRSIStrategy      *m_rsiStrategy;
    // (v1.33: removido m_rsiGlobalPtr — MQL5 não suporta **)
-   bool               m_pendingMAEnabled;  // estado pendente do toggle MA (antes de APLICAR)
-   bool               m_pendingRSIEnabled; // estado pendente do toggle RSI (antes de APLICAR)
+   bool               m_pendingMAEnabled;       // estado pendente do toggle MA (antes de APLICAR)
+   bool               m_pendingRSIEnabled;      // estado pendente do toggle RSI (antes de APLICAR)
+   bool               m_pendingTrendEnabled;    // estado pendente do toggle TrendFilter
+   bool               m_pendingRSIFiltEnabled;  // estado pendente do toggle RSIFilter
+   ENUM_MA_METHOD     m_cur_trendMethod;         // método MA selecionado no painel
+   ENUM_TIMEFRAMES    m_cur_trendTF;             // TF selecionado no painel (TrendFilter)
+   ENUM_RSI_FILTER_MODE m_cur_rsiFiltMode;       // modo RSI Filter selecionado
+   ENUM_TIMEFRAMES    m_cur_rsiFiltTF;           // TF selecionado (RSI Filter)
+   uint               m_f_statusTrendExpiry;     // expiração da msg de status TrendFilter
+   uint               m_f_statusRSIFiltExpiry;   // expiração da msg de status RSIFilter
    CTrendFilter      *m_trendFilter;
    CRSIFilter        *m_rsiFilter;
 
@@ -478,17 +498,36 @@ private:
    CButton m_f_btnTrend;
    CButton m_f_btnRSI;
 
-   // TREND sub-page
+   // TREND sub-page — display
    CLabel  m_f_hdr1;
    CLabel  m_f_lTrendSt;       CLabel  m_f_eTrendSt;
    CLabel  m_f_lTrendMA;       CLabel  m_f_eTrendMA;
    CLabel  m_f_lTrendDist;     CLabel  m_f_eTrendDist;
+   // TREND sub-page — config
+   CLabel   m_ft_hdrConf;
+   CButton  m_f_btnTrendToggle;
+   CLabel   m_ft_lPeriod;      CEdit    m_ft_iPeriod;
+   CLabel   m_ft_lMethod;      CButton  m_ft_bMethod;
+   CLabel   m_ft_lTF;          CButton  m_ft_bTF;
+   CLabel   m_ft_lNeutDist;    CEdit    m_ft_iNeutDist;
+   CButton  m_f_btnApplyTrend;
+   CLabel   m_f_statusTrend;
 
-   // RSI sub-page
+   // RSI FILTER sub-page — display
    CLabel  m_f_hdr2;
    CLabel  m_f_lRFiltSt;       CLabel  m_f_eRFiltSt;
    CLabel  m_f_lRFiltRSI;      CLabel  m_f_eRFiltRSI;
    CLabel  m_f_lRFiltMode;     CLabel  m_f_eRFiltMode;
+   // RSI FILTER sub-page — config
+   CLabel   m_frf_hdrConf;
+   CButton  m_f_btnRSIFiltToggle;
+   CLabel   m_frf_lPeriod;     CEdit    m_frf_iPeriod;
+   CLabel   m_frf_lTF;         CButton  m_frf_bTF;
+   CLabel   m_frf_lMode;       CButton  m_frf_bMode[3];
+   CLabel   m_frf_lOversold;   CEdit    m_frf_iOversold;
+   CLabel   m_frf_lOverbought; CEdit    m_frf_iOverbought;
+   CButton  m_f_btnApplyRSIFilt;
+   CLabel   m_f_statusRSIFilt;
 
    // ════════════════════════════════════════
    // ABA 4: CONFIG — Hot Reload
@@ -711,6 +750,18 @@ private:
    void              UpdateFiltrosBtnStyles(void);
    void              OnClickFiltrosTrend(void);
    void              OnClickFiltrosRSI(void);
+   // FILTROS — Trend Filter toggle/apply
+   void              OnClickTrendToggle(void);
+   void              OnClickApplyTrend(void);
+   void              OnClickTrendMethod(void);
+   void              OnClickTrendTF(void);
+   // FILTROS — RSI Filter toggle/apply
+   void              OnClickRSIFiltToggle(void);
+   void              OnClickApplyRSIFilt(void);
+   void              OnClickRSIFiltTF(void);
+   void              OnClickRSIFiltMode(int i);
+   static string     RSIFiltModeText(ENUM_RSI_FILTER_MODE mode);
+   static string     MAMethodShortText(ENUM_MA_METHOD method);
    void              ApplyConfig(void);
 
    // Estado visual RISCO (enable/disable campos por tipo SL/TP)
@@ -819,6 +870,10 @@ CEPBotPanel::CEPBotPanel(void)
      m_tradeManager(NULL), m_signalManager(NULL),
      m_maCross(NULL), m_rsiStrategy(NULL),
      m_pendingMAEnabled(false), m_pendingRSIEnabled(false),
+     m_pendingTrendEnabled(false), m_pendingRSIFiltEnabled(false),
+     m_cur_trendMethod(MODE_SMA), m_cur_trendTF(PERIOD_CURRENT),
+     m_cur_rsiFiltMode(RSI_FILTER_ZONE), m_cur_rsiFiltTF(PERIOD_CURRENT),
+     m_f_statusTrendExpiry(0), m_f_statusRSIFiltExpiry(0),
      m_trendFilter(NULL), m_rsiFilter(NULL),
      m_magicNumber(0), m_symbol(""),
      m_origDragTrade(true), m_origMouseScroll(true), m_mouseOverPanel(false),
@@ -1018,6 +1073,19 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       // FILTROS: sub-páginas
       if(sparam == m_f_btnTrend.Name())   { m_f_btnTrend.Pressed(false); OnClickFiltrosTrend(); ChartRedraw(); return; }
       if(sparam == m_f_btnRSI.Name())     { m_f_btnRSI.Pressed(false);   OnClickFiltrosRSI();   ChartRedraw(); return; }
+      // FILTROS: Trend Filter — toggle + apply + cycle buttons
+      if(sparam == m_f_btnTrendToggle.Name())  { m_f_btnTrendToggle.Pressed(false);  OnClickTrendToggle();  ChartRedraw(); return; }
+      if(sparam == m_f_btnApplyTrend.Name())   { m_f_btnApplyTrend.Pressed(false);   OnClickApplyTrend();   ChartRedraw(); return; }
+      if(sparam == m_ft_bMethod.Name())        { OnClickTrendMethod(); ChartRedraw(); return; }
+      if(sparam == m_ft_bTF.Name())            { OnClickTrendTF();     ChartRedraw(); return; }
+      // FILTROS: RSI Filter — toggle + apply + cycle/radio buttons
+      if(sparam == m_f_btnRSIFiltToggle.Name()) { m_f_btnRSIFiltToggle.Pressed(false); OnClickRSIFiltToggle(); ChartRedraw(); return; }
+      if(sparam == m_f_btnApplyRSIFilt.Name())  { m_f_btnApplyRSIFilt.Pressed(false);  OnClickApplyRSIFilt();  ChartRedraw(); return; }
+      if(sparam == m_frf_bTF.Name())            { OnClickRSIFiltTF(); ChartRedraw(); return; }
+      for(int i = 0; i < 3; i++)
+        {
+         if(sparam == m_frf_bMode[i].Name()) { OnClickRSIFiltMode(i); ChartRedraw(); return; }
+        }
 
       // CONFIG: sub-páginas
       if(sparam == m_cfg_btnRisco.Name())  { m_cfg_btnRisco.Pressed(false);  OnClickCfgRisco();  ChartRedraw(); return; }
@@ -1360,7 +1428,13 @@ void CEPBotPanel::Update(void)
          if(m_e_statusRSIExpiry > 0 && GetTickCount() >= m_e_statusRSIExpiry)
            { m_e_statusRSI.Text(""); m_e_statusRSIExpiry = 0; ChartRedraw(); }
          break;
-      case TAB_FILTROS:     UpdateFiltros();      break;
+      case TAB_FILTROS:
+         UpdateFiltros();
+         if(m_f_statusTrendExpiry > 0 && GetTickCount() >= m_f_statusTrendExpiry)
+           { m_f_statusTrend.Text(""); m_f_statusTrendExpiry = 0; ChartRedraw(); }
+         if(m_f_statusRSIFiltExpiry > 0 && GetTickCount() >= m_f_statusRSIFiltExpiry)
+           { m_f_statusRSIFilt.Text(""); m_f_statusRSIFiltExpiry = 0; ChartRedraw(); }
+         break;
       case TAB_CONFIG:
          if(m_cfgStatusExpiry > 0 && GetTickCount() >= m_cfgStatusExpiry)
            { m_cfg_status.Text(""); m_cfgStatusExpiry = 0; ChartRedraw(); }
