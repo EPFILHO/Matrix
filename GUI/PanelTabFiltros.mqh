@@ -92,13 +92,14 @@ bool CEPBotPanel::CreateTabFiltros(void)
    }
    y += PANEL_GAP_Y;
 
-// Método MA (cycle)
+// Método MA (radio 4: SMA|EMA|SMMA|LWMA — igual ao MA Cross)
    {
     ENUM_MA_METHOD meth = (m_trendFilter != NULL) ? m_trendFilter.GetMAMethod() : MODE_SMA;
     m_cur_trendMethod = meth;
-    if(!CreateLB(m_ft_lMethod, m_ft_bMethod, "ft_lMt", "ft_bMt", "Metodo MA:", y)) return false;
-    m_ft_bMethod.Text(MAMethodShortText(meth));
-    m_ft_bMethod.ColorBackground(C'50,80,140'); m_ft_bMethod.Color(clrWhite);
+    string methTexts[] = {"SMA", "EMA", "SMMA", "LWMA"};
+    if(!CreateRadioGroup(m_ft_lMethod, m_ft_bMethod, "ft_lMt", "ft_bMt", "Metodo MA:", methTexts, 4, y))
+       return false;
+    SetRadioSelection(m_ft_bMethod, 4, MAMethodToIndex(meth));
    }
    y += PANEL_GAP_Y + 2;
 
@@ -268,7 +269,7 @@ void CEPBotPanel::SetFiltrosPageVis(ENUM_FILTROS_PAGE page, bool vis)
             m_f_lTrendMA.Show(); m_f_eTrendMA.Show(); m_f_lTrendDist.Show(); m_f_eTrendDist.Show();
             m_ft_hdrConf.Show(); m_f_btnTrendToggle.Show();
             m_ft_lPeriod.Show(); m_ft_iPeriod.Show();
-            m_ft_lMethod.Show(); m_ft_bMethod.Show();
+            m_ft_lMethod.Show(); for(int i=0;i<4;i++) m_ft_bMethod[i].Show();
             m_ft_lTF.Show(); m_ft_bTF.Show();
             m_ft_lPrice.Show(); m_ft_bPrice.Show();
             m_ft_lNeutDist.Show(); m_ft_iNeutDist.Show();
@@ -280,7 +281,7 @@ void CEPBotPanel::SetFiltrosPageVis(ENUM_FILTROS_PAGE page, bool vis)
             m_f_lTrendMA.Hide(); m_f_eTrendMA.Hide(); m_f_lTrendDist.Hide(); m_f_eTrendDist.Hide();
             m_ft_hdrConf.Hide(); m_f_btnTrendToggle.Hide();
             m_ft_lPeriod.Hide(); m_ft_iPeriod.Hide();
-            m_ft_lMethod.Hide(); m_ft_bMethod.Hide();
+            m_ft_lMethod.Hide(); for(int i=0;i<4;i++) m_ft_bMethod[i].Hide();
             m_ft_lTF.Hide(); m_ft_bTF.Hide();
             m_ft_lPrice.Hide(); m_ft_bPrice.Hide();
             m_ft_lNeutDist.Hide(); m_ft_iNeutDist.Hide();
@@ -448,14 +449,12 @@ void CEPBotPanel::OnClickApplyTrend(void)
   }
 
 //+------------------------------------------------------------------+
-//| TREND FILTER — Método MA: cycle SMA→EMA→SMMA→LWMA                |
+//| TREND FILTER — Método MA: radio SMA|EMA|SMMA|LWMA                |
 //+------------------------------------------------------------------+
-void CEPBotPanel::OnClickTrendMethod(void)
+void CEPBotPanel::OnClickTrendMethod(int i)
   {
-   int idx = (int)m_cur_trendMethod;
-   idx = (idx + 1) % 4;
-   m_cur_trendMethod = (ENUM_MA_METHOD)idx;
-   m_ft_bMethod.Text(MAMethodShortText(m_cur_trendMethod));
+   m_cur_trendMethod = IndexToMAMethod(i);
+   SetRadioSelection(m_ft_bMethod, 4, i);
   }
 
 //+------------------------------------------------------------------+

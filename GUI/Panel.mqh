@@ -517,7 +517,7 @@ private:
    CLabel   m_ft_hdrConf;
    CButton  m_f_btnTrendToggle;
    CLabel   m_ft_lPeriod;      CEdit    m_ft_iPeriod;
-   CLabel   m_ft_lMethod;      CButton  m_ft_bMethod;
+   CLabel   m_ft_lMethod;      CButton  m_ft_bMethod[4];  // Radio: SMA|EMA|SMMA|LWMA
    CLabel   m_ft_lTF;          CButton  m_ft_bTF;
    CLabel   m_ft_lPrice;       CButton  m_ft_bPrice;   // Cycle Price
    CLabel   m_ft_lNeutDist;    CEdit    m_ft_iNeutDist;
@@ -766,7 +766,7 @@ private:
    // FILTROS — Trend Filter toggle/apply
    void              OnClickTrendToggle(void);
    void              OnClickApplyTrend(void);
-   void              OnClickTrendMethod(void);
+   void              OnClickTrendMethod(int i);
    void              OnClickTrendTF(void);
    void              OnClickTrendPrice(void);
    // FILTROS — RSI Filter toggle/apply
@@ -1096,7 +1096,10 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       // FILTROS: Trend Filter — toggle + apply + cycle buttons
       if(sparam == m_f_btnTrendToggle.Name())  { m_f_btnTrendToggle.Pressed(false);  OnClickTrendToggle();  ChartRedraw(); return; }
       if(sparam == m_f_btnApplyTrend.Name())   { m_f_btnApplyTrend.Pressed(false);   OnClickApplyTrend();   ChartRedraw(); return; }
-      if(sparam == m_ft_bMethod.Name())        { OnClickTrendMethod(); ChartRedraw(); return; }
+      for(int i = 0; i < 4; i++)
+        {
+         if(sparam == m_ft_bMethod[i].Name()) { OnClickTrendMethod(i); ChartRedraw(); return; }
+        }
       if(sparam == m_ft_bTF.Name())            { OnClickTrendTF();     ChartRedraw(); return; }
       if(sparam == m_ft_bPrice.Name())         { OnClickTrendPrice();  ChartRedraw(); return; }
       // FILTROS: RSI Filter — toggle + apply + cycle/radio buttons
