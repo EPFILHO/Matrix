@@ -824,7 +824,7 @@ int OnInit()
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
 
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.41 - PRONTO PARA OPERAR!");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.43 - PRONTO PARA OPERAR!");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Símbolo: " + _Symbol);
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
