@@ -4,6 +4,10 @@
 //|          Panel Tab: ESTRATEGIAS — Create + Update                 |
 //|                     Versão 1.22 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
+// v1.22 (Parte 024):
+// + Removidos guards NULL de OnClickApplyMA e OnClickApplyRSI:
+//   estratégias sempre existem — inp_Use* só define estado inicial
+//
 // v1.21 (Parte 024):
 // + Removido hot-create de RSI: OnClickApplyRSI() retorna mensagem
 //   "RSI inativo (ative inp_UseRSI)" quando m_rsiStrategy == NULL
@@ -57,11 +61,6 @@
 // + ShowEstratPage, SetEstratPageVis, UpdateEstratBtnStyles
 // + OnClickEstratMACross, OnClickEstratRSI
 
-//+------------------------------------------------------------------+
-// v1.22 (Parte 024):
-// + Removidos guards NULL de OnClickApplyMA e OnClickApplyRSI:
-//   estratégias sempre existem — inp_Use* só define estado inicial
-//
 //+------------------------------------------------------------------+
 //| ABA 2: ESTRATEGIAS — Criar controles                              |
 //+------------------------------------------------------------------+
