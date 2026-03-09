@@ -2,14 +2,14 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.23 - Claude Parte 026 (Claude Code) |
+//|                     Versão 3.23 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "3.23"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
-// CHANGELOG v3.23 (Parte 026):
+// CHANGELOG v3.23 (Parte 025):
 // + Refatoração: CBlockers dividido em 3 módulos coesos:
 //   - BlockerFilters.mqh: TimeFilter + NewsFilter + SpreadFilter
 //   - BlockerDrawdown.mqh: DrawdownProtection

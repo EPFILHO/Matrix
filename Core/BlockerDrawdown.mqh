@@ -2,7 +2,7 @@
 //|                                            BlockerDrawdown.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|                    Proteção de Drawdown - EPBot Matrix           |
-//|                     Versão 1.00 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.00 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 // NOTA: Enums (ENUM_DRAWDOWN_TYPE, ENUM_DRAWDOWN_PEAK_MODE, etc.) e
 // Logger.mqh são incluídos por Blockers.mqh ANTES deste arquivo.
