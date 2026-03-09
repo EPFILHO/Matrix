@@ -2,10 +2,10 @@
 //|                                                 RSIStrategy.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                                    Estratégia RSI - EPBot Matrix |
-//|                                   Versão 2.14 - Claude Parte 024 |
+//|                                   Versão 2.15 - Claude Parte 025 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.14"
+#property version   "2.15"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,11 @@
 #include "../Base/StrategyBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.15 (Parte 025):
+// + signal_shift removido do Setup() — hardcode 1 (última barra fechada)
+//   Elimina input inp_RSISignalShift desnecessário
+//   SetSignalShift() e m_inputSignalShift removidos
+//
 // NOVIDADES v2.14 (Parte 024):
 // + m_enabled removido — herdado de CStrategyBase v2.01
 // + SetEnabled override mantido (com logging via m_logger)
@@ -89,7 +94,7 @@ private:
    double            m_inputOversold;
    double            m_inputOverbought;
    double            m_inputMiddle;
-   int               m_inputSignalShift;
+   // m_inputSignalShift removido v2.15 — shift fixo em 1 (última barra fechada)
    bool              m_inputEnabled;
 
    // ═══════════════════════════════════════════════════════════
@@ -122,7 +127,7 @@ public:
    // ═══════════════════════════════════════════════════════════
    bool              Setup(CLogger* logger, string symbol, ENUM_TIMEFRAMES timeframe, int period,
               ENUM_APPLIED_PRICE applied_price, ENUM_RSI_SIGNAL_MODE signal_mode,
-              double oversold, double overbought, double middle, int signal_shift);
+              double oversold, double overbought, double middle);
 
    // ═══════════════════════════════════════════════════════════
    // IMPLEMENTAÇÃO DOS MÉTODOS VIRTUAIS (obrigatórios)
@@ -151,7 +156,7 @@ public:
    void              SetOversold(double value);
    void              SetOverbought(double value);
    void              SetMiddle(double value);
-   void              SetSignalShift(int value);
+   // SetSignalShift removido v2.15 — shift fixo em 1
    virtual void      SetEnabled(bool value) override;
 
    // ═══════════════════════════════════════════════════════════
@@ -175,7 +180,7 @@ public:
    double            GetOversold() const { return m_oversold; }
    double            GetOverbought() const { return m_overbought; }
    double            GetMiddle() const { return m_middle; }
-   int               GetSignalShift() const { return m_signal_shift; }
+   // GetSignalShift removido v2.15 — shift fixo em 1 (última barra fechada)
    // GetEnabled(): herdado de CStrategyBase v2.01
 
    // ═══════════════════════════════════════════════════════════
@@ -188,7 +193,7 @@ public:
    double            GetInputOversold() const { return m_inputOversold; }
    double            GetInputOverbought() const { return m_inputOverbought; }
    double            GetInputMiddle() const { return m_inputMiddle; }
-   int               GetInputSignalShift() const { return m_inputSignalShift; }
+   // GetInputSignalShift removido v2.15 — shift fixo em 1
    bool              GetInputEnabled() const { return m_inputEnabled; }
   };
 
@@ -209,7 +214,6 @@ CRSIStrategy::CRSIStrategy(int priority = 5) : CStrategyBase("RSI Strategy", pri
    m_inputOversold = 30.0;
    m_inputOverbought = 70.0;
    m_inputMiddle = 50.0;
-   m_inputSignalShift = 1;
    m_inputEnabled = true;
 
 // ═══ WORKING PARAMETERS (começam iguais aos inputs) ═══
@@ -240,7 +244,7 @@ CRSIStrategy::~CRSIStrategy()
 //+------------------------------------------------------------------+
 bool CRSIStrategy::Setup(CLogger* logger, string symbol, ENUM_TIMEFRAMES timeframe, int period,
                          ENUM_APPLIED_PRICE applied_price, ENUM_RSI_SIGNAL_MODE signal_mode,
-                         double oversold, double overbought, double middle, int signal_shift)
+                         double oversold, double overbought, double middle)
   {
    m_logger = logger;
 
@@ -255,7 +259,7 @@ bool CRSIStrategy::Setup(CLogger* logger, string symbol, ENUM_TIMEFRAMES timefra
    m_inputOversold = oversold;
    m_inputOverbought = overbought;
    m_inputMiddle = middle;
-   m_inputSignalShift = signal_shift;
+   // m_inputSignalShift removido v2.15 — shift fixo em 1
    // m_inputEnabled: não forçado — preserva estado antes do Setup()
 
 // ═══════════════════════════════════════════════════════════
@@ -269,7 +273,7 @@ bool CRSIStrategy::Setup(CLogger* logger, string symbol, ENUM_TIMEFRAMES timefra
    m_oversold = oversold;
    m_overbought = overbought;
    m_middle = middle;
-   m_signal_shift = signal_shift;
+   m_signal_shift = 1;  // v2.15: hardcoded — sempre usa última barra fechada
    // m_enabled: não forçado — preserva estado do toggle (SetEnabled antes de Setup)
 
    return true;
@@ -583,20 +587,7 @@ void CRSIStrategy::SetMiddle(double value)
       Print(msg);
   }
 
-//+------------------------------------------------------------------+
-//| HOT RELOAD - Alterar shift do sinal - v2.10                      |
-//+------------------------------------------------------------------+
-void CRSIStrategy::SetSignalShift(int value)
-  {
-   int oldValue = m_signal_shift;
-   m_signal_shift = value;
-
-   string msg = StringFormat("🔄 [RSI] Signal shift alterado: %d → %d", oldValue, value);
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
-  }
+// SetSignalShift removido v2.15 — shift fixo em 1 (última barra fechada)
 
 //+------------------------------------------------------------------+
 //| HOT RELOAD - Ativar/desativar estratégia - v2.10                 |

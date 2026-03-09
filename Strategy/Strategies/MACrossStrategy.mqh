@@ -2,10 +2,10 @@
 //|                                             MACrossStrategy.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                   Estratégia de Cruzamento de MAs - EPBot Matrix |
-//|                                   Versão 2.25 - Claude Parte 024 |
+//|                                   Versão 2.26 - Claude Parte 025 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.25"
+#property version   "2.26"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,12 @@
 #include "../Base/StrategyBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.26 (Parte 025):
+// + minDistance: filtro de força do cruzamento (pontos entre MA rápida e lenta)
+//   Se 0, filtro desativado (comportamento anterior mantido)
+//   Setup() recebe novo parâmetro opcional minDistance (default 0)
+//   SetMinDistance() para hot reload via painel
+//
 // NOVIDADES v2.25 (Parte 024):
 // + SetMAParams: novos parâmetros fastApplied/slowApplied (default PRICE_CLOSE)
 //   Compatível com chamadas antigas (parâmetros opcionais)
@@ -99,6 +105,8 @@ private:
 
    ENUM_ENTRY_MODE   m_entryMode;
    ENUM_EXIT_MODE    m_exitMode;
+   int               m_inputMinDistance;   // v2.26: distância mínima entre MAs (pontos) — input
+   int               m_minDistance;        // v2.26: distância mínima entre MAs (pontos) — working
    // m_enabled: removido — herdado de CStrategyBase v2.01
 
    // ═══════════════════════════════════════════════════════════
@@ -137,7 +145,8 @@ public:
       ENUM_APPLIED_PRICE slowApplied,
       ENUM_TIMEFRAMES slowTimeframe,
       ENUM_ENTRY_MODE entryMode,
-      ENUM_EXIT_MODE exitMode
+      ENUM_EXIT_MODE exitMode,
+      int minDistance = 0
    );
 
    // ═══════════════════════════════════════════════════════════
@@ -168,6 +177,7 @@ public:
    // ═══════════════════════════════════════════════════════════
    bool              SetEntryMode(ENUM_ENTRY_MODE mode);
    bool              SetExitMode(ENUM_EXIT_MODE mode);
+   void              SetMinDistance(int points);  // v2.26
    // SetEnabled/GetEnabled: herdados de CStrategyBase v2.01
 
    // ═══════════════════════════════════════════════════════════
@@ -201,6 +211,7 @@ public:
    ENUM_TIMEFRAMES   GetSlowTimeframe() const { return m_slowTimeframe; }
    ENUM_ENTRY_MODE   GetEntryMode() const { return m_entryMode; }
    ENUM_EXIT_MODE    GetExitMode() const { return m_exitMode; }
+   int               GetMinDistance() const { return m_minDistance; }        // v2.26
 
    // ═══════════════════════════════════════════════════════════
    // GETTERS - Input values (valores originais da configuração)
@@ -215,6 +226,7 @@ public:
    ENUM_TIMEFRAMES   GetInputSlowTimeframe() const { return m_inputSlowTimeframe; }
    ENUM_ENTRY_MODE   GetInputEntryMode() const { return m_inputEntryMode; }
    ENUM_EXIT_MODE    GetInputExitMode() const { return m_inputExitMode; }
+   int               GetInputMinDistance() const { return m_inputMinDistance; }  // v2.26
   };
 
 //+------------------------------------------------------------------+
@@ -264,6 +276,8 @@ CMACrossStrategy::CMACrossStrategy(int priority = 0) : CStrategyBase("MA Cross S
    m_lastCrossSignal = SIGNAL_NONE;
    m_candlesAfterCross = 0;
    m_lastCheckBarTime = 0;
+   m_inputMinDistance = 0;  // v2.26
+   m_minDistance = 0;       // v2.26
    // m_enabled: inicializado na base CStrategyBase(true)
 
    ArraySetAsSeries(m_maFast, true);
@@ -292,7 +306,8 @@ bool CMACrossStrategy::Setup(
    ENUM_APPLIED_PRICE slowApplied,
    ENUM_TIMEFRAMES slowTimeframe,
    ENUM_ENTRY_MODE entryMode,
-   ENUM_EXIT_MODE exitMode
+   ENUM_EXIT_MODE exitMode,
+   int minDistance = 0
 )
   {
    m_logger = logger;
@@ -337,6 +352,7 @@ bool CMACrossStrategy::Setup(
 
    m_inputEntryMode = entryMode;
    m_inputExitMode = exitMode;
+   m_inputMinDistance = (minDistance < 0) ? 0 : minDistance;  // v2.26
 
 // ═══════════════════════════════════════════════════════════
 // INICIALIZAR WORKING VARIABLES (mutáveis - começam iguais)
@@ -353,6 +369,7 @@ bool CMACrossStrategy::Setup(
 
    m_entryMode = entryMode;
    m_exitMode = exitMode;
+   m_minDistance = m_inputMinDistance;  // v2.26
 
    return true;
   }
@@ -522,19 +539,36 @@ bool CMACrossStrategy::UpdateIndicators()
 //+------------------------------------------------------------------+
 ENUM_SIGNAL_TYPE CMACrossStrategy::DetectCross()
   {
+   ENUM_SIGNAL_TYPE signal = SIGNAL_NONE;
+
 // Cruzamento de alta (Golden Cross)
    if(m_maFast[2] < m_maSlow[2] && m_maFast[1] > m_maSlow[1])
-     {
-      return SIGNAL_BUY;
-     }
+      signal = SIGNAL_BUY;
 
 // Cruzamento de baixa (Death Cross)
-   if(m_maFast[2] > m_maSlow[2] && m_maFast[1] < m_maSlow[1])
+   else if(m_maFast[2] > m_maSlow[2] && m_maFast[1] < m_maSlow[1])
+      signal = SIGNAL_SELL;
+
+   if(signal == SIGNAL_NONE)
+      return SIGNAL_NONE;
+
+// v2.26: Filtro de distância mínima entre MAs
+   if(m_minDistance > 0)
      {
-      return SIGNAL_SELL;
+      double distPts = MathAbs(m_maFast[1] - m_maSlow[1]) / _Point;
+      if(distPts < m_minDistance)
+        {
+         string msg = StringFormat("⏭ [MA Cross] Cruzamento ignorado: distância %.1f pts < mínimo %d pts",
+                                   distPts, m_minDistance);
+         if(m_logger != NULL)
+            m_logger.Log(LOG_SIGNAL, THROTTLE_NONE, "SIGNAL", msg);
+         else
+            Print(msg);
+         return SIGNAL_NONE;
+        }
      }
 
-   return SIGNAL_NONE;
+   return signal;
   }
 
 //+------------------------------------------------------------------+
@@ -708,6 +742,24 @@ bool CMACrossStrategy::SetExitMode(ENUM_EXIT_MODE mode)
       Print(msg);
 
    return true;
+  }
+
+//+------------------------------------------------------------------+
+//| HOT RELOAD - Alterar distância mínima entre MAs (v2.26)          |
+//+------------------------------------------------------------------+
+void CMACrossStrategy::SetMinDistance(int points)
+  {
+   int oldValue = m_minDistance;
+   m_minDistance = (points < 0) ? 0 : points;
+
+   if(oldValue != m_minDistance)
+     {
+      string msg = StringFormat("🔄 [MA Cross] MinDistance alterado: %d → %d pts", oldValue, m_minDistance);
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
+      else
+         Print(msg);
+     }
   }
 
 //+------------------------------------------------------------------+

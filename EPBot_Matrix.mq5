@@ -28,7 +28,7 @@
 //| Fix: RSIStrategy v2.13 — Setup() não força m_enabled=true        |
 //| Fix: m_e_statusMAExpiry inicializado no construtor do Panel       |
 //| Fix: strings de versão unificadas em v1.41                        |
-//| Cosmético: TODO em inp_MACrossMinDistance (nunca passado ao Setup)|
+//| Parte 025: inp_MACrossMinDistance integrado ao Setup() v2.26      |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.41 (original — Parte 024):                          |
 //| PANEL v1.24 + BLOCKERS v3.19 — SUB-PÁGINAS ESTRAT./FILTROS (Parte 024): |
@@ -590,7 +590,8 @@ int OnInit()
          inp_SlowApplied,
          inp_SlowTF,
          inp_EntryMode,
-         inp_ExitMode
+         inp_ExitMode,
+         inp_MACrossMinDistance
       ))
      {
       g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar MACrossStrategy!");
@@ -637,8 +638,7 @@ int OnInit()
          inp_RSIMode,
          inp_RSIOversold,
          inp_RSIOverbought,
-         inp_RSIMidLevel,
-         inp_RSISignalShift
+         inp_RSIMidLevel
       ))
      {
       g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar RSIStrategy!");

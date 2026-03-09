@@ -2,12 +2,17 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.21 - Claude Parte 024 (Claude Code) |
+//|                     Versão 3.22 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.21"
+#property version   "3.22"
 #property strict
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.22 (Parte 025):
+// + CanTrade(): DailyLimits verificado ANTES do Streak
+//   Diagnóstico correto quando ambos bloqueiam simultaneamente
+//   Comportamento de bloqueio idêntico — apenas ordem e razão relatada
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.21 (Parte 024):
 // + Getters públicos para GUI RESULTADOS:
@@ -1781,22 +1786,7 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
         }
      }
 
-   if(!CheckStreakLimit())
-     {
-      if(m_currentWinStreak >= m_maxWinStreak && m_maxWinStreak > 0)
-        {
-         m_currentBlocker = BLOCKER_WIN_STREAK;
-         blockReason = StringFormat("Win Streak de %d atingido", m_currentWinStreak);
-        }
-      else
-        {
-         m_currentBlocker = BLOCKER_LOSS_STREAK;
-         blockReason = StringFormat("Loss Streak de %d atingido", m_currentLossStreak);
-        }
-      return false;
-     }
-
-// ── Limites Diários — logging de transição ──
+// ── Limites Diários — logging de transição ──  (v3.21: antes do Streak para diagnóstico correto)
      {
       bool blocked = !CheckDailyLimits(dailyTrades, dailyProfit);
       static bool s_dlWasBlocked = false;
@@ -1827,6 +1817,21 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
          s_dlWasBlocked = false;
          s_dlLastReason = BLOCKER_NONE;
         }
+     }
+
+   if(!CheckStreakLimit())
+     {
+      if(m_currentWinStreak >= m_maxWinStreak && m_maxWinStreak > 0)
+        {
+         m_currentBlocker = BLOCKER_WIN_STREAK;
+         blockReason = StringFormat("Win Streak de %d atingido", m_currentWinStreak);
+        }
+      else
+        {
+         m_currentBlocker = BLOCKER_LOSS_STREAK;
+         blockReason = StringFormat("Loss Streak de %d atingido", m_currentLossStreak);
+        }
+      return false;
      }
 
    if(m_enableDailyLimits &&
