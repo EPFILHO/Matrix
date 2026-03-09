@@ -2,13 +2,22 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.44 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.45 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.44"
+#property version   "1.45"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.45 (Parte 025):                                     |
+//| - inp_RSISignalShift removido do RSIStrategy.Setup()             |
+//|   (sempre usa shift=1, barra fechada)                            |
+//| - Blockers v3.22: DailyLimits verificado ANTES do Streak         |
+//|   em CanTrade()                                                  |
+//| - Inputs v1.07: Seção 007 TRADE MANAGER removida (grupo vazio)   |
+//| - Inputs v1.07: inp_RSISignalShift removido                      |
+//| - inp_MACrossMinDistance integrado ao MACrossStrategy.Setup()     |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.44 (Parte 024):                                     |
 //| "Sempre criar" estratégias e filtros no OnInit:                  |
@@ -28,7 +37,6 @@
 //| Fix: RSIStrategy v2.13 — Setup() não força m_enabled=true        |
 //| Fix: m_e_statusMAExpiry inicializado no construtor do Panel       |
 //| Fix: strings de versão unificadas em v1.41                        |
-//| Parte 025: inp_MACrossMinDistance integrado ao Setup() v2.26      |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.41 (original — Parte 024):                          |
 //| PANEL v1.24 + BLOCKERS v3.19 — SUB-PÁGINAS ESTRAT./FILTROS (Parte 024): |
