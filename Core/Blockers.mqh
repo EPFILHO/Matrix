@@ -1786,7 +1786,7 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
         }
      }
 
-// ── Limites Diários — logging de transição ──  (v3.21: antes do Streak para diagnóstico correto)
+// ── Limites Diários — logging de transição ──  (v3.22: antes do Streak para diagnóstico correto)
      {
       bool blocked = !CheckDailyLimits(dailyTrades, dailyProfit);
       static bool s_dlWasBlocked = false;
