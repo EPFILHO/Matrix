@@ -68,4 +68,11 @@ public:
    
    string GetName() const { return m_filterName; }
    bool IsInitialized() const { return m_isInitialized; }
+
+   // v2.01: Resumo de status para GUI genérica (override opcional)
+   virtual string GetStatusSummary() const
+     {
+      if(!m_isInitialized) return "Nao iniciado";
+      return m_isEnabled ? "Ativo" : "Inativo";
+     }
 };

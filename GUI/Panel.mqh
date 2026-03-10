@@ -2,15 +2,24 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.36 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.37 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.36"
+#property version   "1.37"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.37 (Parte 026):
+// + Sub-página GERAL em ESTRATEGIAS e FILTROS (GUI genérica)
+//   ESTRAT_OVERVIEW=0, ESTRAT_PAGE_COUNT 2→3; FILTROS_OVERVIEW=0, FILTROS_PAGE_COUNT 2→3
+//   MAX_OVERVIEW_ROWS=6: até 6 linhas auto-iteradas via SignalManager.GetStrategy/Filter(i)
+//   m_e_btnOverview, m_ov_lStrHdr, m_ov_eStrName[6], m_ov_eStrStatus[6]
+//   m_f_btnOverview, m_ov_lFiltHdr, m_ov_eFiltName[6], m_ov_eFiltStatus[6]
+//   OnClickEstratOverview, OnClickFiltrosOverview
+//   Novas estratégias/filtros aparecem em GERAL automaticamente sem editar GUI
+//
 // v1.36 (Parte 024):
 // + Price (CLOSE/OPEN/HIGH/LOW/MEDIAN/TYPICAL) para MA Cross (Fast+Slow) e TrendFilter
 //   m_ce_lFastPrice/m_ce_bFastPrice, m_ce_lSlowPrice/m_ce_bSlowPrice
@@ -335,11 +344,13 @@ enum ENUM_CONFIG_PAGE
   };
 #define CFG_PAGE_COUNT 5
 
-enum ENUM_ESTRAT_PAGE  { ESTRAT_MA_CROSS=0, ESTRAT_RSI=1 };
-#define ESTRAT_PAGE_COUNT 2
+enum ENUM_ESTRAT_PAGE  { ESTRAT_OVERVIEW=0, ESTRAT_MA_CROSS=1, ESTRAT_RSI=2 };
+#define ESTRAT_PAGE_COUNT 3
 
-enum ENUM_FILTROS_PAGE { FILTROS_TREND=0, FILTROS_RSI=1 };
-#define FILTROS_PAGE_COUNT 2
+enum ENUM_FILTROS_PAGE { FILTROS_OVERVIEW=0, FILTROS_TREND=1, FILTROS_RSI=2 };
+#define FILTROS_PAGE_COUNT 3
+
+#define MAX_OVERVIEW_ROWS 6   // máximo de linhas na sub-página GERAL (estratégias ou filtros)
 
 //+------------------------------------------------------------------+
 //| Classe principal do painel                                        |
@@ -450,8 +461,14 @@ private:
    // ABA 2: ESTRATEGIAS
    // ════════════════════════════════════════
    // Sub-page buttons
+   CButton m_e_btnOverview;
    CButton m_e_btnMACross;
    CButton m_e_btnRSI;
+
+   // GERAL sub-page — visão genérica (auto-iterada via SignalManager)
+   CLabel  m_ov_lStrHdr;
+   CLabel  m_ov_eStrName[MAX_OVERVIEW_ROWS];
+   CLabel  m_ov_eStrStatus[MAX_OVERVIEW_ROWS];
 
    // MA CROSS sub-page — display read-only
    CLabel  m_e_hdr2;
@@ -505,8 +522,14 @@ private:
    // ABA 3: FILTROS
    // ════════════════════════════════════════
    // Sub-page buttons
+   CButton m_f_btnOverview;
    CButton m_f_btnTrend;
    CButton m_f_btnRSI;
+
+   // GERAL sub-page — visão genérica (auto-iterada via SignalManager)
+   CLabel  m_ov_lFiltHdr;
+   CLabel  m_ov_eFiltName[MAX_OVERVIEW_ROWS];
+   CLabel  m_ov_eFiltStatus[MAX_OVERVIEW_ROWS];
 
    // TREND sub-page — display
    CLabel  m_f_hdr1;
@@ -754,6 +777,7 @@ private:
    void              ShowEstratPage(ENUM_ESTRAT_PAGE page);
    void              SetEstratPageVis(ENUM_ESTRAT_PAGE page, bool vis);
    void              UpdateEstratBtnStyles(void);
+   void              OnClickEstratOverview(void);
    void              OnClickEstratMACross(void);
    void              OnClickEstratRSI(void);
 
@@ -761,6 +785,7 @@ private:
    void              ShowFiltrosPage(ENUM_FILTROS_PAGE page);
    void              SetFiltrosPageVis(ENUM_FILTROS_PAGE page, bool vis);
    void              UpdateFiltrosBtnStyles(void);
+   void              OnClickFiltrosOverview(void);
    void              OnClickFiltrosTrend(void);
    void              OnClickFiltrosRSI(void);
    // FILTROS — Trend Filter toggle/apply
@@ -1087,12 +1112,14 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       if(sparam == m_btnTab4.Name()) { m_btnTab4.Pressed(false); OnClickTab4(); ChartRedraw(); return; }
 
       // ESTRAT.: sub-páginas
-      if(sparam == m_e_btnMACross.Name()) { m_e_btnMACross.Pressed(false); OnClickEstratMACross(); ChartRedraw(); return; }
-      if(sparam == m_e_btnRSI.Name())     { m_e_btnRSI.Pressed(false);     OnClickEstratRSI();     ChartRedraw(); return; }
+      if(sparam == m_e_btnOverview.Name()) { m_e_btnOverview.Pressed(false); OnClickEstratOverview(); ChartRedraw(); return; }
+      if(sparam == m_e_btnMACross.Name())  { m_e_btnMACross.Pressed(false);  OnClickEstratMACross();  ChartRedraw(); return; }
+      if(sparam == m_e_btnRSI.Name())      { m_e_btnRSI.Pressed(false);      OnClickEstratRSI();      ChartRedraw(); return; }
 
       // FILTROS: sub-páginas
-      if(sparam == m_f_btnTrend.Name())   { m_f_btnTrend.Pressed(false); OnClickFiltrosTrend(); ChartRedraw(); return; }
-      if(sparam == m_f_btnRSI.Name())     { m_f_btnRSI.Pressed(false);   OnClickFiltrosRSI();   ChartRedraw(); return; }
+      if(sparam == m_f_btnOverview.Name()) { m_f_btnOverview.Pressed(false); OnClickFiltrosOverview(); ChartRedraw(); return; }
+      if(sparam == m_f_btnTrend.Name())    { m_f_btnTrend.Pressed(false);    OnClickFiltrosTrend();    ChartRedraw(); return; }
+      if(sparam == m_f_btnRSI.Name())      { m_f_btnRSI.Pressed(false);      OnClickFiltrosRSI();      ChartRedraw(); return; }
       // FILTROS: Trend Filter — toggle + apply + cycle buttons
       if(sparam == m_f_btnTrendToggle.Name())  { m_f_btnTrendToggle.Pressed(false);  OnClickTrendToggle();  ChartRedraw(); return; }
       if(sparam == m_f_btnApplyTrend.Name())   { m_f_btnApplyTrend.Pressed(false);   OnClickApplyTrend();   ChartRedraw(); return; }

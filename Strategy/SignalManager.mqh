@@ -181,6 +181,18 @@ public:
    int               GetFilterCount() const { return m_filterCount; }
    ENUM_CONFLICT_RESOLUTION GetConflictMode() const { return m_conflictMode; }
 
+   // Acesso indexado (para GUI genérica)
+   CStrategyBase*    GetStrategy(int index) const
+     {
+      if(index < 0 || index >= m_strategyCount) return NULL;
+      return m_strategies[index].strategy;
+     }
+   CFilterBase*      GetFilter(int index) const
+     {
+      if(index < 0 || index >= m_filterCount) return NULL;
+      return m_filters[index];
+     }
+
    // ═══════════════════════════════════════════════════════════
    // GETTERS - Input values (valores originais)
    // ═══════════════════════════════════════════════════════════

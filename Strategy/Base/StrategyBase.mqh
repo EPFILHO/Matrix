@@ -107,4 +107,13 @@ public:
    // v2.01: Toggle ON/OFF (override nas filhas para logging)
    virtual void      SetEnabled(bool v) { m_enabled = v; }
    bool              GetEnabled() const { return m_enabled; }
+
+   // v2.02: Resumo de status para GUI genérica (override opcional)
+   virtual string    GetStatusSummary() const
+     {
+      if(!m_isInitialized) return "Nao iniciado";
+      return m_enabled
+             ? "Ativo  (P:" + IntegerToString(m_priority) + ")"
+             : "Inativo";
+     }
   };

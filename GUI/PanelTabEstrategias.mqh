@@ -2,8 +2,14 @@
 //|                                         PanelTabEstrategias.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: ESTRATEGIAS — Create + Update                 |
-//|                     Versão 1.24 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.25 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
+// v1.25 (Parte 026):
+// + Sub-página GERAL (ESTRAT_OVERVIEW): lista genérica de todas as estratégias
+//   m_e_btnOverview: botão de navegação (posição 0); MA CROSS e RSI deslocados
+//   GERAL itera via m_signalManager.GetStrategy(i) → GetName + GetStatusSummary
+//   Nova estratégia aparece automaticamente em GERAL sem editar GUI
+//
 // v1.24 (Parte 024):
 // + NULL guard em OnClickApplyMA e OnClickApplyRSI:
 //   se strategy == NULL, exibe msg de erro no status e retorna — sem crash
@@ -83,8 +89,16 @@ bool CEPBotPanel::CreateTabEstrategias(void)
 // ── Botões de sub-página ──
    int sw = (PANEL_WIDTH - 40) / ESTRAT_PAGE_COUNT;
 
+   if(!m_e_btnOverview.Create(m_chart_id, PFX + "e_bOv", m_subwin,
+                              5, sy, 5 + sw, sy + TAB_BTN_H))
+      return false;
+   m_e_btnOverview.Text("GERAL");
+   m_e_btnOverview.FontSize(7);
+   if(!Add(m_e_btnOverview))
+      return false;
+
    if(!m_e_btnMACross.Create(m_chart_id, PFX + "e_bMC", m_subwin,
-                             5, sy, 5 + sw, sy + TAB_BTN_H))
+                             5 + (sw + 2), sy, 5 + sw * 2 + 2, sy + TAB_BTN_H))
       return false;
    m_e_btnMACross.Text("MA CROSS");
    m_e_btnMACross.FontSize(7);
@@ -92,7 +106,7 @@ bool CEPBotPanel::CreateTabEstrategias(void)
       return false;
 
    if(!m_e_btnRSI.Create(m_chart_id, PFX + "e_bRS", m_subwin,
-                         5 + (sw + 2), sy, 5 + sw * 2 + 2, sy + TAB_BTN_H))
+                         5 + (sw * 2 + 4), sy, 5 + sw * 3 + 4, sy + TAB_BTN_H))
       return false;
    m_e_btnRSI.Text("RSI");
    m_e_btnRSI.FontSize(7);
@@ -364,6 +378,39 @@ bool CEPBotPanel::CreateTabEstrategias(void)
    }
    m_e_statusRSIExpiry = 0;
 
+// ════════════════════════════════════════════════════════════
+// SUB-PÁGINA: GERAL (visão genérica — auto-iterada via SignalManager)
+// ════════════════════════════════════════════════════════════
+   {
+    int yov = ESTRAT_CONTENT_Y;
+    if(!CreateHdr(m_ov_lStrHdr, "ov_sHdr", "ESTRATEGIAS REGISTRADAS", yov)) return false;
+    yov += PANEL_GAP_Y + 2;
+
+    for(int i = 0; i < MAX_OVERVIEW_ROWS; i++)
+      {
+       string si = IntegerToString(i);
+       if(!m_ov_eStrName[i].Create(m_chart_id, PFX + "ov_sN" + si, m_subwin,
+                                   COL_LABEL_X, yov, COL_VALUE_X - 4, yov + PANEL_GAP_Y))
+          return false;
+       m_ov_eStrName[i].FontSize(8);
+       m_ov_eStrName[i].Color(CLR_VALUE);
+       m_ov_eStrName[i].Text("");
+       if(!Add(m_ov_eStrName[i])) return false;
+       m_ov_eStrName[i].Hide();
+
+       if(!m_ov_eStrStatus[i].Create(m_chart_id, PFX + "ov_sS" + si, m_subwin,
+                                     COL_VALUE_X, yov, COL_VALUE_X + COL_VALUE_W, yov + PANEL_GAP_Y))
+          return false;
+       m_ov_eStrStatus[i].FontSize(8);
+       m_ov_eStrStatus[i].Color(CLR_NEUTRAL);
+       m_ov_eStrStatus[i].Text("");
+       if(!Add(m_ov_eStrStatus[i])) return false;
+       m_ov_eStrStatus[i].Hide();
+
+       yov += PANEL_GAP_Y;
+      }
+   }
+
 // ── Sub-página inicial ──
    ShowEstratPage(ESTRAT_MA_CROSS);
 
@@ -377,6 +424,15 @@ void CEPBotPanel::SetEstratPageVis(ENUM_ESTRAT_PAGE page, bool vis)
   {
    switch(page)
      {
+      case ESTRAT_OVERVIEW:
+         m_ov_lStrHdr.Show(vis);
+         for(int i = 0; i < MAX_OVERVIEW_ROWS; i++)
+           {
+            m_ov_eStrName[i].Hide();
+            m_ov_eStrStatus[i].Hide();
+           }
+         // Se mostrando, as linhas são exibidas no próximo Update
+         break;
       case ESTRAT_MA_CROSS:
          if(vis)
            {
@@ -469,20 +525,23 @@ void CEPBotPanel::ShowEstratPage(ENUM_ESTRAT_PAGE page)
 //+------------------------------------------------------------------+
 void CEPBotPanel::UpdateEstratBtnStyles(void)
   {
-   m_e_btnMACross.Pressed(false); m_e_btnRSI.Pressed(false);
+   m_e_btnOverview.Pressed(false); m_e_btnMACross.Pressed(false); m_e_btnRSI.Pressed(false);
 
-   m_e_btnMACross.ColorBackground((m_estratPage == ESTRAT_MA_CROSS) ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
-   m_e_btnRSI.ColorBackground(    (m_estratPage == ESTRAT_RSI)      ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
+   m_e_btnOverview.ColorBackground((m_estratPage == ESTRAT_OVERVIEW) ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
+   m_e_btnMACross.ColorBackground( (m_estratPage == ESTRAT_MA_CROSS) ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
+   m_e_btnRSI.ColorBackground(     (m_estratPage == ESTRAT_RSI)      ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
 
-   m_e_btnMACross.Color((m_estratPage == ESTRAT_MA_CROSS) ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
-   m_e_btnRSI.Color(    (m_estratPage == ESTRAT_RSI)      ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
+   m_e_btnOverview.Color((m_estratPage == ESTRAT_OVERVIEW) ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
+   m_e_btnMACross.Color( (m_estratPage == ESTRAT_MA_CROSS) ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
+   m_e_btnRSI.Color(     (m_estratPage == ESTRAT_RSI)      ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
   }
 
 //+------------------------------------------------------------------+
 //| Handlers de clique das sub-páginas ESTRAT.                        |
 //+------------------------------------------------------------------+
-void CEPBotPanel::OnClickEstratMACross(void) { ShowEstratPage(ESTRAT_MA_CROSS); }
-void CEPBotPanel::OnClickEstratRSI(void)     { ShowEstratPage(ESTRAT_RSI); }
+void CEPBotPanel::OnClickEstratOverview(void) { ShowEstratPage(ESTRAT_OVERVIEW); }
+void CEPBotPanel::OnClickEstratMACross(void)  { ShowEstratPage(ESTRAT_MA_CROSS); }
+void CEPBotPanel::OnClickEstratRSI(void)      { ShowEstratPage(ESTRAT_RSI); }
 
 //+------------------------------------------------------------------+
 //| Helpers — TF cycle, TF name, MA method mapping                    |
@@ -744,7 +803,32 @@ void CEPBotPanel::OnClickApplyRSI(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::UpdateEstrategias(void)
   {
-   if(m_estratPage == ESTRAT_MA_CROSS)
+   if(m_estratPage == ESTRAT_OVERVIEW)
+     {
+      int count = (m_signalManager != NULL) ? m_signalManager.GetStrategyCount() : 0;
+      for(int i = 0; i < MAX_OVERVIEW_ROWS; i++)
+        {
+         if(i < count)
+           {
+            CStrategyBase* s = m_signalManager.GetStrategy(i);
+            if(s != NULL)
+              {
+               m_ov_eStrName[i].Text(s.GetName());
+               bool en = s.GetEnabled();
+               m_ov_eStrStatus[i].Text(s.GetStatusSummary());
+               m_ov_eStrStatus[i].Color(en ? CLR_POSITIVE : CLR_NEUTRAL);
+               m_ov_eStrName[i].Show();
+               m_ov_eStrStatus[i].Show();
+              }
+           }
+         else
+           {
+            m_ov_eStrName[i].Hide();
+            m_ov_eStrStatus[i].Hide();
+           }
+        }
+     }
+   else if(m_estratPage == ESTRAT_MA_CROSS)
      {
 // ── MA Cross ──
       ApplyToggleStyle(m_e_btnMAToggle, m_pendingMAEnabled);

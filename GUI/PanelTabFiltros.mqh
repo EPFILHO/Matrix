@@ -2,10 +2,16 @@
 //|                                            PanelTabFiltros.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: FILTROS — Create + Update                     |
-//|                     Versão 1.15 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.16 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba FILTROS.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
+//
+// v1.16 (Parte 026):
+// + Sub-página GERAL (FILTROS_OVERVIEW): lista genérica de todos os filtros
+//   m_f_btnOverview: botão de navegação (posição 0); TREND e RSI FILT deslocados
+//   GERAL itera via m_signalManager.GetFilter(i) → GetName + GetStatusSummary
+//   Novo filtro aparece automaticamente em GERAL sem editar GUI
 //
 // v1.15 (Parte 024):
 // + NULL guard em OnClickApplyTrend e OnClickApplyRSIFilt:
@@ -42,8 +48,16 @@ bool CEPBotPanel::CreateTabFiltros(void)
 // ── Botões de sub-página ──
    int sw = (PANEL_WIDTH - 40) / FILTROS_PAGE_COUNT;
 
+   if(!m_f_btnOverview.Create(m_chart_id, PFX + "f_bOv", m_subwin,
+                              5, sy, 5 + sw, sy + TAB_BTN_H))
+      return false;
+   m_f_btnOverview.Text("GERAL");
+   m_f_btnOverview.FontSize(7);
+   if(!Add(m_f_btnOverview))
+      return false;
+
    if(!m_f_btnTrend.Create(m_chart_id, PFX + "f_bTr", m_subwin,
-                           5, sy, 5 + sw, sy + TAB_BTN_H))
+                           5 + (sw + 2), sy, 5 + sw * 2 + 2, sy + TAB_BTN_H))
       return false;
    m_f_btnTrend.Text("TREND");
    m_f_btnTrend.FontSize(7);
@@ -51,7 +65,7 @@ bool CEPBotPanel::CreateTabFiltros(void)
       return false;
 
    if(!m_f_btnRSI.Create(m_chart_id, PFX + "f_bRS", m_subwin,
-                         5 + (sw + 2), sy, 5 + sw * 2 + 2, sy + TAB_BTN_H))
+                         5 + (sw * 2 + 4), sy, 5 + sw * 3 + 4, sy + TAB_BTN_H))
       return false;
    m_f_btnRSI.Text("RSI FILT");
    m_f_btnRSI.FontSize(7);
@@ -253,6 +267,39 @@ bool CEPBotPanel::CreateTabFiltros(void)
    if(!Add(m_f_statusRSIFilt)) return false;
    m_f_statusRSIFiltExpiry = 0;
 
+// ════════════════════════════════════════════════════════════
+// SUB-PÁGINA: GERAL (visão genérica — auto-iterada via SignalManager)
+// ════════════════════════════════════════════════════════════
+   {
+    int yov = FILTROS_CONTENT_Y;
+    if(!CreateHdr(m_ov_lFiltHdr, "ov_fHdr", "FILTROS REGISTRADOS", yov)) return false;
+    yov += PANEL_GAP_Y + 2;
+
+    for(int i = 0; i < MAX_OVERVIEW_ROWS; i++)
+      {
+       string si = IntegerToString(i);
+       if(!m_ov_eFiltName[i].Create(m_chart_id, PFX + "ov_fN" + si, m_subwin,
+                                    COL_LABEL_X, yov, COL_VALUE_X - 4, yov + PANEL_GAP_Y))
+          return false;
+       m_ov_eFiltName[i].FontSize(8);
+       m_ov_eFiltName[i].Color(CLR_VALUE);
+       m_ov_eFiltName[i].Text("");
+       if(!Add(m_ov_eFiltName[i])) return false;
+       m_ov_eFiltName[i].Hide();
+
+       if(!m_ov_eFiltStatus[i].Create(m_chart_id, PFX + "ov_fS" + si, m_subwin,
+                                      COL_VALUE_X, yov, COL_VALUE_X + COL_VALUE_W, yov + PANEL_GAP_Y))
+          return false;
+       m_ov_eFiltStatus[i].FontSize(8);
+       m_ov_eFiltStatus[i].Color(CLR_NEUTRAL);
+       m_ov_eFiltStatus[i].Text("");
+       if(!Add(m_ov_eFiltStatus[i])) return false;
+       m_ov_eFiltStatus[i].Hide();
+
+       yov += PANEL_GAP_Y;
+      }
+   }
+
 // ── Sub-página inicial ──
    ShowFiltrosPage(FILTROS_TREND);
 
@@ -266,6 +313,15 @@ void CEPBotPanel::SetFiltrosPageVis(ENUM_FILTROS_PAGE page, bool vis)
   {
    switch(page)
      {
+      case FILTROS_OVERVIEW:
+         m_ov_lFiltHdr.Show(vis);
+         for(int i = 0; i < MAX_OVERVIEW_ROWS; i++)
+           {
+            m_ov_eFiltName[i].Hide();
+            m_ov_eFiltStatus[i].Hide();
+           }
+         // Se mostrando, as linhas são exibidas no próximo Update
+         break;
       case FILTROS_TREND:
          if(vis)
            {
@@ -338,27 +394,55 @@ void CEPBotPanel::ShowFiltrosPage(ENUM_FILTROS_PAGE page)
 //+------------------------------------------------------------------+
 void CEPBotPanel::UpdateFiltrosBtnStyles(void)
   {
-   m_f_btnTrend.Pressed(false); m_f_btnRSI.Pressed(false);
+   m_f_btnOverview.Pressed(false); m_f_btnTrend.Pressed(false); m_f_btnRSI.Pressed(false);
 
-   m_f_btnTrend.ColorBackground((m_filtrosPage == FILTROS_TREND) ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
-   m_f_btnRSI.ColorBackground(  (m_filtrosPage == FILTROS_RSI)   ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
+   m_f_btnOverview.ColorBackground((m_filtrosPage == FILTROS_OVERVIEW) ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
+   m_f_btnTrend.ColorBackground(   (m_filtrosPage == FILTROS_TREND)    ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
+   m_f_btnRSI.ColorBackground(     (m_filtrosPage == FILTROS_RSI)      ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
 
-   m_f_btnTrend.Color((m_filtrosPage == FILTROS_TREND) ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
-   m_f_btnRSI.Color(  (m_filtrosPage == FILTROS_RSI)   ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
+   m_f_btnOverview.Color((m_filtrosPage == FILTROS_OVERVIEW) ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
+   m_f_btnTrend.Color(   (m_filtrosPage == FILTROS_TREND)    ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
+   m_f_btnRSI.Color(     (m_filtrosPage == FILTROS_RSI)      ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
   }
 
 //+------------------------------------------------------------------+
 //| Handlers de clique das sub-páginas FILTROS                        |
 //+------------------------------------------------------------------+
-void CEPBotPanel::OnClickFiltrosTrend(void) { ShowFiltrosPage(FILTROS_TREND); }
-void CEPBotPanel::OnClickFiltrosRSI(void)   { ShowFiltrosPage(FILTROS_RSI); }
+void CEPBotPanel::OnClickFiltrosOverview(void) { ShowFiltrosPage(FILTROS_OVERVIEW); }
+void CEPBotPanel::OnClickFiltrosTrend(void)    { ShowFiltrosPage(FILTROS_TREND); }
+void CEPBotPanel::OnClickFiltrosRSI(void)      { ShowFiltrosPage(FILTROS_RSI); }
 
 //+------------------------------------------------------------------+
 //| UpdateFiltros — atualiza dados da aba FILTROS                     |
 //+------------------------------------------------------------------+
 void CEPBotPanel::UpdateFiltros(void)
   {
-   if(m_filtrosPage == FILTROS_TREND)
+   if(m_filtrosPage == FILTROS_OVERVIEW)
+     {
+      int count = (m_signalManager != NULL) ? m_signalManager.GetFilterCount() : 0;
+      for(int i = 0; i < MAX_OVERVIEW_ROWS; i++)
+        {
+         if(i < count)
+           {
+            CFilterBase* f = m_signalManager.GetFilter(i);
+            if(f != NULL)
+              {
+               m_ov_eFiltName[i].Text(f.GetName());
+               bool en = f.IsEnabled();
+               m_ov_eFiltStatus[i].Text(f.GetStatusSummary());
+               m_ov_eFiltStatus[i].Color(en ? CLR_POSITIVE : CLR_NEUTRAL);
+               m_ov_eFiltName[i].Show();
+               m_ov_eFiltStatus[i].Show();
+              }
+           }
+         else
+           {
+            m_ov_eFiltName[i].Hide();
+            m_ov_eFiltStatus[i].Hide();
+           }
+        }
+     }
+   else if(m_filtrosPage == FILTROS_TREND)
      {
 // ── Trend Filter — display ──
       if(m_trendFilter.IsInitialized())
