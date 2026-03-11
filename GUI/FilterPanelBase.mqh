@@ -2,7 +2,7 @@
 //|                                             FilterPanelBase.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Interface base para sub-páginas de filtro                 |
-//|                     Versão 1.00 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.00 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh ANTES da definição de CEPBotPanel.
 // Usa forward declaration para CEPBotPanel.

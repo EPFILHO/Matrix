@@ -2,9 +2,9 @@
 //|                                         PanelTabEstrategias.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: ESTRATEGIAS — orquestração genérica           |
-//|                     Versão 1.26 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.26 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
-// v1.26 (Parte 027):
+// v1.26 (Parte 025):
 // REESCRITO: orquestração genérica via CStrategyPanelBase[]
 //   CreateTabEstrategias: cria botão GERAL + 1 por painel registrado
 //   SetEstratPageVis(int): page=0 → GERAL labels; page>0 → panel.Show/Hide
@@ -13,7 +13,7 @@
 //   UpdateEstrategias(): page=0 → loop genérico; page>0 → panel.Update()
 //   Adicionar nova estratégia: RegisterPanels() + 0 linhas aqui
 //
-// v1.25 (Parte 026): sub-página GERAL genérica
+// v1.25 (Parte 025): sub-página GERAL genérica
 // v1.13–1.24: histórico anterior (MA Cross + RSI hard-coded)
 
 //+------------------------------------------------------------------+

@@ -2,9 +2,9 @@
 //|                                            PanelTabFiltros.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: FILTROS — orquestração genérica               |
-//|                     Versão 1.17 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.17 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
-// v1.17 (Parte 027):
+// v1.17 (Parte 025):
 // REESCRITO: orquestração genérica via CFilterPanelBase[]
 //   Mesma estrutura de PanelTabEstrategias v1.26
 //   CreateTabFiltros: cria botão GERAL + 1 por painel registrado
@@ -14,7 +14,7 @@
 //   UpdateFiltros(): page=0 → loop genérico; page>0 → panel.Update()
 //   Adicionar novo filtro: RegisterPanels() + 0 linhas aqui
 //
-// v1.16 (Parte 026): sub-página GERAL genérica
+// v1.16 (Parte 025): sub-página GERAL genérica
 // v1.12–1.15: histórico anterior (Trend + RSI Filter hard-coded)
 
 //+------------------------------------------------------------------+

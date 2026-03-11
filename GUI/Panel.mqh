@@ -2,7 +2,7 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.38 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.38 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.38"
@@ -11,7 +11,7 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.38 (Parte 027):
+// v1.38 (Parte 025):
 // + CStrategyPanelBase / CFilterPanelBase: base abstrata para sub-páginas
 //   Cada estratégia/filtro encapsula seus controles em GUI/Panels/*.mqh
 //   RegisterPanels(): factory method — cria painéis e popula arrays dinâmicos
@@ -26,7 +26,7 @@
 // + m_e_stratBtns[MAX_STRAT_PANELS], m_f_filtBtns[MAX_FILT_PANELS]: nav buttons
 // + int m_estratPage / m_filtrosPage: substitui ENUM_ESTRAT/FILTROS_PAGE (extensível)
 //
-// v1.37 (Parte 026):
+// v1.37 (Parte 025):
 // + Sub-página GERAL em ESTRATEGIAS e FILTROS (GUI genérica)
 //   ESTRAT_OVERVIEW=0, ESTRAT_PAGE_COUNT 2→3; FILTROS_OVERVIEW=0, FILTROS_PAGE_COUNT 2→3
 //   MAX_OVERVIEW_ROWS=6: até 6 linhas auto-iteradas via SignalManager.GetStrategy/Filter(i)

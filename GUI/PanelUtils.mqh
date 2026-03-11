@@ -2,7 +2,7 @@
 //|                                                   PanelUtils.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|          Funções utilitárias livres para sub-páginas do painel    |
-//|                     Versão 1.00 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.00 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 // NOTA: Incluído por Panel.mqh APÓS #include das dependências de
 //       Strategy/Filters e <Controls\Button.mqh>.
