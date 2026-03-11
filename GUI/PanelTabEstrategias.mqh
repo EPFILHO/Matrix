@@ -82,7 +82,7 @@ bool CEPBotPanel::CreateTabEstrategias(void)
 // ── Criar controles de cada painel ──
    for(int i = 0; i < m_stratPanelCount; i++)
      {
-      if(!m_stratPanels[i].Create(this, m_chart_id, m_subwin)) return false;
+      if(!m_stratPanels[i].Create(GetPointer(this), m_chart_id, m_subwin)) return false;
      }
 
 // ── Sub-página inicial ──

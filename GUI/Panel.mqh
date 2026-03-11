@@ -290,11 +290,6 @@
 #include "../Strategy/Filters/TrendFilter.mqh"
 #include "../Strategy/Filters/RSIFilter.mqh"
 
-// Utilitários e interfaces de painel (ANTES da definição de CEPBotPanel)
-#include "PanelUtils.mqh"
-#include "StrategyPanelBase.mqh"
-#include "FilterPanelBase.mqh"
-
 // ═══════════════════════════════════════════════════════════════
 // DIMENSÕES E LAYOUT
 // ═══════════════════════════════════════════════════════════════
@@ -335,6 +330,11 @@
 #define CLR_RADIO_INACTIVE   C'180,180,180'
 #define CLR_RADIO_TXT_ACT    clrWhite
 #define CLR_RADIO_TXT_INACT  C'80,80,80'
+
+// Utilitários e interfaces de painel (APÓS #defines, ANTES da definição de CEPBotPanel)
+#include "PanelUtils.mqh"
+#include "StrategyPanelBase.mqh"
+#include "FilterPanelBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
 // PREFIXO DE OBJETOS (evita colisão)

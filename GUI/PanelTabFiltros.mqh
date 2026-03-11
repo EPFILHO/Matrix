@@ -83,7 +83,7 @@ bool CEPBotPanel::CreateTabFiltros(void)
 // ── Criar controles de cada painel ──
    for(int i = 0; i < m_filtPanelCount; i++)
      {
-      if(!m_filtPanels[i].Create(this, m_chart_id, m_subwin)) return false;
+      if(!m_filtPanels[i].Create(GetPointer(this), m_chart_id, m_subwin)) return false;
      }
 
 // ── Sub-página inicial ──
