@@ -2,11 +2,20 @@
 //|                                                 StrategyBase.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                                Interface Base para Estratégias   |
-//|                                   Versão 2.01 - Claude Parte 024 |
+//|                                   Versão 2.02 - Claude Parte 025 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.01"
+#property version   "2.02"
 #property strict
+
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG
+// v2.02 (Parte 025):
+// + GetStatusSummary(): virtual — retorna string de status para
+//   sub-página GERAL do painel GUI
+//   Default: "Nao iniciado" / "Ativo (P:N)" / "Inativo"
+//   Estratégias específicas podem sobrescrever para info extra
+// ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
 //| Enum para tipo de sinal                                          |

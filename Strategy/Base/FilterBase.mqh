@@ -2,10 +2,19 @@
 //|                                                   FilterBase.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                                  Interface Base para Filtros     |
+//|                                   Versão 2.01 - Claude Parte 025 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.00"
+#property version   "2.01"
 #property strict
+
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG
+// v2.01 (Parte 025):
+// + GetStatusSummary(): virtual — retorna string de status para
+//   sub-página GERAL do painel GUI
+//   Default: "Nao iniciado" / "Ativo" / "Inativo"
+// ═══════════════════════════════════════════════════════════════
 
 #include "StrategyBase.mqh"  // Para usar ENUM_SIGNAL_TYPE
 

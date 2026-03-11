@@ -2,10 +2,10 @@
 //|                                               SignalManager.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                   Gerenciador de Sinais e Filtros - EPBot Matrix |
-//|                                   Versão 2.13 - Claude Parte 024 |
+//|                                   Versão 2.14 - Claude Parte 025 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.13"
+#property version   "2.14"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,11 @@
 #include "Base/StrategyBase.mqh"
 #include "Base/FilterBase.mqh"
 
+// ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.14 (Parte 025):
+// + GetStrategy(int index): acesso indexado a estratégias registradas
+// + GetFilter(int index): acesso indexado a filtros registrados
+//   Ambos usados pelo painel GERAL para iterar via SignalManager
 // ═══════════════════════════════════════════════════════════════
 // NOVIDADES v2.13 (Parte 024):
 // + StrategyItem.enabled removido — usa strategy.GetEnabled()
