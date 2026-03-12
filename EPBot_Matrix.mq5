@@ -193,6 +193,26 @@
 //+------------------------------------------------------------------+
 
 //+------------------------------------------------------------------+
+//| NOTAS TÉCNICAS / DÉBITOS TÉCNICOS                                |
+//+------------------------------------------------------------------+
+// [1] GAP Init/CreatePanel — Parte 025
+//     RegisterPanels() é chamado em Init(), mas os controles GUI dos
+//     painéis só são criados em CreatePanel(). Se Update() fosse
+//     chamado nesse intervalo, tentaria atualizar controles que ainda
+//     não existem. Atualmente não é um bug porque o timer só é
+//     ativado após CreatePanel() retornar, mas se o ciclo de vida
+//     for refatorado, garantir que Update() nunca precede CreatePanel().
+//
+// [2] Assimetria de API StrategyBase x FilterBase — Parte 025
+//     CStrategyBase usa GetEnabled() / SetEnabled()
+//     CFilterBase   usa IsEnabled()  / SetEnabled()
+//     Nomes diferentes para o mesmo conceito — herdado das versões
+//     anteriores. Código atual usa o método correto em cada lugar.
+//     Ao criar novas estratégias/filtros, lembrar dessa diferença.
+//     (Unificar para GetEnabled() em ambas as bases quando conveniente)
+//+------------------------------------------------------------------+
+
+//+------------------------------------------------------------------+
 //| INCLUDES - ORDEM IMPORTANTE                                      |
 //+------------------------------------------------------------------+
 
