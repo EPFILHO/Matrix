@@ -146,6 +146,29 @@
 //|      projectedProfit separados                                   |
 //|    - Compatível com Blockers v3.06                               |
 //+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
+//| KNOWN LIMITATION (documentado em 2026-03):                      |
+//| ⚠️  INCONSISTÊNCIA: Logger.m_dailyWins/Losses vs Streak          |
+//|                                                                  |
+//|  Quando TP1+TP2 executam E o deal final fecha no prejuízo:       |
+//|    - Streak (isWin): usa totalPositionProfit → WIN ✅            |
+//|    - Logger UpdateStats(): usa finalDealProfit → LOSS ❌         |
+//|                                                                  |
+//|  Consequências:                                                  |
+//|    1. Win rate no relatório TXT pode ficar errado (cosmético)    |
+//|    2. Após reinício do EA, LoadDailyStats() lê o deal final      |
+//|       como LOSS e reconstrói o streak incorretamente             |
+//|                                                                  |
+//|  O que NÃO é afetado:                                           |
+//|    - Limites diários (gain/loss): GetDailyProfit() = correto     |
+//|    - Streak durante operação normal (sem reinício): correto      |
+//|                                                                  |
+//|  Por que não foi corrigido:                                      |
+//|    - Cenário muito raro (TP1+TP2 hit + trailing + SL posterior)  |
+//|    - Impacto: streak off-by-1 por 1 trade, autocorrigido logo    |
+//|    - Custo da correção: mudança no formato CSV (área sensível)   |
+//|    - Risco de regressão > benefício real                         |
+//+------------------------------------------------------------------+
 //| CHANGELOG v1.28:                                                 |
 //| 🔧 Remoção de inp_InitialBalance:                                |
 //|    - Saldo inicial agora auto-detectado via AccountBalance()     |
@@ -1075,6 +1098,12 @@ void OnTick()
             g_logger.SaveTrade(g_lastPositionTicket, finalDealProfit);
 
             // Atualizar estatísticas (apenas o deal final)
+            // ⚠️ KNOWN LIMITATION: UpdateStats usa finalDealProfit, mas isWin abaixo usa
+            // totalPositionProfit. Se TP1+TP2 executaram e o deal final fechou no prejuízo,
+            // m_dailyWins/Losses ficará inconsistente com o streak (win rate errado no
+            // relatório, e streak reconstruído incorretamente após reinício do EA).
+            // Impacto baixo — cenário raro, limites diários NÃO são afetados.
+            // Ver "KNOWN LIMITATION" no changelog do EA para análise completa.
             g_logger.UpdateStats(finalDealProfit);
 
             // Registrar no Blockers - usar totalPositionProfit para determinar win/loss
