@@ -2,15 +2,39 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.36 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.38 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.36"
+#property version   "1.38"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.38 (Parte 025):
+// + CStrategyPanelBase / CFilterPanelBase: base abstrata para sub-páginas
+//   Cada estratégia/filtro encapsula seus controles em GUI/Panels/*.mqh
+//   RegisterPanels(): factory method — cria painéis e popula arrays dinâmicos
+//   ChartEvent: loops genéricos (2 linhas) em vez de if-chains por controle
+//   PanelTabEstrategias/Filtros: simplificado para ~150 / ~100 linhas
+//   Nova estratégia/filtro = 1 arquivo novo + 2 linhas em RegisterPanels()
+// + PanelUtils.mqh: funções livres (TFName, CycleTF, ApplyToggleStyle, ...)
+//   Remove duplicação de static methods em CEPBotPanel
+// + Helpers CreateLV/CreateHdr/etc tornados public para acesso pelos painéis
+// + AddControl(CWnd&): wrapper público de Add()
+// + MAX_STRAT_PANELS=6, MAX_FILT_PANELS=6: tamanho fixo dos arrays de botões
+// + m_e_stratBtns[MAX_STRAT_PANELS], m_f_filtBtns[MAX_FILT_PANELS]: nav buttons
+// + int m_estratPage / m_filtrosPage: substitui ENUM_ESTRAT/FILTROS_PAGE (extensível)
+//
+// v1.37 (Parte 025):
+// + Sub-página GERAL em ESTRATEGIAS e FILTROS (GUI genérica)
+//   ESTRAT_OVERVIEW=0, ESTRAT_PAGE_COUNT 2→3; FILTROS_OVERVIEW=0, FILTROS_PAGE_COUNT 2→3
+//   MAX_OVERVIEW_ROWS=6: até 6 linhas auto-iteradas via SignalManager.GetStrategy/Filter(i)
+//   m_e_btnOverview, m_ov_lStrHdr, m_ov_eStrName[6], m_ov_eStrStatus[6]
+//   m_f_btnOverview, m_ov_lFiltHdr, m_ov_eFiltName[6], m_ov_eFiltStatus[6]
+//   OnClickEstratOverview, OnClickFiltrosOverview
+//   Novas estratégias/filtros aparecem em GERAL automaticamente sem editar GUI
+//
 // v1.36 (Parte 024):
 // + Price (CLOSE/OPEN/HIGH/LOW/MEDIAN/TYPICAL) para MA Cross (Fast+Slow) e TrendFilter
 //   m_ce_lFastPrice/m_ce_bFastPrice, m_ce_lSlowPrice/m_ce_bSlowPrice
@@ -307,6 +331,11 @@
 #define CLR_RADIO_TXT_ACT    clrWhite
 #define CLR_RADIO_TXT_INACT  C'80,80,80'
 
+// Utilitários e interfaces de painel (APÓS #defines, ANTES da definição de CEPBotPanel)
+#include "PanelUtils.mqh"
+#include "StrategyPanelBase.mqh"
+#include "FilterPanelBase.mqh"
+
 // ═══════════════════════════════════════════════════════════════
 // PREFIXO DE OBJETOS (evita colisão)
 // ═══════════════════════════════════════════════════════════════
@@ -335,11 +364,14 @@ enum ENUM_CONFIG_PAGE
   };
 #define CFG_PAGE_COUNT 5
 
-enum ENUM_ESTRAT_PAGE  { ESTRAT_MA_CROSS=0, ESTRAT_RSI=1 };
-#define ESTRAT_PAGE_COUNT 2
+// Sub-páginas ESTRAT/FILTROS agora são int (índice 0=GERAL, 1..N=painéis)
+// Mantidos como aliases de compatibilidade para SetTabVis/ReapplyTabVisibility
+#define ESTRAT_PAGE_COUNT  3   // GERAL + MACross + RSI (para backward compat em loops)
+#define FILTROS_PAGE_COUNT 3   // GERAL + Trend + RSI Filt
 
-enum ENUM_FILTROS_PAGE { FILTROS_TREND=0, FILTROS_RSI=1 };
-#define FILTROS_PAGE_COUNT 2
+#define MAX_OVERVIEW_ROWS  6   // máximo de linhas na sub-página GERAL
+#define MAX_STRAT_PANELS   6   // máximo de botões de sub-página ESTRAT. (inclui GERAL)
+#define MAX_FILT_PANELS    6   // máximo de botões de sub-página FILTROS (inclui GERAL)
 
 //+------------------------------------------------------------------+
 //| Classe principal do painel                                        |
@@ -355,26 +387,24 @@ private:
    CSignalManager    *m_signalManager;
    CMACrossStrategy  *m_maCross;
    CRSIStrategy      *m_rsiStrategy;
-   // (v1.33: removido m_rsiGlobalPtr — MQL5 não suporta **)
-   bool               m_pendingMAEnabled;       // estado pendente do toggle MA (antes de APLICAR)
-   bool               m_pendingRSIEnabled;      // estado pendente do toggle RSI (antes de APLICAR)
-   bool               m_pendingTrendEnabled;    // estado pendente do toggle TrendFilter
-   bool               m_pendingRSIFiltEnabled;  // estado pendente do toggle RSIFilter
-   ENUM_MA_METHOD     m_cur_trendMethod;         // método MA selecionado no painel
-   ENUM_TIMEFRAMES    m_cur_trendTF;             // TF selecionado no painel (TrendFilter)
-   ENUM_APPLIED_PRICE m_cur_trendPrice;          // applied price selecionado (TrendFilter)
-   ENUM_RSI_FILTER_MODE m_cur_rsiFiltMode;       // modo RSI Filter selecionado
-   ENUM_TIMEFRAMES    m_cur_rsiFiltTF;           // TF selecionado (RSI Filter)
-   uint               m_f_statusTrendExpiry;     // expiração da msg de status TrendFilter
-   uint               m_f_statusRSIFiltExpiry;   // expiração da msg de status RSIFilter
    CTrendFilter      *m_trendFilter;
    CRSIFilter        *m_rsiFilter;
+
+   // ── Painéis dinâmicos (criados em RegisterPanels) ──
+   CStrategyPanelBase *m_stratPanels[];
+   CFilterPanelBase   *m_filtPanels[];
+   int                 m_stratPanelCount;
+   int                 m_filtPanelCount;
+   CButton             m_e_stratBtns[MAX_STRAT_PANELS];  // [0]=GERAL, [1..N]=painéis
+   CButton             m_f_filtBtns[MAX_FILT_PANELS];    // [0]=GERAL, [1..N]=painéis
+   int                 m_stratBtnCount;
+   int                 m_filtBtnCount;
 
    // ── Estado ──
    ENUM_PANEL_TAB     m_activeTab;
    ENUM_CONFIG_PAGE   m_cfgPage;
-   ENUM_ESTRAT_PAGE   m_estratPage;
-   ENUM_FILTROS_PAGE  m_filtrosPage;
+   int                m_estratPage;    // 0=GERAL, 1..N=painel
+   int                m_filtrosPage;   // 0=GERAL, 1..N=painel
    int                m_magicNumber;
    string             m_symbol;
 
@@ -449,96 +479,20 @@ private:
    // ════════════════════════════════════════
    // ABA 2: ESTRATEGIAS
    // ════════════════════════════════════════
-   // Sub-page buttons
-   CButton m_e_btnMACross;
-   CButton m_e_btnRSI;
-
-   // MA CROSS sub-page — display read-only
-   CLabel  m_e_hdr2;
-   CButton m_e_btnMAToggle;                              // Toggle ON/OFF (v1.28)
-   CLabel  m_e_lMAStatus;      CLabel  m_e_eMAStatus;
-   CLabel  m_e_lMAFast;        CLabel  m_e_eMAFast;
-   CLabel  m_e_lMASlow;        CLabel  m_e_eMASlow;
-   CLabel  m_e_lMACross;       CLabel  m_e_eMACross;
-   CLabel  m_e_lMACandles;     CLabel  m_e_eMACandles;
-   CLabel  m_e_lLeg1;           // Legenda: FCO
-   CLabel  m_e_lLeg2;           // Legenda: VM
-   CLabel  m_e_lLeg3;           // Legenda: TP/SL
-   // MA CROSS sub-page — config editável (hot/cold reload)
-   CLabel   m_ce_hdr1;
-   CLabel   m_ce_lFastP;      CEdit    m_ce_iFastP;
-   CLabel   m_ce_lFastM;      CButton  m_ce_bFastM[4];   // Radio: SMA|EMA|SMMA|LWMA
-   CLabel   m_ce_lFastTF;     CButton  m_ce_bFastTF;     // Cycle
-   CLabel   m_ce_lFastPrice;  CButton  m_ce_bFastPrice;  // Cycle Price
-   CLabel   m_ce_lSlowP;      CEdit    m_ce_iSlowP;
-   CLabel   m_ce_lSlowM;      CButton  m_ce_bSlowM[4];   // Radio: SMA|EMA|SMMA|LWMA
-   CLabel   m_ce_lSlowTF;     CButton  m_ce_bSlowTF;     // Cycle
-   CLabel   m_ce_lSlowPrice;  CButton  m_ce_bSlowPrice;  // Cycle Price
-   CLabel   m_ce_hdr2;
-   CLabel   m_ce_lEntry;   CButton  m_ce_bEntry[2];   // Radio: PROX. CANDLE|2o. CANDLE
-   CLabel   m_ce_lExit;    CButton  m_ce_bExit[3];    // Radio: FCO|VM|TP-SL
-   CButton  m_e_btnApplyMA;
-   CLabel   m_e_statusMA;
-   uint     m_e_statusMAExpiry;
-
-   // RSI sub-page — display read-only
-   CLabel  m_e_hdr3;
-   CButton m_e_btnRSIToggle;                             // Toggle ON/OFF (v1.28)
-   CLabel  m_e_lRSIStatus;     CLabel  m_e_eRSIStatus;
-   CLabel  m_e_lRSICurr;       CLabel  m_e_eRSICurr;
-   CLabel  m_e_lRSIMode;       CLabel  m_e_eRSIMode;
-   CLabel  m_e_lRSILevels;     CLabel  m_e_eRSILevels;
-   // RSI sub-page — config editável (hot/cold reload)
-   CLabel   m_re_hdr1;                                // CONFIGURACOES header
-   CLabel   m_re_lPeriod;   CEdit    m_re_iPeriod;    // Período
-   CLabel   m_re_lTF;       CButton  m_re_bTF;        // Timeframe (cycle)
-   CLabel   m_re_lMode;     CButton  m_re_bMode[3];   // Radio: Crossover|Zone|Middle
-   CLabel   m_re_lModeDesc;                           // Legenda dinâmica do modo selecionado
-   CLabel   m_re_lOversold; CEdit    m_re_iOversold;   // Nível Oversold
-   CLabel   m_re_lOverbought; CEdit  m_re_iOverbought; // Nível Overbought
-   CLabel   m_re_lMiddle;   CEdit    m_re_iMiddle;     // Nível Médio
-   CButton  m_e_btnApplyRSI;
-   CLabel   m_e_statusRSI;
-   uint     m_e_statusRSIExpiry;
+   // GERAL sub-page — visão genérica (auto-iterada via SignalManager)
+   CLabel  m_ov_lStrHdr;
+   CLabel  m_ov_eStrName[MAX_OVERVIEW_ROWS];
+   CLabel  m_ov_eStrStatus[MAX_OVERVIEW_ROWS];
+   // Controles de estratégia específicos agora vivem nos painéis (GUI/Panels/*.mqh)
 
    // ════════════════════════════════════════
    // ABA 3: FILTROS
    // ════════════════════════════════════════
-   // Sub-page buttons
-   CButton m_f_btnTrend;
-   CButton m_f_btnRSI;
-
-   // TREND sub-page — display
-   CLabel  m_f_hdr1;
-   CLabel  m_f_lTrendSt;       CLabel  m_f_eTrendSt;
-   CLabel  m_f_lTrendMA;       CLabel  m_f_eTrendMA;
-   CLabel  m_f_lTrendDist;     CLabel  m_f_eTrendDist;
-   // TREND sub-page — config
-   CLabel   m_ft_hdrConf;
-   CButton  m_f_btnTrendToggle;
-   CLabel   m_ft_lPeriod;      CEdit    m_ft_iPeriod;
-   CLabel   m_ft_lMethod;      CButton  m_ft_bMethod[4];  // Radio: SMA|EMA|SMMA|LWMA
-   CLabel   m_ft_lTF;          CButton  m_ft_bTF;
-   CLabel   m_ft_lPrice;       CButton  m_ft_bPrice;   // Cycle Price
-   CLabel   m_ft_lNeutDist;    CEdit    m_ft_iNeutDist;
-   CButton  m_f_btnApplyTrend;
-   CLabel   m_f_statusTrend;
-
-   // RSI FILTER sub-page — display
-   CLabel  m_f_hdr2;
-   CLabel  m_f_lRFiltSt;       CLabel  m_f_eRFiltSt;
-   CLabel  m_f_lRFiltRSI;      CLabel  m_f_eRFiltRSI;
-   CLabel  m_f_lRFiltMode;     CLabel  m_f_eRFiltMode;
-   // RSI FILTER sub-page — config
-   CLabel   m_frf_hdrConf;
-   CButton  m_f_btnRSIFiltToggle;
-   CLabel   m_frf_lPeriod;     CEdit    m_frf_iPeriod;
-   CLabel   m_frf_lTF;         CButton  m_frf_bTF;
-   CLabel   m_frf_lMode;       CButton  m_frf_bMode[3];
-   CLabel   m_frf_lOversold;   CEdit    m_frf_iOversold;
-   CLabel   m_frf_lOverbought; CEdit    m_frf_iOverbought;
-   CButton  m_f_btnApplyRSIFilt;
-   CLabel   m_f_statusRSIFilt;
+   // GERAL sub-page — visão genérica (auto-iterada via SignalManager)
+   CLabel  m_ov_lFiltHdr;
+   CLabel  m_ov_eFiltName[MAX_OVERVIEW_ROWS];
+   CLabel  m_ov_eFiltStatus[MAX_OVERVIEW_ROWS];
+   // Controles de filtro específicos agora vivem nos painéis (GUI/Panels/*.mqh)
 
    // ════════════════════════════════════════
    // ABA 4: CONFIG — Hot Reload
@@ -694,25 +648,16 @@ private:
    bool                      m_cur_newsOn1;
    bool                      m_cur_newsOn2;
    bool                      m_cur_newsOn3;
-   // MA Cross ESTRAT (v1.26)
-   ENUM_MA_METHOD            m_cur_maFastMethod;
-   ENUM_MA_METHOD            m_cur_maSlowMethod;
-   ENUM_TIMEFRAMES           m_cur_maFastTF;
-   ENUM_TIMEFRAMES           m_cur_maSlowTF;
-   ENUM_APPLIED_PRICE        m_cur_maFastPrice;
-   ENUM_APPLIED_PRICE        m_cur_maSlowPrice;
-   ENUM_ENTRY_MODE           m_cur_maEntry;
-   ENUM_EXIT_MODE            m_cur_maExit;
-   // RSI ESTRAT (v1.15)
-   ENUM_TIMEFRAMES           m_cur_rsiTF;
-   ENUM_RSI_SIGNAL_MODE      m_cur_rsiMode;
+   // (MA Cross e RSI ESTRAT state vars movidos para CMACrossPanel / CRSIStrategyPanel)
 
-   // ── Helpers privados ──
+   // ── Helpers públicos (usados pelos painéis GUI/Panels/*.mqh) ──
+public:
    bool              CreateLV(CLabel &lbl, CLabel &val, string ln, string en, string lt, int y);
    bool              CreateLI(CLabel &lbl, CEdit &inp, string ln, string en, string lt, int y);
    bool              CreateLB(CLabel &lbl, CButton &btn, string ln, string bn, string lt, int y);
    bool              CreateHdr(CLabel &lbl, string name, string text, int y);
    void              SetEV(CLabel &val, string value, color clr = CLR_VALUE);
+   bool              AddControl(CWnd &ctrl) { return Add(ctrl); }
 
    // Radio group helpers
    bool              CreateRadioGroup(CLabel &lbl, CButton &btns[],
@@ -720,6 +665,8 @@ private:
                                       string labelText,
                                       const string &texts[], int count, int y);
    void              SetRadioSelection(CButton &btns[], int count, int selected);
+
+private:
    int               SLTypeToIndex(ENUM_SL_TYPE t);
    ENUM_SL_TYPE      IndexToSLType(int i);
    int               TPTypeToIndex(ENUM_TP_TYPE t);
@@ -751,33 +698,17 @@ private:
    void              UpdateCfgBtnStyles(void);
 
    // ESTRAT. sub-pages
-   void              ShowEstratPage(ENUM_ESTRAT_PAGE page);
-   void              SetEstratPageVis(ENUM_ESTRAT_PAGE page, bool vis);
+   void              ShowEstratPage(int page);
+   void              SetEstratPageVis(int page, bool vis);
    void              UpdateEstratBtnStyles(void);
-   void              OnClickEstratMACross(void);
-   void              OnClickEstratRSI(void);
 
    // FILTROS sub-pages
-   void              ShowFiltrosPage(ENUM_FILTROS_PAGE page);
-   void              SetFiltrosPageVis(ENUM_FILTROS_PAGE page, bool vis);
+   void              ShowFiltrosPage(int page);
+   void              SetFiltrosPageVis(int page, bool vis);
    void              UpdateFiltrosBtnStyles(void);
-   void              OnClickFiltrosTrend(void);
-   void              OnClickFiltrosRSI(void);
-   // FILTROS — Trend Filter toggle/apply
-   void              OnClickTrendToggle(void);
-   void              OnClickApplyTrend(void);
-   void              OnClickTrendMethod(int i);
-   void              OnClickTrendTF(void);
-   void              OnClickTrendPrice(void);
-   // FILTROS — RSI Filter toggle/apply
-   void              OnClickRSIFiltToggle(void);
-   void              OnClickApplyRSIFilt(void);
-   void              OnClickRSIFiltTF(void);
-   void              OnClickRSIFiltMode(int i);
-   static string     RSIFiltModeText(ENUM_RSI_FILTER_MODE mode);
-   static string     MAMethodShortText(ENUM_MA_METHOD method);
-   static string     AppliedPriceShortText(ENUM_APPLIED_PRICE price);
-   static ENUM_APPLIED_PRICE CycleAppliedPrice(ENUM_APPLIED_PRICE cur);
+
+   // Panel factory
+   void              RegisterPanels(void);
    void              ApplyConfig(void);
 
    // Estado visual RISCO (enable/disable campos por tipo SL/TP)
@@ -827,29 +758,9 @@ private:
    void              OnClickNewsOn2(void);
    void              OnClickNewsOn3(void);
    void              RefreshNewsState(int w);
-   void              OnClickApplyMA(void);
-   void              OnClickMAFastMethod(int i);
-   void              OnClickMASlowMethod(int i);
-   void              OnClickMAFastTF(void);
-   void              OnClickMASlowTF(void);
-   void              OnClickMAFastPrice(void);
-   void              OnClickMASlowPrice(void);
-   void              OnClickMAEntry(int i);
-   void              OnClickMAExit(int i);
-   static ENUM_TIMEFRAMES CycleTF(ENUM_TIMEFRAMES tf);
-   static string     TFName(ENUM_TIMEFRAMES tf);
-   static int        MAMethodToIndex(ENUM_MA_METHOD m);
-   static ENUM_MA_METHOD IndexToMAMethod(int i);
-   // RSI ESTRAT handlers
-   void              OnClickApplyRSI(void);
-   void              OnClickRSIMode(int i);
-   void              OnClickRSITF(void);
-   static int        RSIModeToIndex(ENUM_RSI_SIGNAL_MODE m);
-   static ENUM_RSI_SIGNAL_MODE IndexToRSIMode(int i);
-   static string     RSIModeDesc(ENUM_RSI_SIGNAL_MODE mode);
-   void              OnClickMAToggle(void);
-   void              OnClickRSIToggle(void);
-   void              ApplyToggleStyle(CButton &btn, bool enabled);
+   // (MA Cross / RSI handlers movidos para GUI/Panels/MACrossPanel.mqh e RSIStrategyPanel.mqh)
+   // (Trend/RSI Filter handlers movidos para GUI/Panels/TrendFilterPanel.mqh e RSIFilterPanel.mqh)
+   // (CycleTF, TFName, ApplyToggleStyle, etc. movidos para GUI/PanelUtils.mqh)
 
 protected:
    virtual bool      CreateButtonClose(void) { return true; }
@@ -883,16 +794,13 @@ public:
 //+------------------------------------------------------------------+
 CEPBotPanel::CEPBotPanel(void)
    : m_activeTab(TAB_STATUS), m_cfgPage(CFG_RISCO),
-     m_estratPage(ESTRAT_MA_CROSS), m_filtrosPage(FILTROS_TREND),
+     m_estratPage(1), m_filtrosPage(1),
      m_logger(NULL), m_blockers(NULL), m_riskManager(NULL),
      m_tradeManager(NULL), m_signalManager(NULL),
      m_maCross(NULL), m_rsiStrategy(NULL),
-     m_pendingMAEnabled(false), m_pendingRSIEnabled(false),
-     m_pendingTrendEnabled(false), m_pendingRSIFiltEnabled(false),
-     m_cur_trendMethod(MODE_SMA), m_cur_trendTF(PERIOD_CURRENT),
-     m_cur_rsiFiltMode(RSI_FILTER_ZONE), m_cur_rsiFiltTF(PERIOD_CURRENT),
-     m_f_statusTrendExpiry(0), m_f_statusRSIFiltExpiry(0),
      m_trendFilter(NULL), m_rsiFilter(NULL),
+     m_stratPanelCount(0), m_filtPanelCount(0),
+     m_stratBtnCount(0), m_filtBtnCount(0),
      m_magicNumber(0), m_symbol(""),
      m_origDragTrade(true), m_origMouseScroll(true), m_mouseOverPanel(false),
      m_cfg_hasTP(false), m_cfg_hasTrailing(false), m_cfg_hasBE(false),
@@ -908,13 +816,7 @@ CEPBotPanel::CEPBotPanel(void)
      m_cur_lossStreakAction(STREAK_PAUSE), m_cur_winStreakAction(STREAK_PAUSE),
      m_cur_ddType(DD_FINANCIAL), m_cur_ddPeakMode(DD_PEAK_REALIZED_ONLY),
      m_cur_profitTargetAction(PROFIT_ACTION_STOP),
-     m_cfgStatusExpiry(0),
-     m_e_statusMAExpiry(0),
-     m_e_statusRSIExpiry(0),
-     m_cur_rsiTF(PERIOD_CURRENT),
-     m_cur_rsiMode(RSI_MODE_CROSSOVER),
-     m_cur_maFastPrice(PRICE_CLOSE), m_cur_maSlowPrice(PRICE_CLOSE),
-     m_cur_trendPrice(PRICE_CLOSE)
+     m_cfgStatusExpiry(0)
   {
   }
 
@@ -922,6 +824,10 @@ CEPBotPanel::~CEPBotPanel(void)
   {
    ChartSetInteger(0, CHART_DRAG_TRADE_LEVELS, m_origDragTrade);
    ChartSetInteger(0, CHART_MOUSE_SCROLL, m_origMouseScroll);
+   for(int i = 0; i < m_stratPanelCount; i++)
+     { delete m_stratPanels[i]; m_stratPanels[i] = NULL; }
+   for(int i = 0; i < m_filtPanelCount; i++)
+     { delete m_filtPanels[i]; m_filtPanels[i] = NULL; }
   }
 
 //+------------------------------------------------------------------+
@@ -944,6 +850,7 @@ bool CEPBotPanel::Init(CLogger *logger, CBlockers *blockers, CRiskManager *risk,
    m_rsiFilter    = rsiFilt;
    m_magicNumber  = magic;
    m_symbol       = symbol;
+   RegisterPanels();
    return true;
   }
 
@@ -1086,29 +993,28 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       if(sparam == m_btnTab3.Name()) { m_btnTab3.Pressed(false); OnClickTab3(); ChartRedraw(); return; }
       if(sparam == m_btnTab4.Name()) { m_btnTab4.Pressed(false); OnClickTab4(); ChartRedraw(); return; }
 
-      // ESTRAT.: sub-páginas
-      if(sparam == m_e_btnMACross.Name()) { m_e_btnMACross.Pressed(false); OnClickEstratMACross(); ChartRedraw(); return; }
-      if(sparam == m_e_btnRSI.Name())     { m_e_btnRSI.Pressed(false);     OnClickEstratRSI();     ChartRedraw(); return; }
-
-      // FILTROS: sub-páginas
-      if(sparam == m_f_btnTrend.Name())   { m_f_btnTrend.Pressed(false); OnClickFiltrosTrend(); ChartRedraw(); return; }
-      if(sparam == m_f_btnRSI.Name())     { m_f_btnRSI.Pressed(false);   OnClickFiltrosRSI();   ChartRedraw(); return; }
-      // FILTROS: Trend Filter — toggle + apply + cycle buttons
-      if(sparam == m_f_btnTrendToggle.Name())  { m_f_btnTrendToggle.Pressed(false);  OnClickTrendToggle();  ChartRedraw(); return; }
-      if(sparam == m_f_btnApplyTrend.Name())   { m_f_btnApplyTrend.Pressed(false);   OnClickApplyTrend();   ChartRedraw(); return; }
-      for(int i = 0; i < 4; i++)
+      // ESTRAT.: botões de navegação (genérico)
+      for(int i = 0; i < m_stratBtnCount; i++)
         {
-         if(sparam == m_ft_bMethod[i].Name()) { OnClickTrendMethod(i); ChartRedraw(); return; }
+         if(sparam == m_e_stratBtns[i].Name())
+           { m_e_stratBtns[i].Pressed(false); ShowEstratPage(i); ChartRedraw(); return; }
         }
-      if(sparam == m_ft_bTF.Name())            { OnClickTrendTF();     ChartRedraw(); return; }
-      if(sparam == m_ft_bPrice.Name())         { OnClickTrendPrice();  ChartRedraw(); return; }
-      // FILTROS: RSI Filter — toggle + apply + cycle/radio buttons
-      if(sparam == m_f_btnRSIFiltToggle.Name()) { m_f_btnRSIFiltToggle.Pressed(false); OnClickRSIFiltToggle(); ChartRedraw(); return; }
-      if(sparam == m_f_btnApplyRSIFilt.Name())  { m_f_btnApplyRSIFilt.Pressed(false);  OnClickApplyRSIFilt();  ChartRedraw(); return; }
-      if(sparam == m_frf_bTF.Name())            { OnClickRSIFiltTF(); ChartRedraw(); return; }
-      for(int i = 0; i < 3; i++)
+      // ESTRAT.: eventos dos painéis (genérico)
+      for(int i = 0; i < m_stratPanelCount; i++)
         {
-         if(sparam == m_frf_bMode[i].Name()) { OnClickRSIFiltMode(i); ChartRedraw(); return; }
+         if(m_stratPanels[i] != NULL && m_stratPanels[i].OnClick(sparam)) { ChartRedraw(); return; }
+        }
+
+      // FILTROS: botões de navegação (genérico)
+      for(int i = 0; i < m_filtBtnCount; i++)
+        {
+         if(sparam == m_f_filtBtns[i].Name())
+           { m_f_filtBtns[i].Pressed(false); ShowFiltrosPage(i); ChartRedraw(); return; }
+        }
+      // FILTROS: eventos dos painéis (genérico)
+      for(int i = 0; i < m_filtPanelCount; i++)
+        {
+         if(m_filtPanels[i] != NULL && m_filtPanels[i].OnClick(sparam)) { ChartRedraw(); return; }
         }
 
       // CONFIG: sub-páginas
@@ -1172,39 +1078,6 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       if(sparam == m_co_bConfl.Name()) { OnClickConflict(); ChartRedraw(); return; }
       if(sparam == m_co_bDbg.Name())   { OnClickDebug();    ChartRedraw(); return; }
 
-      // ESTRAT: toggles ON/OFF
-      if(sparam == m_e_btnMAToggle.Name())  { m_e_btnMAToggle.Pressed(false);  OnClickMAToggle();  ChartRedraw(); return; }
-      if(sparam == m_e_btnRSIToggle.Name()) { m_e_btnRSIToggle.Pressed(false); OnClickRSIToggle(); ChartRedraw(); return; }
-
-      // ESTRAT: MA Cross — campos editáveis e botão APLICAR
-      if(sparam == m_e_btnApplyMA.Name()) { m_e_btnApplyMA.Pressed(false); OnClickApplyMA(); ChartRedraw(); return; }
-
-      for(int i = 0; i < 4; i++)
-        {
-         if(sparam == m_ce_bFastM[i].Name()) { OnClickMAFastMethod(i); ChartRedraw(); return; }
-         if(sparam == m_ce_bSlowM[i].Name()) { OnClickMASlowMethod(i); ChartRedraw(); return; }
-        }
-      for(int i = 0; i < 2; i++)
-        {
-         if(sparam == m_ce_bEntry[i].Name()) { OnClickMAEntry(i); ChartRedraw(); return; }
-        }
-      for(int i = 0; i < 3; i++)
-        {
-         if(sparam == m_ce_bExit[i].Name()) { OnClickMAExit(i); ChartRedraw(); return; }
-        }
-      if(sparam == m_ce_bFastTF.Name())    { OnClickMAFastTF();    ChartRedraw(); return; }
-      if(sparam == m_ce_bSlowTF.Name())    { OnClickMASlowTF();    ChartRedraw(); return; }
-      if(sparam == m_ce_bFastPrice.Name()) { OnClickMAFastPrice(); ChartRedraw(); return; }
-      if(sparam == m_ce_bSlowPrice.Name()) { OnClickMASlowPrice(); ChartRedraw(); return; }
-
-      // ESTRAT: RSI — campos editáveis e botão APLICAR
-      if(sparam == m_e_btnApplyRSI.Name()) { m_e_btnApplyRSI.Pressed(false); OnClickApplyRSI(); ChartRedraw(); return; }
-      if(sparam == m_re_bTF.Name()) { OnClickRSITF(); ChartRedraw(); return; }
-      for(int i = 0; i < 3; i++)
-        {
-         if(sparam == m_re_bMode[i].Name()) { OnClickRSIMode(i); ChartRedraw(); return; }
-        }
-
       // Não é nosso → cai pro CAppDialog abaixo
      }
 
@@ -1249,19 +1122,17 @@ void CEPBotPanel::ReapplyTabVisibility(void)
      }
    if(m_activeTab == TAB_ESTRATEGIAS)
      {
-      for(int p = 0; p < ESTRAT_PAGE_COUNT; p++)
-        {
-         if(p != (int)m_estratPage)
-            SetEstratPageVis((ENUM_ESTRAT_PAGE)p, false);
-        }
+      if(m_estratPage != 0)
+        { m_ov_lStrHdr.Hide(); for(int i=0;i<MAX_OVERVIEW_ROWS;i++){m_ov_eStrName[i].Hide();m_ov_eStrStatus[i].Hide();} }
+      for(int p = 0; p < m_stratPanelCount; p++)
+        { if(p+1 != m_estratPage && m_stratPanels[p] != NULL) m_stratPanels[p].Hide(); }
      }
    if(m_activeTab == TAB_FILTROS)
      {
-      for(int p = 0; p < FILTROS_PAGE_COUNT; p++)
-        {
-         if(p != (int)m_filtrosPage)
-            SetFiltrosPageVis((ENUM_FILTROS_PAGE)p, false);
-        }
+      if(m_filtrosPage != 0)
+        { m_ov_lFiltHdr.Hide(); for(int i=0;i<MAX_OVERVIEW_ROWS;i++){m_ov_eFiltName[i].Hide();m_ov_eFiltStatus[i].Hide();} }
+      for(int p = 0; p < m_filtPanelCount; p++)
+        { if(p+1 != m_filtrosPage && m_filtPanels[p] != NULL) m_filtPanels[p].Hide(); }
      }
   }
 
@@ -1364,14 +1235,15 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
         {
          if(vis)
            {
-            m_e_btnMACross.Show(); m_e_btnRSI.Show();
+            for(int i = 0; i < m_stratBtnCount; i++) m_e_stratBtns[i].Show();
             ShowEstratPage(m_estratPage);
            }
          else
            {
-            m_e_btnMACross.Hide(); m_e_btnRSI.Hide();
-            SetEstratPageVis(ESTRAT_MA_CROSS, false);
-            SetEstratPageVis(ESTRAT_RSI, false);
+            for(int i = 0; i < m_stratBtnCount; i++) m_e_stratBtns[i].Hide();
+            m_ov_lStrHdr.Hide();
+            for(int i = 0; i < MAX_OVERVIEW_ROWS; i++) { m_ov_eStrName[i].Hide(); m_ov_eStrStatus[i].Hide(); }
+            for(int i = 0; i < m_stratPanelCount; i++) if(m_stratPanels[i] != NULL) m_stratPanels[i].Hide();
            }
          break;
         }
@@ -1379,14 +1251,15 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
         {
          if(vis)
            {
-            m_f_btnTrend.Show(); m_f_btnRSI.Show();
+            for(int i = 0; i < m_filtBtnCount; i++) m_f_filtBtns[i].Show();
             ShowFiltrosPage(m_filtrosPage);
            }
          else
            {
-            m_f_btnTrend.Hide(); m_f_btnRSI.Hide();
-            SetFiltrosPageVis(FILTROS_TREND, false);
-            SetFiltrosPageVis(FILTROS_RSI, false);
+            for(int i = 0; i < m_filtBtnCount; i++) m_f_filtBtns[i].Hide();
+            m_ov_lFiltHdr.Hide();
+            for(int i = 0; i < MAX_OVERVIEW_ROWS; i++) { m_ov_eFiltName[i].Hide(); m_ov_eFiltStatus[i].Hide(); }
+            for(int i = 0; i < m_filtPanelCount; i++) if(m_filtPanels[i] != NULL) m_filtPanels[i].Hide();
            }
          break;
         }
@@ -1449,17 +1322,9 @@ void CEPBotPanel::Update(void)
       case TAB_RESULTADOS:  UpdateResultados();   break;
       case TAB_ESTRATEGIAS:
          UpdateEstrategias();
-         if(m_e_statusMAExpiry > 0 && GetTickCount() >= m_e_statusMAExpiry)
-           { m_e_statusMA.Text(""); m_e_statusMAExpiry = 0; ChartRedraw(); }
-         if(m_e_statusRSIExpiry > 0 && GetTickCount() >= m_e_statusRSIExpiry)
-           { m_e_statusRSI.Text(""); m_e_statusRSIExpiry = 0; ChartRedraw(); }
          break;
       case TAB_FILTROS:
          UpdateFiltros();
-         if(m_f_statusTrendExpiry > 0 && GetTickCount() >= m_f_statusTrendExpiry)
-           { m_f_statusTrend.Text(""); m_f_statusTrendExpiry = 0; ChartRedraw(); }
-         if(m_f_statusRSIFiltExpiry > 0 && GetTickCount() >= m_f_statusRSIFiltExpiry)
-           { m_f_statusRSIFilt.Text(""); m_f_statusRSIFiltExpiry = 0; ChartRedraw(); }
          break;
       case TAB_CONFIG:
          if(m_cfgStatusExpiry > 0 && GetTickCount() >= m_cfgStatusExpiry)
@@ -1492,10 +1357,54 @@ void CEPBotPanel::MouseProtection(const int x, const int y)
 // ═══════════════════════════════════════════════════════════════
 // IMPLEMENTAÇÕES DAS ABAS (arquivos separados por manutenção)
 // ═══════════════════════════════════════════════════════════════
+
+// Painéis de estratégia/filtro (definem CMACrossPanel, etc.)
+// Incluídos APÓS CEPBotPanel — painéis usam CEPBotPanel* com acesso completo
+#include "Panels/MACrossPanel.mqh"
+#include "Panels/RSIStrategyPanel.mqh"
+#include "Panels/TrendFilterPanel.mqh"
+#include "Panels/RSIFilterPanel.mqh"
+
 #include "PanelTabStatus.mqh"
 #include "PanelTabResultados.mqh"
 #include "PanelTabEstrategias.mqh"
 #include "PanelTabFiltros.mqh"
 #include "PanelTabConfig.mqh"
+
+//+------------------------------------------------------------------+
+//| RegisterPanels — factory method: cria sub-páginas de estratégia  |
+//| e filtro. Adicionar nova estratégia = 2 linhas aqui.             |
+//+------------------------------------------------------------------+
+void CEPBotPanel::RegisterPanels(void)
+  {
+   m_stratPanelCount = 0;
+   m_filtPanelCount  = 0;
+   ArrayResize(m_stratPanels, 0);
+   ArrayResize(m_filtPanels,  0);
+
+   // ── Estratégias ──
+   if(m_maCross != NULL)
+     {
+      ArrayResize(m_stratPanels, ++m_stratPanelCount);
+      m_stratPanels[m_stratPanelCount - 1] = new CMACrossPanel(m_maCross);
+     }
+   if(m_rsiStrategy != NULL)
+     {
+      ArrayResize(m_stratPanels, ++m_stratPanelCount);
+      m_stratPanels[m_stratPanelCount - 1] = new CRSIStrategyPanel(m_rsiStrategy);
+     }
+
+   // ── Filtros ──
+   if(m_trendFilter != NULL)
+     {
+      ArrayResize(m_filtPanels, ++m_filtPanelCount);
+      m_filtPanels[m_filtPanelCount - 1] = new CTrendFilterPanel(m_trendFilter);
+     }
+   if(m_rsiFilter != NULL)
+     {
+      ArrayResize(m_filtPanels, ++m_filtPanelCount);
+      m_filtPanels[m_filtPanelCount - 1] = new CRSIFilterPanel(m_rsiFilter);
+     }
+  }
 
 //+------------------------------------------------------------------+

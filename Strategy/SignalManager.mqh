@@ -2,10 +2,10 @@
 //|                                               SignalManager.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                   Gerenciador de Sinais e Filtros - EPBot Matrix |
-//|                                   Versão 2.13 - Claude Parte 024 |
+//|                                   Versão 2.14 - Claude Parte 025 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.13"
+#property version   "2.14"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,11 @@
 #include "Base/StrategyBase.mqh"
 #include "Base/FilterBase.mqh"
 
+// ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.14 (Parte 025):
+// + GetStrategy(int index): acesso indexado a estratégias registradas
+// + GetFilter(int index): acesso indexado a filtros registrados
+//   Ambos usados pelo painel GERAL para iterar via SignalManager
 // ═══════════════════════════════════════════════════════════════
 // NOVIDADES v2.13 (Parte 024):
 // + StrategyItem.enabled removido — usa strategy.GetEnabled()
@@ -180,6 +185,18 @@ public:
    int               GetStrategyCount() const { return m_strategyCount; }
    int               GetFilterCount() const { return m_filterCount; }
    ENUM_CONFLICT_RESOLUTION GetConflictMode() const { return m_conflictMode; }
+
+   // Acesso indexado (para GUI genérica)
+   CStrategyBase*    GetStrategy(int index) const
+     {
+      if(index < 0 || index >= m_strategyCount) return NULL;
+      return m_strategies[index].strategy;
+     }
+   CFilterBase*      GetFilter(int index) const
+     {
+      if(index < 0 || index >= m_filterCount) return NULL;
+      return m_filters[index];
+     }
 
    // ═══════════════════════════════════════════════════════════
    // GETTERS - Input values (valores originais)

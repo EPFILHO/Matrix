@@ -2,13 +2,22 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.44 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.45 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.44"
+#property version   "1.45"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.45 (Parte 025):                                     |
+//| - inp_RSISignalShift removido do RSIStrategy.Setup()             |
+//|   (sempre usa shift=1, barra fechada)                            |
+//| - Blockers v3.22: DailyLimits verificado ANTES do Streak         |
+//|   em CanTrade()                                                  |
+//| - Inputs v1.07: Seção 007 TRADE MANAGER removida (grupo vazio)   |
+//| - Inputs v1.07: inp_RSISignalShift removido                      |
+//| - inp_MACrossMinDistance integrado ao MACrossStrategy.Setup()     |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.44 (Parte 024):                                     |
 //| "Sempre criar" estratégias e filtros no OnInit:                  |
@@ -28,7 +37,6 @@
 //| Fix: RSIStrategy v2.13 — Setup() não força m_enabled=true        |
 //| Fix: m_e_statusMAExpiry inicializado no construtor do Panel       |
 //| Fix: strings de versão unificadas em v1.41                        |
-//| Cosmético: TODO em inp_MACrossMinDistance (nunca passado ao Setup)|
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.41 (original — Parte 024):                          |
 //| PANEL v1.24 + BLOCKERS v3.19 — SUB-PÁGINAS ESTRAT./FILTROS (Parte 024): |
@@ -138,6 +146,29 @@
 //|      projectedProfit separados                                   |
 //|    - Compatível com Blockers v3.06                               |
 //+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
+//| KNOWN LIMITATION (documentado em 2026-03):                      |
+//| ⚠️  INCONSISTÊNCIA: Logger.m_dailyWins/Losses vs Streak          |
+//|                                                                  |
+//|  Quando TP1+TP2 executam E o deal final fecha no prejuízo:       |
+//|    - Streak (isWin): usa totalPositionProfit → WIN ✅            |
+//|    - Logger UpdateStats(): usa finalDealProfit → LOSS ❌         |
+//|                                                                  |
+//|  Consequências:                                                  |
+//|    1. Win rate no relatório TXT pode ficar errado (cosmético)    |
+//|    2. Após reinício do EA, LoadDailyStats() lê o deal final      |
+//|       como LOSS e reconstrói o streak incorretamente             |
+//|                                                                  |
+//|  O que NÃO é afetado:                                           |
+//|    - Limites diários (gain/loss): GetDailyProfit() = correto     |
+//|    - Streak durante operação normal (sem reinício): correto      |
+//|                                                                  |
+//|  Por que não foi corrigido:                                      |
+//|    - Cenário muito raro (TP1+TP2 hit + trailing + SL posterior)  |
+//|    - Impacto: streak off-by-1 por 1 trade, autocorrigido logo    |
+//|    - Custo da correção: mudança no formato CSV (área sensível)   |
+//|    - Risco de regressão > benefício real                         |
+//+------------------------------------------------------------------+
 //| CHANGELOG v1.28:                                                 |
 //| 🔧 Remoção de inp_InitialBalance:                                |
 //|    - Saldo inicial agora auto-detectado via AccountBalance()     |
@@ -182,6 +213,26 @@
 //|    - Não deixa "dinheiro na mesa"                               |
 //|    - Compatível com Blockers v3.03                              |
 //|    - Verifica ANTES de trailing/breakeven/exit signals          |
+//+------------------------------------------------------------------+
+
+//+------------------------------------------------------------------+
+//| NOTAS TÉCNICAS / DÉBITOS TÉCNICOS                                |
+//+------------------------------------------------------------------+
+// [1] GAP Init/CreatePanel — Parte 025
+//     RegisterPanels() é chamado em Init(), mas os controles GUI dos
+//     painéis só são criados em CreatePanel(). Se Update() fosse
+//     chamado nesse intervalo, tentaria atualizar controles que ainda
+//     não existem. Atualmente não é um bug porque o timer só é
+//     ativado após CreatePanel() retornar, mas se o ciclo de vida
+//     for refatorado, garantir que Update() nunca precede CreatePanel().
+//
+// [2] Assimetria de API StrategyBase x FilterBase — Parte 025
+//     CStrategyBase usa GetEnabled() / SetEnabled()
+//     CFilterBase   usa IsEnabled()  / SetEnabled()
+//     Nomes diferentes para o mesmo conceito — herdado das versões
+//     anteriores. Código atual usa o método correto em cada lugar.
+//     Ao criar novas estratégias/filtros, lembrar dessa diferença.
+//     (Unificar para GetEnabled() em ambas as bases quando conveniente)
 //+------------------------------------------------------------------+
 
 //+------------------------------------------------------------------+
@@ -590,7 +641,8 @@ int OnInit()
          inp_SlowApplied,
          inp_SlowTF,
          inp_EntryMode,
-         inp_ExitMode
+         inp_ExitMode,
+         inp_MACrossMinDistance
       ))
      {
       g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar MACrossStrategy!");
@@ -637,8 +689,7 @@ int OnInit()
          inp_RSIMode,
          inp_RSIOversold,
          inp_RSIOverbought,
-         inp_RSIMidLevel,
-         inp_RSISignalShift
+         inp_RSIMidLevel
       ))
      {
       g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar RSIStrategy!");
@@ -1047,6 +1098,12 @@ void OnTick()
             g_logger.SaveTrade(g_lastPositionTicket, finalDealProfit);
 
             // Atualizar estatísticas (apenas o deal final)
+            // ⚠️ KNOWN LIMITATION: UpdateStats usa finalDealProfit, mas isWin abaixo usa
+            // totalPositionProfit. Se TP1+TP2 executaram e o deal final fechou no prejuízo,
+            // m_dailyWins/Losses ficará inconsistente com o streak (win rate errado no
+            // relatório, e streak reconstruído incorretamente após reinício do EA).
+            // Impacto baixo — cenário raro, limites diários NÃO são afetados.
+            // Ver "KNOWN LIMITATION" no changelog do EA para análise completa.
             g_logger.UpdateStats(finalDealProfit);
 
             // Registrar no Blockers - usar totalPositionProfit para determinar win/loss

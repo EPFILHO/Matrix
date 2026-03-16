@@ -2,10 +2,10 @@
 //|                                                  RiskManager.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                       Sistema de Cálculo de Risco - EPBot Matrix |
-//|                  Versão 3.15 - Claude Parte 024 (Claude Code)    |
+//|                  Versão 3.16 - Claude Parte 025 (Claude Code)    |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.15"
+#property version   "3.16"
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
@@ -61,6 +61,12 @@
 // + Fix: TP_NONE é agora sempre respeitado em CalculateTPPrice()
 //   Antes: Partial TP ativo forçava TP fixo como fallback, ignorando TP=NENHUM
 //   Agora: TP_NONE retorna 0 independente do Partial TP; log de info emitido
+//
+// NOVIDADES v3.16 (Parte 025):
+// + Validação cruzada no Init(): rejeita se TP2_Distance <= TP1_Distance
+//   Previne configuração silenciosamente errada onde TP2 nunca seria atingido
+// + Cache de ATR por barra: GetATRValue() usa m_cachedATR/m_lastATRBar
+//   Evita CopyBuffer() a cada tick; releitura apenas na abertura de nova barra
 // ═══════════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
@@ -317,6 +323,12 @@ private:
    // HANDLES DE INDICADORES (não duplica - é interno)
    // ═══════════════════════════════════════════════════════════════
    int               m_handleATR;
+
+   // ═══════════════════════════════════════════════════════════════
+   // CACHE ATR (v3.16 - evita CopyBuffer a cada tick)
+   // ═══════════════════════════════════════════════════════════════
+   double            m_cachedATR;
+   datetime          m_lastATRBar;
    
    // ═══════════════════════════════════════════════════════════════
    // MÉTODOS PRIVADOS - HELPERS
@@ -566,8 +578,10 @@ CRiskManager::CRiskManager()
    
    m_symbol = _Symbol;
    m_atrPeriod = 14;
-   
+
    m_handleATR = INVALID_HANDLE;
+   m_cachedATR = 0.0;   // v3.16
+   m_lastATRBar = 0;    // v3.16
   }
 
 //+------------------------------------------------------------------+
@@ -728,6 +742,23 @@ bool CRiskManager::Init(
          return false;
         }
       
+      // v3.16: validar que TP2 está mais longe que TP1
+      if(m_tp1_enable && m_tp2_enable && m_tp2_distance <= m_tp1_distance)
+        {
+         string errMsg = StringFormat("TP2_Distance (%d pts) deve ser maior que TP1_Distance (%d pts)!",
+                                      m_tp2_distance, m_tp1_distance);
+         if(m_logger != NULL)
+           {
+            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "❌ Partial TP inválido: " + errMsg);
+            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "   TP2 nunca seria atingido com essa configuração.");
+           }
+         else
+           {
+            Print("❌ Partial TP inválido: ", errMsg);
+           }
+         return false;
+        }
+
       if(m_logger != NULL)
         {
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
@@ -1679,13 +1710,28 @@ double CRiskManager::GetATRValue(int index = 0)
   {
    if(m_handleATR == INVALID_HANDLE)
       return 0;
-   
+
+   // v3.16: cache por barra — só relê quando abre nova barra (index=0)
+   if(index == 0)
+     {
+      datetime currentBar = iTime(_Symbol, PERIOD_CURRENT, 0);
+      if(currentBar != 0 && currentBar == m_lastATRBar)
+         return m_cachedATR;
+     }
+
    double atrBuffer[];
    ArraySetAsSeries(atrBuffer, true);
-   
+
    if(CopyBuffer(m_handleATR, 0, index, 1, atrBuffer) <= 0)
       return 0;
-   
+
+   // Atualizar cache apenas para index=0 (barra atual)
+   if(index == 0)
+     {
+      m_cachedATR = atrBuffer[0];
+      m_lastATRBar = iTime(_Symbol, PERIOD_CURRENT, 0);
+     }
+
    return atrBuffer[0];
   }
 

@@ -2,16 +2,20 @@
 //|                                                       Inputs.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                   Sistema de Inputs Centralizados - EPBot Matrix |
-//|                     Versão 1.06 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.07 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.06"
+#property version   "1.07"
 
 // ═══════════════════════════════════════════════════════════════
+// CHANGELOG v1.07:
+// ✅ inp_MACrossMinDistance integrado ao MACrossStrategy::Setup() (v2.26)
+//    Filtro de força do cruzamento: sinal só gerado se dist(MA rápida, MA lenta) >= N pontos
+// ✅ inp_RSISignalShift removido — RSIStrategy usa shift=1 fixo (v2.15)
+// ✅ Seção 007 TRADE MANAGER removida (grupo vazio no MT5 — era desnecessário)
 // CHANGELOG v1.06:
-// ✅ TODO: inp_MACrossMinDistance não passa ao Setup()
-//    Documentação de débito técnico para próximas releases
+// ✅ TODO (resolvido em v1.07): inp_MACrossMinDistance agora passado ao Setup()
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v1.05:
 // ✅ Novo input inp_ShowPanel (Seção 008 - Painel GUI):
@@ -206,7 +210,6 @@ input int    inp_SlowPeriod = 21;                       // Período MA Lenta
 input ENUM_MA_METHOD inp_SlowMethod = MODE_EMA;         // Método MA Lenta
 input ENUM_APPLIED_PRICE inp_SlowApplied = PRICE_CLOSE; // Preço MA Lenta
 input ENUM_TIMEFRAMES inp_SlowTF = PERIOD_CURRENT;      // Timeframe MA Lenta
-// TODO: inp_MACrossMinDistance declarado mas não passado ao MACrossStrategy::Setup() — integrar ou remover
 input int    inp_MACrossMinDistance = 0;                // Distância Mínima entre MAs (0=desativado)
 input ENUM_ENTRY_MODE inp_EntryMode = ENTRY_NEXT_CANDLE; // Modo de Entrada
 input ENUM_EXIT_MODE inp_ExitMode = EXIT_TP_SL;       // Modo de Saída
@@ -222,7 +225,7 @@ input int    inp_RSIOversold = 30;                      // Nível Oversold (Sobr
 input int    inp_RSIOverbought = 70;                    // Nível Overbought (Sobrecomprado)
 input ENUM_RSI_SIGNAL_MODE inp_RSIMode = RSI_MODE_CROSSOVER;  // Modo de Operação RSI
 input int    inp_RSIMidLevel = 50;                      // Nível Médio (para modo Crossover/Middle)
-input int inp_RSISignalShift = 1;     // Confirmar sinal em barra fechada? (0=não, 1=sim)
+// inp_RSISignalShift removido (v1.07): sempre usa shift=1 (última barra fechada)
 
 //+------------------------------------------------------------------+
 //| SEÇÃO 006 - FILTERS                                              |
@@ -252,17 +255,11 @@ input double inp_RSIFilterUpperNeutral = 60;            // Limite Superior Zona 
 input int    inp_RSIFilterShift = 1;                    // Shift do Filtro RSI (0=barra atual, 1=barra fechada)
 
 //+------------------------------------------------------------------+
-//| SEÇÃO 007 - TRADE MANAGER                                        |
-//+------------------------------------------------------------------+
-input group "═══════════════ 🎯 TRADE MANAGER ═══════════════"
-// Inputs do Trade Manager virão aqui (se necessário no futuro)
-
-//+------------------------------------------------------------------+
 //| SEÇÃO 008 - PAINEL GUI                                            |
 //+------------------------------------------------------------------+
 input group "═══════════════ 🖥️ PAINEL GUI ═══════════════"
 input bool inp_ShowPanel = true;                     // Mostrar Painel no Gráfico
 
 //+------------------------------------------------------------------+
-//| FIM DO ARQUIVO DE INPUTS v1.05                                   |
+//| FIM DO ARQUIVO DE INPUTS v1.07                                   |
 //+------------------------------------------------------------------+
