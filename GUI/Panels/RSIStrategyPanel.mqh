@@ -109,7 +109,7 @@ public:
 
       // Legenda dinâmica do modo
       if(!m_lModeDesc.Create(chart_id, PFX + "re_lMDesc", subwin,
-                              COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+                              COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
       m_lModeDesc.FontSize(7); m_lModeDesc.Color(CLR_NEUTRAL);
       m_lModeDesc.Text(RSIModeDesc(RSI_MODE_CROSSOVER));

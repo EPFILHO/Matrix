@@ -111,26 +111,26 @@ public:
       }
       y += PANEL_GAP_Y;
 
-      if(!parent.CreateLI(m_lFastP, m_iFastP, "ce_lFP", "ce_iFP", "Per. Rapida:", y)) return false;
+      if(!parent.CreateLI(m_lFastP, m_iFastP, "ce_lFP", "ce_iFP", "Periodo Rapida:", y)) return false;
       y += PANEL_GAP_Y;
       {
        string fmTexts[] = {"SMA", "EMA", "SMMA", "LWMA"};
-       if(!parent.CreateRadioGroup(m_lFastM, m_bFastM, "ce_lFM", "ce_bFM", "Met. Rapida:", fmTexts, 4, y))
+       if(!parent.CreateRadioGroup(m_lFastM, m_bFastM, "ce_lFM", "ce_bFM", "Metodo Rapida:", fmTexts, 4, y))
           return false;
       }
       y += PANEL_GAP_Y + 2;
-      if(!parent.CreateLB(m_lFastTF, m_bFastTF, "ce_lFT", "ce_bFT", "Time Frame Rap.:", y)) return false;
+      if(!parent.CreateLB(m_lFastTF, m_bFastTF, "ce_lFT", "ce_bFT", "Time Frame Rapida:", y)) return false;
       y += PANEL_GAP_Y + 2;
       if(!parent.CreateLB(m_lFastPr, m_bFastPr, "ce_lFPr", "ce_bFPr", "Preco Rapida:", y)) return false;
       y += PANEL_GAP_Y + 2;
 
       // Config: SLOW MA
       y += PANEL_GAP_SECTION;
-      if(!parent.CreateLI(m_lSlowP, m_iSlowP, "ce_lSP", "ce_iSP", "Per. Lenta:", y)) return false;
+      if(!parent.CreateLI(m_lSlowP, m_iSlowP, "ce_lSP", "ce_iSP", "Periodo Lenta:", y)) return false;
       y += PANEL_GAP_Y;
       {
        string smTexts[] = {"SMA", "EMA", "SMMA", "LWMA"};
-       if(!parent.CreateRadioGroup(m_lSlowM, m_bSlowM, "ce_lSM", "ce_bSM", "Met. Lenta:", smTexts, 4, y))
+       if(!parent.CreateRadioGroup(m_lSlowM, m_bSlowM, "ce_lSM", "ce_bSM", "Metodo Lenta:", smTexts, 4, y))
           return false;
       }
       y += PANEL_GAP_Y + 2;
@@ -152,7 +152,7 @@ public:
 
       // Legenda dinâmica de entrada
       if(!m_lEntryDesc.Create(chart_id, PFX + "ce_eLgD", subwin,
-                               COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+                               COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
       m_lEntryDesc.FontSize(7); m_lEntryDesc.Color(CLR_NEUTRAL);
       m_lEntryDesc.Text(_EntryDesc(m_cur_entry));
@@ -168,7 +168,7 @@ public:
 
       // Legenda dinâmica de saída
       if(!m_lExitDesc.Create(chart_id, PFX + "e_legD", subwin,
-                              COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+                              COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
       m_lExitDesc.FontSize(7); m_lExitDesc.Color(CLR_NEUTRAL);
       m_lExitDesc.Text(_ExitDesc(m_cur_exit));

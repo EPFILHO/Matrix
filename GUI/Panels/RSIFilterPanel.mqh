@@ -31,6 +31,7 @@ private:
    CLabel   m_lPeriod;   CEdit   m_iPeriod;
    CLabel   m_lTF;       CButton m_bTF;
    CLabel   m_lMode2;    CButton m_bMode[3];
+   CLabel   m_lModeDesc;
    CLabel   m_lOversold;   CEdit m_iOversold;
    CLabel   m_lOverbought; CEdit m_iOverbought;
    CButton  m_btnApply;
@@ -108,10 +109,19 @@ public:
       }
       y += PANEL_GAP_Y + 2;
 
-      // Oversold
+      // Legenda dinâmica do modo
+      if(!m_lModeDesc.Create(chart_id, PFX + "frf_lMDesc", subwin,
+                              COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+         return false;
+      m_lModeDesc.FontSize(7); m_lModeDesc.Color(CLR_NEUTRAL);
+      m_lModeDesc.Text(_ModeDesc(m_cur_mode));
+      if(!parent.AddControl(m_lModeDesc)) return false;
+      y += 15;
+
+      // Sobrevendido
       {
        double os = (m_filter != NULL) ? m_filter.GetOversold() : 30.0;
-       if(!parent.CreateLI(m_lOversold, m_iOversold, "frf_lOS", "frf_iOS", "Oversold:", y)) return false;
+       if(!parent.CreateLI(m_lOversold, m_iOversold, "frf_lOS", "frf_iOS", "Sobrevendido:", y)) return false;
        m_iOversold.Text(DoubleToString(os, 1));
       }
       y += PANEL_GAP_Y;
@@ -119,7 +129,7 @@ public:
       // Overbought
       {
        double ob = (m_filter != NULL) ? m_filter.GetOverbought() : 70.0;
-       if(!parent.CreateLI(m_lOverbought, m_iOverbought, "frf_lOB", "frf_iOB", "Overbought:", y)) return false;
+       if(!parent.CreateLI(m_lOverbought, m_iOverbought, "frf_lOB", "frf_iOB", "Sobrecomprado:", y)) return false;
        m_iOverbought.Text(DoubleToString(ob, 1));
       }
       y += PANEL_GAP_Y + 8;
@@ -155,6 +165,7 @@ public:
       m_lPeriod.Show(); m_iPeriod.Show();
       m_lTF.Show(); m_bTF.Show();
       m_lMode2.Show(); for(int i = 0; i < 3; i++) m_bMode[i].Show();
+      m_lModeDesc.Show();
       m_lOversold.Show(); m_iOversold.Show();
       m_lOverbought.Show(); m_iOverbought.Show();
       m_btnApply.Show(); m_lblStatus.Show();
@@ -170,6 +181,7 @@ public:
       m_lPeriod.Hide(); m_iPeriod.Hide();
       m_lTF.Hide(); m_bTF.Hide();
       m_lMode2.Hide(); for(int i = 0; i < 3; i++) m_bMode[i].Hide();
+      m_lModeDesc.Hide();
       m_lOversold.Hide(); m_iOversold.Hide();
       m_lOverbought.Hide(); m_iOverbought.Hide();
       m_btnApply.Hide(); m_lblStatus.Hide();
@@ -178,6 +190,7 @@ public:
    virtual void Update(void)
      {
       ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      m_lModeDesc.Text(_ModeDesc(m_cur_mode));
       if(m_filter != NULL && m_filter.IsInitialized())
         {
          bool active = m_filter.IsEnabled();
@@ -218,11 +231,22 @@ public:
         }
       for(int i = 0; i < 3; i++)
          if(name == m_bMode[i].Name())
-           { m_cur_mode = (ENUM_RSI_FILTER_MODE)i; SetRadioSel(m_bMode, 3, i); return true; }
+           { m_cur_mode = (ENUM_RSI_FILTER_MODE)i; SetRadioSel(m_bMode, 3, i); m_lModeDesc.Text(_ModeDesc(m_cur_mode)); return true; }
       return false;
      }
 
 private:
+   string _ModeDesc(ENUM_RSI_FILTER_MODE mode)
+     {
+      switch(mode)
+        {
+         case RSI_FILTER_ZONE:    return "Zone: bloqueia se RSI em zona extrema";
+         case RSI_FILTER_DIRECTION: return "Dir.: so permite trades na direcao do RSI";
+         case RSI_FILTER_NEUTRAL: return "Neutro: bloqueia se RSI perto de 50";
+         default:                 return "";
+        }
+     }
+
    void _OnApply(void)
      {
       if(m_filter == NULL)

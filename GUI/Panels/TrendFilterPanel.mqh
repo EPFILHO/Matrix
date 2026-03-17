@@ -113,7 +113,7 @@ public:
       {
        ENUM_APPLIED_PRICE pr = (m_filter != NULL) ? m_filter.GetMAApplied() : PRICE_CLOSE;
        m_cur_price = pr;
-       if(!parent.CreateLB(m_lPrice, m_bPrice, "ft_lPr", "ft_bPr", "Price:", y)) return false;
+       if(!parent.CreateLB(m_lPrice, m_bPrice, "ft_lPr", "ft_bPr", "Preco:", y)) return false;
        m_bPrice.Text(AppliedPriceShortText(pr));
        m_bPrice.ColorBackground(C'50,80,140'); m_bPrice.Color(clrWhite);
       }

@@ -143,7 +143,7 @@ public:
 
       // Legenda dinâmica do modo
       if(!m_lModeDesc.Create(chart_id, PFX + "bb_lMDesc", subwin,
-                              COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+                              COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
       m_lModeDesc.FontSize(7); m_lModeDesc.Color(CLR_NEUTRAL);
       m_lModeDesc.Text(_ModeDesc(BB_MODE_FFFD));
@@ -160,7 +160,7 @@ public:
 
       // Legenda dinâmica de entrada
       if(!m_lEntryDesc.Create(chart_id, PFX + "bb_eLgD", subwin,
-                               COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+                               COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
       m_lEntryDesc.FontSize(7); m_lEntryDesc.Color(CLR_NEUTRAL);
       m_lEntryDesc.Text(_EntryDesc(m_cur_entry));
@@ -176,7 +176,7 @@ public:
 
       // Legenda dinâmica de saída
       if(!m_lExitDesc.Create(chart_id, PFX + "bb_legD", subwin,
-                              COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+                              COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
       m_lExitDesc.FontSize(7); m_lExitDesc.Color(CLR_NEUTRAL);
       m_lExitDesc.Text(_ExitDesc(m_cur_exit));

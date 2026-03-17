@@ -131,7 +131,7 @@ public:
 
       // Legenda dinâmica da métrica
       if(!m_lMetricDesc.Create(chart_id, PFX + "fbf_lMDesc", subwin,
-                                COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+                                COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
       m_lMetricDesc.FontSize(7); m_lMetricDesc.Color(CLR_NEUTRAL);
       m_lMetricDesc.Text(_MetricDesc(m_cur_metric));
@@ -142,7 +142,7 @@ public:
       y += PANEL_GAP_SECTION;
       {
        double th = (m_filter != NULL) ? m_filter.GetSqueezeThreshold() : 1.0;
-       if(!parent.CreateLI(m_lThreshold, m_iThreshold, "fbf_lTh", "fbf_iTh", "Threshold:", y)) return false;
+       if(!parent.CreateLI(m_lThreshold, m_iThreshold, "fbf_lTh", "fbf_iTh", "Limite:", y)) return false;
        m_iThreshold.Text(DoubleToString(th, 2));
       }
       y += PANEL_GAP_Y;
