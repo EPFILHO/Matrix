@@ -2,7 +2,7 @@
 //|                                                 MACrossPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — MA Cross Strategy                        |
-//|                     Versão 1.01 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.01 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.

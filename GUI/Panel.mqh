@@ -2,7 +2,7 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.40 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.40 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.40"
@@ -11,7 +11,7 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.40 (Parte 027):
+// v1.40 (Parte 026):
 // + ResolveStrategyPriority(): auto-ajuste de prioridade (incrementa se conflito)
 // + GetPriorityMapText(): retorna mapa de prioridades das outras estratégias
 // + Painéis de estratégia agora têm campo Prioridade editável com auto-ajuste

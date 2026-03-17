@@ -2,7 +2,7 @@
 //|                                           StrategyPanelBase.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Interface base para sub-páginas de estratégia             |
-//|                     Versão 1.01 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.01 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh ANTES da definição de CEPBotPanel.
 // Usa forward declaration para CEPBotPanel.

@@ -2,7 +2,7 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.47 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.47 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
@@ -10,18 +10,7 @@
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //+------------------------------------------------------------------+
-//| CHANGELOG v1.47 (Parte 027):                                     |
-//| - GUI: Legendas/instruções nos painéis BB Strategy e BB Filter    |
-//|   Descrições de modos, entrada, saída e métricas mais detalhadas  |
-//| - GUI: Campo Prioridade editável em TODOS os painéis de estratégia|
-//|   MA Cross, RSI e BB agora permitem alterar prioridade via painel |
-//|   Auto-ajuste: se prioridade conflita, incrementa automaticamente |
-//|   Referência visual: mostra prioridades das outras estratégias    |
-//| - Panel v1.40: ResolveStrategyPriority + GetPriorityMapText       |
-//| - StrategyPanelBase v1.01: m_parent para acesso ao painel         |
-//+------------------------------------------------------------------+
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.46 (Parte 026):                                     |
+//| CHANGELOG v1.47 (Parte 026):                                     |
 //| - Bollinger Bands Strategy (FFFD, Rebound, Breakout)             |
 //|   Novo módulo: Strategy/Strategies/BollingerBandsStrategy.mqh    |
 //|   3 modos: FFFD (Fechou Fora, Fechou Dentro), Rebound, Breakout |
@@ -31,7 +20,15 @@
 //|   3 métricas: Absoluto (pts), Relativo (%), Percentil            |
 //|   Protege MACross de sinais falsos em mercado em range           |
 //| - GUI: BollingerBandsPanel.mqh + BollingerBandsFilterPanel.mqh   |
+//| - GUI: Legendas/instruções nos painéis BB Strategy e BB Filter    |
+//|   Descrições de modos, entrada, saída e métricas mais detalhadas  |
+//| - GUI: Campo Prioridade editável em TODOS os painéis de estratégia|
+//|   MA Cross, RSI e BB agora permitem alterar prioridade via painel |
+//|   Auto-ajuste: se prioridade conflita, incrementa automaticamente |
+//|   Referência visual: mostra prioridades das outras estratégias    |
 //| - Inputs v1.08: novos inputs BB Strategy + BB Filter             |
+//| - Panel v1.40: ResolveStrategyPriority + GetPriorityMapText       |
+//| - StrategyPanelBase v1.01: m_parent para acesso ao painel         |
 //| - Panel v1.39: BB Strategy/Filter registrados em RegisterPanels  |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.45 (Parte 025):                                     |
