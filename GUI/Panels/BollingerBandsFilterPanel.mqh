@@ -2,7 +2,7 @@
 //|                                     BollingerBandsFilterPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Bollinger Bands Filter (Anti-Squeeze)   |
-//|                     Versão 1.00 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.01 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
@@ -21,6 +21,7 @@ private:
 
    // Controles — display
    CLabel   m_hdr;
+   CLabel   m_lDesc;     // Descrição do que o filtro faz
    CLabel   m_lStatus;  CLabel  m_eStatus;
    CLabel   m_lWidth;   CLabel  m_eWidth;
    CLabel   m_lMetric;  CLabel  m_eMetric;
@@ -34,7 +35,9 @@ private:
    CLabel   m_lMetric2;  CButton m_bMetric[3];
    CLabel   m_lMetricDesc;
    CLabel   m_lThreshold; CEdit  m_iThreshold;
+   CLabel   m_lThreshHint; // Legenda do threshold
    CLabel   m_lPercPeriod; CEdit m_iPercPeriod;
+   CLabel   m_lPercHint;   // Legenda do período percentil
    CButton  m_btnApply;
    CLabel   m_lblStatus;
 
@@ -58,6 +61,14 @@ public:
       // Display
       if(!parent.CreateHdr(m_hdr, "f_hBB", "BB FILTER (ANTI-SQUEEZE)", y)) return false;
       y += PANEL_GAP_Y + 2;
+      // Descrição do filtro
+      if(!m_lDesc.Create(chart_id, PFX + "fbf_lDesc", subwin,
+                          COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+         return false;
+      m_lDesc.FontSize(7); m_lDesc.Color(CLR_NEUTRAL);
+      m_lDesc.Text("Bloqueia trades quando as bandas estao estreitas (squeeze)");
+      if(!parent.AddControl(m_lDesc)) return false;
+      y += 15;
       if(!parent.CreateLV(m_lStatus, m_eStatus, "f_lBFS", "f_eBFS", "Status:",     y)) return false;
       y += PANEL_GAP_Y;
       if(!parent.CreateLV(m_lWidth,  m_eWidth,  "f_lBFW", "f_eBFW", "Largura:",    y)) return false;
@@ -135,6 +146,14 @@ public:
        m_iThreshold.Text(DoubleToString(th, 2));
       }
       y += PANEL_GAP_Y;
+      // Dica do threshold (muda conforme a métrica)
+      if(!m_lThreshHint.Create(chart_id, PFX + "fbf_lThH", subwin,
+                                COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+         return false;
+      m_lThreshHint.FontSize(7); m_lThreshHint.Color(CLR_NEUTRAL);
+      m_lThreshHint.Text(_ThreshHint(m_cur_metric));
+      if(!parent.AddControl(m_lThreshHint)) return false;
+      y += 15;
 
       // Período do Percentil
       {
@@ -142,7 +161,15 @@ public:
        if(!parent.CreateLI(m_lPercPeriod, m_iPercPeriod, "fbf_lPP", "fbf_iPP", "Periodo Pcntl:", y)) return false;
        m_iPercPeriod.Text(IntegerToString(pp));
       }
-      y += PANEL_GAP_Y + 8;
+      y += PANEL_GAP_Y;
+      // Dica do período percentil
+      if(!m_lPercHint.Create(chart_id, PFX + "fbf_lPPH", subwin,
+                              COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+         return false;
+      m_lPercHint.FontSize(7); m_lPercHint.Color(CLR_NEUTRAL);
+      m_lPercHint.Text("Qtd de barras para calculo do percentil (so PCNTL.)");
+      if(!parent.AddControl(m_lPercHint)) return false;
+      y += 15;
 
       // Botão APLICAR
       if(!m_btnApply.Create(chart_id, PFX + "f_applyBF", subwin,
@@ -167,7 +194,7 @@ public:
 
    virtual void Show(void)
      {
-      m_hdr.Show();
+      m_hdr.Show(); m_lDesc.Show();
       m_lStatus.Show(); m_eStatus.Show();
       m_lWidth.Show(); m_eWidth.Show();
       m_lMetric.Show(); m_eMetric.Show();
@@ -177,14 +204,14 @@ public:
       m_lTF.Show(); m_bTF.Show();
       m_lMetric2.Show(); for(int i = 0; i < 3; i++) m_bMetric[i].Show();
       m_lMetricDesc.Show();
-      m_lThreshold.Show(); m_iThreshold.Show();
-      m_lPercPeriod.Show(); m_iPercPeriod.Show();
+      m_lThreshold.Show(); m_iThreshold.Show(); m_lThreshHint.Show();
+      m_lPercPeriod.Show(); m_iPercPeriod.Show(); m_lPercHint.Show();
       m_btnApply.Show(); m_lblStatus.Show();
      }
 
    virtual void Hide(void)
      {
-      m_hdr.Hide();
+      m_hdr.Hide(); m_lDesc.Hide();
       m_lStatus.Hide(); m_eStatus.Hide();
       m_lWidth.Hide(); m_eWidth.Hide();
       m_lMetric.Hide(); m_eMetric.Hide();
@@ -194,8 +221,8 @@ public:
       m_lTF.Hide(); m_bTF.Hide();
       m_lMetric2.Hide(); for(int i = 0; i < 3; i++) m_bMetric[i].Hide();
       m_lMetricDesc.Hide();
-      m_lThreshold.Hide(); m_iThreshold.Hide();
-      m_lPercPeriod.Hide(); m_iPercPeriod.Hide();
+      m_lThreshold.Hide(); m_iThreshold.Hide(); m_lThreshHint.Hide();
+      m_lPercPeriod.Hide(); m_iPercPeriod.Hide(); m_lPercHint.Hide();
       m_btnApply.Hide(); m_lblStatus.Hide();
      }
 
@@ -203,6 +230,7 @@ public:
      {
       ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
       m_lMetricDesc.Text(_MetricDesc(m_cur_metric));
+      m_lThreshHint.Text(_ThreshHint(m_cur_metric));
       if(m_filter != NULL && m_filter.IsInitialized())
         {
          bool active = m_filter.IsEnabled();
@@ -249,6 +277,7 @@ public:
             m_cur_metric = (ENUM_BB_SQUEEZE_METRIC)i;
             SetRadioSel(m_bMetric, 3, i);
             m_lMetricDesc.Text(_MetricDesc(m_cur_metric));
+            m_lThreshHint.Text(_ThreshHint(m_cur_metric));
             return true;
            }
       return false;
@@ -262,6 +291,17 @@ private:
          case BB_SQUEEZE_ABSOLUTE:   return "Absoluto: largura em pontos (upper-lower)";
          case BB_SQUEEZE_RELATIVE:   return "Relativo: largura % da banda central";
          case BB_SQUEEZE_PERCENTILE: return "Percentil: compara com N barras anteriores";
+         default:                    return "";
+        }
+     }
+
+   string _ThreshHint(ENUM_BB_SQUEEZE_METRIC metric)
+     {
+      switch(metric)
+        {
+         case BB_SQUEEZE_ABSOLUTE:   return "Bloqueia se largura < X pontos (ex: 50)";
+         case BB_SQUEEZE_RELATIVE:   return "Bloqueia se largura < X% da media (ex: 1.5)";
+         case BB_SQUEEZE_PERCENTILE: return "Bloqueia se percentil < X (ex: 20 = 20%)";
          default:                    return "";
         }
      }

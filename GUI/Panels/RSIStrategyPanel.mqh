@@ -2,7 +2,7 @@
 //|                                            RSIStrategyPanel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — RSI Strategy                             |
-//|                     Versão 1.00 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.01 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
@@ -29,6 +29,8 @@ private:
 
    // Controles — config
    CLabel   m_hdrConf;
+   CLabel   m_lPriority; CEdit   m_iPriority;
+   CLabel   m_lPrioRef;
    CLabel   m_lPeriod;   CEdit   m_iPeriod;
    CLabel   m_lTF;       CButton m_bTF;
    CLabel   m_lMode2;    CButton m_bMode[3];
@@ -52,6 +54,7 @@ public:
 
    virtual bool Create(CEPBotPanel *parent, long chart_id, int subwin)
      {
+      m_parent   = parent;
       m_chart_id = chart_id;
       m_subwin   = subwin;
       int y = ESTRAT_CONTENT_Y;
@@ -83,6 +86,21 @@ public:
       y += PANEL_GAP_SECTION;
       if(!parent.CreateHdr(m_hdrConf, "re_h1", "CONFIGURACOES", y)) return false;
       y += PANEL_GAP_Y + 2;
+
+      // Prioridade
+      {
+       int pr = (m_strategy != NULL) ? m_strategy.GetPriority() : 5;
+       if(!parent.CreateLI(m_lPriority, m_iPriority, "re_lPR", "re_iPR", "Prioridade:", y)) return false;
+       m_iPriority.Text(IntegerToString(pr));
+      }
+      y += PANEL_GAP_Y;
+      if(!m_lPrioRef.Create(chart_id, PFX + "re_lPRef", subwin,
+                             COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+         return false;
+      m_lPrioRef.FontSize(7); m_lPrioRef.Color(CLR_NEUTRAL);
+      m_lPrioRef.Text("(maior numero = maior prioridade no conflito)");
+      if(!parent.AddControl(m_lPrioRef)) return false;
+      y += 15;
 
       if(!parent.CreateLI(m_lPeriod, m_iPeriod, "re_lPD", "re_iPD", "Periodo:", y)) return false;
       y += PANEL_GAP_Y;
@@ -147,6 +165,7 @@ public:
       m_lMode.Show(); m_eMode.Show();
       m_lLevels.Show(); m_eLevels.Show();
       m_hdrConf.Show();
+      m_lPriority.Show(); m_iPriority.Show(); m_lPrioRef.Show();
       m_lPeriod.Show(); m_iPeriod.Show();
       m_lTF.Show(); m_bTF.Show();
       m_lMode2.Show(); for(int i = 0; i < 3; i++) m_bMode[i].Show();
@@ -165,6 +184,7 @@ public:
       m_lMode.Hide(); m_eMode.Hide();
       m_lLevels.Hide(); m_eLevels.Hide();
       m_hdrConf.Hide();
+      m_lPriority.Hide(); m_iPriority.Hide(); m_lPrioRef.Hide();
       m_lPeriod.Hide(); m_iPeriod.Hide();
       m_lTF.Hide(); m_bTF.Hide();
       m_lMode2.Hide(); for(int i = 0; i < 3; i++) m_bMode[i].Hide();
@@ -179,6 +199,13 @@ public:
      {
       ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
       m_lModeDesc.Text(RSIModeDesc(m_cur_rsiMode));
+      // Atualiza referência de prioridades das outras estratégias
+      if(m_parent != NULL)
+        {
+         string ref = m_parent.GetPriorityMapText("RSI Strategy");
+         if(ref != "") m_lPrioRef.Text("Outras: " + ref);
+         else          m_lPrioRef.Text("(maior numero = maior prioridade no conflito)");
+        }
       if(m_strategy != NULL && m_strategy.IsInitialized() && m_strategy.GetEnabled())
         {
          m_eStatus.Text("Ativo (P:" + IntegerToString(m_strategy.GetPriority()) + ")");
@@ -234,6 +261,7 @@ public:
 private:
    void _InitFields(void)
      {
+      int                  pr  = (m_strategy != NULL) ? m_strategy.GetPriority()    : 5;
       int                  rp  = (m_strategy != NULL) ? m_strategy.GetPeriod()      : 14;
       ENUM_TIMEFRAMES      rt  = (m_strategy != NULL) ? m_strategy.GetTimeframe()   : PERIOD_CURRENT;
       ENUM_RSI_SIGNAL_MODE rm  = (m_strategy != NULL) ? m_strategy.GetSignalMode()  : RSI_MODE_CROSSOVER;
@@ -244,6 +272,7 @@ private:
       m_cur_rsiTF   = rt;
       m_cur_rsiMode = rm;
 
+      m_iPriority.Text(IntegerToString(pr));
       m_iPeriod.Text(IntegerToString(rp));
       m_iOversold.Text(DoubleToString(ros, 1));
       m_iOverbought.Text(DoubleToString(rob, 1));
@@ -264,8 +293,10 @@ private:
         }
       int errors = 0;
       int period = (int)StringToInteger(m_iPeriod.Text());
+      int prio   = (int)StringToInteger(m_iPriority.Text());
       if(period >= 2) { if(!m_strategy.SetPeriod(period)) errors++; }
       else errors++;
+      if(prio <= 0) errors++;
 
       m_strategy.SetTimeframe(m_cur_rsiTF);
       m_strategy.SetSignalMode(m_cur_rsiMode);
@@ -278,12 +309,32 @@ private:
       if(ob > 0 && ob < 100) m_strategy.SetOverbought(ob); else errors++;
       if(mi > 0 && mi < 100) m_strategy.SetMiddle(mi);     else errors++;
 
+      if(errors > 0)
+        {
+         m_lblStatus.Text("Valores invalidos (Period>=2, Niveis 0-100, Prio>0)");
+         m_lblStatus.Color(CLR_NEGATIVE);
+         m_statusExpiry = GetTickCount() + 10000;
+         ChartRedraw();
+         return;
+        }
+
+      // Auto-ajuste de prioridade
+      if(m_parent != NULL)
+        {
+         int resolved = m_parent.ResolveStrategyPriority(prio, "RSI Strategy");
+         if(resolved != prio)
+           {
+            prio = resolved;
+            m_iPriority.Text(IntegerToString(prio));
+           }
+        }
+
+      m_strategy.SetPriority(prio);
       m_strategy.SetEnabled(m_pendingEnabled);
 
-      if(errors == 0)
-        { m_lblStatus.Text("Aplicado com sucesso!"); m_lblStatus.Color(CLR_POSITIVE); }
-      else
-        { m_lblStatus.Text("Valores invalidos (Period>=2, Niveis 0-100)"); m_lblStatus.Color(CLR_NEGATIVE); }
+      string msg = "Aplicado! Prioridade: " + IntegerToString(prio);
+      m_lblStatus.Text(msg);
+      m_lblStatus.Color(CLR_POSITIVE);
       m_statusExpiry = GetTickCount() + 10000;
       ChartRedraw();
      }

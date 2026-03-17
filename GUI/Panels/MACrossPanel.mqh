@@ -2,7 +2,7 @@
 //|                                                 MACrossPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — MA Cross Strategy                        |
-//|                     Versão 1.00 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.01 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
@@ -36,6 +36,8 @@ private:
 
    // Controles — config editável
    CLabel   m_hdrConf;
+   CLabel   m_lPriority; CEdit   m_iPriority;
+   CLabel   m_lPrioRef;
    CLabel   m_lFastP;    CEdit   m_iFastP;
    CLabel   m_lFastM;    CButton m_bFastM[4];
    CLabel   m_lFastTF;   CButton m_bFastTF;
@@ -46,6 +48,8 @@ private:
    CLabel   m_lSlowPr;   CButton m_bSlowPr;
    CLabel   m_hdrSig;
    CLabel   m_lEntry;    CButton m_bEntry[2];
+   CLabel   m_lEntryLeg1;
+   CLabel   m_lEntryLeg2;
    CLabel   m_lExit;     CButton m_bExit[3];
    CLabel   m_lLeg1;
    CLabel   m_lLeg2;
@@ -68,6 +72,7 @@ public:
 
    virtual bool Create(CEPBotPanel *parent, long chart_id, int subwin)
      {
+      m_parent   = parent;
       m_chart_id = chart_id;
       m_subwin   = subwin;
       int y = ESTRAT_CONTENT_Y;
@@ -101,6 +106,21 @@ public:
       y += PANEL_GAP_SECTION;
       if(!parent.CreateHdr(m_hdrConf, "ce_h1", "CONFIGURACOES", y)) return false;
       y += PANEL_GAP_Y + 2;
+
+      // Prioridade
+      {
+       int pr = (m_strategy != NULL) ? m_strategy.GetPriority() : 10;
+       if(!parent.CreateLI(m_lPriority, m_iPriority, "ce_lPR", "ce_iPR", "Prioridade:", y)) return false;
+       m_iPriority.Text(IntegerToString(pr));
+      }
+      y += PANEL_GAP_Y;
+      if(!m_lPrioRef.Create(chart_id, PFX + "ce_lPRef", subwin,
+                             COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+         return false;
+      m_lPrioRef.FontSize(7); m_lPrioRef.Color(CLR_NEUTRAL);
+      m_lPrioRef.Text("(maior numero = maior prioridade no conflito)");
+      if(!parent.AddControl(m_lPrioRef)) return false;
+      y += 15;
 
       if(!parent.CreateLI(m_lFastP, m_iFastP, "ce_lFP", "ce_iFP", "Fast Period:", y)) return false;
       y += PANEL_GAP_Y;
@@ -140,6 +160,23 @@ public:
           return false;
       }
       y += PANEL_GAP_Y + 2;
+
+      // Legendas de entrada
+      if(!m_lEntryLeg1.Create(chart_id, PFX + "ce_eLg1", subwin,
+                               COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + PANEL_GAP_Y))
+         return false;
+      m_lEntryLeg1.Text("PROX. CANDLE - Entra na abertura seguinte");
+      m_lEntryLeg1.FontSize(7); m_lEntryLeg1.Color(CLR_NEUTRAL);
+      if(!parent.AddControl(m_lEntryLeg1)) return false;
+      y += PANEL_GAP_Y;
+      if(!m_lEntryLeg2.Create(chart_id, PFX + "ce_eLg2", subwin,
+                               COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + PANEL_GAP_Y))
+         return false;
+      m_lEntryLeg2.Text("2o. CANDLE - Espera confirmacao (E2C)");
+      m_lEntryLeg2.FontSize(7); m_lEntryLeg2.Color(CLR_NEUTRAL);
+      if(!parent.AddControl(m_lEntryLeg2)) return false;
+      y += PANEL_GAP_Y;
+
       {
        string extTexts[] = {"FCO", "VM", "TP-SL"};
        if(!parent.CreateRadioGroup(m_lExit, m_bExit, "ce_lEX", "ce_bEX", "Saida:", extTexts, 3, y))
@@ -205,6 +242,7 @@ public:
       m_lCross.Show(); m_eCross.Show();
       m_lCandles.Show(); m_eCandles.Show();
       m_hdrConf.Show();
+      m_lPriority.Show(); m_iPriority.Show(); m_lPrioRef.Show();
       m_lFastP.Show(); m_iFastP.Show();
       m_lFastM.Show(); for(int i = 0; i < 4; i++) m_bFastM[i].Show();
       m_lFastTF.Show(); m_bFastTF.Show();
@@ -215,6 +253,7 @@ public:
       m_lSlowPr.Show(); m_bSlowPr.Show();
       m_hdrSig.Show();
       m_lEntry.Show(); for(int i = 0; i < 2; i++) m_bEntry[i].Show();
+      m_lEntryLeg1.Show(); m_lEntryLeg2.Show();
       m_lExit.Show();  for(int i = 0; i < 3; i++) m_bExit[i].Show();
       m_lLeg1.Show(); m_lLeg2.Show(); m_lLeg3.Show();
       m_btnApply.Show(); m_lblStatus.Show();
@@ -229,6 +268,7 @@ public:
       m_lCross.Hide(); m_eCross.Hide();
       m_lCandles.Hide(); m_eCandles.Hide();
       m_hdrConf.Hide();
+      m_lPriority.Hide(); m_iPriority.Hide(); m_lPrioRef.Hide();
       m_lFastP.Hide(); m_iFastP.Hide();
       m_lFastM.Hide(); for(int i = 0; i < 4; i++) m_bFastM[i].Hide();
       m_lFastTF.Hide(); m_bFastTF.Hide();
@@ -239,6 +279,7 @@ public:
       m_lSlowPr.Hide(); m_bSlowPr.Hide();
       m_hdrSig.Hide();
       m_lEntry.Hide(); for(int i = 0; i < 2; i++) m_bEntry[i].Hide();
+      m_lEntryLeg1.Hide(); m_lEntryLeg2.Hide();
       m_lExit.Hide();  for(int i = 0; i < 3; i++) m_bExit[i].Hide();
       m_lLeg1.Hide(); m_lLeg2.Hide(); m_lLeg3.Hide();
       m_btnApply.Hide(); m_lblStatus.Hide();
@@ -247,6 +288,13 @@ public:
    virtual void Update(void)
      {
       ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      // Atualiza referência de prioridades das outras estratégias
+      if(m_parent != NULL)
+        {
+         string ref = m_parent.GetPriorityMapText("MA Cross Strategy");
+         if(ref != "") m_lPrioRef.Text("Outras: " + ref);
+         else          m_lPrioRef.Text("(maior numero = maior prioridade no conflito)");
+        }
       if(m_strategy != NULL && m_strategy.IsInitialized() && m_strategy.GetEnabled())
         {
          m_eStatus.Text("Ativo (P:" + IntegerToString(m_strategy.GetPriority()) + ")");
@@ -342,6 +390,7 @@ public:
 private:
    void _InitFields(void)
      {
+      int                pr  = (m_strategy != NULL) ? m_strategy.GetPriority()      : 10;
       ENUM_MA_METHOD     fm  = (m_strategy != NULL) ? m_strategy.GetFastMethod()    : MODE_SMA;
       ENUM_MA_METHOD     sm  = (m_strategy != NULL) ? m_strategy.GetSlowMethod()    : MODE_SMA;
       ENUM_TIMEFRAMES    ft  = (m_strategy != NULL) ? m_strategy.GetFastTimeframe() : PERIOD_CURRENT;
@@ -358,6 +407,7 @@ private:
       m_cur_fastPrice  = fpr; m_cur_slowPrice = spr;
       m_cur_entry      = en; m_cur_exit       = ex;
 
+      m_iPriority.Text(IntegerToString(pr));
       m_iFastP.Text(IntegerToString(fp));
       m_iSlowP.Text(IntegerToString(sp));
       SetRadioSel(m_bFastM, 4, MAMethodToIndex(fm));
@@ -382,6 +432,7 @@ private:
       int errors = 0;
       int fastP = (int)StringToInteger(m_iFastP.Text());
       int slowP = (int)StringToInteger(m_iSlowP.Text());
+      int prio  = (int)StringToInteger(m_iPriority.Text());
 
       if(fastP > 0 && slowP > 0 && fastP < slowP)
         {
@@ -394,14 +445,36 @@ private:
       else
          errors++;
 
+      if(prio <= 0) errors++;
+
+      if(errors > 0)
+        {
+         m_lblStatus.Text("Valores invalidos (fast<slow>0, Prio>0)");
+         m_lblStatus.Color(CLR_NEGATIVE);
+         m_statusExpiry = GetTickCount() + 10000;
+         ChartRedraw();
+         return;
+        }
+
+      // Auto-ajuste de prioridade
+      if(m_parent != NULL)
+        {
+         int resolved = m_parent.ResolveStrategyPriority(prio, "MA Cross Strategy");
+         if(resolved != prio)
+           {
+            prio = resolved;
+            m_iPriority.Text(IntegerToString(prio));
+           }
+        }
+
+      m_strategy.SetPriority(prio);
       m_strategy.SetEntryMode(m_cur_entry);
       m_strategy.SetExitMode(m_cur_exit);
       m_strategy.SetEnabled(m_pendingEnabled);
 
-      if(errors == 0)
-        { m_lblStatus.Text("Aplicado com sucesso!"); m_lblStatus.Color(CLR_POSITIVE); }
-      else
-        { m_lblStatus.Text("Periodo invalido (fast < slow > 0)"); m_lblStatus.Color(CLR_NEGATIVE); }
+      string msg = "Aplicado! Prioridade: " + IntegerToString(prio);
+      m_lblStatus.Text(msg);
+      m_lblStatus.Color(CLR_POSITIVE);
       m_statusExpiry = GetTickCount() + 10000;
       ChartRedraw();
      }

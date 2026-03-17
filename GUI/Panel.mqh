@@ -2,15 +2,20 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.39 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.40 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.39"
+#property version   "1.40"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.40 (Parte 027):
+// + ResolveStrategyPriority(): auto-ajuste de prioridade (incrementa se conflito)
+// + GetPriorityMapText(): retorna mapa de prioridades das outras estratégias
+// + Painéis de estratégia agora têm campo Prioridade editável com auto-ajuste
+//
 // v1.39 (Parte 026):
 // + BB Strategy e BB Filter integrados em RegisterPanels()
 //   BollingerBandsPanel.mqh + BollingerBandsFilterPanel.mqh
@@ -657,6 +662,11 @@ private:
    bool                      m_cur_newsOn2;
    bool                      m_cur_newsOn3;
    // (MA Cross e RSI ESTRAT state vars movidos para CMACrossPanel / CRSIStrategyPanel)
+
+   // ── Prioridade: resolução de conflitos entre estratégias ──
+public:
+   int               ResolveStrategyPriority(int desired, string excludeName);
+   string            GetPriorityMapText(string excludeName);
 
    // ── Helpers públicos (usados pelos painéis GUI/Panels/*.mqh) ──
 public:
@@ -1431,6 +1441,49 @@ void CEPBotPanel::RegisterPanels(void)
       ArrayResize(m_filtPanels, ++m_filtPanelCount);
       m_filtPanels[m_filtPanelCount - 1] = new CBollingerBandsFilterPanel(m_bbFilter);
      }
+  }
+
+//+------------------------------------------------------------------+
+//| ResolveStrategyPriority — auto-ajuste de prioridade               |
+//| Se 'desired' já está em uso por outra estratégia, incrementa      |
+//| até encontrar um valor livre.                                      |
+//+------------------------------------------------------------------+
+int CEPBotPanel::ResolveStrategyPriority(int desired, string excludeName)
+  {
+   if(m_signalManager == NULL) return desired;
+   for(int attempt = 0; attempt < 100; attempt++)
+     {
+      bool conflict = false;
+      for(int i = 0; i < m_signalManager.GetStrategyCount(); i++)
+        {
+         CStrategyBase *s = m_signalManager.GetStrategy(i);
+         if(s != NULL && s.GetName() != excludeName && s.GetPriority() == desired)
+           { conflict = true; break; }
+        }
+      if(!conflict) return desired;
+      desired++;
+     }
+   return desired;
+  }
+
+//+------------------------------------------------------------------+
+//| GetPriorityMapText — retorna texto com prioridades das outras     |
+//| estratégias, ex: "MA:10 | RSI:5"                                  |
+//+------------------------------------------------------------------+
+string CEPBotPanel::GetPriorityMapText(string excludeName)
+  {
+   string result = "";
+   if(m_signalManager == NULL) return result;
+   for(int i = 0; i < m_signalManager.GetStrategyCount(); i++)
+     {
+      CStrategyBase *s = m_signalManager.GetStrategy(i);
+      if(s != NULL && s.GetName() != excludeName)
+        {
+         if(result != "") result += " | ";
+         result += s.GetName() + ":" + IntegerToString(s.GetPriority());
+        }
+     }
+   return result;
   }
 
 //+------------------------------------------------------------------+

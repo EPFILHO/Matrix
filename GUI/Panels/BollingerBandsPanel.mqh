@@ -2,7 +2,7 @@
 //|                                           BollingerBandsPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Bollinger Bands Strategy                 |
-//|                     Versão 1.00 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.01 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
@@ -23,6 +23,7 @@ private:
 
    // Controles — display read-only
    CLabel   m_hdr;
+   CLabel   m_lDesc;     // Descrição do que a estratégia faz
    CButton  m_btnToggle;
    CLabel   m_lStatus;   CLabel  m_eStatus;
    CLabel   m_lUpper;    CLabel  m_eUpper;
@@ -32,13 +33,18 @@ private:
 
    // Controles — config editável
    CLabel   m_hdrConf;
+   CLabel   m_lPriority; CEdit   m_iPriority;
+   CLabel   m_lPrioRef;  // Mostra prioridades das outras estratégias
    CLabel   m_lPeriod;   CEdit   m_iPeriod;
    CLabel   m_lDev;      CEdit   m_iDev;
+   CLabel   m_lDevHint;  // Legenda desvio
    CLabel   m_lTF;       CButton m_bTF;
    CLabel   m_hdrSig;
    CLabel   m_lMode;     CButton m_bMode[3];
    CLabel   m_lModeDesc;
    CLabel   m_lEntry;    CButton m_bEntry[2];
+   CLabel   m_lEntryLeg1;
+   CLabel   m_lEntryLeg2;
    CLabel   m_lExit;     CButton m_bExit[3];
    CLabel   m_lLeg1;
    CLabel   m_lLeg2;
@@ -61,12 +67,22 @@ public:
 
    virtual bool Create(CEPBotPanel *parent, long chart_id, int subwin)
      {
+      m_parent   = parent;
       m_chart_id = chart_id;
       m_subwin   = subwin;
       int y = ESTRAT_CONTENT_Y;
 
       if(!parent.CreateHdr(m_hdr, "e_hBB", "BOLLINGER BANDS STRATEGY", y)) return false;
       y += PANEL_GAP_Y + 2;
+
+      // Descrição da estratégia
+      if(!m_lDesc.Create(chart_id, PFX + "bb_lDesc", subwin,
+                          COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+         return false;
+      m_lDesc.FontSize(7); m_lDesc.Color(CLR_NEUTRAL);
+      m_lDesc.Text("Sinais de compra/venda baseados nas Bandas de Bollinger");
+      if(!parent.AddControl(m_lDesc)) return false;
+      y += 15;
 
       // Toggle ON/OFF
       m_pendingEnabled = (m_strategy != NULL) ? m_strategy.GetEnabled() : false;
@@ -95,10 +111,34 @@ public:
       if(!parent.CreateHdr(m_hdrConf, "bb_h1", "CONFIGURACOES", y)) return false;
       y += PANEL_GAP_Y + 2;
 
+      // Prioridade (para resolução de conflitos entre estratégias)
+      {
+       int pr = (m_strategy != NULL) ? m_strategy.GetPriority() : 3;
+       if(!parent.CreateLI(m_lPriority, m_iPriority, "bb_lPR", "bb_iPR", "Prioridade:", y)) return false;
+       m_iPriority.Text(IntegerToString(pr));
+      }
+      y += PANEL_GAP_Y;
+      // Referência de prioridades das outras estratégias
+      if(!m_lPrioRef.Create(chart_id, PFX + "bb_lPRef", subwin,
+                             COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+         return false;
+      m_lPrioRef.FontSize(7); m_lPrioRef.Color(CLR_NEUTRAL);
+      m_lPrioRef.Text("(maior numero = maior prioridade no conflito)");
+      if(!parent.AddControl(m_lPrioRef)) return false;
+      y += 15;
+
       if(!parent.CreateLI(m_lPeriod, m_iPeriod, "bb_lPD", "bb_iPD", "Periodo:", y)) return false;
       y += PANEL_GAP_Y;
       if(!parent.CreateLI(m_lDev, m_iDev, "bb_lDV", "bb_iDV", "Desvio:", y)) return false;
       y += PANEL_GAP_Y;
+      // Dica sobre desvio
+      if(!m_lDevHint.Create(chart_id, PFX + "bb_lDVH", subwin,
+                             COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+         return false;
+      m_lDevHint.FontSize(7); m_lDevHint.Color(CLR_NEUTRAL);
+      m_lDevHint.Text("Desvio padrao das bandas (ex: 2.0 = 2 sigma)");
+      if(!parent.AddControl(m_lDevHint)) return false;
+      y += 15;
       if(!parent.CreateLB(m_lTF, m_bTF, "bb_lTF", "bb_bTF", "Time Frame:", y)) return false;
       y += PANEL_GAP_Y + 2;
 
@@ -129,6 +169,23 @@ public:
           return false;
       }
       y += PANEL_GAP_Y + 2;
+
+      // Legendas de entrada
+      if(!m_lEntryLeg1.Create(chart_id, PFX + "bb_eLg1", subwin,
+                               COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + PANEL_GAP_Y))
+         return false;
+      m_lEntryLeg1.Text("PROX. CANDLE - Entra na abertura seguinte");
+      m_lEntryLeg1.FontSize(7); m_lEntryLeg1.Color(CLR_NEUTRAL);
+      if(!parent.AddControl(m_lEntryLeg1)) return false;
+      y += PANEL_GAP_Y;
+      if(!m_lEntryLeg2.Create(chart_id, PFX + "bb_eLg2", subwin,
+                               COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + PANEL_GAP_Y))
+         return false;
+      m_lEntryLeg2.Text("2o. CANDLE - Espera confirmacao (E2C)");
+      m_lEntryLeg2.FontSize(7); m_lEntryLeg2.Color(CLR_NEUTRAL);
+      if(!parent.AddControl(m_lEntryLeg2)) return false;
+      y += PANEL_GAP_Y;
+
       {
        string extTexts[] = {"FCO", "VM", "TP-SL"};
        if(!parent.CreateRadioGroup(m_lExit, m_bExit, "bb_lEX", "bb_bEX", "Saida:", extTexts, 3, y))
@@ -187,20 +244,22 @@ public:
 
    virtual void Show(void)
      {
-      m_hdr.Show(); m_btnToggle.Show();
+      m_hdr.Show(); m_lDesc.Show(); m_btnToggle.Show();
       m_lStatus.Show(); m_eStatus.Show();
       m_lUpper.Show(); m_eUpper.Show();
       m_lMiddle.Show(); m_eMiddle.Show();
       m_lLower.Show(); m_eLower.Show();
       m_lWidth.Show(); m_eWidth.Show();
       m_hdrConf.Show();
+      m_lPriority.Show(); m_iPriority.Show(); m_lPrioRef.Show();
       m_lPeriod.Show(); m_iPeriod.Show();
-      m_lDev.Show(); m_iDev.Show();
+      m_lDev.Show(); m_iDev.Show(); m_lDevHint.Show();
       m_lTF.Show(); m_bTF.Show();
       m_hdrSig.Show();
       m_lMode.Show(); for(int i = 0; i < 3; i++) m_bMode[i].Show();
       m_lModeDesc.Show();
       m_lEntry.Show(); for(int i = 0; i < 2; i++) m_bEntry[i].Show();
+      m_lEntryLeg1.Show(); m_lEntryLeg2.Show();
       m_lExit.Show();  for(int i = 0; i < 3; i++) m_bExit[i].Show();
       m_lLeg1.Show(); m_lLeg2.Show(); m_lLeg3.Show();
       m_btnApply.Show(); m_lblStatus.Show();
@@ -208,20 +267,22 @@ public:
 
    virtual void Hide(void)
      {
-      m_hdr.Hide(); m_btnToggle.Hide();
+      m_hdr.Hide(); m_lDesc.Hide(); m_btnToggle.Hide();
       m_lStatus.Hide(); m_eStatus.Hide();
       m_lUpper.Hide(); m_eUpper.Hide();
       m_lMiddle.Hide(); m_eMiddle.Hide();
       m_lLower.Hide(); m_eLower.Hide();
       m_lWidth.Hide(); m_eWidth.Hide();
       m_hdrConf.Hide();
+      m_lPriority.Hide(); m_iPriority.Hide(); m_lPrioRef.Hide();
       m_lPeriod.Hide(); m_iPeriod.Hide();
-      m_lDev.Hide(); m_iDev.Hide();
+      m_lDev.Hide(); m_iDev.Hide(); m_lDevHint.Hide();
       m_lTF.Hide(); m_bTF.Hide();
       m_hdrSig.Hide();
       m_lMode.Hide(); for(int i = 0; i < 3; i++) m_bMode[i].Hide();
       m_lModeDesc.Hide();
       m_lEntry.Hide(); for(int i = 0; i < 2; i++) m_bEntry[i].Hide();
+      m_lEntryLeg1.Hide(); m_lEntryLeg2.Hide();
       m_lExit.Hide();  for(int i = 0; i < 3; i++) m_bExit[i].Hide();
       m_lLeg1.Hide(); m_lLeg2.Hide(); m_lLeg3.Hide();
       m_btnApply.Hide(); m_lblStatus.Hide();
@@ -231,6 +292,13 @@ public:
      {
       ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
       m_lModeDesc.Text(_ModeDesc(m_cur_mode));
+      // Atualiza referência de prioridades das outras estratégias
+      if(m_parent != NULL)
+        {
+         string ref = m_parent.GetPriorityMapText("BB Strategy");
+         if(ref != "") m_lPrioRef.Text("Outras: " + ref);
+         else          m_lPrioRef.Text("(maior numero = maior prioridade no conflito)");
+        }
       if(m_strategy != NULL && m_strategy.IsInitialized() && m_strategy.GetEnabled())
         {
          m_eStatus.Text("Ativo (P:" + IntegerToString(m_strategy.GetPriority()) + ")");
@@ -300,15 +368,16 @@ private:
      {
       switch(mode)
         {
-         case BB_MODE_FFFD:     return "FFFD: Fechou Fora, Fechou Dentro (reversao)";
-         case BB_MODE_REBOUND:  return "Rebound: toque na banda + reversao";
-         case BB_MODE_BREAKOUT: return "Breakout: rompimento da banda (tendencia)";
+         case BB_MODE_FFFD:     return "FFFD: candle[2] fecha fora, candle[1] volta p/ dentro";
+         case BB_MODE_REBOUND:  return "Rebound: preco toca a banda e fecha na direcao oposta";
+         case BB_MODE_BREAKOUT: return "Breakout: preco rompe a banda (sinal de tendencia)";
          default:               return "";
         }
      }
 
    void _InitFields(void)
      {
+      int              pr  = (m_strategy != NULL) ? m_strategy.GetPriority()    : 3;
       int              pd  = (m_strategy != NULL) ? m_strategy.GetPeriod()      : 20;
       double           dv  = (m_strategy != NULL) ? m_strategy.GetDeviation()   : 2.0;
       ENUM_TIMEFRAMES  tf  = (m_strategy != NULL) ? m_strategy.GetTimeframe()   : PERIOD_CURRENT;
@@ -321,6 +390,7 @@ private:
       m_cur_entry = en;
       m_cur_exit  = ex;
 
+      m_iPriority.Text(IntegerToString(pr));
       m_iPeriod.Text(IntegerToString(pd));
       m_iDev.Text(DoubleToString(dv, 1));
       m_bTF.Text(TFName(tf));
@@ -342,22 +412,44 @@ private:
       int errors = 0;
       int period = (int)StringToInteger(m_iPeriod.Text());
       double dev = StringToDouble(m_iDev.Text());
+      int prio = (int)StringToInteger(m_iPriority.Text());
 
       if(period >= 2) { if(!m_strategy.SetPeriod(period)) errors++; }
       else errors++;
       if(dev > 0) { if(!m_strategy.SetDeviation(dev)) errors++; }
       else errors++;
+      if(prio <= 0) errors++;
 
+      if(errors > 0)
+        {
+         m_lblStatus.Text("Valores invalidos (Period>=2, Desvio>0, Prio>0)");
+         m_lblStatus.Color(CLR_NEGATIVE);
+         m_statusExpiry = GetTickCount() + 10000;
+         ChartRedraw();
+         return;
+        }
+
+      // Auto-ajuste de prioridade se conflitar com outra estratégia
+      if(m_parent != NULL)
+        {
+         int resolved = m_parent.ResolveStrategyPriority(prio, "BB Strategy");
+         if(resolved != prio)
+           {
+            prio = resolved;
+            m_iPriority.Text(IntegerToString(prio));
+           }
+        }
+
+      m_strategy.SetPriority(prio);
       m_strategy.SetTimeframe(m_cur_TF);
       m_strategy.SetSignalMode(m_cur_mode);
       m_strategy.SetEntryMode(m_cur_entry);
       m_strategy.SetExitMode(m_cur_exit);
       m_strategy.SetEnabled(m_pendingEnabled);
 
-      if(errors == 0)
-        { m_lblStatus.Text("Aplicado com sucesso!"); m_lblStatus.Color(CLR_POSITIVE); }
-      else
-        { m_lblStatus.Text("Valores invalidos (Period>=2, Desvio>0)"); m_lblStatus.Color(CLR_NEGATIVE); }
+      string msg = "Aplicado! Prioridade: " + IntegerToString(prio);
+      m_lblStatus.Text(msg);
+      m_lblStatus.Color(CLR_POSITIVE);
       m_statusExpiry = GetTickCount() + 10000;
       ChartRedraw();
      }
