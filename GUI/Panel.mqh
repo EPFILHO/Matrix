@@ -2,15 +2,21 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.38 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.39 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.38"
+#property version   "1.39"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.39 (Parte 026):
+// + BB Strategy e BB Filter integrados em RegisterPanels()
+//   BollingerBandsPanel.mqh + BollingerBandsFilterPanel.mqh
+// + Init() recebe ponteiros BB Strategy + BB Filter
+// + m_bbStrategy, m_bbFilter: novos membros ponteiro
+//
 // v1.38 (Parte 025):
 // + CStrategyPanelBase / CFilterPanelBase: base abstrata para sub-páginas
 //   Cada estratégia/filtro encapsula seus controles em GUI/Panels/*.mqh
@@ -385,10 +391,12 @@ private:
    CRiskManager      *m_riskManager;
    CTradeManager     *m_tradeManager;
    CSignalManager    *m_signalManager;
-   CMACrossStrategy  *m_maCross;
-   CRSIStrategy      *m_rsiStrategy;
-   CTrendFilter      *m_trendFilter;
-   CRSIFilter        *m_rsiFilter;
+   CMACrossStrategy        *m_maCross;
+   CRSIStrategy            *m_rsiStrategy;
+   CBollingerBandsStrategy *m_bbStrategy;
+   CTrendFilter            *m_trendFilter;
+   CRSIFilter              *m_rsiFilter;
+   CBollingerBandsFilter   *m_bbFilter;
 
    // ── Painéis dinâmicos (criados em RegisterPanels) ──
    CStrategyPanelBase *m_stratPanels[];
@@ -772,7 +780,9 @@ public:
    bool              Init(CLogger *logger, CBlockers *blockers, CRiskManager *risk,
                           CTradeManager *trade, CSignalManager *signal,
                           CMACrossStrategy *maCross, CRSIStrategy *rsi,
+                          CBollingerBandsStrategy *bb,
                           CTrendFilter *trend, CRSIFilter *rsiFilt,
+                          CBollingerBandsFilter *bbFilt,
                           int magic, string symbol);
 
    bool              CreatePanel(long chart, string name, int subwin,
@@ -836,7 +846,9 @@ CEPBotPanel::~CEPBotPanel(void)
 bool CEPBotPanel::Init(CLogger *logger, CBlockers *blockers, CRiskManager *risk,
                        CTradeManager *trade, CSignalManager *signal,
                        CMACrossStrategy *maCross, CRSIStrategy *rsi,
+                       CBollingerBandsStrategy *bb,
                        CTrendFilter *trend, CRSIFilter *rsiFilt,
+                       CBollingerBandsFilter *bbFilt,
                        int magic, string symbol)
   {
    m_logger       = logger;
@@ -846,8 +858,10 @@ bool CEPBotPanel::Init(CLogger *logger, CBlockers *blockers, CRiskManager *risk,
    m_signalManager = signal;
    m_maCross      = maCross;
    m_rsiStrategy  = rsi;
+   m_bbStrategy   = bb;
    m_trendFilter  = trend;
    m_rsiFilter    = rsiFilt;
+   m_bbFilter     = bbFilt;
    m_magicNumber  = magic;
    m_symbol       = symbol;
    RegisterPanels();
@@ -1362,8 +1376,10 @@ void CEPBotPanel::MouseProtection(const int x, const int y)
 // Incluídos APÓS CEPBotPanel — painéis usam CEPBotPanel* com acesso completo
 #include "Panels/MACrossPanel.mqh"
 #include "Panels/RSIStrategyPanel.mqh"
+#include "Panels/BollingerBandsPanel.mqh"
 #include "Panels/TrendFilterPanel.mqh"
 #include "Panels/RSIFilterPanel.mqh"
+#include "Panels/BollingerBandsFilterPanel.mqh"
 
 #include "PanelTabStatus.mqh"
 #include "PanelTabResultados.mqh"
@@ -1393,6 +1409,11 @@ void CEPBotPanel::RegisterPanels(void)
       ArrayResize(m_stratPanels, ++m_stratPanelCount);
       m_stratPanels[m_stratPanelCount - 1] = new CRSIStrategyPanel(m_rsiStrategy);
      }
+   if(m_bbStrategy != NULL)
+     {
+      ArrayResize(m_stratPanels, ++m_stratPanelCount);
+      m_stratPanels[m_stratPanelCount - 1] = new CBollingerBandsPanel(m_bbStrategy);
+     }
 
    // ── Filtros ──
    if(m_trendFilter != NULL)
@@ -1404,6 +1425,11 @@ void CEPBotPanel::RegisterPanels(void)
      {
       ArrayResize(m_filtPanels, ++m_filtPanelCount);
       m_filtPanels[m_filtPanelCount - 1] = new CRSIFilterPanel(m_rsiFilter);
+     }
+   if(m_bbFilter != NULL)
+     {
+      ArrayResize(m_filtPanels, ++m_filtPanelCount);
+      m_filtPanels[m_filtPanelCount - 1] = new CBollingerBandsFilterPanel(m_bbFilter);
      }
   }
 

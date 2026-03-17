@@ -2,13 +2,26 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.45 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.46 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.45"
+#property version   "1.46"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.46 (Parte 026):                                     |
+//| - Bollinger Bands Strategy (FFFD, Rebound, Breakout)             |
+//|   Novo módulo: Strategy/Strategies/BollingerBandsStrategy.mqh    |
+//|   3 modos: FFFD (Fechou Fora, Fechou Dentro), Rebound, Breakout |
+//|   Suporte completo a Entry/Exit modes (E2C, FCO, VM, TP/SL)     |
+//| - Bollinger Bands Filter (Anti-Squeeze)                          |
+//|   Novo módulo: Strategy/Filters/BollingerBandsFilter.mqh         |
+//|   3 métricas: Absoluto (pts), Relativo (%), Percentil            |
+//|   Protege MACross de sinais falsos em mercado em range           |
+//| - GUI: BollingerBandsPanel.mqh + BollingerBandsFilterPanel.mqh   |
+//| - Inputs v1.08: novos inputs BB Strategy + BB Filter             |
+//| - Panel v1.39: BB Strategy/Filter registrados em RegisterPanels  |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.45 (Parte 025):                                     |
 //| - inp_RSISignalShift removido do RSIStrategy.Setup()             |
@@ -286,14 +299,16 @@ CSignalManager* g_signalManager = NULL;  // Orquestrador de sinais
 // ═══════════════════════════════════════════════════════════════
 // STRATEGIES (ponteiros - serão criadas dinamicamente)
 // ═══════════════════════════════════════════════════════════════
-CMACrossStrategy* g_maCrossStrategy = NULL;  // Estratégia MA Cross
-CRSIStrategy*     g_rsiStrategy     = NULL;  // Estratégia RSI
+CMACrossStrategy*        g_maCrossStrategy = NULL;  // Estratégia MA Cross
+CRSIStrategy*            g_rsiStrategy     = NULL;  // Estratégia RSI
+CBollingerBandsStrategy* g_bbStrategy      = NULL;  // Estratégia Bollinger Bands
 
 // ═══════════════════════════════════════════════════════════════
 // FILTERS (ponteiros - serão criados dinamicamente)
 // ═══════════════════════════════════════════════════════════════
-CTrendFilter* g_trendFilter = NULL;  // Filtro de tendência
-CRSIFilter*   g_rsiFilter   = NULL;  // Filtro RSI
+CTrendFilter*         g_trendFilter = NULL;  // Filtro de tendência
+CRSIFilter*           g_rsiFilter   = NULL;  // Filtro RSI
+CBollingerBandsFilter* g_bbFilter   = NULL;  // Filtro Bollinger Bands (Anti-Squeeze)
 
 // ═══════════════════════════════════════════════════════════════
 // GUI (painel opcional)
@@ -333,8 +348,10 @@ void CleanupAll()
       g_signalManager.Clear();
      }
 
+   if(g_bbFilter != NULL)         { delete g_bbFilter;         g_bbFilter         = NULL; }
    if(g_rsiFilter != NULL)        { delete g_rsiFilter;        g_rsiFilter        = NULL; }
    if(g_trendFilter != NULL)      { delete g_trendFilter;      g_trendFilter      = NULL; }
+   if(g_bbStrategy != NULL)       { delete g_bbStrategy;       g_bbStrategy       = NULL; }
    if(g_rsiStrategy != NULL)      { delete g_rsiStrategy;      g_rsiStrategy      = NULL; }
    if(g_maCrossStrategy != NULL)  { delete g_maCrossStrategy;  g_maCrossStrategy  = NULL; }
    if(g_signalManager != NULL)    { delete g_signalManager;    g_signalManager    = NULL; }
@@ -350,7 +367,7 @@ void CleanupAll()
 int OnInit()
   {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.44 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v1.46 - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
 
 // ═══════════════════════════════════════════════════════════════
@@ -718,6 +735,53 @@ int OnInit()
                 "RSIStrategy registrada" + (inp_UseRSI ? " (ATIVA)" : " (INATIVA)") +
                 " - Prioridade: " + IntegerToString(inp_RSIPriority));
 
+//--- 6.3: BOLLINGER BANDS STRATEGY (sempre criada; inp_UseBB define estado inicial)
+   g_bbStrategy = new CBollingerBandsStrategy();
+   if(g_bbStrategy == NULL)
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar BBStrategy!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   if(!g_bbStrategy.Setup(
+         g_logger,
+         _Symbol,
+         inp_BBTF,
+         inp_BBPeriod,
+         inp_BBDeviation,
+         inp_BBApplied,
+         inp_BBMode,
+         inp_BBEntryMode,
+         inp_BBExitMode
+      ))
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar BBStrategy!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   if(!g_bbStrategy.Initialize())
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar BBStrategy!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   g_bbStrategy.SetEnabled(inp_UseBB);
+   g_bbStrategy.SetPriority(inp_BBPriority);
+
+   if(!g_signalManager.AddStrategy(g_bbStrategy))
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao registrar BBStrategy no SignalManager!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT",
+                "BBStrategy registrada" + (inp_UseBB ? " (ATIVA)" : " (INATIVA)") +
+                " - Prioridade: " + IntegerToString(inp_BBPriority));
+
 // ═══════════════════════════════════════════════════════════════
 // ETAPA 7: CRIAR E REGISTRAR FILTROS
 // ═══════════════════════════════════════════════════════════════
@@ -813,6 +877,51 @@ int OnInit()
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT",
                 "RSIFilter registrado" + (inp_UseRSIFilter ? " (ATIVO)" : " (INATIVO)"));
 
+//--- 7.3: BB FILTER (sempre criado; inp_UseBBFilter define estado inicial)
+   g_bbFilter = new CBollingerBandsFilter();
+   if(g_bbFilter == NULL)
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar BBFilter!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   if(!g_bbFilter.Setup(
+         g_logger,
+         _Symbol,
+         inp_BBFiltTF,
+         inp_BBFiltPeriod,
+         inp_BBFiltDeviation,
+         inp_BBFiltApplied,
+         inp_BBFiltMetric,
+         inp_BBFiltThreshold,
+         inp_BBFiltPercPeriod
+      ))
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao configurar BBFilter!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   if(!g_bbFilter.Initialize())
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar BBFilter!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   g_bbFilter.SetEnabled(inp_UseBBFilter);
+
+   if(!g_signalManager.AddFilter(g_bbFilter))
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao registrar BBFilter no SignalManager!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT",
+                "BBFilter registrado" + (inp_UseBBFilter ? " (ATIVO)" : " (INATIVO)"));
+
 // ═══════════════════════════════════════════════════════════════
 // ETAPA 8: CONFIGURAÇÕES FINAIS
 // ═══════════════════════════════════════════════════════════════
@@ -830,11 +939,13 @@ int OnInit()
         {
          g_panel.Init(g_logger, g_blockers, g_riskManager, g_tradeManager,
                       g_signalManager, g_maCrossStrategy, g_rsiStrategy,
-                      g_trendFilter, g_rsiFilter, inp_MagicNumber, _Symbol);
+                      g_bbStrategy,
+                      g_trendFilter, g_rsiFilter, g_bbFilter,
+                      inp_MagicNumber, _Symbol);
 
          int chartWidth = (int)ChartGetInteger(0, CHART_WIDTH_IN_PIXELS);
          int x1 = chartWidth - PANEL_WIDTH - 10;
-         if(!g_panel.CreatePanel(0, "EPBotMatrix - Versão 1.44", 0, x1, 20, x1 + PANEL_WIDTH, 20 + PANEL_HEIGHT))
+         if(!g_panel.CreatePanel(0, "EPBotMatrix - Versão 1.46", 0, x1, 20, x1 + PANEL_WIDTH, 20 + PANEL_HEIGHT))
            {
             g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar painel GUI");
             delete g_panel;
