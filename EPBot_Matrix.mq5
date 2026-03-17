@@ -25,9 +25,12 @@
 //| - GUI: Campo Prioridade editável em TODOS os painéis de estratégia|
 //|   MA Cross, RSI e BB agora permitem alterar prioridade via painel |
 //|   Auto-ajuste: se prioridade conflita, incrementa automaticamente |
-//|   Referência visual: mostra prioridades das outras estratégias    |
+//| - GUI cleanup: removida linha ref prioridade, legendas estaticas  |
+//|   Descrições dinâmicas de entrada/saída ao clicar nos botões     |
+//|   Labels traduzidos para português (Oversold→Sobrevendido, etc)  |
+//|   Status "P:" alterado para "Prioridade:" na pag GERAL           |
 //| - Inputs v1.08: novos inputs BB Strategy + BB Filter             |
-//| - Panel v1.40: ResolveStrategyPriority + GetPriorityMapText       |
+//| - Panel v1.41: removido GetPriorityMapText (não mais utilizado)  |
 //| - StrategyPanelBase v1.01: m_parent para acesso ao painel         |
 //| - Panel v1.39: BB Strategy/Filter registrados em RegisterPanels  |
 //+------------------------------------------------------------------+

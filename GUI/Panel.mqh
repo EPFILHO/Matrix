@@ -11,9 +11,10 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.41 (Parte 026):
+// - Removido GetPriorityMapText() (não mais utilizado)
 // v1.40 (Parte 026):
 // + ResolveStrategyPriority(): auto-ajuste de prioridade (incrementa se conflito)
-// + GetPriorityMapText(): retorna mapa de prioridades das outras estratégias
 // + Painéis de estratégia agora têm campo Prioridade editável com auto-ajuste
 //
 // v1.39 (Parte 026):
@@ -666,7 +667,6 @@ private:
    // ── Prioridade: resolução de conflitos entre estratégias ──
 public:
    int               ResolveStrategyPriority(int desired, string excludeName);
-   string            GetPriorityMapText(string excludeName);
 
    // ── Helpers públicos (usados pelos painéis GUI/Panels/*.mqh) ──
 public:
@@ -1464,26 +1464,6 @@ int CEPBotPanel::ResolveStrategyPriority(int desired, string excludeName)
       desired++;
      }
    return desired;
-  }
-
-//+------------------------------------------------------------------+
-//| GetPriorityMapText — retorna texto com prioridades das outras     |
-//| estratégias, ex: "MA:10 | RSI:5"                                  |
-//+------------------------------------------------------------------+
-string CEPBotPanel::GetPriorityMapText(string excludeName)
-  {
-   string result = "";
-   if(m_signalManager == NULL) return result;
-   for(int i = 0; i < m_signalManager.GetStrategyCount(); i++)
-     {
-      CStrategyBase *s = m_signalManager.GetStrategy(i);
-      if(s != NULL && s.GetName() != excludeName)
-        {
-         if(result != "") result += " | ";
-         result += s.GetName() + ":" + IntegerToString(s.GetPriority());
-        }
-     }
-   return result;
   }
 
 //+------------------------------------------------------------------+

@@ -30,7 +30,6 @@ private:
    // Controles — config
    CLabel   m_hdrConf;
    CLabel   m_lPriority; CEdit   m_iPriority;
-   CLabel   m_lPrioRef;
    CLabel   m_lPeriod;   CEdit   m_iPeriod;
    CLabel   m_lTF;       CButton m_bTF;
    CLabel   m_lMode2;    CButton m_bMode[3];
@@ -94,13 +93,6 @@ public:
        m_iPriority.Text(IntegerToString(pr));
       }
       y += PANEL_GAP_Y;
-      if(!m_lPrioRef.Create(chart_id, PFX + "re_lPRef", subwin,
-                             COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
-         return false;
-      m_lPrioRef.FontSize(7); m_lPrioRef.Color(CLR_NEUTRAL);
-      m_lPrioRef.Text("(maior numero = maior prioridade no conflito)");
-      if(!parent.AddControl(m_lPrioRef)) return false;
-      y += 15;
 
       if(!parent.CreateLI(m_lPeriod, m_iPeriod, "re_lPD", "re_iPD", "Periodo:", y)) return false;
       y += PANEL_GAP_Y;
@@ -125,9 +117,9 @@ public:
       y += 15;
 
       y += PANEL_GAP_SECTION;
-      if(!parent.CreateLI(m_lOversold,   m_iOversold,   "re_lOS", "re_iOS", "Oversold:",   y)) return false;
+      if(!parent.CreateLI(m_lOversold,   m_iOversold,   "re_lOS", "re_iOS", "Sobrevendido:",  y)) return false;
       y += PANEL_GAP_Y;
-      if(!parent.CreateLI(m_lOverbought, m_iOverbought, "re_lOB", "re_iOB", "Overbought:", y)) return false;
+      if(!parent.CreateLI(m_lOverbought, m_iOverbought, "re_lOB", "re_iOB", "Sobrecomprado:", y)) return false;
       y += PANEL_GAP_Y;
       if(!parent.CreateLI(m_lMiddle,     m_iMiddle,     "re_lMI", "re_iMI", "Medio:",      y)) return false;
       y += PANEL_GAP_Y + 8;
@@ -165,7 +157,7 @@ public:
       m_lMode.Show(); m_eMode.Show();
       m_lLevels.Show(); m_eLevels.Show();
       m_hdrConf.Show();
-      m_lPriority.Show(); m_iPriority.Show(); m_lPrioRef.Show();
+      m_lPriority.Show(); m_iPriority.Show();
       m_lPeriod.Show(); m_iPeriod.Show();
       m_lTF.Show(); m_bTF.Show();
       m_lMode2.Show(); for(int i = 0; i < 3; i++) m_bMode[i].Show();
@@ -184,7 +176,7 @@ public:
       m_lMode.Hide(); m_eMode.Hide();
       m_lLevels.Hide(); m_eLevels.Hide();
       m_hdrConf.Hide();
-      m_lPriority.Hide(); m_iPriority.Hide(); m_lPrioRef.Hide();
+      m_lPriority.Hide(); m_iPriority.Hide();
       m_lPeriod.Hide(); m_iPeriod.Hide();
       m_lTF.Hide(); m_bTF.Hide();
       m_lMode2.Hide(); for(int i = 0; i < 3; i++) m_bMode[i].Hide();
@@ -199,16 +191,9 @@ public:
      {
       ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
       m_lModeDesc.Text(RSIModeDesc(m_cur_rsiMode));
-      // Atualiza referência de prioridades das outras estratégias
-      if(m_parent != NULL)
-        {
-         string ref = m_parent.GetPriorityMapText("RSI Strategy");
-         if(ref != "") m_lPrioRef.Text("Outras: " + ref);
-         else          m_lPrioRef.Text("(maior numero = maior prioridade no conflito)");
-        }
       if(m_strategy != NULL && m_strategy.IsInitialized() && m_strategy.GetEnabled())
         {
-         m_eStatus.Text("Ativo (P:" + IntegerToString(m_strategy.GetPriority()) + ")");
+         m_eStatus.Text("Ativo (Prioridade:" + IntegerToString(m_strategy.GetPriority()) + ")");
          m_eStatus.Color(CLR_POSITIVE);
          m_eCurr.Text(DoubleToString(m_strategy.GetCurrentRSI(), 1));
          m_eCurr.Color(CLR_VALUE);
