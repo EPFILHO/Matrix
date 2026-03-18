@@ -65,7 +65,7 @@ public:
       if(!m_lDesc.Create(chart_id, PFX + "fbf_lDesc", subwin,
                           COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
-      m_lDesc.FontSize(7); m_lDesc.Color(CLR_NEUTRAL);
+      m_lDesc.Font("Tahoma"); m_lDesc.FontSize(7); m_lDesc.Color(CLR_NEUTRAL);
       m_lDesc.Text("Bloqueia trades quando as bandas estao estreitas (squeeze)");
       if(!parent.AddControl(m_lDesc)) return false;
       y += 15;
@@ -133,7 +133,7 @@ public:
       if(!m_lMetricDesc.Create(chart_id, PFX + "fbf_lMDesc", subwin,
                                 COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
-      m_lMetricDesc.FontSize(7); m_lMetricDesc.Color(CLR_NEUTRAL);
+      m_lMetricDesc.Font("Tahoma"); m_lMetricDesc.FontSize(7); m_lMetricDesc.Color(CLR_NEUTRAL);
       m_lMetricDesc.Text(_MetricDesc(m_cur_metric));
       if(!parent.AddControl(m_lMetricDesc)) return false;
       y += 15;
@@ -148,9 +148,9 @@ public:
       y += PANEL_GAP_Y;
       // Dica do threshold (muda conforme a métrica)
       if(!m_lThreshHint.Create(chart_id, PFX + "fbf_lThH", subwin,
-                                COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+                                COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
-      m_lThreshHint.FontSize(7); m_lThreshHint.Color(CLR_NEUTRAL);
+      m_lThreshHint.Font("Tahoma"); m_lThreshHint.FontSize(7); m_lThreshHint.Color(CLR_NEUTRAL);
       m_lThreshHint.Text(_ThreshHint(m_cur_metric));
       if(!parent.AddControl(m_lThreshHint)) return false;
       y += 15;
@@ -158,16 +158,16 @@ public:
       // Período do Percentil
       {
        int pp = (m_filter != NULL) ? m_filter.GetPercentilePeriod() : 50;
-       if(!parent.CreateLI(m_lPercPeriod, m_iPercPeriod, "fbf_lPP", "fbf_iPP", "Periodo Pcntl:", y)) return false;
+       if(!parent.CreateLI(m_lPercPeriod, m_iPercPeriod, "fbf_lPP", "fbf_iPP", "Periodo Percentil:", y)) return false;
        m_iPercPeriod.Text(IntegerToString(pp));
       }
       y += PANEL_GAP_Y;
       // Dica do período percentil
       if(!m_lPercHint.Create(chart_id, PFX + "fbf_lPPH", subwin,
-                              COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+                              COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
-      m_lPercHint.FontSize(7); m_lPercHint.Color(CLR_NEUTRAL);
-      m_lPercHint.Text("Qtd de barras para calculo do percentil (so PCNTL.)");
+      m_lPercHint.Font("Tahoma"); m_lPercHint.FontSize(7); m_lPercHint.Color(CLR_NEUTRAL);
+      m_lPercHint.Text("Barras para calculo do percentil");
       if(!parent.AddControl(m_lPercHint)) return false;
       y += 15;
 
@@ -299,9 +299,9 @@ private:
      {
       switch(metric)
         {
-         case BB_SQUEEZE_ABSOLUTE:   return "Bloqueia se largura < X pontos (ex: 50)";
-         case BB_SQUEEZE_RELATIVE:   return "Bloqueia se largura < X% da media (ex: 1.5)";
-         case BB_SQUEEZE_PERCENTILE: return "Bloqueia se percentil < X (ex: 20 = 20%)";
+         case BB_SQUEEZE_ABSOLUTE:   return "Bloqueia se largura < X pts";
+         case BB_SQUEEZE_RELATIVE:   return "Bloqueia se largura < X pct";
+         case BB_SQUEEZE_PERCENTILE: return "Bloqueia se percentil < X";
          default:                    return "";
         }
      }

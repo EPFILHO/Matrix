@@ -154,7 +154,7 @@ public:
       if(!m_lEntryDesc.Create(chart_id, PFX + "ce_eLgD", subwin,
                                COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
-      m_lEntryDesc.FontSize(7); m_lEntryDesc.Color(CLR_NEUTRAL);
+      m_lEntryDesc.Font("Tahoma"); m_lEntryDesc.FontSize(7); m_lEntryDesc.Color(CLR_NEUTRAL);
       m_lEntryDesc.Text(_EntryDesc(m_cur_entry));
       if(!parent.AddControl(m_lEntryDesc)) return false;
       y += 15;
@@ -170,7 +170,7 @@ public:
       if(!m_lExitDesc.Create(chart_id, PFX + "e_legD", subwin,
                               COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
-      m_lExitDesc.FontSize(7); m_lExitDesc.Color(CLR_NEUTRAL);
+      m_lExitDesc.Font("Tahoma"); m_lExitDesc.FontSize(7); m_lExitDesc.Color(CLR_NEUTRAL);
       m_lExitDesc.Text(_ExitDesc(m_cur_exit));
       if(!parent.AddControl(m_lExitDesc)) return false;
 

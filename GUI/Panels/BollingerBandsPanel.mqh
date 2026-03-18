@@ -75,7 +75,7 @@ public:
       if(!m_lDesc.Create(chart_id, PFX + "bb_lDesc", subwin,
                           COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
-      m_lDesc.FontSize(7); m_lDesc.Color(CLR_NEUTRAL);
+      m_lDesc.Font("Tahoma"); m_lDesc.FontSize(7); m_lDesc.Color(CLR_NEUTRAL);
       m_lDesc.Text("Sinais de compra/venda baseados nas Bandas de Bollinger");
       if(!parent.AddControl(m_lDesc)) return false;
       y += 15;
@@ -121,9 +121,9 @@ public:
       y += PANEL_GAP_Y;
       // Dica sobre desvio
       if(!m_lDevHint.Create(chart_id, PFX + "bb_lDVH", subwin,
-                             COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+                             COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
-      m_lDevHint.FontSize(7); m_lDevHint.Color(CLR_NEUTRAL);
+      m_lDevHint.Font("Tahoma"); m_lDevHint.FontSize(7); m_lDevHint.Color(CLR_NEUTRAL);
       m_lDevHint.Text("Desvio padrao das bandas (ex: 2.0 = 2 sigma)");
       if(!parent.AddControl(m_lDevHint)) return false;
       y += 15;
@@ -145,7 +145,7 @@ public:
       if(!m_lModeDesc.Create(chart_id, PFX + "bb_lMDesc", subwin,
                               COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
-      m_lModeDesc.FontSize(7); m_lModeDesc.Color(CLR_NEUTRAL);
+      m_lModeDesc.Font("Tahoma"); m_lModeDesc.FontSize(7); m_lModeDesc.Color(CLR_NEUTRAL);
       m_lModeDesc.Text(_ModeDesc(BB_MODE_FFFD));
       if(!parent.AddControl(m_lModeDesc)) return false;
       y += 15;
@@ -162,7 +162,7 @@ public:
       if(!m_lEntryDesc.Create(chart_id, PFX + "bb_eLgD", subwin,
                                COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
-      m_lEntryDesc.FontSize(7); m_lEntryDesc.Color(CLR_NEUTRAL);
+      m_lEntryDesc.Font("Tahoma"); m_lEntryDesc.FontSize(7); m_lEntryDesc.Color(CLR_NEUTRAL);
       m_lEntryDesc.Text(_EntryDesc(m_cur_entry));
       if(!parent.AddControl(m_lEntryDesc)) return false;
       y += 15;
@@ -178,7 +178,7 @@ public:
       if(!m_lExitDesc.Create(chart_id, PFX + "bb_legD", subwin,
                               COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
-      m_lExitDesc.FontSize(7); m_lExitDesc.Color(CLR_NEUTRAL);
+      m_lExitDesc.Font("Tahoma"); m_lExitDesc.FontSize(7); m_lExitDesc.Color(CLR_NEUTRAL);
       m_lExitDesc.Text(_ExitDesc(m_cur_exit));
       if(!parent.AddControl(m_lExitDesc)) return false;
 

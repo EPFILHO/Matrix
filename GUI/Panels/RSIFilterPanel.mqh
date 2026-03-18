@@ -113,7 +113,7 @@ public:
       if(!m_lModeDesc.Create(chart_id, PFX + "frf_lMDesc", subwin,
                               COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
-      m_lModeDesc.FontSize(7); m_lModeDesc.Color(CLR_NEUTRAL);
+      m_lModeDesc.Font("Tahoma"); m_lModeDesc.FontSize(7); m_lModeDesc.Color(CLR_NEUTRAL);
       m_lModeDesc.Text(_ModeDesc(m_cur_mode));
       if(!parent.AddControl(m_lModeDesc)) return false;
       y += 15;
