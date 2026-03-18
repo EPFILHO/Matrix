@@ -2,15 +2,22 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.43 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.44 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.43"
+#property version   "1.44"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.44 (Parte 026):
+// + Fix fluidez minimize/maximize:
+//   - ChartEvent: quando m_minimized, pula toda lógica de clique
+//     customizada e passa direto para CAppDialog (evita dezenas de
+//     comparações desnecessárias que atrasavam o botão min/max)
+//   - OnEvent: ChartRedraw() após hide explícito no minimize
+//
 // v1.43 (Parte 026):
 // + Fix robusto minimize/maximize: OnEvent agora faz hide EXPLÍCITO
 //   de todos os controles (~400) após minimize via SetTabVis(false)
@@ -1015,6 +1022,16 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
                               const double &dparam, const string &sparam)
   {
 // ══════════════════════════════════════════════════════════════════
+// Minimizado: passar tudo direto para CAppDialog (só o botão
+// minimize/maximize precisa responder — nossos controles estão ocultos)
+// ══════════════════════════════════════════════════════════════════
+   if(m_minimized)
+     {
+      CAppDialog::ChartEvent(id, lparam, dparam, sparam);
+      return;
+     }
+
+// ══════════════════════════════════════════════════════════════════
 // CHARTEVENT_OBJECT_CLICK: interceptar pelo nome (sparam)
 // CAppDialog::OnEvent NÃO recebe este evento — ele é processado
 // internamente por CAppDialog::ChartEvent. Por isso usamos este
@@ -1144,6 +1161,7 @@ bool CEPBotPanel::OnEvent(const int id, const long &lparam,
          m_btnTab3.Hide(); m_btnTab4.Hide();
          for(int t = 0; t < TAB_COUNT; t++)
             SetTabVis((ENUM_PANEL_TAB)t, false);
+         ChartRedraw();
         }
       else
         {
