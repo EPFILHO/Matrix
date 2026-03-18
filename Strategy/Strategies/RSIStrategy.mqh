@@ -547,6 +547,12 @@ void CRSIStrategy::SetSignalMode(ENUM_RSI_SIGNAL_MODE mode)
 //+------------------------------------------------------------------+
 void CRSIStrategy::SetOversold(double value)
   {
+   if(value <= 0 || value >= 100)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[RSI] Sobrevenda invalido: " + DoubleToString(value, 1));
+      return;
+     }
    double oldValue = m_oversold;
    m_oversold = value;
 
@@ -562,6 +568,12 @@ void CRSIStrategy::SetOversold(double value)
 //+------------------------------------------------------------------+
 void CRSIStrategy::SetOverbought(double value)
   {
+   if(value <= 0 || value >= 100)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[RSI] Sobrecompra invalido: " + DoubleToString(value, 1));
+      return;
+     }
    double oldValue = m_overbought;
    m_overbought = value;
 
@@ -577,6 +589,12 @@ void CRSIStrategy::SetOverbought(double value)
 //+------------------------------------------------------------------+
 void CRSIStrategy::SetMiddle(double value)
   {
+   if(value <= 0 || value >= 100)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[RSI] Linha media invalida: " + DoubleToString(value, 1));
+      return;
+     }
    double oldValue = m_middle;
    m_middle = value;
 

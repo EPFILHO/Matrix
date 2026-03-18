@@ -2,7 +2,7 @@
 //|                                     BollingerBandsFilterPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Bollinger Bands Filter (Anti-Squeeze)   |
-//|                     Versão 1.01 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.02 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
@@ -249,6 +249,7 @@ public:
          m_eWidth.Text("--");            m_eWidth.Color(CLR_NEUTRAL);
          m_eMode.Text("--");             m_eMode.Color(CLR_NEUTRAL);
         }
+      _RefreshFieldState();
       if(m_statusExpiry > 0 && GetTickCount() >= m_statusExpiry)
         { m_lblStatus.Text(""); m_statusExpiry = 0; ChartRedraw(); }
      }
@@ -278,6 +279,7 @@ public:
             SetRadioSel(m_bMode, 3, i);
             m_lModeDesc.Text(_ModeDesc(m_cur_metric));
             m_lThreshHint.Text(_ThreshHint(m_cur_metric));
+            _RefreshFieldState();
             return true;
            }
       return false;
@@ -306,6 +308,16 @@ private:
         }
      }
 
+   void _RefreshFieldState(void)
+     {
+      bool percMode = (m_cur_metric == BB_SQUEEZE_PERCENTILE);
+      SetEditEnabled(m_lPercPeriod, m_iPercPeriod, percMode);
+      if(!percMode)
+        { m_lPercHint.Color(C'180,180,180'); }
+      else
+        { m_lPercHint.Color(CLR_NEUTRAL); }
+     }
+
    void _OnApply(void)
      {
       if(m_filter == NULL)
@@ -319,16 +331,19 @@ private:
       double deviation  = StringToDouble(m_iDev.Text());
       double threshold  = StringToDouble(m_iThreshold.Text());
       int    percPeriod = (int)StringToInteger(m_iPercPeriod.Text());
-      int errors = 0;
+      string errorMsg = "";
+      if(period <= 0 || period > 500)
+         errorMsg = "Periodo BB invalido (1-500)";
+      else if(deviation <= 0 || deviation > 10.0)
+         errorMsg = "Desvio invalido (0.1 - 10.0)";
+      else if(threshold <= 0)
+         errorMsg = "Limite deve ser > 0";
+      else if(m_cur_metric == BB_SQUEEZE_PERCENTILE && (percPeriod <= 0 || percPeriod > 500))
+         errorMsg = "Periodo percentil invalido (1-500)";
 
-      if(period <= 0) errors++;
-      if(deviation <= 0) errors++;
-      if(threshold <= 0) errors++;
-      if(percPeriod <= 0) errors++;
-
-      if(errors > 0)
+      if(errorMsg != "")
         {
-         m_lblStatus.Text("Valores inválidos! (todos devem ser > 0)");
+         m_lblStatus.Text(errorMsg);
          m_lblStatus.Color(CLR_NEGATIVE);
          m_statusExpiry = GetTickCount() + 10000;
          return;

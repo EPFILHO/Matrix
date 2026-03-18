@@ -399,7 +399,7 @@ bool CBollingerBandsFilter::CheckSqueezeRelative()
    if(!LoadBandsValues(2))
       return false;
 
-   if(m_middle[1] == 0)
+   if(MathAbs(m_middle[1]) < 0.000001)
       return true;  // Evita divisão por zero
 
    double widthPct = (m_upper[1] - m_lower[1]) / m_middle[1] * 100.0;
@@ -482,6 +482,12 @@ void CBollingerBandsFilter::SetSqueezeMetric(ENUM_BB_SQUEEZE_METRIC metric)
 //+------------------------------------------------------------------+
 void CBollingerBandsFilter::SetSqueezeThreshold(double value)
   {
+   if(value <= 0)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[BB Filter] Threshold invalido: " + DoubleToString(value, 2));
+      return;
+     }
    double oldValue = m_squeeze_threshold;
    m_squeeze_threshold = value;
 
@@ -497,6 +503,12 @@ void CBollingerBandsFilter::SetSqueezeThreshold(double value)
 //+------------------------------------------------------------------+
 void CBollingerBandsFilter::SetPercentilePeriod(int value)
   {
+   if(value <= 0 || value > 500)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[BB Filter] Periodo percentil invalido: " + IntegerToString(value));
+      return;
+     }
    int oldValue = m_percentile_period;
    m_percentile_period = value;
 
@@ -643,7 +655,7 @@ double CBollingerBandsFilter::GetCurrentBandWidthRelative()
   {
    if(!LoadBandsValues(2))
       return 0.0;
-   if(m_middle[1] == 0)
+   if(MathAbs(m_middle[1]) < 0.000001)
       return 0.0;
    return (m_upper[1] - m_lower[1]) / m_middle[1] * 100.0;
   }

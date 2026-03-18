@@ -2,7 +2,7 @@
 //|                                            RSIStrategyPanel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — RSI Strategy                             |
-//|                     Versão 1.01 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.02 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
@@ -210,6 +210,7 @@ public:
          m_eMode.Text("--");         m_eMode.Color(CLR_NEUTRAL);
          m_eLevels.Text("--");       m_eLevels.Color(CLR_NEUTRAL);
         }
+      _RefreshFieldState();
       if(m_statusExpiry > 0 && GetTickCount() >= m_statusExpiry)
         { m_lblStatus.Text(""); m_statusExpiry = 0; ChartRedraw(); }
      }
@@ -238,6 +239,7 @@ public:
             m_cur_rsiMode = IndexToRSIMode(i);
             SetRadioSel(m_bMode, 3, i);
             m_lModeDesc.Text(RSIModeDesc(m_cur_rsiMode));
+            _RefreshFieldState();
             return true;
            }
       return false;
@@ -267,6 +269,14 @@ private:
       SetRadioSel(m_bMode, 3, RSIModeToIndex(rm));
      }
 
+   void _RefreshFieldState(void)
+     {
+      bool useMiddle = (m_cur_rsiMode == RSI_MODE_MIDDLE);
+      SetEditEnabled(m_lOversold, m_iOversold, !useMiddle);
+      SetEditEnabled(m_lOverbought, m_iOverbought, !useMiddle);
+      SetEditEnabled(m_lMiddle, m_iMiddle, useMiddle);
+     }
+
    void _OnApply(void)
      {
       if(m_strategy == NULL)
@@ -276,32 +286,53 @@ private:
          m_statusExpiry = GetTickCount() + 10000;
          return;
         }
-      int errors = 0;
       int period = (int)StringToInteger(m_iPeriod.Text());
       int prio   = (int)StringToInteger(m_iPriority.Text());
-      if(period >= 2) { if(!m_strategy.SetPeriod(period)) errors++; }
-      else errors++;
-      if(prio <= 0) errors++;
+      double os  = StringToDouble(m_iOversold.Text());
+      double ob  = StringToDouble(m_iOverbought.Text());
+      double mi  = StringToDouble(m_iMiddle.Text());
 
-      m_strategy.SetTimeframe(m_cur_rsiTF);
-      m_strategy.SetSignalMode(m_cur_rsiMode);
-
-      double os = StringToDouble(m_iOversold.Text());
-      double ob = StringToDouble(m_iOverbought.Text());
-      double mi = StringToDouble(m_iMiddle.Text());
-
-      if(os > 0 && os < 100) m_strategy.SetOversold(os);   else errors++;
-      if(ob > 0 && ob < 100) m_strategy.SetOverbought(ob); else errors++;
-      if(mi > 0 && mi < 100) m_strategy.SetMiddle(mi);     else errors++;
-
-      if(errors > 0)
+      // Validação
+      string errorMsg = "";
+      if(period < 2 || period > 500)
+         errorMsg = "Periodo invalido (2-500)";
+      else if(prio <= 0)
+         errorMsg = "Prioridade deve ser > 0";
+      else if(m_cur_rsiMode == RSI_MODE_MIDDLE)
         {
-         m_lblStatus.Text("Valores invalidos (Period>=2, Niveis 0-100, Prio>0)");
+         if(mi <= 0 || mi >= 100) errorMsg = "Medio invalido (1-99)";
+        }
+      else
+        {
+         if(os <= 0 || os >= 100) errorMsg = "Sobrevendido invalido (1-99)";
+         else if(ob <= 0 || ob >= 100) errorMsg = "Sobrecomprado invalido (1-99)";
+         else if(ob <= os) errorMsg = "Sobrecomprado deve ser > Sobrevendido";
+        }
+
+      if(errorMsg != "")
+        {
+         m_lblStatus.Text(errorMsg);
          m_lblStatus.Color(CLR_NEGATIVE);
          m_statusExpiry = GetTickCount() + 10000;
          ChartRedraw();
          return;
         }
+
+      // Aplicar
+      if(!m_strategy.SetPeriod(period))
+        {
+         m_lblStatus.Text("Erro ao aplicar periodo");
+         m_lblStatus.Color(CLR_NEGATIVE);
+         m_statusExpiry = GetTickCount() + 10000;
+         ChartRedraw();
+         return;
+        }
+
+      m_strategy.SetTimeframe(m_cur_rsiTF);
+      m_strategy.SetSignalMode(m_cur_rsiMode);
+      m_strategy.SetOversold(os);
+      m_strategy.SetOverbought(ob);
+      m_strategy.SetMiddle(mi);
 
       // Auto-ajuste de prioridade
       if(m_parent != NULL)

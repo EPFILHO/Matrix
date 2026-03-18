@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.25 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.26 - Claude Parte 024 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -1431,7 +1431,7 @@ void CEPBotPanel::ApplyConfig(void)
       if(m_cur_slType == SL_FIXED)
         {
          int sl = (int)StringToInteger(m_cr_iSL.Text());
-         if(sl >= 0) m_riskManager.SetFixedSL(sl); else errors++;
+         if(sl > 0) m_riskManager.SetFixedSL(sl); else errors++;
         }
       else if(m_cur_slType == SL_ATR)
         {
@@ -1453,7 +1453,7 @@ void CEPBotPanel::ApplyConfig(void)
          if(m_cur_tpType == TP_FIXED)
            {
             int tp = (int)StringToInteger(m_cr_iTP.Text());
-            if(tp >= 0) m_riskManager.SetFixedTP(tp); else errors++;
+            if(tp > 0) m_riskManager.SetFixedTP(tp); else errors++;
            }
          else if(m_cur_tpType == TP_ATR)
            {
@@ -1472,7 +1472,7 @@ void CEPBotPanel::ApplyConfig(void)
            {
             int start = (int)StringToInteger(m_c2_iTrlSt.Text());
             int step  = (int)StringToInteger(m_c2_iTrlSp.Text());
-            if(start >= 0 && step >= 0)
+            if(start > 0 && step > 0)
                m_riskManager.SetTrailingParams(start, step);
             else
                errors++;
@@ -1498,7 +1498,7 @@ void CEPBotPanel::ApplyConfig(void)
            {
             int act = (int)StringToInteger(m_c2_iBEVal.Text());
             int off = (int)StringToInteger(m_c2_iBEOff.Text());
-            if(act >= 0 && off >= 0)
+            if(act > 0 && off >= 0)
                m_riskManager.SetBreakevenParams(act, off);
             else
                errors++;
@@ -1520,11 +1520,20 @@ void CEPBotPanel::ApplyConfig(void)
         {
          double tp1p = StringToDouble(m_cr_iTP1p.Text());
          int    tp1d = (int)StringToInteger(m_cr_iTP1d.Text());
-         m_riskManager.SetPartialTP1((tp1p > 0 && tp1d > 0), tp1p, tp1d);
-
          double tp2p = StringToDouble(m_cr_iTP2p.Text());
          int    tp2d = (int)StringToInteger(m_cr_iTP2d.Text());
-         m_riskManager.SetPartialTP2((tp2p > 0 && tp2d > 0), tp2p, tp2d);
+         if(tp1p > 0 && tp1p <= 100 && tp1d > 0 &&
+            tp2p >= 0 && tp2p <= 100 &&
+            tp1p + tp2p <= 100)
+           {
+            m_riskManager.SetPartialTP1(true, tp1p, tp1d);
+            if(tp2p > 0 && tp2d > 0)
+               m_riskManager.SetPartialTP2(true, tp2p, tp2d);
+            else
+               m_riskManager.SetPartialTP2(false, 0, 0);
+           }
+         else
+            errors++;
         }
 
       // ATR Period (só se alguma feature usa ATR)
@@ -1574,7 +1583,9 @@ void CEPBotPanel::ApplyConfig(void)
        int wStr   = m_cur_winStreakOn  ? (int)StringToInteger(m_cb_iWStr.Text()) : 0;
        int lPause = m_cur_lossStreakOn ? (int)StringToInteger(m_cb_iLStrP.Text()) : 0;
        int wPause = m_cur_winStreakOn  ? (int)StringToInteger(m_cb_iWStrP.Text()) : 0;
-       if(lStr >= 0 && wStr >= 0 && lPause >= 0 && wPause >= 0)
+       if(lStr >= 0 && wStr >= 0 && lPause >= 0 && wPause >= 0 &&
+          (!m_cur_lossStreakOn || lStr > 0) &&
+          (!m_cur_winStreakOn  || wStr > 0))
           m_blockers.SetStreakLimits(lStr, m_cur_lossStreakAction, lPause,
                                     wStr, m_cur_winStreakAction,  wPause);
        else
@@ -1585,7 +1596,7 @@ void CEPBotPanel::ApplyConfig(void)
       if(m_cur_ddOn)
         {
          double dd = StringToDouble(m_c2_iDD.Text());
-         if(dd >= 0)
+         if(dd > 0)
            {
             m_blockers.SetDrawdownValue(dd);
             m_blockers.SetDrawdownType(m_cur_ddType);
@@ -1620,7 +1631,7 @@ void CEPBotPanel::ApplyConfig(void)
       // Fechar Antes do Fim da Sessão (v1.21)
       {
        int mins = (int)StringToInteger(m_cb_iCBSMin.Text());
-       if(mins >= 0)
+       if(m_cur_cbsOn ? mins > 0 : mins >= 0)
           m_blockers.SetCloseBeforeSessionEnd(m_cur_cbsOn, mins);
        else
           errors++;
@@ -1634,9 +1645,20 @@ void CEPBotPanel::ApplyConfig(void)
        int e2H=(int)StringToInteger(m_cb2_iN2EH.Text()), e2M=(int)StringToInteger(m_cb2_iN2EM.Text());
        int s3H=(int)StringToInteger(m_cb2_iN3SH.Text()), s3M=(int)StringToInteger(m_cb2_iN3SM.Text());
        int e3H=(int)StringToInteger(m_cb2_iN3EH.Text()), e3M=(int)StringToInteger(m_cb2_iN3EM.Text());
-       m_blockers.SetNewsFilter(1, m_cur_newsOn1, s1H, s1M, e1H, e1M);
-       m_blockers.SetNewsFilter(2, m_cur_newsOn2, s2H, s2M, e2H, e2M);
-       m_blockers.SetNewsFilter(3, m_cur_newsOn3, s3H, s3M, e3H, e3M);
+       bool nv1 = !m_cur_newsOn1 || (s1H >= 0 && s1H <= 23 && s1M >= 0 && s1M <= 59 &&
+                                     e1H >= 0 && e1H <= 23 && e1M >= 0 && e1M <= 59);
+       bool nv2 = !m_cur_newsOn2 || (s2H >= 0 && s2H <= 23 && s2M >= 0 && s2M <= 59 &&
+                                     e2H >= 0 && e2H <= 23 && e2M >= 0 && e2M <= 59);
+       bool nv3 = !m_cur_newsOn3 || (s3H >= 0 && s3H <= 23 && s3M >= 0 && s3M <= 59 &&
+                                     e3H >= 0 && e3H <= 23 && e3M >= 0 && e3M <= 59);
+       if(nv1 && nv2 && nv3)
+         {
+          m_blockers.SetNewsFilter(1, m_cur_newsOn1, s1H, s1M, e1H, e1M);
+          m_blockers.SetNewsFilter(2, m_cur_newsOn2, s2H, s2M, e2H, e2M);
+          m_blockers.SetNewsFilter(3, m_cur_newsOn3, s3H, s3M, e3H, e3M);
+         }
+       else
+          errors++;
       }
      }
 
@@ -1646,7 +1668,7 @@ void CEPBotPanel::ApplyConfig(void)
    if(m_tradeManager != NULL)
      {
       int slip = (int)StringToInteger(m_co_iSlip.Text());
-      if(slip >= 0) m_tradeManager.SetSlippage(slip); else errors++;
+      if(slip >= 0 && slip <= 500) m_tradeManager.SetSlippage(slip); else errors++;
      }
 
    if(m_signalManager != NULL)
@@ -1656,7 +1678,7 @@ void CEPBotPanel::ApplyConfig(void)
      {
       m_logger.SetShowDebug(m_cur_debug);
       int cd = (int)StringToInteger(m_co_iDbgCd.Text());
-      if(cd >= 0) m_logger.SetDebugCooldown(cd); else errors++;
+      if(m_cur_debug ? cd > 0 : cd >= 0) m_logger.SetDebugCooldown(cd); else errors++;
      }
 
 // ═══════════════════════════════════════════════

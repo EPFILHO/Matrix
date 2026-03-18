@@ -2,7 +2,7 @@
 //|                                                 MACrossPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — MA Cross Strategy                        |
-//|                     Versão 1.01 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.02 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
@@ -416,7 +416,7 @@ private:
       int slowP = (int)StringToInteger(m_iSlowP.Text());
       int prio  = (int)StringToInteger(m_iPriority.Text());
 
-      if(fastP > 0 && slowP > 0 && fastP < slowP)
+      if(fastP > 0 && fastP <= 1000 && slowP > 0 && slowP <= 1000 && fastP < slowP)
         {
          if(!m_strategy.SetMAParams(fastP, slowP,
                                     m_cur_fastMethod, m_cur_slowMethod,
@@ -431,7 +431,13 @@ private:
 
       if(errors > 0)
         {
-         m_lblStatus.Text("Valores invalidos (fast<slow>0, Prio>0)");
+         string errorMsg = "";
+         if(fastP <= 0 || fastP > 1000) errorMsg = "Periodo rapida invalido (1-1000)";
+         else if(slowP <= 0 || slowP > 1000) errorMsg = "Periodo lenta invalido (1-1000)";
+         else if(fastP >= slowP) errorMsg = "Periodo rapida deve ser < lenta";
+         else if(prio <= 0) errorMsg = "Prioridade deve ser > 0";
+         else errorMsg = "Valores invalidos";
+         m_lblStatus.Text(errorMsg);
          m_lblStatus.Color(CLR_NEGATIVE);
          m_statusExpiry = GetTickCount() + 10000;
          ChartRedraw();

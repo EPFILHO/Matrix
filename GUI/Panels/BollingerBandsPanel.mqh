@@ -2,7 +2,7 @@
 //|                                           BollingerBandsPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Bollinger Bands Strategy                 |
-//|                     Versão 1.01 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.02 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
@@ -390,20 +390,32 @@ private:
          m_statusExpiry = GetTickCount() + 10000;
          return;
         }
-      int errors = 0;
       int period = (int)StringToInteger(m_iPeriod.Text());
       double dev = StringToDouble(m_iDev.Text());
       int prio = (int)StringToInteger(m_iPriority.Text());
 
-      if(period >= 2) { if(!m_strategy.SetPeriod(period)) errors++; }
-      else errors++;
-      if(dev > 0) { if(!m_strategy.SetDeviation(dev)) errors++; }
-      else errors++;
-      if(prio <= 0) errors++;
+      // Validação primeiro
+      string errorMsg = "";
+      if(period < 2 || period > 500)
+         errorMsg = "Periodo invalido (2-500)";
+      else if(dev <= 0 || dev > 10.0)
+         errorMsg = "Desvio invalido (0.1 - 10.0)";
+      else if(prio <= 0)
+         errorMsg = "Prioridade deve ser > 0";
 
-      if(errors > 0)
+      if(errorMsg != "")
         {
-         m_lblStatus.Text("Valores inválidos (Period>=2, Desvio>0, Prio>0)");
+         m_lblStatus.Text(errorMsg);
+         m_lblStatus.Color(CLR_NEGATIVE);
+         m_statusExpiry = GetTickCount() + 10000;
+         ChartRedraw();
+         return;
+        }
+
+      // Aplicar
+      if(!m_strategy.SetPeriod(period) || !m_strategy.SetDeviation(dev))
+        {
+         m_lblStatus.Text("Erro ao aplicar parametros");
          m_lblStatus.Color(CLR_NEGATIVE);
          m_statusExpiry = GetTickCount() + 10000;
          ChartRedraw();

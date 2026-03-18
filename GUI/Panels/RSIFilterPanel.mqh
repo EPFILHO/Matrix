@@ -2,7 +2,7 @@
 //|                                              RSIFilterPanel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — RSI Filter                               |
-//|                     Versão 1.00 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.01 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
@@ -207,6 +207,7 @@ public:
          m_eRSI.Text("--");             m_eRSI.Color(CLR_NEUTRAL);
          m_eMode.Text("--");            m_eMode.Color(CLR_NEUTRAL);
         }
+      _RefreshFieldState();
       if(m_statusExpiry > 0 && GetTickCount() >= m_statusExpiry)
         { m_lblStatus.Text(""); m_statusExpiry = 0; ChartRedraw(); }
      }
@@ -231,7 +232,7 @@ public:
         }
       for(int i = 0; i < 3; i++)
          if(name == m_bMode[i].Name())
-           { m_cur_mode = (ENUM_RSI_FILTER_MODE)i; SetRadioSel(m_bMode, 3, i); m_lModeDesc.Text(_ModeDesc(m_cur_mode)); return true; }
+           { m_cur_mode = (ENUM_RSI_FILTER_MODE)i; SetRadioSel(m_bMode, 3, i); m_lModeDesc.Text(_ModeDesc(m_cur_mode)); _RefreshFieldState(); return true; }
       return false;
      }
 
@@ -247,6 +248,13 @@ private:
         }
      }
 
+   void _RefreshFieldState(void)
+     {
+      bool showLevels = (m_cur_mode != RSI_FILTER_NEUTRAL);
+      SetEditEnabled(m_lOversold, m_iOversold, showLevels);
+      SetEditEnabled(m_lOverbought, m_iOverbought, showLevels);
+     }
+
    void _OnApply(void)
      {
       if(m_filter == NULL)
@@ -259,15 +267,22 @@ private:
       int    period     = (int)StringToInteger(m_iPeriod.Text());
       double oversold   = StringToDouble(m_iOversold.Text());
       double overbought = StringToDouble(m_iOverbought.Text());
-      int errors = 0;
-
-      if(period <= 0) errors++;
-      if(oversold <= 0 || oversold >= 100) errors++;
-      if(overbought <= 0 || overbought >= 100 || overbought <= oversold) errors++;
-
-      if(errors > 0)
+      string errorMsg = "";
+      if(period < 2 || period > 500)
+         errorMsg = "Periodo invalido (2-500)";
+      else if(m_cur_mode != RSI_FILTER_NEUTRAL)
         {
-         m_lblStatus.Text("Valores inválidos!");
+         if(oversold <= 0 || oversold >= 100)
+            errorMsg = "Sobrevendido invalido (1-99)";
+         else if(overbought <= 0 || overbought >= 100)
+            errorMsg = "Sobrecomprado invalido (1-99)";
+         else if(overbought <= oversold)
+            errorMsg = "Sobrecomprado deve ser > Sobrevendido";
+        }
+
+      if(errorMsg != "")
+        {
+         m_lblStatus.Text(errorMsg);
          m_lblStatus.Color(CLR_NEGATIVE);
          m_statusExpiry = GetTickCount() + 10000;
          return;
