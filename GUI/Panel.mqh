@@ -2,15 +2,22 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.42 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.43 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.42"
+#property version   "1.43"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.43 (Parte 026):
+// + Fix robusto minimize/maximize: OnEvent agora faz hide EXPLÍCITO
+//   de todos os controles (~400) após minimize via SetTabVis(false)
+//   em todas as 5 abas + botões de aba. Resolve:
+//   - Labels/controles "soltos" (CAppDialog cascade incompleto)
+//   - Botão minimize não respondendo (controles soltos bloqueavam cliques)
+//
 // v1.42 (Parte 026):
 // + Fix GUI minimize: Update() retorna imediatamente se m_minimized
 //   Evita labels "soltos" no gráfico quando painel está minimizado
@@ -1125,7 +1132,25 @@ bool CEPBotPanel::OnEvent(const int id, const long &lparam,
    bool result = CAppDialog::OnEvent(id, lparam, dparam, sparam);
 
    if(result)
-      ReapplyTabVisibility();
+     {
+      if(m_minimized)
+        {
+         // Após minimize: forçar hide em TODOS os controles explicitamente.
+         // CAppDialog::Minimize() faz m_client_area.Hide() cascade, mas com
+         // muitos controles (~400) o cascade pode falhar parcialmente.
+         // Controles "soltos" ficam visíveis sem fundo e podem bloquear
+         // o botão minimize, impedindo restore.
+         m_btnTab0.Hide(); m_btnTab1.Hide(); m_btnTab2.Hide();
+         m_btnTab3.Hide(); m_btnTab4.Hide();
+         for(int t = 0; t < TAB_COUNT; t++)
+            SetTabVis((ENUM_PANEL_TAB)t, false);
+        }
+      else
+        {
+         // Após maximize ou outro evento: esconder abas/sub-páginas inativas
+         ReapplyTabVisibility();
+        }
+     }
 
    return result;
   }
