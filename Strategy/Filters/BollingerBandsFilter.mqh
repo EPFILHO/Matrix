@@ -266,7 +266,7 @@ bool CBollingerBandsFilter::Initialize()
    string msg = "✅ [" + m_filterName + "] Inicializado [" + m_symbol + " | " +
                 EnumToString(m_timeframe) + " | Período: " + IntegerToString(m_period) +
                 " | Desvio: " + DoubleToString(m_deviation, 1) +
-                " | Métrica: " + GetSqueezeMetricText() + "]";
+                " | Modo: " + GetSqueezeMetricText() + "]";
    if(m_logger != NULL)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
    else
@@ -470,7 +470,7 @@ void CBollingerBandsFilter::SetSqueezeMetric(ENUM_BB_SQUEEZE_METRIC metric)
    ENUM_BB_SQUEEZE_METRIC oldMetric = m_squeeze_metric;
    m_squeeze_metric = metric;
 
-   string msg = "🔄 [BB Filter] Métrica alterada: " + GetSqueezeMetricText();
+   string msg = "🔄 [BB Filter] Modo alterado: " + GetSqueezeMetricText();
    if(m_logger != NULL)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
@@ -662,7 +662,7 @@ string CBollingerBandsFilter::GetSqueezeMetricText()
       case BB_SQUEEZE_PERCENTILE:
          return "Percentil";
       default:
-         return "Unknown";
+         return "Desconhecido";
      }
   }
 
@@ -677,7 +677,7 @@ string CBollingerBandsFilter::GetFilterStatus()
    double width = GetCurrentBandWidth();
    double widthPct = GetCurrentBandWidthRelative();
 
-   return StringFormat("Largura: %.1f pts (%.2f%%) | Métrica: %s | Threshold: %.2f",
+   return StringFormat("Largura: %.1f pts (%.2f%%) | Modo: %s | Limite: %.2f",
                        width, widthPct, GetSqueezeMetricText(), m_squeeze_threshold);
   }
 //+------------------------------------------------------------------+

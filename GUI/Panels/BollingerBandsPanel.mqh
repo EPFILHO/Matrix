@@ -124,7 +124,7 @@ public:
                              COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
       m_lDevHint.Font("Tahoma"); m_lDevHint.FontSize(7); m_lDevHint.Color(CLR_NEUTRAL);
-      m_lDevHint.Text("Desvio padrao das bandas (ex: 2.0 = 2 sigma)");
+      m_lDevHint.Text("Desvio padrão das bandas (ex: 2.0 = 2 sigma)");
       if(!parent.AddControl(m_lDevHint)) return false;
       y += 15;
       if(!parent.CreateLB(m_lTF, m_bTF, "bb_lTF", "bb_bTF", "Time Frame:", y)) return false;
@@ -135,7 +135,7 @@ public:
       if(!parent.CreateHdr(m_hdrSig, "bb_h2", "SINAIS", y)) return false;
       y += PANEL_GAP_Y + 2;
       {
-       string modeTexts[] = {"FFFD", "REBND.", "BREAK."};
+       string modeTexts[] = {"FFFD", "REBOUND", "BREAKOUT"};
        if(!parent.CreateRadioGroup(m_lMode, m_bMode, "bb_lMD", "bb_bMD", "Modo:", modeTexts, 3, y))
           return false;
       }
@@ -152,7 +152,7 @@ public:
 
       y += PANEL_GAP_SECTION;
       {
-       string entTexts[] = {"PROX. CANDLE", "2o. CANDLE"};
+       string entTexts[] = {"PRÓXIMO CANDLE", "2º CANDLE"};
        if(!parent.CreateRadioGroup(m_lEntry, m_bEntry, "bb_lEN", "bb_bEN", "Entrada:", entTexts, 2, y))
           return false;
       }
@@ -329,8 +329,8 @@ private:
       switch(mode)
         {
          case BB_MODE_FFFD:     return "FFFD: candle[2] fecha fora, candle[1] volta p/ dentro";
-         case BB_MODE_REBOUND:  return "Rebound: preco toca a banda e fecha na direcao oposta";
-         case BB_MODE_BREAKOUT: return "Breakout: preco rompe a banda (sinal de tendencia)";
+         case BB_MODE_REBOUND:  return "REBOUND: preço toca a banda e fecha na direção oposta";
+         case BB_MODE_BREAKOUT: return "BREAKOUT: preço rompe a banda (sinal de tendência)";
          default:               return "";
         }
      }
@@ -339,8 +339,8 @@ private:
      {
       switch(mode)
         {
-         case ENTRY_NEXT_CANDLE: return "Entra na abertura do proximo candle";
-         case ENTRY_2ND_CANDLE:  return "Espera confirmacao no 2o candle (E2C)";
+         case ENTRY_NEXT_CANDLE: return "Entra na abertura do próximo candle";
+         case ENTRY_2ND_CANDLE:  return "Espera confirmação no 2º candle (E2C)";
          default:                return "";
         }
      }
@@ -350,7 +350,7 @@ private:
       switch(mode)
         {
          case EXIT_FCO:   return "FCO: Fechar no Cruzamento da Middle";
-         case EXIT_VM:    return "VM: Virar a mao (inverte posicao)";
+         case EXIT_VM:    return "VM: Virar a mão (inverte posição)";
          case EXIT_TP_SL: return "TP/SL: Sair no Take Profit ou Stop Loss";
          default:         return "";
         }
@@ -385,7 +385,7 @@ private:
      {
       if(m_strategy == NULL)
         {
-         m_lblStatus.Text("Estrategia nao disponivel");
+         m_lblStatus.Text("Estratégia não disponível");
          m_lblStatus.Color(CLR_NEGATIVE);
          m_statusExpiry = GetTickCount() + 10000;
          return;
@@ -403,7 +403,7 @@ private:
 
       if(errors > 0)
         {
-         m_lblStatus.Text("Valores invalidos (Period>=2, Desvio>0, Prio>0)");
+         m_lblStatus.Text("Valores inválidos (Period>=2, Desvio>0, Prio>0)");
          m_lblStatus.Color(CLR_NEGATIVE);
          m_statusExpiry = GetTickCount() + 10000;
          ChartRedraw();

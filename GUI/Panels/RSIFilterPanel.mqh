@@ -102,7 +102,7 @@ public:
       {
        ENUM_RSI_FILTER_MODE fm = (m_filter != NULL) ? m_filter.GetFilterMode() : RSI_FILTER_ZONE;
        m_cur_mode = fm;
-       string modeTexts[] = {"ZONE", "DIR.", "NEUTRO"};
+       string modeTexts[] = {"ZONA", "DIREÇÃO", "NEUTRO"};
        if(!parent.CreateRadioGroup(m_lMode2, m_bMode, "frf_lMd", "frf_bMd", "Modo:", modeTexts, 3, y))
           return false;
        SetRadioSel(m_bMode, 3, (int)fm);
@@ -121,7 +121,7 @@ public:
       // Sobrevendido
       {
        double os = (m_filter != NULL) ? m_filter.GetOversold() : 30.0;
-       if(!parent.CreateLI(m_lOversold, m_iOversold, "frf_lOS", "frf_iOS", "Sobrevendido:", y)) return false;
+       if(!parent.CreateLI(m_lOversold, m_iOversold, "frf_lOS", "frf_iOS", "Sobrevendido (OS):", y)) return false;
        m_iOversold.Text(DoubleToString(os, 1));
       }
       y += PANEL_GAP_Y;
@@ -129,7 +129,7 @@ public:
       // Overbought
       {
        double ob = (m_filter != NULL) ? m_filter.GetOverbought() : 70.0;
-       if(!parent.CreateLI(m_lOverbought, m_iOverbought, "frf_lOB", "frf_iOB", "Sobrecomprado:", y)) return false;
+       if(!parent.CreateLI(m_lOverbought, m_iOverbought, "frf_lOB", "frf_iOB", "Sobrecomprado (OB):", y)) return false;
        m_iOverbought.Text(DoubleToString(ob, 1));
       }
       y += PANEL_GAP_Y + 8;
@@ -203,7 +203,7 @@ public:
         }
       else
         {
-         m_eStatus.Text("Nao iniciado"); m_eStatus.Color(CLR_NEUTRAL);
+         m_eStatus.Text("Não iniciado"); m_eStatus.Color(CLR_NEUTRAL);
          m_eRSI.Text("--");             m_eRSI.Color(CLR_NEUTRAL);
          m_eMode.Text("--");            m_eMode.Color(CLR_NEUTRAL);
         }
@@ -240,9 +240,9 @@ private:
      {
       switch(mode)
         {
-         case RSI_FILTER_ZONE:    return "Zone: bloqueia se RSI em zona extrema";
-         case RSI_FILTER_DIRECTION: return "Dir.: so permite trades na direcao do RSI";
-         case RSI_FILTER_NEUTRAL: return "Neutro: bloqueia se RSI perto de 50";
+         case RSI_FILTER_ZONE:    return "ZONA: bloqueia se RSI em zona extrema";
+         case RSI_FILTER_DIRECTION: return "DIREÇÃO: só permite trades na direção do RSI";
+         case RSI_FILTER_NEUTRAL: return "NEUTRO: bloqueia se RSI entre 40 e 60";
          default:                 return "";
         }
      }
@@ -251,7 +251,7 @@ private:
      {
       if(m_filter == NULL)
         {
-         m_lblStatus.Text("Filtro nao disponivel");
+         m_lblStatus.Text("Filtro não disponível");
          m_lblStatus.Color(CLR_NEGATIVE);
          m_statusExpiry = GetTickCount() + 10000;
          return;
@@ -267,7 +267,7 @@ private:
 
       if(errors > 0)
         {
-         m_lblStatus.Text("Valores invalidos!");
+         m_lblStatus.Text("Valores inválidos!");
          m_lblStatus.Color(CLR_NEGATIVE);
          m_statusExpiry = GetTickCount() + 10000;
          return;

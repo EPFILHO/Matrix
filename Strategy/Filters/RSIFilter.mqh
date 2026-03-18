@@ -680,10 +680,10 @@ string CRSIFilter::GetFilterModeText()
 {
    switch(m_filter_mode)
    {
-      case RSI_FILTER_ZONE:      return "Zone";
-      case RSI_FILTER_DIRECTION: return "Direction";
-      case RSI_FILTER_NEUTRAL:   return "Neutral";
-      default:                   return "Unknown";
+      case RSI_FILTER_ZONE:      return "Zona";
+      case RSI_FILTER_DIRECTION: return "Direção";
+      case RSI_FILTER_NEUTRAL:   return "Neutro";
+      default:                   return "Desconhecido";
    }
 }
 

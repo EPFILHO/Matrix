@@ -24,7 +24,7 @@ private:
    CLabel   m_lDesc;     // Descrição do que o filtro faz
    CLabel   m_lStatus;  CLabel  m_eStatus;
    CLabel   m_lWidth;   CLabel  m_eWidth;
-   CLabel   m_lMetric;  CLabel  m_eMetric;
+   CLabel   m_lMode;    CLabel  m_eMode;
 
    // Controles — config
    CLabel   m_hdrConf;
@@ -32,8 +32,8 @@ private:
    CLabel   m_lPeriod;   CEdit   m_iPeriod;
    CLabel   m_lDev;      CEdit   m_iDev;
    CLabel   m_lTF;       CButton m_bTF;
-   CLabel   m_lMetric2;  CButton m_bMetric[3];
-   CLabel   m_lMetricDesc;
+   CLabel   m_lMode2;    CButton m_bMode[3];
+   CLabel   m_lModeDesc;
    CLabel   m_lThreshold; CEdit  m_iThreshold;
    CLabel   m_lThreshHint; // Legenda do threshold
    CLabel   m_lPercPeriod; CEdit m_iPercPeriod;
@@ -66,14 +66,14 @@ public:
                           COL_LABEL_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
       m_lDesc.Font("Tahoma"); m_lDesc.FontSize(7); m_lDesc.Color(CLR_NEUTRAL);
-      m_lDesc.Text("Bloqueia trades quando as bandas estao estreitas (squeeze)");
+      m_lDesc.Text("Bloqueia trades quando as bandas estão estreitas (squeeze)");
       if(!parent.AddControl(m_lDesc)) return false;
       y += 15;
       if(!parent.CreateLV(m_lStatus, m_eStatus, "f_lBFS", "f_eBFS", "Status:",     y)) return false;
       y += PANEL_GAP_Y;
       if(!parent.CreateLV(m_lWidth,  m_eWidth,  "f_lBFW", "f_eBFW", "Largura:",    y)) return false;
       y += PANEL_GAP_Y;
-      if(!parent.CreateLV(m_lMetric, m_eMetric, "f_lBFM", "f_eBFM", "Metrica:",    y)) return false;
+      if(!parent.CreateLV(m_lMode, m_eMode, "f_lBFM", "f_eBFM", "Modo:",    y)) return false;
 
       // Config
       y += PANEL_GAP_Y;
@@ -122,20 +122,20 @@ public:
       {
        ENUM_BB_SQUEEZE_METRIC sm = (m_filter != NULL) ? m_filter.GetSqueezeMetric() : BB_SQUEEZE_RELATIVE;
        m_cur_metric = sm;
-       string metricTexts[] = {"ABSOL.", "RELAT.", "PCNTL."};
-       if(!parent.CreateRadioGroup(m_lMetric2, m_bMetric, "fbf_lMt", "fbf_bMt", "Metrica:", metricTexts, 3, y))
+       string modeTexts[] = {"ABSOLUTO", "RELATIVO", "PERCENTIL"};
+       if(!parent.CreateRadioGroup(m_lMode2, m_bMode, "fbf_lMt", "fbf_bMt", "Modo:", modeTexts, 3, y))
           return false;
-       SetRadioSel(m_bMetric, 3, (int)sm);
+       SetRadioSel(m_bMode, 3, (int)sm);
       }
       y += PANEL_GAP_Y + 2;
 
       // Legenda dinâmica da métrica
-      if(!m_lMetricDesc.Create(chart_id, PFX + "fbf_lMDesc", subwin,
+      if(!m_lModeDesc.Create(chart_id, PFX + "fbf_lMDesc", subwin,
                                 COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
-      m_lMetricDesc.Font("Tahoma"); m_lMetricDesc.FontSize(7); m_lMetricDesc.Color(CLR_NEUTRAL);
-      m_lMetricDesc.Text(_MetricDesc(m_cur_metric));
-      if(!parent.AddControl(m_lMetricDesc)) return false;
+      m_lModeDesc.Font("Tahoma"); m_lModeDesc.FontSize(7); m_lModeDesc.Color(CLR_NEUTRAL);
+      m_lModeDesc.Text(_ModeDesc(m_cur_metric));
+      if(!parent.AddControl(m_lModeDesc)) return false;
       y += 15;
 
       // Threshold
@@ -167,7 +167,7 @@ public:
                               COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
       m_lPercHint.Font("Tahoma"); m_lPercHint.FontSize(7); m_lPercHint.Color(CLR_NEUTRAL);
-      m_lPercHint.Text("Barras para calculo do percentil");
+      m_lPercHint.Text("Barras para cálculo do percentil");
       if(!parent.AddControl(m_lPercHint)) return false;
       y += 15;
 
@@ -197,13 +197,13 @@ public:
       m_hdr.Show(); m_lDesc.Show();
       m_lStatus.Show(); m_eStatus.Show();
       m_lWidth.Show(); m_eWidth.Show();
-      m_lMetric.Show(); m_eMetric.Show();
+      m_lMode.Show(); m_eMode.Show();
       m_hdrConf.Show(); m_btnToggle.Show();
       m_lPeriod.Show(); m_iPeriod.Show();
       m_lDev.Show(); m_iDev.Show();
       m_lTF.Show(); m_bTF.Show();
-      m_lMetric2.Show(); for(int i = 0; i < 3; i++) m_bMetric[i].Show();
-      m_lMetricDesc.Show();
+      m_lMode2.Show(); for(int i = 0; i < 3; i++) m_bMode[i].Show();
+      m_lModeDesc.Show();
       m_lThreshold.Show(); m_iThreshold.Show(); m_lThreshHint.Show();
       m_lPercPeriod.Show(); m_iPercPeriod.Show(); m_lPercHint.Show();
       m_btnApply.Show(); m_lblStatus.Show();
@@ -214,13 +214,13 @@ public:
       m_hdr.Hide(); m_lDesc.Hide();
       m_lStatus.Hide(); m_eStatus.Hide();
       m_lWidth.Hide(); m_eWidth.Hide();
-      m_lMetric.Hide(); m_eMetric.Hide();
+      m_lMode.Hide(); m_eMode.Hide();
       m_hdrConf.Hide(); m_btnToggle.Hide();
       m_lPeriod.Hide(); m_iPeriod.Hide();
       m_lDev.Hide(); m_iDev.Hide();
       m_lTF.Hide(); m_bTF.Hide();
-      m_lMetric2.Hide(); for(int i = 0; i < 3; i++) m_bMetric[i].Hide();
-      m_lMetricDesc.Hide();
+      m_lMode2.Hide(); for(int i = 0; i < 3; i++) m_bMode[i].Hide();
+      m_lModeDesc.Hide();
       m_lThreshold.Hide(); m_iThreshold.Hide(); m_lThreshHint.Hide();
       m_lPercPeriod.Hide(); m_iPercPeriod.Hide(); m_lPercHint.Hide();
       m_btnApply.Hide(); m_lblStatus.Hide();
@@ -229,7 +229,7 @@ public:
    virtual void Update(void)
      {
       ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
-      m_lMetricDesc.Text(_MetricDesc(m_cur_metric));
+      m_lModeDesc.Text(_ModeDesc(m_cur_metric));
       m_lThreshHint.Text(_ThreshHint(m_cur_metric));
       if(m_filter != NULL && m_filter.IsInitialized())
         {
@@ -240,14 +240,14 @@ public:
          double bwPct = m_filter.GetCurrentBandWidthRelative();
          m_eWidth.Text(DoubleToString(bw, 1) + " pts (" + DoubleToString(bwPct, 2) + "%)");
          m_eWidth.Color(CLR_VALUE);
-         m_eMetric.Text(m_filter.GetSqueezeMetricText() + " | Limite: " + DoubleToString(m_filter.GetSqueezeThreshold(), 2));
-         m_eMetric.Color(CLR_VALUE);
+         m_eMode.Text(m_filter.GetSqueezeMetricText() + " | Limite: " + DoubleToString(m_filter.GetSqueezeThreshold(), 2));
+         m_eMode.Color(CLR_VALUE);
         }
       else
         {
-         m_eStatus.Text("Nao iniciado"); m_eStatus.Color(CLR_NEUTRAL);
+         m_eStatus.Text("Não iniciado"); m_eStatus.Color(CLR_NEUTRAL);
          m_eWidth.Text("--");            m_eWidth.Color(CLR_NEUTRAL);
-         m_eMetric.Text("--");           m_eMetric.Color(CLR_NEUTRAL);
+         m_eMode.Text("--");             m_eMode.Color(CLR_NEUTRAL);
         }
       if(m_statusExpiry > 0 && GetTickCount() >= m_statusExpiry)
         { m_lblStatus.Text(""); m_statusExpiry = 0; ChartRedraw(); }
@@ -272,11 +272,11 @@ public:
          return true;
         }
       for(int i = 0; i < 3; i++)
-         if(name == m_bMetric[i].Name())
+         if(name == m_bMode[i].Name())
            {
             m_cur_metric = (ENUM_BB_SQUEEZE_METRIC)i;
-            SetRadioSel(m_bMetric, 3, i);
-            m_lMetricDesc.Text(_MetricDesc(m_cur_metric));
+            SetRadioSel(m_bMode, 3, i);
+            m_lModeDesc.Text(_ModeDesc(m_cur_metric));
             m_lThreshHint.Text(_ThreshHint(m_cur_metric));
             return true;
            }
@@ -284,13 +284,13 @@ public:
      }
 
 private:
-   string _MetricDesc(ENUM_BB_SQUEEZE_METRIC metric)
+   string _ModeDesc(ENUM_BB_SQUEEZE_METRIC metric)
      {
       switch(metric)
         {
-         case BB_SQUEEZE_ABSOLUTE:   return "Absoluto: largura em pontos (upper-lower)";
-         case BB_SQUEEZE_RELATIVE:   return "Relativo: largura % da banda central";
-         case BB_SQUEEZE_PERCENTILE: return "Percentil: compara com N barras anteriores";
+         case BB_SQUEEZE_ABSOLUTE:   return "ABSOLUTO: largura em pontos (upper-lower)";
+         case BB_SQUEEZE_RELATIVE:   return "RELATIVO: largura % da banda central";
+         case BB_SQUEEZE_PERCENTILE: return "PERCENTIL: compara com N barras anteriores";
          default:                    return "";
         }
      }
@@ -300,7 +300,7 @@ private:
       switch(metric)
         {
          case BB_SQUEEZE_ABSOLUTE:   return "Bloqueia se largura < X pts";
-         case BB_SQUEEZE_RELATIVE:   return "Bloqueia se largura < X pct";
+         case BB_SQUEEZE_RELATIVE:   return "Bloqueia se largura < X %";
          case BB_SQUEEZE_PERCENTILE: return "Bloqueia se percentil < X";
          default:                    return "";
         }
@@ -310,7 +310,7 @@ private:
      {
       if(m_filter == NULL)
         {
-         m_lblStatus.Text("Filtro nao disponivel");
+         m_lblStatus.Text("Filtro não disponível");
          m_lblStatus.Color(CLR_NEGATIVE);
          m_statusExpiry = GetTickCount() + 10000;
          return;
@@ -328,7 +328,7 @@ private:
 
       if(errors > 0)
         {
-         m_lblStatus.Text("Valores invalidos! (todos devem ser > 0)");
+         m_lblStatus.Text("Valores inválidos! (todos devem ser > 0)");
          m_lblStatus.Color(CLR_NEGATIVE);
          m_statusExpiry = GetTickCount() + 10000;
          return;
