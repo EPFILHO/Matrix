@@ -240,7 +240,7 @@ public:
          double bwPct = m_filter.GetCurrentBandWidthRelative();
          m_eWidth.Text(DoubleToString(bw, 1) + " pts (" + DoubleToString(bwPct, 2) + "%)");
          m_eWidth.Color(CLR_VALUE);
-         m_eMetric.Text(m_filter.GetSqueezeMetricText() + " | Thr: " + DoubleToString(m_filter.GetSqueezeThreshold(), 2));
+         m_eMetric.Text(m_filter.GetSqueezeMetricText() + " | Limite: " + DoubleToString(m_filter.GetSqueezeThreshold(), 2));
          m_eMetric.Color(CLR_VALUE);
         }
       else
