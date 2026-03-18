@@ -2,15 +2,20 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.40 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.42 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.40"
+#property version   "1.42"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.42 (Parte 026):
+// + Fix GUI minimize: Update() retorna imediatamente se m_minimized
+//   Evita labels "soltos" no gráfico quando painel está minimizado
+//   (UpdateEstrategias/UpdateFiltros chamavam .Show() a cada timer tick)
+//
 // v1.41 (Parte 026):
 // - Removido GetPriorityMapText() (não mais utilizado)
 // v1.40 (Parte 026):
@@ -1340,6 +1345,10 @@ void CEPBotPanel::UpdateTabStyles(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::Update(void)
   {
+   // Não atualiza se minimizado — evita labels "soltos" no gráfico
+   if(m_minimized)
+      return;
+
    switch(m_activeTab)
      {
       case TAB_STATUS:      UpdateStatus();       break;

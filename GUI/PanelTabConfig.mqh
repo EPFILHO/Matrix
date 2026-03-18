@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.26 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.27 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -14,6 +14,10 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.27 (Parte 026):
+// + Slippage max aumentado de 500 para 10000 pts (suporte BTC e ativos
+//   de alto spread)
+//
 // v1.25 (2026-03-06):
 // + Dica visual m_cr_lPTPHint abaixo de TP2 Dist na sub-página RISCO:
 //   "⚠ TP=NENHUM + Partial: apenas TP1/TP2 têm alvo. O restante sai por trailing ou sinal."
@@ -1668,7 +1672,7 @@ void CEPBotPanel::ApplyConfig(void)
    if(m_tradeManager != NULL)
      {
       int slip = (int)StringToInteger(m_co_iSlip.Text());
-      if(slip >= 0 && slip <= 500) m_tradeManager.SetSlippage(slip); else errors++;
+      if(slip >= 0 && slip <= 10000) m_tradeManager.SetSlippage(slip); else errors++;
      }
 
    if(m_signalManager != NULL)
