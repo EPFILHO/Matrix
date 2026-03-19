@@ -11,12 +11,14 @@
 
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.52 (Parte 026):                                     |
-//| - Fix GUI na troca de TF (solução padrão ouro):                  |
+//| - Fix GUI na troca de TF (solução padrão ouro MQL5):             |
 //|   OnDeinit(REASON_CHARTCHANGE) NÃO destrói o painel.             |
 //|   OnInit detecta g_panel != NULL e chama ReconnectModules()      |
 //|   que re-injeta ponteiros novos sem recriar objetos gráficos.    |
-//|   Sub-painéis recebem ponteiros via Reconnect(void*ptr).         |
-//|   ShowTab(m_activeTab) garante visibilidade correta das abas.    |
+//|   Sub-painéis recebem ponteiros via SetStrategy/SetFilter tipados|
+//|   com dynamic_cast no ReconnectModules().                        |
+//|   if(!m_minimized) ShowTab() evita controles soltos ao trocar TF |
+//|   com painel minimizado.                                         |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.47 (Parte 026):                                     |
 //| - Bollinger Bands Strategy (FFFD, Rebound, Breakout)             |
@@ -1008,7 +1010,7 @@ int OnInit()
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
 
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.44 - PRONTO PARA OPERAR!");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.52 - PRONTO PARA OPERAR!");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Símbolo: " + _Symbol);
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
@@ -2086,5 +2088,5 @@ void OnTimer()
   }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.42                                   |
+//| FIM DO EA - EPBOT MATRIX v1.52                                   |
 //+------------------------------------------------------------------+

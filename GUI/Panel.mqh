@@ -2,15 +2,22 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.47 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.48 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.47"
+#property version   "1.48"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.48 (Parte 026):
+// + ReconnectModules(): re-injeta ponteiros após troca de TF sem
+//   recriar objetos gráficos. Usa dynamic_cast + SetStrategy/SetFilter
+//   tipados em cada sub-painel concreto.
+// + if(!m_minimized) antes de ShowTab() — evita controles soltos
+//   ao trocar TF com painel minimizado.
+//
 // v1.47 (Parte 026):
 // - Simplificação minimize/maximize: removido deferred minimize
 //   (m_pendingMinimize), DoMinimize(), SetPendingMinimize(),
