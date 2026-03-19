@@ -818,6 +818,7 @@ public:
                                  int x1, int y1, int x2, int y2);
    void              Update(void);
    void              MouseProtection(const int x, const int y);
+   bool              IsMinimized(void) const { return m_minimized; }
 
    virtual bool      OnEvent(const int id, const long &lparam,
                              const double &dparam, const string &sparam);

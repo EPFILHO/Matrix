@@ -966,6 +966,16 @@ int OnInit()
            {
             g_panel.Run();
             EventSetMillisecondTimer(1500);
+
+            // Restaurar estado minimizado após troca de timeframe
+            string gvName = "EPBot_" + IntegerToString(inp_MagicNumber) + "_Minimized";
+            if(GlobalVariableCheck(gvName))
+              {
+               if(GlobalVariableGet(gvName) != 0.0)
+                  g_panel.Minimize();
+               GlobalVariableDel(gvName);
+              }
+
             g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "Painel GUI criado com sucesso");
            }
         }
@@ -1018,6 +1028,11 @@ void OnDeinit(const int reason)
 // ETAPA 0: Destruir painel
    if(g_panel != NULL)
      {
+      // Salvar estado minimizado antes de destruir (para restaurar após troca de TF)
+      if(reason == REASON_CHARTCHANGE)
+         GlobalVariableSet("EPBot_" + IntegerToString(inp_MagicNumber) + "_Minimized",
+                           g_panel.IsMinimized() ? 1.0 : 0.0);
+
       g_panel.Destroy(reason);
       delete g_panel;
       g_panel = NULL;
