@@ -11,12 +11,11 @@
 
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.52 (Parte 026):                                     |
-//| - Fix GUI irresponsiva após troca de timeframe:                  |
-//|   Em vez de destruir e recriar o painel na troca de TF,          |
-//|   o painel agora SOBREVIVE ao ciclo OnDeinit/OnInit.             |
-//|   OnDeinit(REASON_CHARTCHANGE) pula Destroy() do painel.         |
-//|   OnInit detecta painel existente e apenas re-injeta ponteiros.  |
-//|   Elimina conflito de objetos gráficos que causava 5-6 cliques.  |
+//| - Revert: manter painel vivo entre TF causava sobreposição de    |
+//|   abas (todos controles visíveis ao mesmo tempo). CAppDialog     |
+//|   não suporta sobreviver a REASON_CHARTCHANGE sem corromper       |
+//|   estado interno. Voltado para Destroy(REASON_REMOVE) + recriação|
+//|   completa do painel a cada troca de timeframe.                  |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.47 (Parte 026):                                     |
 //| - Bollinger Bands Strategy (FFFD, Rebound, Breakout)             |
@@ -953,43 +952,28 @@ int OnInit()
 // ═══════════════════════════════════════════════════════════════
    if(inp_ShowPanel && !MQLInfoInteger(MQL_TESTER))
      {
+      g_panel = new CEPBotPanel();
       if(g_panel != NULL)
         {
-         // Painel sobreviveu à troca de TF — apenas re-injetar ponteiros novos
          g_panel.Init(g_logger, g_blockers, g_riskManager, g_tradeManager,
                       g_signalManager, g_maCrossStrategy, g_rsiStrategy,
                       g_bbStrategy,
                       g_trendFilter, g_rsiFilter, g_bbFilter,
                       inp_MagicNumber, _Symbol);
-         EventSetMillisecondTimer(1500);
-         g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "Painel GUI reconectado (troca de TF)");
-        }
-      else
-        {
-         // Primeira inicialização — criar painel do zero
-         g_panel = new CEPBotPanel();
-         if(g_panel != NULL)
-           {
-            g_panel.Init(g_logger, g_blockers, g_riskManager, g_tradeManager,
-                         g_signalManager, g_maCrossStrategy, g_rsiStrategy,
-                         g_bbStrategy,
-                         g_trendFilter, g_rsiFilter, g_bbFilter,
-                         inp_MagicNumber, _Symbol);
 
-            int chartWidth = (int)ChartGetInteger(0, CHART_WIDTH_IN_PIXELS);
-            int x1 = chartWidth - PANEL_WIDTH - 10;
-            if(!g_panel.CreatePanel(0, "EPBotMatrix - Versão 1.51", 0, x1, 20, x1 + PANEL_WIDTH, 20 + PANEL_HEIGHT))
-              {
-               g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar painel GUI");
-               delete g_panel;
-               g_panel = NULL;
-              }
-            else
-              {
-               g_panel.Run();
-               EventSetMillisecondTimer(1500);
-               g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "Painel GUI criado com sucesso");
-              }
+         int chartWidth = (int)ChartGetInteger(0, CHART_WIDTH_IN_PIXELS);
+         int x1 = chartWidth - PANEL_WIDTH - 10;
+         if(!g_panel.CreatePanel(0, "EPBotMatrix - Versão 1.52", 0, x1, 20, x1 + PANEL_WIDTH, 20 + PANEL_HEIGHT))
+           {
+            g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar painel GUI");
+            delete g_panel;
+            g_panel = NULL;
+           }
+         else
+           {
+            g_panel.Run();
+            EventSetMillisecondTimer(1500);
+            g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "Painel GUI criado com sucesso");
            }
         }
      }
@@ -1038,22 +1022,15 @@ void OnDeinit(const int reason)
 // LIMPEZA SEGURA - Ordem inversa da inicialização
 // ═══════════════════════════════════════════════════════════════
 
-// ETAPA 0: Painel GUI
+// ETAPA 0: Destruir painel
    if(g_panel != NULL)
      {
-      if(reason == REASON_CHARTCHANGE)
-        {
-         // Troca de timeframe: NÃO destruir o painel.
-         // Os objetos gráficos sobrevivem à troca de TF — recriar causa
-         // conflito de roteamento de eventos (GUI irresponsiva por 5-6 cliques).
-         // O OnInit vai apenas re-injetar os novos ponteiros via Init().
-        }
-      else
-        {
-         g_panel.Destroy(REASON_REMOVE);
-         delete g_panel;
-         g_panel = NULL;
-        }
+      // REASON_REMOVE força CAppDialog a deletar TODOS os objetos do gráfico.
+      // Necessário para limpeza completa — objetos órfãos causam sobreposição
+      // de abas e GUI irresponsiva na recriação.
+      g_panel.Destroy(REASON_REMOVE);
+      delete g_panel;
+      g_panel = NULL;
      }
    EventKillTimer();
 
