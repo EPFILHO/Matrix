@@ -972,7 +972,7 @@ int OnInit()
             if(GlobalVariableCheck(gvName))
               {
                if(GlobalVariableGet(gvName) != 0.0)
-                  g_panel.Minimize();
+                  g_panel.DoMinimize();
                GlobalVariableDel(gvName);
               }
 
