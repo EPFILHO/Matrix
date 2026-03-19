@@ -2,7 +2,7 @@
 //|                                              RSIFilterPanel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — RSI Filter                               |
-//|                     Versão 1.00 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.01 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
@@ -31,6 +31,7 @@ private:
    CLabel   m_lPeriod;   CEdit   m_iPeriod;
    CLabel   m_lTF;       CButton m_bTF;
    CLabel   m_lMode2;    CButton m_bMode[3];
+   CLabel   m_lModeDesc;
    CLabel   m_lOversold;   CEdit m_iOversold;
    CLabel   m_lOverbought; CEdit m_iOverbought;
    CButton  m_btnApply;
@@ -101,17 +102,26 @@ public:
       {
        ENUM_RSI_FILTER_MODE fm = (m_filter != NULL) ? m_filter.GetFilterMode() : RSI_FILTER_ZONE;
        m_cur_mode = fm;
-       string modeTexts[] = {"ZONE", "DIR.", "NEUTRO"};
+       string modeTexts[] = {"ZONA", "DIREÇÃO", "NEUTRO"};
        if(!parent.CreateRadioGroup(m_lMode2, m_bMode, "frf_lMd", "frf_bMd", "Modo:", modeTexts, 3, y))
           return false;
        SetRadioSel(m_bMode, 3, (int)fm);
       }
       y += PANEL_GAP_Y + 2;
 
-      // Oversold
+      // Legenda dinâmica do modo
+      if(!m_lModeDesc.Create(chart_id, PFX + "frf_lMDesc", subwin,
+                              COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+         return false;
+      m_lModeDesc.Font("Tahoma"); m_lModeDesc.FontSize(7); m_lModeDesc.Color(CLR_NEUTRAL);
+      m_lModeDesc.Text(_ModeDesc(m_cur_mode));
+      if(!parent.AddControl(m_lModeDesc)) return false;
+      y += 15;
+
+      // Sobrevendido
       {
        double os = (m_filter != NULL) ? m_filter.GetOversold() : 30.0;
-       if(!parent.CreateLI(m_lOversold, m_iOversold, "frf_lOS", "frf_iOS", "Oversold:", y)) return false;
+       if(!parent.CreateLI(m_lOversold, m_iOversold, "frf_lOS", "frf_iOS", "Sobrevendido (OS):", y)) return false;
        m_iOversold.Text(DoubleToString(os, 1));
       }
       y += PANEL_GAP_Y;
@@ -119,7 +129,7 @@ public:
       // Overbought
       {
        double ob = (m_filter != NULL) ? m_filter.GetOverbought() : 70.0;
-       if(!parent.CreateLI(m_lOverbought, m_iOverbought, "frf_lOB", "frf_iOB", "Overbought:", y)) return false;
+       if(!parent.CreateLI(m_lOverbought, m_iOverbought, "frf_lOB", "frf_iOB", "Sobrecomprado (OB):", y)) return false;
        m_iOverbought.Text(DoubleToString(ob, 1));
       }
       y += PANEL_GAP_Y + 8;
@@ -155,6 +165,7 @@ public:
       m_lPeriod.Show(); m_iPeriod.Show();
       m_lTF.Show(); m_bTF.Show();
       m_lMode2.Show(); for(int i = 0; i < 3; i++) m_bMode[i].Show();
+      m_lModeDesc.Show();
       m_lOversold.Show(); m_iOversold.Show();
       m_lOverbought.Show(); m_iOverbought.Show();
       m_btnApply.Show(); m_lblStatus.Show();
@@ -170,6 +181,7 @@ public:
       m_lPeriod.Hide(); m_iPeriod.Hide();
       m_lTF.Hide(); m_bTF.Hide();
       m_lMode2.Hide(); for(int i = 0; i < 3; i++) m_bMode[i].Hide();
+      m_lModeDesc.Hide();
       m_lOversold.Hide(); m_iOversold.Hide();
       m_lOverbought.Hide(); m_iOverbought.Hide();
       m_btnApply.Hide(); m_lblStatus.Hide();
@@ -178,6 +190,7 @@ public:
    virtual void Update(void)
      {
       ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      m_lModeDesc.Text(_ModeDesc(m_cur_mode));
       if(m_filter != NULL && m_filter.IsInitialized())
         {
          bool active = m_filter.IsEnabled();
@@ -190,10 +203,11 @@ public:
         }
       else
         {
-         m_eStatus.Text("Nao iniciado"); m_eStatus.Color(CLR_NEUTRAL);
+         m_eStatus.Text("Não iniciado"); m_eStatus.Color(CLR_NEUTRAL);
          m_eRSI.Text("--");             m_eRSI.Color(CLR_NEUTRAL);
          m_eMode.Text("--");            m_eMode.Color(CLR_NEUTRAL);
         }
+      _RefreshFieldState();
       if(m_statusExpiry > 0 && GetTickCount() >= m_statusExpiry)
         { m_lblStatus.Text(""); m_statusExpiry = 0; ChartRedraw(); }
      }
@@ -218,16 +232,34 @@ public:
         }
       for(int i = 0; i < 3; i++)
          if(name == m_bMode[i].Name())
-           { m_cur_mode = (ENUM_RSI_FILTER_MODE)i; SetRadioSel(m_bMode, 3, i); return true; }
+           { m_cur_mode = (ENUM_RSI_FILTER_MODE)i; SetRadioSel(m_bMode, 3, i); m_lModeDesc.Text(_ModeDesc(m_cur_mode)); _RefreshFieldState(); return true; }
       return false;
      }
 
 private:
+   string _ModeDesc(ENUM_RSI_FILTER_MODE mode)
+     {
+      switch(mode)
+        {
+         case RSI_FILTER_ZONE:    return "ZONA: bloqueia se RSI em zona extrema";
+         case RSI_FILTER_DIRECTION: return "DIREÇÃO: só permite trades na direção do RSI";
+         case RSI_FILTER_NEUTRAL: return "NEUTRO: bloqueia se RSI entre 40 e 60";
+         default:                 return "";
+        }
+     }
+
+   void _RefreshFieldState(void)
+     {
+      bool showLevels = (m_cur_mode != RSI_FILTER_NEUTRAL);
+      SetEditEnabled(m_lOversold, m_iOversold, showLevels);
+      SetEditEnabled(m_lOverbought, m_iOverbought, showLevels);
+     }
+
    void _OnApply(void)
      {
       if(m_filter == NULL)
         {
-         m_lblStatus.Text("Filtro nao disponivel");
+         m_lblStatus.Text("Filtro não disponível");
          m_lblStatus.Color(CLR_NEGATIVE);
          m_statusExpiry = GetTickCount() + 10000;
          return;
@@ -235,15 +267,22 @@ private:
       int    period     = (int)StringToInteger(m_iPeriod.Text());
       double oversold   = StringToDouble(m_iOversold.Text());
       double overbought = StringToDouble(m_iOverbought.Text());
-      int errors = 0;
-
-      if(period <= 0) errors++;
-      if(oversold <= 0 || oversold >= 100) errors++;
-      if(overbought <= 0 || overbought >= 100 || overbought <= oversold) errors++;
-
-      if(errors > 0)
+      string errorMsg = "";
+      if(period < 2 || period > 500)
+         errorMsg = "Periodo invalido (2-500)";
+      else if(m_cur_mode != RSI_FILTER_NEUTRAL)
         {
-         m_lblStatus.Text("Valores invalidos!");
+         if(oversold <= 0 || oversold >= 100)
+            errorMsg = "Sobrevendido invalido (1-99)";
+         else if(overbought <= 0 || overbought >= 100)
+            errorMsg = "Sobrecomprado invalido (1-99)";
+         else if(overbought <= oversold)
+            errorMsg = "Sobrecomprado deve ser > Sobrevendido";
+        }
+
+      if(errorMsg != "")
+        {
+         m_lblStatus.Text(errorMsg);
          m_lblStatus.Color(CLR_NEGATIVE);
          m_statusExpiry = GetTickCount() + 10000;
          return;

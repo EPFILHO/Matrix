@@ -2,7 +2,7 @@
 //|                                             TrendFilterPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Trend Filter                             |
-//|                     Versão 1.00 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.01 - Claude Parte 025 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
@@ -113,7 +113,7 @@ public:
       {
        ENUM_APPLIED_PRICE pr = (m_filter != NULL) ? m_filter.GetMAApplied() : PRICE_CLOSE;
        m_cur_price = pr;
-       if(!parent.CreateLB(m_lPrice, m_bPrice, "ft_lPr", "ft_bPr", "Price:", y)) return false;
+       if(!parent.CreateLB(m_lPrice, m_bPrice, "ft_lPr", "ft_bPr", "Preco:", y)) return false;
        m_bPrice.Text(AppliedPriceShortText(pr));
        m_bPrice.ColorBackground(C'50,80,140'); m_bPrice.Color(clrWhite);
       }
@@ -197,6 +197,7 @@ public:
          m_eMA.Text("--");               m_eMA.Color(CLR_NEUTRAL);
          m_eDist.Text("--");             m_eDist.Color(CLR_NEUTRAL);
         }
+      _RefreshFieldState();
       if(m_statusExpiry > 0 && GetTickCount() >= m_statusExpiry)
         { m_lblStatus.Text(""); m_statusExpiry = 0; ChartRedraw(); }
      }
@@ -208,6 +209,7 @@ public:
          m_btnToggle.Pressed(false);
          m_pendingEnabled = !m_pendingEnabled;
          ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+         _RefreshFieldState();
          return true;
         }
       if(name == m_btnApply.Name())
@@ -244,14 +246,15 @@ private:
         }
       int    period   = (int)StringToInteger(m_iPeriod.Text());
       double neutDist = StringToDouble(m_iNeutDist.Text());
-      int errors = 0;
+      string errorMsg = "";
+      if(period <= 0 || period > 1000)
+         errorMsg = "Periodo invalido (1-1000)";
+      else if(neutDist < 0)
+         errorMsg = "Zona neutra deve ser >= 0";
 
-      if(period <= 0) errors++;
-      if(neutDist < 0) errors++;
-
-      if(errors > 0)
+      if(errorMsg != "")
         {
-         m_lblStatus.Text("Valores invalidos!");
+         m_lblStatus.Text(errorMsg);
          m_lblStatus.Color(CLR_NEGATIVE);
          m_statusExpiry = GetTickCount() + 10000;
          return;
@@ -267,6 +270,22 @@ private:
       m_lblStatus.Text(msg);
       m_lblStatus.Color(CLR_POSITIVE);
       m_statusExpiry = GetTickCount() + 10000;
+     }
+
+   void _RefreshFieldState(void)
+     {
+      bool on = m_pendingEnabled;
+      SetEditEnabled(m_lPeriod, m_iPeriod, on);
+      SetRadioGroupEnabled(m_lMethod, m_bMethod, 4, on);
+      SetButtonEnabled(m_lTF, m_bTF, on);
+      SetButtonEnabled(m_lPrice, m_bPrice, on);
+      SetEditEnabled(m_lNeutDist, m_iNeutDist, on);
+      if(on)
+        {
+         m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+         m_bPrice.ColorBackground(C'50,80,140'); m_bPrice.Color(clrWhite);
+         SetRadioSel(m_bMethod, 4, MAMethodToIndex(m_cur_method));
+        }
      }
   };
 //+------------------------------------------------------------------+

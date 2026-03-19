@@ -507,6 +507,12 @@ void CRSIFilter::SetFilterMode(ENUM_RSI_FILTER_MODE mode)
 //+------------------------------------------------------------------+
 void CRSIFilter::SetOversold(double value)
 {
+   if(value <= 0 || value >= 100)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[RSI Filter] Sobrevenda invalido: " + DoubleToString(value, 1));
+      return;
+     }
    double oldValue = m_oversold;
    m_oversold = value;
    
@@ -522,6 +528,12 @@ void CRSIFilter::SetOversold(double value)
 //+------------------------------------------------------------------+
 void CRSIFilter::SetOverbought(double value)
 {
+   if(value <= 0 || value >= 100)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[RSI Filter] Sobrecompra invalido: " + DoubleToString(value, 1));
+      return;
+     }
    double oldValue = m_overbought;
    m_overbought = value;
    
@@ -537,6 +549,12 @@ void CRSIFilter::SetOverbought(double value)
 //+------------------------------------------------------------------+
 void CRSIFilter::SetLowerNeutral(double value)
 {
+   if(value <= 0 || value >= 100)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[RSI Filter] Lower neutral invalido: " + DoubleToString(value, 1));
+      return;
+     }
    double oldValue = m_lower_neutral;
    m_lower_neutral = value;
    
@@ -552,6 +570,12 @@ void CRSIFilter::SetLowerNeutral(double value)
 //+------------------------------------------------------------------+
 void CRSIFilter::SetUpperNeutral(double value)
 {
+   if(value <= 0 || value >= 100)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[RSI Filter] Upper neutral invalido: " + DoubleToString(value, 1));
+      return;
+     }
    double oldValue = m_upper_neutral;
    m_upper_neutral = value;
    
@@ -567,6 +591,12 @@ void CRSIFilter::SetUpperNeutral(double value)
 //+------------------------------------------------------------------+
 void CRSIFilter::SetShift(int value)
 {
+   if(value < 0 || value > 100)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[RSI Filter] Shift invalido: " + IntegerToString(value));
+      return;
+     }
    int oldValue = m_shift;
    m_shift = value;
    
@@ -680,10 +710,10 @@ string CRSIFilter::GetFilterModeText()
 {
    switch(m_filter_mode)
    {
-      case RSI_FILTER_ZONE:      return "Zone";
-      case RSI_FILTER_DIRECTION: return "Direction";
-      case RSI_FILTER_NEUTRAL:   return "Neutral";
-      default:                   return "Unknown";
+      case RSI_FILTER_ZONE:      return "Zona";
+      case RSI_FILTER_DIRECTION: return "Direção";
+      case RSI_FILTER_NEUTRAL:   return "Neutro";
+      default:                   return "Desconhecido";
    }
 }
 

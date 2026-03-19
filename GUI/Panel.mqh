@@ -2,15 +2,46 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.38 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.44 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.38"
+#property version   "1.44"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.44 (Parte 026):
+// + Fix fluidez minimize/maximize:
+//   - ChartEvent: quando m_minimized, pula toda lógica de clique
+//     customizada e passa direto para CAppDialog (evita dezenas de
+//     comparações desnecessárias que atrasavam o botão min/max)
+//   - OnEvent: ChartRedraw() após hide explícito no minimize
+//
+// v1.43 (Parte 026):
+// + Fix robusto minimize/maximize: OnEvent agora faz hide EXPLÍCITO
+//   de todos os controles (~400) após minimize via SetTabVis(false)
+//   em todas as 5 abas + botões de aba. Resolve:
+//   - Labels/controles "soltos" (CAppDialog cascade incompleto)
+//   - Botão minimize não respondendo (controles soltos bloqueavam cliques)
+//
+// v1.42 (Parte 026):
+// + Fix GUI minimize: Update() retorna imediatamente se m_minimized
+//   Evita labels "soltos" no gráfico quando painel está minimizado
+//   (UpdateEstrategias/UpdateFiltros chamavam .Show() a cada timer tick)
+//
+// v1.41 (Parte 026):
+// - Removido GetPriorityMapText() (não mais utilizado)
+// v1.40 (Parte 026):
+// + ResolveStrategyPriority(): auto-ajuste de prioridade (incrementa se conflito)
+// + Painéis de estratégia agora têm campo Prioridade editável com auto-ajuste
+//
+// v1.39 (Parte 026):
+// + BB Strategy e BB Filter integrados em RegisterPanels()
+//   BollingerBandsPanel.mqh + BollingerBandsFilterPanel.mqh
+// + Init() recebe ponteiros BB Strategy + BB Filter
+// + m_bbStrategy, m_bbFilter: novos membros ponteiro
+//
 // v1.38 (Parte 025):
 // + CStrategyPanelBase / CFilterPanelBase: base abstrata para sub-páginas
 //   Cada estratégia/filtro encapsula seus controles em GUI/Panels/*.mqh
@@ -385,10 +416,12 @@ private:
    CRiskManager      *m_riskManager;
    CTradeManager     *m_tradeManager;
    CSignalManager    *m_signalManager;
-   CMACrossStrategy  *m_maCross;
-   CRSIStrategy      *m_rsiStrategy;
-   CTrendFilter      *m_trendFilter;
-   CRSIFilter        *m_rsiFilter;
+   CMACrossStrategy        *m_maCross;
+   CRSIStrategy            *m_rsiStrategy;
+   CBollingerBandsStrategy *m_bbStrategy;
+   CTrendFilter            *m_trendFilter;
+   CRSIFilter              *m_rsiFilter;
+   CBollingerBandsFilter   *m_bbFilter;
 
    // ── Painéis dinâmicos (criados em RegisterPanels) ──
    CStrategyPanelBase *m_stratPanels[];
@@ -650,6 +683,10 @@ private:
    bool                      m_cur_newsOn3;
    // (MA Cross e RSI ESTRAT state vars movidos para CMACrossPanel / CRSIStrategyPanel)
 
+   // ── Prioridade: resolução de conflitos entre estratégias ──
+public:
+   int               ResolveStrategyPriority(int desired, string excludeName);
+
    // ── Helpers públicos (usados pelos painéis GUI/Panels/*.mqh) ──
 public:
    bool              CreateLV(CLabel &lbl, CLabel &val, string ln, string en, string lt, int y);
@@ -772,7 +809,9 @@ public:
    bool              Init(CLogger *logger, CBlockers *blockers, CRiskManager *risk,
                           CTradeManager *trade, CSignalManager *signal,
                           CMACrossStrategy *maCross, CRSIStrategy *rsi,
+                          CBollingerBandsStrategy *bb,
                           CTrendFilter *trend, CRSIFilter *rsiFilt,
+                          CBollingerBandsFilter *bbFilt,
                           int magic, string symbol);
 
    bool              CreatePanel(long chart, string name, int subwin,
@@ -836,7 +875,9 @@ CEPBotPanel::~CEPBotPanel(void)
 bool CEPBotPanel::Init(CLogger *logger, CBlockers *blockers, CRiskManager *risk,
                        CTradeManager *trade, CSignalManager *signal,
                        CMACrossStrategy *maCross, CRSIStrategy *rsi,
+                       CBollingerBandsStrategy *bb,
                        CTrendFilter *trend, CRSIFilter *rsiFilt,
+                       CBollingerBandsFilter *bbFilt,
                        int magic, string symbol)
   {
    m_logger       = logger;
@@ -846,8 +887,10 @@ bool CEPBotPanel::Init(CLogger *logger, CBlockers *blockers, CRiskManager *risk,
    m_signalManager = signal;
    m_maCross      = maCross;
    m_rsiStrategy  = rsi;
+   m_bbStrategy   = bb;
    m_trendFilter  = trend;
    m_rsiFilter    = rsiFilt;
+   m_bbFilter     = bbFilt;
    m_magicNumber  = magic;
    m_symbol       = symbol;
    RegisterPanels();
@@ -979,6 +1022,16 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
                               const double &dparam, const string &sparam)
   {
 // ══════════════════════════════════════════════════════════════════
+// Minimizado: passar tudo direto para CAppDialog (só o botão
+// minimize/maximize precisa responder — nossos controles estão ocultos)
+// ══════════════════════════════════════════════════════════════════
+   if(m_minimized)
+     {
+      CAppDialog::ChartEvent(id, lparam, dparam, sparam);
+      return;
+     }
+
+// ══════════════════════════════════════════════════════════════════
 // CHARTEVENT_OBJECT_CLICK: interceptar pelo nome (sparam)
 // CAppDialog::OnEvent NÃO recebe este evento — ele é processado
 // internamente por CAppDialog::ChartEvent. Por isso usamos este
@@ -1096,7 +1149,26 @@ bool CEPBotPanel::OnEvent(const int id, const long &lparam,
    bool result = CAppDialog::OnEvent(id, lparam, dparam, sparam);
 
    if(result)
-      ReapplyTabVisibility();
+     {
+      if(m_minimized)
+        {
+         // Após minimize: forçar hide em TODOS os controles explicitamente.
+         // CAppDialog::Minimize() faz m_client_area.Hide() cascade, mas com
+         // muitos controles (~400) o cascade pode falhar parcialmente.
+         // Controles "soltos" ficam visíveis sem fundo e podem bloquear
+         // o botão minimize, impedindo restore.
+         m_btnTab0.Hide(); m_btnTab1.Hide(); m_btnTab2.Hide();
+         m_btnTab3.Hide(); m_btnTab4.Hide();
+         for(int t = 0; t < TAB_COUNT; t++)
+            SetTabVis((ENUM_PANEL_TAB)t, false);
+         ChartRedraw();
+        }
+      else
+        {
+         // Após maximize ou outro evento: esconder abas/sub-páginas inativas
+         ReapplyTabVisibility();
+        }
+     }
 
    return result;
   }
@@ -1316,6 +1388,10 @@ void CEPBotPanel::UpdateTabStyles(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::Update(void)
   {
+   // Não atualiza se minimizado — evita labels "soltos" no gráfico
+   if(m_minimized)
+      return;
+
    switch(m_activeTab)
      {
       case TAB_STATUS:      UpdateStatus();       break;
@@ -1362,8 +1438,10 @@ void CEPBotPanel::MouseProtection(const int x, const int y)
 // Incluídos APÓS CEPBotPanel — painéis usam CEPBotPanel* com acesso completo
 #include "Panels/MACrossPanel.mqh"
 #include "Panels/RSIStrategyPanel.mqh"
+#include "Panels/BollingerBandsPanel.mqh"
 #include "Panels/TrendFilterPanel.mqh"
 #include "Panels/RSIFilterPanel.mqh"
+#include "Panels/BollingerBandsFilterPanel.mqh"
 
 #include "PanelTabStatus.mqh"
 #include "PanelTabResultados.mqh"
@@ -1393,6 +1471,11 @@ void CEPBotPanel::RegisterPanels(void)
       ArrayResize(m_stratPanels, ++m_stratPanelCount);
       m_stratPanels[m_stratPanelCount - 1] = new CRSIStrategyPanel(m_rsiStrategy);
      }
+   if(m_bbStrategy != NULL)
+     {
+      ArrayResize(m_stratPanels, ++m_stratPanelCount);
+      m_stratPanels[m_stratPanelCount - 1] = new CBollingerBandsPanel(m_bbStrategy);
+     }
 
    // ── Filtros ──
    if(m_trendFilter != NULL)
@@ -1405,6 +1488,34 @@ void CEPBotPanel::RegisterPanels(void)
       ArrayResize(m_filtPanels, ++m_filtPanelCount);
       m_filtPanels[m_filtPanelCount - 1] = new CRSIFilterPanel(m_rsiFilter);
      }
+   if(m_bbFilter != NULL)
+     {
+      ArrayResize(m_filtPanels, ++m_filtPanelCount);
+      m_filtPanels[m_filtPanelCount - 1] = new CBollingerBandsFilterPanel(m_bbFilter);
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| ResolveStrategyPriority — auto-ajuste de prioridade               |
+//| Se 'desired' já está em uso por outra estratégia, incrementa      |
+//| até encontrar um valor livre.                                      |
+//+------------------------------------------------------------------+
+int CEPBotPanel::ResolveStrategyPriority(int desired, string excludeName)
+  {
+   if(m_signalManager == NULL) return desired;
+   for(int attempt = 0; attempt < 100; attempt++)
+     {
+      bool conflict = false;
+      for(int i = 0; i < m_signalManager.GetStrategyCount(); i++)
+        {
+         CStrategyBase *s = m_signalManager.GetStrategy(i);
+         if(s != NULL && s.GetName() != excludeName && s.GetPriority() == desired)
+           { conflict = true; break; }
+        }
+      if(!conflict) return desired;
+      desired++;
+     }
+   return desired;
   }
 
 //+------------------------------------------------------------------+

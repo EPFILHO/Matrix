@@ -2,7 +2,7 @@
 //|                                           StrategyPanelBase.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Interface base para sub-páginas de estratégia             |
-//|                     Versão 1.00 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.01 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh ANTES da definição de CEPBotPanel.
 // Usa forward declaration para CEPBotPanel.
@@ -16,6 +16,7 @@ class CStrategyPanelBase
 protected:
    long              m_chart_id;
    int               m_subwin;
+   CEPBotPanel      *m_parent;   // Referência ao painel principal (para prioridade etc.)
 public:
    virtual          ~CStrategyPanelBase(void) {}
    virtual string    GetName(void) const = 0;

@@ -2,7 +2,7 @@
 //|                                                 MACrossPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — MA Cross Strategy                        |
-//|                     Versão 1.00 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.02 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
@@ -36,6 +36,7 @@ private:
 
    // Controles — config editável
    CLabel   m_hdrConf;
+   CLabel   m_lPriority; CEdit   m_iPriority;
    CLabel   m_lFastP;    CEdit   m_iFastP;
    CLabel   m_lFastM;    CButton m_bFastM[4];
    CLabel   m_lFastTF;   CButton m_bFastTF;
@@ -46,10 +47,9 @@ private:
    CLabel   m_lSlowPr;   CButton m_bSlowPr;
    CLabel   m_hdrSig;
    CLabel   m_lEntry;    CButton m_bEntry[2];
+   CLabel   m_lEntryDesc;
    CLabel   m_lExit;     CButton m_bExit[3];
-   CLabel   m_lLeg1;
-   CLabel   m_lLeg2;
-   CLabel   m_lLeg3;
+   CLabel   m_lExitDesc;
    CButton  m_btnApply;
    CLabel   m_lblStatus;
 
@@ -68,6 +68,7 @@ public:
 
    virtual bool Create(CEPBotPanel *parent, long chart_id, int subwin)
      {
+      m_parent   = parent;
       m_chart_id = chart_id;
       m_subwin   = subwin;
       int y = ESTRAT_CONTENT_Y;
@@ -102,32 +103,40 @@ public:
       if(!parent.CreateHdr(m_hdrConf, "ce_h1", "CONFIGURACOES", y)) return false;
       y += PANEL_GAP_Y + 2;
 
-      if(!parent.CreateLI(m_lFastP, m_iFastP, "ce_lFP", "ce_iFP", "Fast Period:", y)) return false;
+      // Prioridade
+      {
+       int pr = (m_strategy != NULL) ? m_strategy.GetPriority() : 10;
+       if(!parent.CreateLI(m_lPriority, m_iPriority, "ce_lPR", "ce_iPR", "Prioridade:", y)) return false;
+       m_iPriority.Text(IntegerToString(pr));
+      }
+      y += PANEL_GAP_Y;
+
+      if(!parent.CreateLI(m_lFastP, m_iFastP, "ce_lFP", "ce_iFP", "Periodo Rapida:", y)) return false;
       y += PANEL_GAP_Y;
       {
        string fmTexts[] = {"SMA", "EMA", "SMMA", "LWMA"};
-       if(!parent.CreateRadioGroup(m_lFastM, m_bFastM, "ce_lFM", "ce_bFM", "Fast Method:", fmTexts, 4, y))
+       if(!parent.CreateRadioGroup(m_lFastM, m_bFastM, "ce_lFM", "ce_bFM", "Metodo Rapida:", fmTexts, 4, y))
           return false;
       }
       y += PANEL_GAP_Y + 2;
-      if(!parent.CreateLB(m_lFastTF, m_bFastTF, "ce_lFT", "ce_bFT", "Fast Time Frame:", y)) return false;
+      if(!parent.CreateLB(m_lFastTF, m_bFastTF, "ce_lFT", "ce_bFT", "Time Frame Rapida:", y)) return false;
       y += PANEL_GAP_Y + 2;
-      if(!parent.CreateLB(m_lFastPr, m_bFastPr, "ce_lFPr", "ce_bFPr", "Fast Price:", y)) return false;
+      if(!parent.CreateLB(m_lFastPr, m_bFastPr, "ce_lFPr", "ce_bFPr", "Preco Rapida:", y)) return false;
       y += PANEL_GAP_Y + 2;
 
       // Config: SLOW MA
       y += PANEL_GAP_SECTION;
-      if(!parent.CreateLI(m_lSlowP, m_iSlowP, "ce_lSP", "ce_iSP", "Slow Period:", y)) return false;
+      if(!parent.CreateLI(m_lSlowP, m_iSlowP, "ce_lSP", "ce_iSP", "Periodo Lenta:", y)) return false;
       y += PANEL_GAP_Y;
       {
        string smTexts[] = {"SMA", "EMA", "SMMA", "LWMA"};
-       if(!parent.CreateRadioGroup(m_lSlowM, m_bSlowM, "ce_lSM", "ce_bSM", "Slow Method:", smTexts, 4, y))
+       if(!parent.CreateRadioGroup(m_lSlowM, m_bSlowM, "ce_lSM", "ce_bSM", "Metodo Lenta:", smTexts, 4, y))
           return false;
       }
       y += PANEL_GAP_Y + 2;
-      if(!parent.CreateLB(m_lSlowTF, m_bSlowTF, "ce_lST2", "ce_bST2", "Slow Time Frame:", y)) return false;
+      if(!parent.CreateLB(m_lSlowTF, m_bSlowTF, "ce_lST2", "ce_bST2", "Time Frame Lenta:", y)) return false;
       y += PANEL_GAP_Y + 2;
-      if(!parent.CreateLB(m_lSlowPr, m_bSlowPr, "ce_lSPr", "ce_bSPr", "Slow Price:", y)) return false;
+      if(!parent.CreateLB(m_lSlowPr, m_bSlowPr, "ce_lSPr", "ce_bSPr", "Preco Lenta:", y)) return false;
       y += PANEL_GAP_Y + 2;
 
       // Config: SINAIS
@@ -140,36 +149,30 @@ public:
           return false;
       }
       y += PANEL_GAP_Y + 2;
+
+      // Legenda dinâmica de entrada
+      if(!m_lEntryDesc.Create(chart_id, PFX + "ce_eLgD", subwin,
+                               COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
+         return false;
+      m_lEntryDesc.Font("Tahoma"); m_lEntryDesc.FontSize(7); m_lEntryDesc.Color(CLR_NEUTRAL);
+      m_lEntryDesc.Text(_EntryDesc(m_cur_entry));
+      if(!parent.AddControl(m_lEntryDesc)) return false;
+      y += 15;
+
       {
        string extTexts[] = {"FCO", "VM", "TP-SL"};
        if(!parent.CreateRadioGroup(m_lExit, m_bExit, "ce_lEX", "ce_bEX", "Saida:", extTexts, 3, y))
           return false;
       }
-      y += PANEL_GAP_Y + 8;
+      y += PANEL_GAP_Y + 2;
 
-      // Legendas
-      if(!m_lLeg1.Create(chart_id, PFX + "e_leg1", subwin,
-                          COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + PANEL_GAP_Y))
+      // Legenda dinâmica de saída
+      if(!m_lExitDesc.Create(chart_id, PFX + "e_legD", subwin,
+                              COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + 13))
          return false;
-      m_lLeg1.Text("FCO - Fechar no Cruzamento Oposto");
-      m_lLeg1.FontSize(7); m_lLeg1.Color(CLR_NEUTRAL);
-      if(!parent.AddControl(m_lLeg1)) return false;
-      y += PANEL_GAP_Y;
-
-      if(!m_lLeg2.Create(chart_id, PFX + "e_leg2", subwin,
-                          COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + PANEL_GAP_Y))
-         return false;
-      m_lLeg2.Text("VM - Virar a mao");
-      m_lLeg2.FontSize(7); m_lLeg2.Color(CLR_NEUTRAL);
-      if(!parent.AddControl(m_lLeg2)) return false;
-      y += PANEL_GAP_Y;
-
-      if(!m_lLeg3.Create(chart_id, PFX + "e_leg3", subwin,
-                          COL_VALUE_X, y, COL_VALUE_X + COL_VALUE_W, y + PANEL_GAP_Y))
-         return false;
-      m_lLeg3.Text("TP/SL - Sair no TP/SL configurados");
-      m_lLeg3.FontSize(7); m_lLeg3.Color(CLR_NEUTRAL);
-      if(!parent.AddControl(m_lLeg3)) return false;
+      m_lExitDesc.Font("Tahoma"); m_lExitDesc.FontSize(7); m_lExitDesc.Color(CLR_NEUTRAL);
+      m_lExitDesc.Text(_ExitDesc(m_cur_exit));
+      if(!parent.AddControl(m_lExitDesc)) return false;
 
       // Botão APLICAR
       if(!m_btnApply.Create(chart_id, PFX + "e_applyMA", subwin,
@@ -205,6 +208,7 @@ public:
       m_lCross.Show(); m_eCross.Show();
       m_lCandles.Show(); m_eCandles.Show();
       m_hdrConf.Show();
+      m_lPriority.Show(); m_iPriority.Show();
       m_lFastP.Show(); m_iFastP.Show();
       m_lFastM.Show(); for(int i = 0; i < 4; i++) m_bFastM[i].Show();
       m_lFastTF.Show(); m_bFastTF.Show();
@@ -215,8 +219,9 @@ public:
       m_lSlowPr.Show(); m_bSlowPr.Show();
       m_hdrSig.Show();
       m_lEntry.Show(); for(int i = 0; i < 2; i++) m_bEntry[i].Show();
+      m_lEntryDesc.Show();
       m_lExit.Show();  for(int i = 0; i < 3; i++) m_bExit[i].Show();
-      m_lLeg1.Show(); m_lLeg2.Show(); m_lLeg3.Show();
+      m_lExitDesc.Show();
       m_btnApply.Show(); m_lblStatus.Show();
      }
 
@@ -229,6 +234,7 @@ public:
       m_lCross.Hide(); m_eCross.Hide();
       m_lCandles.Hide(); m_eCandles.Hide();
       m_hdrConf.Hide();
+      m_lPriority.Hide(); m_iPriority.Hide();
       m_lFastP.Hide(); m_iFastP.Hide();
       m_lFastM.Hide(); for(int i = 0; i < 4; i++) m_bFastM[i].Hide();
       m_lFastTF.Hide(); m_bFastTF.Hide();
@@ -239,17 +245,20 @@ public:
       m_lSlowPr.Hide(); m_bSlowPr.Hide();
       m_hdrSig.Hide();
       m_lEntry.Hide(); for(int i = 0; i < 2; i++) m_bEntry[i].Hide();
+      m_lEntryDesc.Hide();
       m_lExit.Hide();  for(int i = 0; i < 3; i++) m_bExit[i].Hide();
-      m_lLeg1.Hide(); m_lLeg2.Hide(); m_lLeg3.Hide();
+      m_lExitDesc.Hide();
       m_btnApply.Hide(); m_lblStatus.Hide();
      }
 
    virtual void Update(void)
      {
       ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      m_lEntryDesc.Text(_EntryDesc(m_cur_entry));
+      m_lExitDesc.Text(_ExitDesc(m_cur_exit));
       if(m_strategy != NULL && m_strategy.IsInitialized() && m_strategy.GetEnabled())
         {
-         m_eStatus.Text("Ativo (P:" + IntegerToString(m_strategy.GetPriority()) + ")");
+         m_eStatus.Text("Ativo (Prioridade:" + IntegerToString(m_strategy.GetPriority()) + ")");
          m_eStatus.Color(CLR_POSITIVE);
          m_eFast.Text(DoubleToString(m_strategy.GetMAFast(), _Digits));
          m_eFast.Color(CLR_VALUE);
@@ -299,11 +308,11 @@ public:
       // Entry radio
       for(int i = 0; i < 2; i++)
          if(name == m_bEntry[i].Name())
-           { m_cur_entry = (i == 0) ? ENTRY_NEXT_CANDLE : ENTRY_2ND_CANDLE; SetRadioSel(m_bEntry, 2, i); return true; }
+           { m_cur_entry = (i == 0) ? ENTRY_NEXT_CANDLE : ENTRY_2ND_CANDLE; SetRadioSel(m_bEntry, 2, i); m_lEntryDesc.Text(_EntryDesc(m_cur_entry)); return true; }
       // Exit radio
       for(int i = 0; i < 3; i++)
          if(name == m_bExit[i].Name())
-           { m_cur_exit = (i == 0) ? EXIT_FCO : (i == 1) ? EXIT_VM : EXIT_TP_SL; SetRadioSel(m_bExit, 3, i); return true; }
+           { m_cur_exit = (i == 0) ? EXIT_FCO : (i == 1) ? EXIT_VM : EXIT_TP_SL; SetRadioSel(m_bExit, 3, i); m_lExitDesc.Text(_ExitDesc(m_cur_exit)); return true; }
       // Fast TF cycle
       if(name == m_bFastTF.Name())
         {
@@ -340,8 +349,30 @@ public:
      }
 
 private:
+   string _EntryDesc(ENUM_ENTRY_MODE mode)
+     {
+      switch(mode)
+        {
+         case ENTRY_NEXT_CANDLE: return "Entra na abertura do proximo candle";
+         case ENTRY_2ND_CANDLE:  return "Espera confirmacao no 2o candle (E2C)";
+         default:                return "";
+        }
+     }
+
+   string _ExitDesc(ENUM_EXIT_MODE mode)
+     {
+      switch(mode)
+        {
+         case EXIT_FCO:   return "FCO: Fechar no Cruzamento Oposto";
+         case EXIT_VM:    return "VM: Virar a mao (inverte posicao)";
+         case EXIT_TP_SL: return "TP/SL: Sair no Take Profit ou Stop Loss";
+         default:         return "";
+        }
+     }
+
    void _InitFields(void)
      {
+      int                pr  = (m_strategy != NULL) ? m_strategy.GetPriority()      : 10;
       ENUM_MA_METHOD     fm  = (m_strategy != NULL) ? m_strategy.GetFastMethod()    : MODE_SMA;
       ENUM_MA_METHOD     sm  = (m_strategy != NULL) ? m_strategy.GetSlowMethod()    : MODE_SMA;
       ENUM_TIMEFRAMES    ft  = (m_strategy != NULL) ? m_strategy.GetFastTimeframe() : PERIOD_CURRENT;
@@ -358,6 +389,7 @@ private:
       m_cur_fastPrice  = fpr; m_cur_slowPrice = spr;
       m_cur_entry      = en; m_cur_exit       = ex;
 
+      m_iPriority.Text(IntegerToString(pr));
       m_iFastP.Text(IntegerToString(fp));
       m_iSlowP.Text(IntegerToString(sp));
       SetRadioSel(m_bFastM, 4, MAMethodToIndex(fm));
@@ -382,8 +414,9 @@ private:
       int errors = 0;
       int fastP = (int)StringToInteger(m_iFastP.Text());
       int slowP = (int)StringToInteger(m_iSlowP.Text());
+      int prio  = (int)StringToInteger(m_iPriority.Text());
 
-      if(fastP > 0 && slowP > 0 && fastP < slowP)
+      if(fastP > 0 && fastP <= 1000 && slowP > 0 && slowP <= 1000 && fastP < slowP)
         {
          if(!m_strategy.SetMAParams(fastP, slowP,
                                     m_cur_fastMethod, m_cur_slowMethod,
@@ -394,14 +427,42 @@ private:
       else
          errors++;
 
+      if(prio <= 0) errors++;
+
+      if(errors > 0)
+        {
+         string errorMsg = "";
+         if(fastP <= 0 || fastP > 1000) errorMsg = "Periodo rapida invalido (1-1000)";
+         else if(slowP <= 0 || slowP > 1000) errorMsg = "Periodo lenta invalido (1-1000)";
+         else if(fastP >= slowP) errorMsg = "Periodo rapida deve ser < lenta";
+         else if(prio <= 0) errorMsg = "Prioridade deve ser > 0";
+         else errorMsg = "Valores invalidos";
+         m_lblStatus.Text(errorMsg);
+         m_lblStatus.Color(CLR_NEGATIVE);
+         m_statusExpiry = GetTickCount() + 10000;
+         ChartRedraw();
+         return;
+        }
+
+      // Auto-ajuste de prioridade
+      if(m_parent != NULL)
+        {
+         int resolved = m_parent.ResolveStrategyPriority(prio, "MA Cross Strategy");
+         if(resolved != prio)
+           {
+            prio = resolved;
+            m_iPriority.Text(IntegerToString(prio));
+           }
+        }
+
+      m_strategy.SetPriority(prio);
       m_strategy.SetEntryMode(m_cur_entry);
       m_strategy.SetExitMode(m_cur_exit);
       m_strategy.SetEnabled(m_pendingEnabled);
 
-      if(errors == 0)
-        { m_lblStatus.Text("Aplicado com sucesso!"); m_lblStatus.Color(CLR_POSITIVE); }
-      else
-        { m_lblStatus.Text("Periodo invalido (fast < slow > 0)"); m_lblStatus.Color(CLR_NEGATIVE); }
+      string msg = "Aplicado! Prioridade: " + IntegerToString(prio);
+      m_lblStatus.Text(msg);
+      m_lblStatus.Color(CLR_POSITIVE);
       m_statusExpiry = GetTickCount() + 10000;
       ChartRedraw();
      }

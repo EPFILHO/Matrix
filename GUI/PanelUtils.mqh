@@ -2,7 +2,8 @@
 //|                                                   PanelUtils.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|          Funções utilitárias livres para sub-páginas do painel    |
-//|                     Versão 1.00 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.01 - Claude Parte 025 (Claude Code) |
+//|          + free-function Enable/Disable helpers para painéis      |
 //+------------------------------------------------------------------+
 // NOTA: Incluído por Panel.mqh APÓS #include das dependências de
 //       Strategy/Filters e <Controls\Button.mqh>.
@@ -132,6 +133,54 @@ void SetRadioSel(CButton &btns[], int count, int selected)
         { btns[i].ColorBackground(CLR_RADIO_ACTIVE);   btns[i].Color(CLR_RADIO_TXT_ACT); }
       else
         { btns[i].ColorBackground(CLR_RADIO_INACTIVE); btns[i].Color(CLR_RADIO_TXT_INACT); }
+     }
+  }
+
+//── Enable/Disable helpers (for panels) ──────────────────────────
+void SetEditEnabled(CLabel &lbl, CEdit &inp, bool enable)
+  {
+   if(enable)
+     {
+      lbl.Color(CLR_LABEL);
+      inp.ReadOnly(false);
+      inp.ColorBackground(clrWhite);
+      inp.Color(clrBlack);
+     }
+   else
+     {
+      lbl.Color(C'180,180,180');
+      inp.ReadOnly(true);
+      inp.ColorBackground(C'220,220,220');
+      inp.Color(C'160,160,160');
+     }
+  }
+
+void SetButtonEnabled(CLabel &lbl, CButton &btn, bool enable)
+  {
+   if(enable)
+     {
+      lbl.Color(CLR_LABEL);
+     }
+   else
+     {
+      lbl.Color(C'180,180,180');
+      btn.ColorBackground(C'160,160,160');
+      btn.Color(C'200,200,200');
+     }
+  }
+
+void SetRadioGroupEnabled(CLabel &lbl, CButton &btns[], int count, bool enable)
+  {
+   if(enable)
+      lbl.Color(CLR_LABEL);
+   else
+     {
+      lbl.Color(C'180,180,180');
+      for(int i = 0; i < count; i++)
+        {
+         btns[i].ColorBackground(C'160,160,160');
+         btns[i].Color(C'200,200,200');
+        }
      }
   }
 //+------------------------------------------------------------------+

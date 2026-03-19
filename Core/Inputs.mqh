@@ -2,12 +2,22 @@
 //|                                                       Inputs.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                   Sistema de Inputs Centralizados - EPBot Matrix |
-//|                     Versão 1.07 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.08 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.07"
+#property version   "1.08"
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v1.08 (Parte 026):
+// ✅ Novos inputs para BB Strategy (Bollinger Bands):
+//    inp_UseBB, inp_BBPriority, inp_BBPeriod, inp_BBDeviation,
+//    inp_BBApplied, inp_BBTF, inp_BBMode, inp_BBEntryMode, inp_BBExitMode
+// ✅ Novos inputs para BB Filter (Anti-Squeeze):
+//    inp_UseBBFilter, inp_BBFiltPeriod, inp_BBFiltDeviation,
+//    inp_BBFiltApplied, inp_BBFiltTF, inp_BBFiltMetric,
+//    inp_BBFiltThreshold, inp_BBFiltPercPeriod
+// ✅ Includes: BollingerBandsStrategy.mqh, BollingerBandsFilter.mqh
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v1.07:
 // ✅ inp_MACrossMinDistance integrado ao MACrossStrategy::Setup() (v2.26)
@@ -42,6 +52,8 @@
 #include "../Strategy/Strategies/MACrossStrategy.mqh"
 #include "../Strategy/Strategies/RSIStrategy.mqh"
 #include "../Strategy/Filters/RSIFilter.mqh"
+#include "../Strategy/Strategies/BollingerBandsStrategy.mqh"
+#include "../Strategy/Filters/BollingerBandsFilter.mqh"
 
 //+------------------------------------------------------------------+
 //| INPUTS GERAIS DO EA                                              |
@@ -227,6 +239,18 @@ input ENUM_RSI_SIGNAL_MODE inp_RSIMode = RSI_MODE_CROSSOVER;  // Modo de Operaç
 input int    inp_RSIMidLevel = 50;                      // Nível Médio (para modo Crossover/Middle)
 // inp_RSISignalShift removido (v1.07): sempre usa shift=1 (última barra fechada)
 
+//--- 📊 BOLLINGER BANDS STRATEGY
+input group "📊 Bollinger Bands Strategy"
+input bool   inp_UseBB = false;                              // Ativar BB Strategy
+input int    inp_BBPriority = 3;                             // Prioridade BB
+input int    inp_BBPeriod = 20;                              // Período BB
+input double inp_BBDeviation = 2.0;                          // Desvio Padrão BB
+input ENUM_APPLIED_PRICE inp_BBApplied = PRICE_CLOSE;        // Preço Aplicado BB
+input ENUM_TIMEFRAMES inp_BBTF = PERIOD_CURRENT;             // Timeframe BB
+input ENUM_BB_SIGNAL_MODE inp_BBMode = BB_MODE_FFFD;         // Modo de Operação BB
+input ENUM_ENTRY_MODE inp_BBEntryMode = ENTRY_NEXT_CANDLE;   // Modo de Entrada BB
+input ENUM_EXIT_MODE inp_BBExitMode = EXIT_TP_SL;            // Modo de Saída BB
+
 //+------------------------------------------------------------------+
 //| SEÇÃO 006 - FILTERS                                              |
 //+------------------------------------------------------------------+
@@ -253,6 +277,17 @@ input int    inp_RSIFilterOverbought = 70;              // Nível Overbought (Fi
 input double inp_RSIFilterLowerNeutral = 40;            // Limite Inferior Zona Neutra
 input double inp_RSIFilterUpperNeutral = 60;            // Limite Superior Zona Neutra
 input int    inp_RSIFilterShift = 1;                    // Shift do Filtro RSI (0=barra atual, 1=barra fechada)
+
+//--- 📊 BB FILTER (Filtro Bollinger Bands - Anti-Squeeze)
+input group "📊 BB Filter (Anti-Squeeze)"
+input bool   inp_UseBBFilter = false;                        // Ativar BB Filter
+input int    inp_BBFiltPeriod = 20;                          // Período BB (Filter)
+input double inp_BBFiltDeviation = 2.0;                      // Desvio Padrão BB (Filter)
+input ENUM_APPLIED_PRICE inp_BBFiltApplied = PRICE_CLOSE;    // Preço BB (Filter)
+input ENUM_TIMEFRAMES inp_BBFiltTF = PERIOD_CURRENT;         // Timeframe BB (Filter)
+input ENUM_BB_SQUEEZE_METRIC inp_BBFiltMetric = BB_SQUEEZE_RELATIVE; // Métrica Anti-Squeeze
+input double inp_BBFiltThreshold = 1.0;                      // Threshold Squeeze (depende da métrica)
+input int    inp_BBFiltPercPeriod = 50;                      // Período Percentil (só modo Percentil)
 
 //+------------------------------------------------------------------+
 //| SEÇÃO 008 - PAINEL GUI                                            |

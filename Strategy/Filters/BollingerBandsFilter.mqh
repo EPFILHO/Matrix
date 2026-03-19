@@ -1,63 +1,46 @@
 //+------------------------------------------------------------------+
-//|                                                 RSIStrategy.mqh  |
+//|                                         BollingerBandsFilter.mqh |
 //|                                         Copyright 2026, EP Filho |
-//|                                    Estratégia RSI - EPBot Matrix |
-//|                                   Versão 2.15 - Claude Parte 025 |
+//|                          Filtro Bollinger Bands - EPBot Matrix   |
+//|                                   Versão 1.00 - Claude Parte 026 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.15"
+#property version   "1.00"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // INCLUDES
 // ═══════════════════════════════════════════════════════════════
 #include "../../Core/Logger.mqh"
-#include "../Base/StrategyBase.mqh"
+#include "../Base/FilterBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
-// NOVIDADES v2.15 (Parte 025):
-// + signal_shift removido do Setup() — hardcode 1 (última barra fechada)
-//   Elimina input inp_RSISignalShift desnecessário
-//   SetSignalShift() e m_inputSignalShift removidos
-//
-// NOVIDADES v2.14 (Parte 024):
-// + m_enabled removido — herdado de CStrategyBase v2.01
-// + SetEnabled override mantido (com logging via m_logger)
-// + GetEnabled herdado da base
-// ═══════════════════════════════════════════════════════════════════
-// NOVIDADES v2.13 (Parte 024):
-// + Setup(): m_enabled/m_inputEnabled não mais forçados a true
-//   Preserva estado do toggle definido antes do Setup()
-//   (fix: clicar APLICAR não reativava strategy desligada pelo usuário)
-// ═══════════════════════════════════════════════════════════════════
-// NOVIDADES v2.12 (Parte 024):
-// + m_enabled: toggle ON/OFF da estratégia em runtime
-// + SetEnabled(bool), GetEnabled(): getter/setter para o painel GUI
-// ═══════════════════════════════════════════════════════════════════
-// NOVIDADES v2.11:
-// + Fix: CopyBuffer validação alterada de <= 0 para < count
-//   (previne acesso fora dos limites se indicador retorna dados incompletos)
-// ═══════════════════════════════════════════════════════════════
-// NOVIDADES v2.10:
-// + Migração para Logger v3.00 (5 níveis + throttle inteligente)
-// + Todas as mensagens classificadas (ERROR/EVENT/SIGNAL/DEBUG)
-// + Adicionado LOG_SIGNAL para detecção de sinais RSI
+// CHANGELOG
+// v1.00 (Parte 026):
+// + Filtro Anti-Squeeze para Bollinger Bands
+//   Bloqueia trades quando bandas estão estreitas (mercado em range)
+//   Ideal para proteger MACross de sinais falsos em consolidação
+// + 3 métricas configuráveis pelo usuário:
+//   - BB_SQUEEZE_ABSOLUTE: (upper - lower) em pontos
+//   - BB_SQUEEZE_RELATIVE: (upper - lower) / middle * 100 (%)
+//   - BB_SQUEEZE_PERCENTILE: compara com últimas N barras
+// + Hot/Cold reload completo seguindo padrão Matrix
 // ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
-//| Enumeração de Modos de Sinal RSI                                 |
+//| Enumeração de Modos de Métrica do Squeeze                        |
 //+------------------------------------------------------------------+
-enum ENUM_RSI_SIGNAL_MODE
+enum ENUM_BB_SQUEEZE_METRIC
   {
-   RSI_MODE_CROSSOVER = 0,    // Cruzamento de níveis (padrão)
-   RSI_MODE_ZONE      = 1,    // Zona (sobrecompra/sobrevenda)
-   RSI_MODE_MIDDLE    = 2     // Cruzamento da linha média (50)
+   BB_SQUEEZE_ABSOLUTE   = 0,   // Absoluto: largura em pontos
+   BB_SQUEEZE_RELATIVE   = 1,   // Relativo: largura % da middle band
+   BB_SQUEEZE_PERCENTILE = 2    // Percentil: compara com N barras anteriores
   };
 
 //+------------------------------------------------------------------+
-//| Classe RSI Strategy                                              |
+//| Classe Bollinger Bands Filter                                    |
 //+------------------------------------------------------------------+
-class CRSIStrategy : public CStrategyBase
+class CBollingerBandsFilter : public CFilterBase
   {
 private:
    // ═══════════════════════════════════════════════════════════
@@ -68,8 +51,10 @@ private:
    // ═══════════════════════════════════════════════════════════
    // HANDLES E BUFFERS (não duplica - são internos)
    // ═══════════════════════════════════════════════════════════
-   int               m_rsi_handle;
-   double            m_rsi_buffer[];
+   int               m_bands_handle;
+   double            m_upper[];    // Banda superior (buffer 1)
+   double            m_lower[];    // Banda inferior (buffer 2)
+   double            m_middle[];   // Banda central (buffer 0)
 
    // ═══════════════════════════════════════════════════════════
    // INPUT PARAMETERS - FRIOS (valores originais - requerem reinit)
@@ -77,6 +62,7 @@ private:
    string            m_inputSymbol;
    ENUM_TIMEFRAMES   m_inputTimeframe;
    int               m_inputPeriod;
+   double            m_inputDeviation;
    ENUM_APPLIED_PRICE m_inputAppliedPrice;
 
    // ═══════════════════════════════════════════════════════════
@@ -85,156 +71,135 @@ private:
    string            m_symbol;
    ENUM_TIMEFRAMES   m_timeframe;
    int               m_period;
+   double            m_deviation;
    ENUM_APPLIED_PRICE m_applied_price;
 
    // ═══════════════════════════════════════════════════════════
    // INPUT PARAMETERS - QUENTES (valores originais - não requerem reinit)
    // ═══════════════════════════════════════════════════════════
-   ENUM_RSI_SIGNAL_MODE m_inputSignalMode;
-   double            m_inputOversold;
-   double            m_inputOverbought;
-   double            m_inputMiddle;
-   // m_inputSignalShift removido v2.15 — shift fixo em 1 (última barra fechada)
-   bool              m_inputEnabled;
+   ENUM_BB_SQUEEZE_METRIC m_inputSqueezeMetric;
+   double            m_inputSqueezeThreshold;
+   int               m_inputPercentilePeriod;
 
    // ═══════════════════════════════════════════════════════════
    // WORKING PARAMETERS - QUENTES (valores usados - não requerem reinit)
    // ═══════════════════════════════════════════════════════════
-   ENUM_RSI_SIGNAL_MODE m_signal_mode;
-   double            m_oversold;
-   double            m_overbought;
-   double            m_middle;
-   int               m_signal_shift;
-   // m_enabled: removido — herdado de CStrategyBase v2.01
+   ENUM_BB_SQUEEZE_METRIC m_squeeze_metric;
+   double            m_squeeze_threshold;
+   int               m_percentile_period;
 
    // ═══════════════════════════════════════════════════════════
    // MÉTODOS PRIVADOS
    // ═══════════════════════════════════════════════════════════
-   bool              LoadRSIValues(int count);
-   ENUM_SIGNAL_TYPE  CheckCrossoverSignal();
-   ENUM_SIGNAL_TYPE  CheckZoneSignal();
-   ENUM_SIGNAL_TYPE  CheckMiddleSignal();
+   bool              LoadBandsValues(int count);
+   bool              CheckSqueezeAbsolute();
+   bool              CheckSqueezeRelative();
+   bool              CheckSqueezePercentile();
 
 public:
    // ═══════════════════════════════════════════════════════════
    // CONSTRUTOR E DESTRUTOR
    // ═══════════════════════════════════════════════════════════
-                     CRSIStrategy(int priority = 5);
-                    ~CRSIStrategy();
+                     CBollingerBandsFilter();
+                    ~CBollingerBandsFilter();
 
    // ═══════════════════════════════════════════════════════════
    // SETUP (chamado ANTES do Initialize)
    // ═══════════════════════════════════════════════════════════
-   bool              Setup(CLogger* logger, string symbol, ENUM_TIMEFRAMES timeframe, int period,
-              ENUM_APPLIED_PRICE applied_price, ENUM_RSI_SIGNAL_MODE signal_mode,
-              double oversold, double overbought, double middle);
+   bool              Setup(CLogger* logger, string symbol, ENUM_TIMEFRAMES timeframe,
+                           int period, double deviation, ENUM_APPLIED_PRICE applied_price,
+                           ENUM_BB_SQUEEZE_METRIC squeeze_metric, double squeeze_threshold,
+                           int percentile_period);
 
    // ═══════════════════════════════════════════════════════════
    // IMPLEMENTAÇÃO DOS MÉTODOS VIRTUAIS (obrigatórios)
    // ═══════════════════════════════════════════════════════════
    virtual bool      Initialize() override;
    virtual void      Deinitialize() override;
-   virtual ENUM_SIGNAL_TYPE GetSignal() override;
-
-   //+------------------------------------------------------------------+
-   //| Obter sinal de SAÍDA (v2.10)                                     |
-   //+------------------------------------------------------------------+
-   virtual ENUM_SIGNAL_TYPE GetExitSignal(ENUM_POSITION_TYPE currentPosition) override
-     {
-      // RSI Strategy: Sempre usa TP/SL normal (não gerencia exit)
-      // No futuro pode implementar exit por reversão de RSI
-      return SIGNAL_NONE;
-     }
-
+   virtual bool      ValidateSignal(ENUM_SIGNAL_TYPE signal) override;
    virtual bool      UpdateHotParameters() override;
    virtual bool      UpdateColdParameters() override;
 
    // ═══════════════════════════════════════════════════════════
    // HOT RELOAD - Parâmetros quentes (sem reiniciar indicadores)
    // ═══════════════════════════════════════════════════════════
-   void              SetSignalMode(ENUM_RSI_SIGNAL_MODE mode);
-   void              SetOversold(double value);
-   void              SetOverbought(double value);
-   void              SetMiddle(double value);
-   // SetSignalShift removido v2.15 — shift fixo em 1
-   virtual void      SetEnabled(bool value) override;
+   void              SetSqueezeMetric(ENUM_BB_SQUEEZE_METRIC metric);
+   void              SetSqueezeThreshold(double value);
+   void              SetPercentilePeriod(int value);
 
    // ═══════════════════════════════════════════════════════════
    // COLD RELOAD - Parâmetros frios (reinicia indicadores)
    // ═══════════════════════════════════════════════════════════
    bool              SetPeriod(int value);
+   bool              SetDeviation(double value);
    bool              SetTimeframe(ENUM_TIMEFRAMES tf);
    bool              SetAppliedPrice(ENUM_APPLIED_PRICE price);
 
    // ═══════════════════════════════════════════════════════════
    // GETTERS - Working values (valores atuais em uso)
    // ═══════════════════════════════════════════════════════════
-   double            GetCurrentRSI();
-   double            GetRSI(int shift);
-   string            GetSignalModeText();
+   double            GetCurrentBandWidth();
+   double            GetCurrentBandWidthRelative();
+   string            GetSqueezeMetricText();
+   string            GetFilterStatus();
 
    int               GetPeriod() const { return m_period; }
+   double            GetDeviation() const { return m_deviation; }
    ENUM_TIMEFRAMES   GetTimeframe() const { return m_timeframe; }
    ENUM_APPLIED_PRICE GetAppliedPrice() const { return m_applied_price; }
-   ENUM_RSI_SIGNAL_MODE GetSignalMode() const { return m_signal_mode; }
-   double            GetOversold() const { return m_oversold; }
-   double            GetOverbought() const { return m_overbought; }
-   double            GetMiddle() const { return m_middle; }
-   // GetSignalShift removido v2.15 — shift fixo em 1 (última barra fechada)
-   // GetEnabled(): herdado de CStrategyBase v2.01
+   ENUM_BB_SQUEEZE_METRIC GetSqueezeMetric() const { return m_squeeze_metric; }
+   double            GetSqueezeThreshold() const { return m_squeeze_threshold; }
+   int               GetPercentilePeriod() const { return m_percentile_period; }
 
    // ═══════════════════════════════════════════════════════════
    // GETTERS - Input values (valores originais da configuração)
    // ═══════════════════════════════════════════════════════════
    int               GetInputPeriod() const { return m_inputPeriod; }
+   double            GetInputDeviation() const { return m_inputDeviation; }
    ENUM_TIMEFRAMES   GetInputTimeframe() const { return m_inputTimeframe; }
    ENUM_APPLIED_PRICE GetInputAppliedPrice() const { return m_inputAppliedPrice; }
-   ENUM_RSI_SIGNAL_MODE GetInputSignalMode() const { return m_inputSignalMode; }
-   double            GetInputOversold() const { return m_inputOversold; }
-   double            GetInputOverbought() const { return m_inputOverbought; }
-   double            GetInputMiddle() const { return m_inputMiddle; }
-   // GetInputSignalShift removido v2.15 — shift fixo em 1
-   bool              GetInputEnabled() const { return m_inputEnabled; }
+   ENUM_BB_SQUEEZE_METRIC GetInputSqueezeMetric() const { return m_inputSqueezeMetric; }
+   double            GetInputSqueezeThreshold() const { return m_inputSqueezeThreshold; }
+   int               GetInputPercentilePeriod() const { return m_inputPercentilePeriod; }
   };
 
 //+------------------------------------------------------------------+
 //| Construtor                                                        |
 //+------------------------------------------------------------------+
-CRSIStrategy::CRSIStrategy(int priority = 5) : CStrategyBase("RSI Strategy", priority)
+CBollingerBandsFilter::CBollingerBandsFilter() : CFilterBase("BB Filter")
   {
    m_logger = NULL;
-   m_rsi_handle = INVALID_HANDLE;
+   m_bands_handle = INVALID_HANDLE;
 
 // ═══ INPUT PARAMETERS (valores padrão) ═══
    m_inputSymbol = "";
    m_inputTimeframe = PERIOD_CURRENT;
-   m_inputPeriod = 14;
+   m_inputPeriod = 20;
+   m_inputDeviation = 2.0;
    m_inputAppliedPrice = PRICE_CLOSE;
-   m_inputSignalMode = RSI_MODE_CROSSOVER;
-   m_inputOversold = 30.0;
-   m_inputOverbought = 70.0;
-   m_inputMiddle = 50.0;
-   m_inputEnabled = true;
+   m_inputSqueezeMetric = BB_SQUEEZE_RELATIVE;
+   m_inputSqueezeThreshold = 1.0;    // 1.0% para relativo, 50 pontos para absoluto, 20 para percentil
+   m_inputPercentilePeriod = 50;
 
 // ═══ WORKING PARAMETERS (começam iguais aos inputs) ═══
    m_symbol = "";
    m_timeframe = PERIOD_CURRENT;
-   m_period = 14;
+   m_period = 20;
+   m_deviation = 2.0;
    m_applied_price = PRICE_CLOSE;
-   m_signal_mode = RSI_MODE_CROSSOVER;
-   m_oversold = 30.0;
-   m_overbought = 70.0;
-   m_middle = 50.0;
-   m_signal_shift = 1;
-   // m_enabled: inicializado na base CStrategyBase(true)
+   m_squeeze_metric = BB_SQUEEZE_RELATIVE;
+   m_squeeze_threshold = 1.0;
+   m_percentile_period = 50;
 
-   ArraySetAsSeries(m_rsi_buffer, true);
+   ArraySetAsSeries(m_upper, true);
+   ArraySetAsSeries(m_lower, true);
+   ArraySetAsSeries(m_middle, true);
   }
 
 //+------------------------------------------------------------------+
 //| Destrutor                                                         |
 //+------------------------------------------------------------------+
-CRSIStrategy::~CRSIStrategy()
+CBollingerBandsFilter::~CBollingerBandsFilter()
   {
    Deinitialize();
   }
@@ -242,9 +207,10 @@ CRSIStrategy::~CRSIStrategy()
 //+------------------------------------------------------------------+
 //| Setup (configuração inicial)                                     |
 //+------------------------------------------------------------------+
-bool CRSIStrategy::Setup(CLogger* logger, string symbol, ENUM_TIMEFRAMES timeframe, int period,
-                         ENUM_APPLIED_PRICE applied_price, ENUM_RSI_SIGNAL_MODE signal_mode,
-                         double oversold, double overbought, double middle)
+bool CBollingerBandsFilter::Setup(CLogger* logger, string symbol, ENUM_TIMEFRAMES timeframe,
+                                   int period, double deviation, ENUM_APPLIED_PRICE applied_price,
+                                   ENUM_BB_SQUEEZE_METRIC squeeze_metric, double squeeze_threshold,
+                                   int percentile_period)
   {
    m_logger = logger;
 
@@ -254,13 +220,11 @@ bool CRSIStrategy::Setup(CLogger* logger, string symbol, ENUM_TIMEFRAMES timefra
    m_inputSymbol = symbol;
    m_inputTimeframe = (timeframe == PERIOD_CURRENT) ? Period() : timeframe;
    m_inputPeriod = period;
+   m_inputDeviation = deviation;
    m_inputAppliedPrice = applied_price;
-   m_inputSignalMode = signal_mode;
-   m_inputOversold = oversold;
-   m_inputOverbought = overbought;
-   m_inputMiddle = middle;
-   // m_inputSignalShift removido v2.15 — shift fixo em 1
-   // m_inputEnabled: não forçado — preserva estado antes do Setup()
+   m_inputSqueezeMetric = squeeze_metric;
+   m_inputSqueezeThreshold = squeeze_threshold;
+   m_inputPercentilePeriod = percentile_period;
 
 // ═══════════════════════════════════════════════════════════
 // INICIALIZAR WORKING PARAMETERS (começam iguais aos inputs)
@@ -268,30 +232,28 @@ bool CRSIStrategy::Setup(CLogger* logger, string symbol, ENUM_TIMEFRAMES timefra
    m_symbol = symbol;
    m_timeframe = (timeframe == PERIOD_CURRENT) ? Period() : timeframe;
    m_period = period;
+   m_deviation = deviation;
    m_applied_price = applied_price;
-   m_signal_mode = signal_mode;
-   m_oversold = oversold;
-   m_overbought = overbought;
-   m_middle = middle;
-   m_signal_shift = 1;  // v2.15: hardcoded — sempre usa última barra fechada
-   // m_enabled: não forçado — preserva estado do toggle (SetEnabled antes de Setup)
+   m_squeeze_metric = squeeze_metric;
+   m_squeeze_threshold = squeeze_threshold;
+   m_percentile_period = percentile_period;
 
    return true;
   }
 
 //+------------------------------------------------------------------+
-//| Initialize (criar handles) - v2.10                               |
+//| Initialize (criar handles)                                       |
 //+------------------------------------------------------------------+
-bool CRSIStrategy::Initialize()
+bool CBollingerBandsFilter::Initialize()
   {
    if(m_isInitialized)
       return true;
 
-   m_rsi_handle = iRSI(m_symbol, m_timeframe, m_period, m_applied_price);
+   m_bands_handle = iBands(m_symbol, m_timeframe, m_period, 0, m_deviation, m_applied_price);
 
-   if(m_rsi_handle == INVALID_HANDLE)
+   if(m_bands_handle == INVALID_HANDLE)
      {
-      string msg = "[" + m_strategyName + "] Erro ao criar indicador RSI";
+      string msg = "[" + m_filterName + "] Erro ao criar indicador Bollinger Bands";
       if(m_logger != NULL)
          m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", msg);
       else
@@ -301,9 +263,10 @@ bool CRSIStrategy::Initialize()
 
    m_isInitialized = true;
 
-   string msg = "✅ [" + m_strategyName + "] Inicializado [" + m_symbol + " | " +
-                EnumToString(m_timeframe) + " | Período: " + IntegerToString(m_period) + " | Modo: " +
-                GetSignalModeText() + "]";
+   string msg = "✅ [" + m_filterName + "] Inicializado [" + m_symbol + " | " +
+                EnumToString(m_timeframe) + " | Período: " + IntegerToString(m_period) +
+                " | Desvio: " + DoubleToString(m_deviation, 1) +
+                " | Modo: " + GetSqueezeMetricText() + "]";
    if(m_logger != NULL)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
    else
@@ -315,12 +278,12 @@ bool CRSIStrategy::Initialize()
 //+------------------------------------------------------------------+
 //| Deinitialize (liberar handles)                                   |
 //+------------------------------------------------------------------+
-void CRSIStrategy::Deinitialize()
+void CBollingerBandsFilter::Deinitialize()
   {
-   if(m_rsi_handle != INVALID_HANDLE)
+   if(m_bands_handle != INVALID_HANDLE)
      {
-      IndicatorRelease(m_rsi_handle);
-      m_rsi_handle = INVALID_HANDLE;
+      IndicatorRelease(m_bands_handle);
+      m_bands_handle = INVALID_HANDLE;
      }
 
    m_isInitialized = false;
@@ -329,36 +292,49 @@ void CRSIStrategy::Deinitialize()
 //+------------------------------------------------------------------+
 //| UpdateHotParameters (params sem reinicialização)                 |
 //+------------------------------------------------------------------+
-bool CRSIStrategy::UpdateHotParameters()
+bool CBollingerBandsFilter::UpdateHotParameters()
   {
-// Parâmetros quentes já são atualizados via setters
    return true;
   }
 
 //+------------------------------------------------------------------+
 //| UpdateColdParameters (params que precisam reinicializar)         |
 //+------------------------------------------------------------------+
-bool CRSIStrategy::UpdateColdParameters()
+bool CBollingerBandsFilter::UpdateColdParameters()
   {
    Deinitialize();
    return Initialize();
   }
 
 //+------------------------------------------------------------------+
-//| Carregar valores do RSI - v2.10                                  |
+//| Carregar valores das Bandas de Bollinger                         |
 //+------------------------------------------------------------------+
-bool CRSIStrategy::LoadRSIValues(int count)
+bool CBollingerBandsFilter::LoadBandsValues(int count)
   {
-   if(m_rsi_handle == INVALID_HANDLE)
+   if(m_bands_handle == INVALID_HANDLE)
       return false;
 
-   if(CopyBuffer(m_rsi_handle, 0, 0, count, m_rsi_buffer) < count)
+   if(CopyBuffer(m_bands_handle, 0, 0, count, m_middle) < count)
      {
-      string msg = "[" + m_strategyName + "] Erro ao copiar buffer RSI (solicitados: " + IntegerToString(count) + ")";
+      string msg = "[" + m_filterName + "] Erro ao copiar buffer Middle BB";
       if(m_logger != NULL)
          m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER", msg);
-      else
-         Print("⚠️ ", msg);
+      return false;
+     }
+
+   if(CopyBuffer(m_bands_handle, 1, 0, count, m_upper) < count)
+     {
+      string msg = "[" + m_filterName + "] Erro ao copiar buffer Upper BB";
+      if(m_logger != NULL)
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER", msg);
+      return false;
+     }
+
+   if(CopyBuffer(m_bands_handle, 2, 0, count, m_lower) < count)
+     {
+      string msg = "[" + m_filterName + "] Erro ao copiar buffer Lower BB";
+      if(m_logger != NULL)
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER", msg);
       return false;
      }
 
@@ -366,176 +342,135 @@ bool CRSIStrategy::LoadRSIValues(int count)
   }
 
 //+------------------------------------------------------------------+
-//| GetSignal (método principal - OBRIGATÓRIO)                       |
+//| ValidateSignal (método principal - OBRIGATÓRIO)                  |
+//| Retorna true se NÃO está em squeeze (permite trade)              |
+//| Retorna false se ESTÁ em squeeze (bloqueia trade)                |
 //+------------------------------------------------------------------+
-ENUM_SIGNAL_TYPE CRSIStrategy::GetSignal()
+bool CBollingerBandsFilter::ValidateSignal(ENUM_SIGNAL_TYPE signal)
   {
-   if(!m_isInitialized || !m_enabled)
-      return SIGNAL_NONE;
+   if(!m_isEnabled || !m_isInitialized)
+      return true;
 
-   if(!LoadRSIValues(m_signal_shift + 3))
-      return SIGNAL_NONE;
-
-   switch(m_signal_mode)
+   switch(m_squeeze_metric)
      {
-      case RSI_MODE_CROSSOVER:
-         return CheckCrossoverSignal();
+      case BB_SQUEEZE_ABSOLUTE:
+         return CheckSqueezeAbsolute();
 
-      case RSI_MODE_ZONE:
-         return CheckZoneSignal();
+      case BB_SQUEEZE_RELATIVE:
+         return CheckSqueezeRelative();
 
-      case RSI_MODE_MIDDLE:
-         return CheckMiddleSignal();
+      case BB_SQUEEZE_PERCENTILE:
+         return CheckSqueezePercentile();
 
       default:
-         return SIGNAL_NONE;
+         return true;
      }
   }
 
 //+------------------------------------------------------------------+
-//| Modo CROSSOVER: Cruza níveis - v2.10                             |
+//| Squeeze Absoluto: largura em pontos                              |
 //+------------------------------------------------------------------+
-ENUM_SIGNAL_TYPE CRSIStrategy::CheckCrossoverSignal()
+bool CBollingerBandsFilter::CheckSqueezeAbsolute()
   {
-   double rsi_current = m_rsi_buffer[m_signal_shift];
-   double rsi_previous = m_rsi_buffer[m_signal_shift + 1];
+   if(!LoadBandsValues(2))
+      return false;
 
-// BUY: RSI cruza DE BAIXO para CIMA o nível de sobrevenda
-   if(rsi_previous <= m_oversold && rsi_current > m_oversold)
+   double width = (m_upper[1] - m_lower[1]) / _Point;
+
+   if(width < m_squeeze_threshold)
      {
-      string msg = StringFormat("🎯 [RSI] COMPRA - Cruzou sobrevenda: %.1f → %.1f (limite: %.1f)", 
-                                rsi_previous, rsi_current, m_oversold);
+      string msg = StringFormat("🚫 [%s] Trade bloqueado - Squeeze (Absoluto): %.1f pts < %.1f pts",
+                                m_filterName, width, m_squeeze_threshold);
       if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "FILTER", msg);
       else
          Print(msg);
-      return SIGNAL_BUY;
+      return false;
      }
 
-// SELL: RSI cruza DE CIMA para BAIXO o nível de sobrecompra
-   if(rsi_previous >= m_overbought && rsi_current < m_overbought)
-     {
-      string msg = StringFormat("🎯 [RSI] VENDA - Cruzou sobrecompra: %.1f → %.1f (limite: %.1f)", 
-                                rsi_previous, rsi_current, m_overbought);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
-      else
-         Print(msg);
-      return SIGNAL_SELL;
-     }
-
-   return SIGNAL_NONE;
+   return true;
   }
 
 //+------------------------------------------------------------------+
-//| Modo ZONE: Permanência em zona - v2.10                           |
+//| Squeeze Relativo: largura como % da banda central                |
 //+------------------------------------------------------------------+
-ENUM_SIGNAL_TYPE CRSIStrategy::CheckZoneSignal()
+bool CBollingerBandsFilter::CheckSqueezeRelative()
   {
-   double rsi_current = m_rsi_buffer[m_signal_shift];
+   if(!LoadBandsValues(2))
+      return false;
 
-// BUY: RSI está em zona de sobrevenda
-   if(rsi_current <= m_oversold)
+   if(MathAbs(m_middle[1]) < 0.000001)
+      return true;  // Evita divisão por zero
+
+   double widthPct = (m_upper[1] - m_lower[1]) / m_middle[1] * 100.0;
+
+   if(widthPct < m_squeeze_threshold)
      {
-      string msg = StringFormat("🎯 [RSI] COMPRA - Em sobrevenda: %.1f (≤ %.1f)", 
-                                rsi_current, m_oversold);
+      string msg = StringFormat("🚫 [%s] Trade bloqueado - Squeeze (Relativo): %.2f%% < %.2f%%",
+                                m_filterName, widthPct, m_squeeze_threshold);
       if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "FILTER", msg);
       else
          Print(msg);
-      return SIGNAL_BUY;
+      return false;
      }
 
-// SELL: RSI está em zona de sobrecompra
-   if(rsi_current >= m_overbought)
-     {
-      string msg = StringFormat("🎯 [RSI] VENDA - Em sobrecompra: %.1f (≥ %.1f)", 
-                                rsi_current, m_overbought);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
-      else
-         Print(msg);
-      return SIGNAL_SELL;
-     }
-
-   return SIGNAL_NONE;
+   return true;
   }
 
 //+------------------------------------------------------------------+
-//| Modo MIDDLE: Cruzamento da linha 50 - v2.10                      |
+//| Squeeze Percentil: compara largura atual com N barras            |
+//| Bloqueia se a largura atual está abaixo do percentil X das       |
+//| últimas N barras (threshold = percentil, ex: 20 = abaixo de 20%)|
 //+------------------------------------------------------------------+
-ENUM_SIGNAL_TYPE CRSIStrategy::CheckMiddleSignal()
+bool CBollingerBandsFilter::CheckSqueezePercentile()
   {
-   double rsi_current = m_rsi_buffer[m_signal_shift];
-   double rsi_previous = m_rsi_buffer[m_signal_shift + 1];
+   int barsNeeded = m_percentile_period + 2;
+   if(!LoadBandsValues(barsNeeded))
+      return false;
 
-// BUY: RSI cruza linha média de baixo para cima
-   if(rsi_previous < m_middle && rsi_current >= m_middle)
+   // Calcular largura atual (shift=1)
+   double currentWidth = m_upper[1] - m_lower[1];
+
+   // Contar quantas barras no período têm largura MENOR que a atual
+   int countSmaller = 0;
+   for(int i = 2; i < barsNeeded; i++)
      {
-      string msg = StringFormat("🎯 [RSI] COMPRA - Cruzou linha média: %.1f → %.1f (linha: %.1f)", 
-                                rsi_previous, rsi_current, m_middle);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
-      else
-         Print(msg);
-      return SIGNAL_BUY;
+      double width_i = m_upper[i] - m_lower[i];
+      if(width_i < currentWidth)
+         countSmaller++;
      }
 
-// SELL: RSI cruza linha média de cima para baixo
-   if(rsi_previous > m_middle && rsi_current <= m_middle)
+   // Percentil atual (0-100)
+   double percentile = (double)countSmaller / (double)m_percentile_period * 100.0;
+
+   if(percentile < m_squeeze_threshold)
      {
-      string msg = StringFormat("🎯 [RSI] VENDA - Cruzou linha média: %.1f → %.1f (linha: %.1f)", 
-                                rsi_previous, rsi_current, m_middle);
+      string msg = StringFormat("🚫 [%s] Trade bloqueado - Squeeze (Percentil): %.1f%% < %.1f%% (últimas %d barras)",
+                                m_filterName, percentile, m_squeeze_threshold, m_percentile_period);
       if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "FILTER", msg);
       else
          Print(msg);
-      return SIGNAL_SELL;
+      return false;
      }
 
-   return SIGNAL_NONE;
+   return true;
   }
 
 // ═══════════════════════════════════════════════════════════════
-// HOT RELOAD - MÉTODOS SET QUENTES (v2.10)
+// HOT RELOAD - MÉTODOS SET QUENTES
 // ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
-//| HOT RELOAD - Alterar modo de sinal - v2.10                       |
+//| HOT RELOAD - Alterar métrica de squeeze                          |
 //+------------------------------------------------------------------+
-void CRSIStrategy::SetSignalMode(ENUM_RSI_SIGNAL_MODE mode)
+void CBollingerBandsFilter::SetSqueezeMetric(ENUM_BB_SQUEEZE_METRIC metric)
   {
-   ENUM_RSI_SIGNAL_MODE oldMode = m_signal_mode;
-   m_signal_mode = mode;
+   ENUM_BB_SQUEEZE_METRIC oldMetric = m_squeeze_metric;
+   m_squeeze_metric = metric;
 
-   string oldStr, newStr;
-   switch(oldMode)
-     {
-      case RSI_MODE_CROSSOVER:
-         oldStr = "Crossover";
-         break;
-      case RSI_MODE_ZONE:
-         oldStr = "Zone";
-         break;
-      case RSI_MODE_MIDDLE:
-         oldStr = "Middle";
-         break;
-     }
-
-   switch(mode)
-     {
-      case RSI_MODE_CROSSOVER:
-         newStr = "Crossover";
-         break;
-      case RSI_MODE_ZONE:
-         newStr = "Zone";
-         break;
-      case RSI_MODE_MIDDLE:
-         newStr = "Middle";
-         break;
-     }
-
-   string msg = "🔄 [RSI] Modo alterado: " + oldStr + " → " + newStr;
+   string msg = "🔄 [BB Filter] Modo alterado: " + GetSqueezeMetricText();
    if(m_logger != NULL)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
    else
@@ -543,97 +478,59 @@ void CRSIStrategy::SetSignalMode(ENUM_RSI_SIGNAL_MODE mode)
   }
 
 //+------------------------------------------------------------------+
-//| HOT RELOAD - Alterar nível de sobrevenda - v2.10                 |
+//| HOT RELOAD - Alterar threshold do squeeze                        |
 //+------------------------------------------------------------------+
-void CRSIStrategy::SetOversold(double value)
-  {
-   if(value <= 0 || value >= 100)
-     {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[RSI] Sobrevenda invalido: " + DoubleToString(value, 1));
-      return;
-     }
-   double oldValue = m_oversold;
-   m_oversold = value;
-
-   string msg = StringFormat("🔄 [RSI] Sobrevenda alterado: %.1f → %.1f", oldValue, value);
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
-  }
-
-//+------------------------------------------------------------------+
-//| HOT RELOAD - Alterar nível de sobrecompra - v2.10                |
-//+------------------------------------------------------------------+
-void CRSIStrategy::SetOverbought(double value)
-  {
-   if(value <= 0 || value >= 100)
-     {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[RSI] Sobrecompra invalido: " + DoubleToString(value, 1));
-      return;
-     }
-   double oldValue = m_overbought;
-   m_overbought = value;
-
-   string msg = StringFormat("🔄 [RSI] Sobrecompra alterado: %.1f → %.1f", oldValue, value);
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
-  }
-
-//+------------------------------------------------------------------+
-//| HOT RELOAD - Alterar linha média - v2.10                         |
-//+------------------------------------------------------------------+
-void CRSIStrategy::SetMiddle(double value)
-  {
-   if(value <= 0 || value >= 100)
-     {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[RSI] Linha media invalida: " + DoubleToString(value, 1));
-      return;
-     }
-   double oldValue = m_middle;
-   m_middle = value;
-
-   string msg = StringFormat("🔄 [RSI] Linha média alterada: %.1f → %.1f", oldValue, value);
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
-  }
-
-// SetSignalShift removido v2.15 — shift fixo em 1 (última barra fechada)
-
-//+------------------------------------------------------------------+
-//| HOT RELOAD - Ativar/desativar estratégia - v2.10                 |
-//+------------------------------------------------------------------+
-void CRSIStrategy::SetEnabled(bool value)
-  {
-   bool oldValue = m_enabled;
-   m_enabled = value;
-
-   string msg = "🔄 [RSI] Estratégia: " + (value ? "ATIVADA" : "DESATIVADA");
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
-  }
-
-// ═══════════════════════════════════════════════════════════════
-// COLD RELOAD - MÉTODOS SET FRIOS (v2.10)
-// ═══════════════════════════════════════════════════════════════
-
-//+------------------------------------------------------------------+
-//| COLD RELOAD - Alterar período (reinicia indicador) - v2.10       |
-//+------------------------------------------------------------------+
-bool CRSIStrategy::SetPeriod(int value)
+void CBollingerBandsFilter::SetSqueezeThreshold(double value)
   {
    if(value <= 0)
      {
-      string msg = "[RSI] Período inválido: " + IntegerToString(value);
+      if(m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[BB Filter] Threshold invalido: " + DoubleToString(value, 2));
+      return;
+     }
+   double oldValue = m_squeeze_threshold;
+   m_squeeze_threshold = value;
+
+   string msg = StringFormat("🔄 [BB Filter] Threshold alterado: %.2f → %.2f", oldValue, value);
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
+   else
+      Print(msg);
+  }
+
+//+------------------------------------------------------------------+
+//| HOT RELOAD - Alterar período do percentil                        |
+//+------------------------------------------------------------------+
+void CBollingerBandsFilter::SetPercentilePeriod(int value)
+  {
+   if(value <= 0 || value > 500)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[BB Filter] Periodo percentil invalido: " + IntegerToString(value));
+      return;
+     }
+   int oldValue = m_percentile_period;
+   m_percentile_period = value;
+
+   string msg = StringFormat("🔄 [BB Filter] Período percentil alterado: %d → %d", oldValue, value);
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
+   else
+      Print(msg);
+  }
+
+// ═══════════════════════════════════════════════════════════════
+// COLD RELOAD - MÉTODOS SET FRIOS
+// ═══════════════════════════════════════════════════════════════
+
+//+------------------------------------------------------------------+
+//| COLD RELOAD - Alterar período (reinicia indicador)               |
+//+------------------------------------------------------------------+
+bool CBollingerBandsFilter::SetPeriod(int value)
+  {
+   if(value <= 0)
+     {
+      string msg = "[BB Filter] Período inválido: " + IntegerToString(value);
       if(m_logger != NULL)
          m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD", msg);
       else
@@ -649,7 +546,7 @@ bool CRSIStrategy::SetPeriod(int value)
 
    if(success)
      {
-      string msg = StringFormat("🔄 [RSI] Período alterado: %d → %d (reiniciado)", oldValue, value);
+      string msg = StringFormat("🔄 [BB Filter] Período alterado: %d → %d (reiniciado)", oldValue, value);
       if(m_logger != NULL)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
       else
@@ -660,9 +557,42 @@ bool CRSIStrategy::SetPeriod(int value)
   }
 
 //+------------------------------------------------------------------+
-//| COLD RELOAD - Alterar timeframe (reinicia indicador) - v2.10     |
+//| COLD RELOAD - Alterar desvio padrão (reinicia indicador)         |
 //+------------------------------------------------------------------+
-bool CRSIStrategy::SetTimeframe(ENUM_TIMEFRAMES tf)
+bool CBollingerBandsFilter::SetDeviation(double value)
+  {
+   if(value <= 0)
+     {
+      string msg = "[BB Filter] Desvio inválido: " + DoubleToString(value, 2);
+      if(m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD", msg);
+      else
+         Print("❌ ", msg);
+      return false;
+     }
+
+   double oldValue = m_deviation;
+   m_deviation = value;
+
+   Deinitialize();
+   bool success = Initialize();
+
+   if(success)
+     {
+      string msg = StringFormat("🔄 [BB Filter] Desvio alterado: %.1f → %.1f (reiniciado)", oldValue, value);
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
+      else
+         Print(msg);
+     }
+
+   return success;
+  }
+
+//+------------------------------------------------------------------+
+//| COLD RELOAD - Alterar timeframe (reinicia indicador)             |
+//+------------------------------------------------------------------+
+bool CBollingerBandsFilter::SetTimeframe(ENUM_TIMEFRAMES tf)
   {
    ENUM_TIMEFRAMES oldTF = m_timeframe;
    m_timeframe = tf;
@@ -672,7 +602,7 @@ bool CRSIStrategy::SetTimeframe(ENUM_TIMEFRAMES tf)
 
    if(success)
      {
-      string msg = "🔄 [RSI] Timeframe alterado: " + EnumToString(oldTF) + " → " + EnumToString(tf) + " (reiniciado)";
+      string msg = "🔄 [BB Filter] Timeframe alterado: " + EnumToString(oldTF) + " → " + EnumToString(tf) + " (reiniciado)";
       if(m_logger != NULL)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
       else
@@ -683,11 +613,10 @@ bool CRSIStrategy::SetTimeframe(ENUM_TIMEFRAMES tf)
   }
 
 //+------------------------------------------------------------------+
-//| COLD RELOAD - Alterar applied price (reinicia indicador) - v2.10 |
+//| COLD RELOAD - Alterar applied price (reinicia indicador)         |
 //+------------------------------------------------------------------+
-bool CRSIStrategy::SetAppliedPrice(ENUM_APPLIED_PRICE price)
+bool CBollingerBandsFilter::SetAppliedPrice(ENUM_APPLIED_PRICE price)
   {
-   ENUM_APPLIED_PRICE oldPrice = m_applied_price;
    m_applied_price = price;
 
    Deinitialize();
@@ -695,7 +624,7 @@ bool CRSIStrategy::SetAppliedPrice(ENUM_APPLIED_PRICE price)
 
    if(success)
      {
-      string msg = "🔄 [RSI] Applied price alterado (reiniciado)";
+      string msg = "🔄 [BB Filter] Applied price alterado (reiniciado)";
       if(m_logger != NULL)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
       else
@@ -705,37 +634,62 @@ bool CRSIStrategy::SetAppliedPrice(ENUM_APPLIED_PRICE price)
    return success;
   }
 
-//+------------------------------------------------------------------+
-//| Getters                                                           |
-//+------------------------------------------------------------------+
-double CRSIStrategy::GetCurrentRSI()
-  {
-   return GetRSI(m_signal_shift);
-  }
+// ═══════════════════════════════════════════════════════════════
+// GETTERS
+// ═══════════════════════════════════════════════════════════════
 
-double CRSIStrategy::GetRSI(int shift)
+//+------------------------------------------------------------------+
+//| Largura atual das bandas em pontos                               |
+//+------------------------------------------------------------------+
+double CBollingerBandsFilter::GetCurrentBandWidth()
   {
-   if(!LoadRSIValues(shift + 2))
+   if(!LoadBandsValues(2))
       return 0.0;
-
-   return m_rsi_buffer[shift];
+   return (m_upper[1] - m_lower[1]) / _Point;
   }
 
 //+------------------------------------------------------------------+
-//|                                                                  |
+//| Largura atual relativa (%)                                       |
 //+------------------------------------------------------------------+
-string CRSIStrategy::GetSignalModeText()
+double CBollingerBandsFilter::GetCurrentBandWidthRelative()
   {
-   switch(m_signal_mode)
+   if(!LoadBandsValues(2))
+      return 0.0;
+   if(MathAbs(m_middle[1]) < 0.000001)
+      return 0.0;
+   return (m_upper[1] - m_lower[1]) / m_middle[1] * 100.0;
+  }
+
+//+------------------------------------------------------------------+
+//| Texto da métrica de squeeze                                      |
+//+------------------------------------------------------------------+
+string CBollingerBandsFilter::GetSqueezeMetricText()
+  {
+   switch(m_squeeze_metric)
      {
-      case RSI_MODE_CROSSOVER:
-         return "Crossover";
-      case RSI_MODE_ZONE:
-         return "Zone";
-      case RSI_MODE_MIDDLE:
-         return "Middle";
+      case BB_SQUEEZE_ABSOLUTE:
+         return "Absoluto";
+      case BB_SQUEEZE_RELATIVE:
+         return "Relativo (%)";
+      case BB_SQUEEZE_PERCENTILE:
+         return "Percentil";
       default:
-         return "Unknown";
+         return "Desconhecido";
      }
+  }
+
+//+------------------------------------------------------------------+
+//| Status resumido do filtro                                        |
+//+------------------------------------------------------------------+
+string CBollingerBandsFilter::GetFilterStatus()
+  {
+   if(!m_isEnabled)
+      return "DISABLED";
+
+   double width = GetCurrentBandWidth();
+   double widthPct = GetCurrentBandWidthRelative();
+
+   return StringFormat("Largura: %.1f pts (%.2f%%) | Modo: %s | Limite: %.2f",
+                       width, widthPct, GetSqueezeMetricText(), m_squeeze_threshold);
   }
 //+------------------------------------------------------------------+
