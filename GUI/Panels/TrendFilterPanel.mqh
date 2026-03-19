@@ -48,6 +48,7 @@ public:
      {}
 
    virtual string GetName(void) const { return "TREND"; }
+   virtual void   Reconnect(void *ptr) { m_filter = (CTrendFilter *)ptr; }
 
    virtual bool Create(CEPBotPanel *parent, long chart_id, int subwin)
      {

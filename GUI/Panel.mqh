@@ -809,6 +809,13 @@ public:
                           CBollingerBandsFilter *bbFilt,
                           int magic, string symbol);
 
+   void              ReconnectModules(CLogger *logger, CBlockers *blockers, CRiskManager *risk,
+                                     CTradeManager *trade, CSignalManager *signal,
+                                     CMACrossStrategy *maCross, CRSIStrategy *rsi,
+                                     CBollingerBandsStrategy *bb,
+                                     CTrendFilter *trend, CRSIFilter *rsiFilt,
+                                     CBollingerBandsFilter *bbFilt);
+
    bool              CreatePanel(long chart, string name, int subwin,
                                  int x1, int y1, int x2, int y2);
    void              Update(void);
@@ -889,6 +896,53 @@ bool CEPBotPanel::Init(CLogger *logger, CBlockers *blockers, CRiskManager *risk,
    m_symbol       = symbol;
    RegisterPanels();
    return true;
+  }
+
+//+------------------------------------------------------------------+
+//| ReconnectModules — atualiza ponteiros após troca de TF            |
+//| NÃO chama RegisterPanels() (sub-painéis gráficos já existem).    |
+//| Apenas re-injeta ponteiros novos no painel e nos sub-painéis.     |
+//+------------------------------------------------------------------+
+void CEPBotPanel::ReconnectModules(CLogger *logger, CBlockers *blockers, CRiskManager *risk,
+                                   CTradeManager *trade, CSignalManager *signal,
+                                   CMACrossStrategy *maCross, CRSIStrategy *rsi,
+                                   CBollingerBandsStrategy *bb,
+                                   CTrendFilter *trend, CRSIFilter *rsiFilt,
+                                   CBollingerBandsFilter *bbFilt)
+  {
+   // 1) Atualizar ponteiros do painel principal
+   m_logger       = logger;
+   m_blockers     = blockers;
+   m_riskManager  = risk;
+   m_tradeManager = trade;
+   m_signalManager = signal;
+   m_maCross      = maCross;
+   m_rsiStrategy  = rsi;
+   m_bbStrategy   = bb;
+   m_trendFilter  = trend;
+   m_rsiFilter    = rsiFilt;
+   m_bbFilter     = bbFilt;
+
+   // 2) Propagar para sub-painéis de estratégia (mesma ordem que RegisterPanels)
+   int si = 0;
+   if(maCross != NULL && si < m_stratPanelCount)
+      m_stratPanels[si++].Reconnect(maCross);
+   if(rsi != NULL && si < m_stratPanelCount)
+      m_stratPanels[si++].Reconnect(rsi);
+   if(bb != NULL && si < m_stratPanelCount)
+      m_stratPanels[si++].Reconnect(bb);
+
+   // 3) Propagar para sub-painéis de filtro (mesma ordem que RegisterPanels)
+   int fi = 0;
+   if(trend != NULL && fi < m_filtPanelCount)
+      m_filtPanels[fi++].Reconnect(trend);
+   if(rsiFilt != NULL && fi < m_filtPanelCount)
+      m_filtPanels[fi++].Reconnect(rsiFilt);
+   if(bbFilt != NULL && fi < m_filtPanelCount)
+      m_filtPanels[fi++].Reconnect(bbFilt);
+
+   // 4) Restaurar visibilidade da aba ativa (garantir que só 1 aba está visível)
+   ShowTab(m_activeTab);
   }
 
 //+------------------------------------------------------------------+

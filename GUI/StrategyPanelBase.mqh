@@ -26,5 +26,7 @@ public:
    virtual void      Update(void) = 0;
    // Retorna true se o clique foi tratado por este painel
    virtual bool      OnClick(string name) = 0;
+   // Reconectar ponteiro da estratégia após troca de TF
+   virtual void      Reconnect(void *ptr) = 0;
   };
 //+------------------------------------------------------------------+

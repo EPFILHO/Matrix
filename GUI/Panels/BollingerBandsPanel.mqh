@@ -60,6 +60,7 @@ public:
      {}
 
    virtual string GetName(void) const { return "BB"; }
+   virtual void   Reconnect(void *ptr) { m_strategy = (CBollingerBandsStrategy *)ptr; }
 
    virtual bool Create(CEPBotPanel *parent, long chart_id, int subwin)
      {
