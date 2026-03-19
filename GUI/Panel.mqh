@@ -923,23 +923,25 @@ void CEPBotPanel::ReconnectModules(CLogger *logger, CBlockers *blockers, CRiskMa
    m_rsiFilter    = rsiFilt;
    m_bbFilter     = bbFilt;
 
-   // 2) Propagar para sub-painéis de estratégia (mesma ordem que RegisterPanels)
+   // 2) Propagar para sub-painéis de estratégia via cast tipado
+   //    (mesma ordem que RegisterPanels: MACross, RSI, BB)
    int si = 0;
    if(maCross != NULL && si < m_stratPanelCount)
-      m_stratPanels[si++].Reconnect(maCross);
+     { CMACrossPanel *p = dynamic_cast<CMACrossPanel *>(m_stratPanels[si++]); if(p != NULL) p.SetStrategy(maCross); }
    if(rsi != NULL && si < m_stratPanelCount)
-      m_stratPanels[si++].Reconnect(rsi);
+     { CRSIStrategyPanel *p = dynamic_cast<CRSIStrategyPanel *>(m_stratPanels[si++]); if(p != NULL) p.SetStrategy(rsi); }
    if(bb != NULL && si < m_stratPanelCount)
-      m_stratPanels[si++].Reconnect(bb);
+     { CBollingerBandsPanel *p = dynamic_cast<CBollingerBandsPanel *>(m_stratPanels[si++]); if(p != NULL) p.SetStrategy(bb); }
 
-   // 3) Propagar para sub-painéis de filtro (mesma ordem que RegisterPanels)
+   // 3) Propagar para sub-painéis de filtro via cast tipado
+   //    (mesma ordem que RegisterPanels: Trend, RSI, BB)
    int fi = 0;
    if(trend != NULL && fi < m_filtPanelCount)
-      m_filtPanels[fi++].Reconnect(trend);
+     { CTrendFilterPanel *p = dynamic_cast<CTrendFilterPanel *>(m_filtPanels[fi++]); if(p != NULL) p.SetFilter(trend); }
    if(rsiFilt != NULL && fi < m_filtPanelCount)
-      m_filtPanels[fi++].Reconnect(rsiFilt);
+     { CRSIFilterPanel *p = dynamic_cast<CRSIFilterPanel *>(m_filtPanels[fi++]); if(p != NULL) p.SetFilter(rsiFilt); }
    if(bbFilt != NULL && fi < m_filtPanelCount)
-      m_filtPanels[fi++].Reconnect(bbFilt);
+     { CBollingerBandsFilterPanel *p = dynamic_cast<CBollingerBandsFilterPanel *>(m_filtPanels[fi++]); if(p != NULL) p.SetFilter(bbFilt); }
 
    // 4) Restaurar visibilidade da aba ativa (garantir que só 1 aba está visível)
    ShowTab(m_activeTab);

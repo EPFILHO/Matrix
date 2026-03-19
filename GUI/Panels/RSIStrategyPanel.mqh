@@ -50,7 +50,7 @@ public:
      {}
 
    virtual string GetName(void) const { return "RSI"; }
-   virtual void   Reconnect(void *ptr) { m_strategy = (CRSIStrategy *)ptr; }
+   void           SetStrategy(CRSIStrategy *s) { m_strategy = s; }
 
    virtual bool Create(CEPBotPanel *parent, long chart_id, int subwin)
      {

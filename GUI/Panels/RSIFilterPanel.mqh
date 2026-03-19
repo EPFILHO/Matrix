@@ -47,7 +47,7 @@ public:
      {}
 
    virtual string GetName(void) const { return "RSI FILT"; }
-   virtual void   Reconnect(void *ptr) { m_filter = (CRSIFilter *)ptr; }
+   void           SetFilter(CRSIFilter *f) { m_filter = f; }
 
    virtual bool Create(CEPBotPanel *parent, long chart_id, int subwin)
      {

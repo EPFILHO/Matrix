@@ -65,7 +65,7 @@ public:
      {}
 
    virtual string GetName(void) const { return "MA CROSS"; }
-   virtual void   Reconnect(void *ptr) { m_strategy = (CMACrossStrategy *)ptr; }
+   void           SetStrategy(CMACrossStrategy *s) { m_strategy = s; }
 
    virtual bool Create(CEPBotPanel *parent, long chart_id, int subwin)
      {

@@ -51,7 +51,7 @@ public:
      {}
 
    virtual string GetName(void) const { return "BB FILT"; }
-   virtual void   Reconnect(void *ptr) { m_filter = (CBollingerBandsFilter *)ptr; }
+   void           SetFilter(CBollingerBandsFilter *f) { m_filter = f; }
 
    virtual bool Create(CEPBotPanel *parent, long chart_id, int subwin)
      {
