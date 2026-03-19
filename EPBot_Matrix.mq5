@@ -1016,9 +1016,13 @@ void OnDeinit(const int reason)
 // ═══════════════════════════════════════════════════════════════
 
 // ETAPA 0: Destruir painel
+// IMPORTANTE: Sempre usar REASON_REMOVE para forçar limpeza completa dos
+// objetos gráficos. CAppDialog::Destroy(REASON_CHARTCHANGE) preserva objetos
+// no chart, mas como recriamos o painel do zero em OnInit(), objetos orfãos
+// causam conflito de nomes e deixam minimize/maximize bugados.
    if(g_panel != NULL)
      {
-      g_panel.Destroy(reason);
+      g_panel.Destroy(REASON_REMOVE);
       delete g_panel;
       g_panel = NULL;
      }
