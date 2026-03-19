@@ -943,8 +943,11 @@ void CEPBotPanel::ReconnectModules(CLogger *logger, CBlockers *blockers, CRiskMa
    if(bbFilt != NULL && fi < m_filtPanelCount)
      { CBollingerBandsFilterPanel *p = dynamic_cast<CBollingerBandsFilterPanel *>(m_filtPanels[fi++]); if(p != NULL) p.SetFilter(bbFilt); }
 
-   // 4) Restaurar visibilidade da aba ativa (garantir que só 1 aba está visível)
-   ShowTab(m_activeTab);
+   // 4) Restaurar visibilidade: só se painel NÃO está minimizado.
+   //    Se minimizado, CAppDialog já escondeu todos os controles — ShowTab()
+   //    os traria de volta "soltos" no gráfico.
+   if(!m_minimized)
+      ShowTab(m_activeTab);
   }
 
 //+------------------------------------------------------------------+
