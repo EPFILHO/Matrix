@@ -2,15 +2,19 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.44 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.45 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.44"
+#property version   "1.45"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.45 (Parte 026):
+// + IsMinimized() getter público: permite ao EA salvar estado
+//   minimizado antes do Destroy em troca de timeframe
+//
 // v1.44 (Parte 026):
 // + Fix fluidez minimize/maximize:
 //   - ChartEvent: quando m_minimized, pula toda lógica de clique
