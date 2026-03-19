@@ -2,15 +2,21 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.45 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.46 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.45"
+#property version   "1.46"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.46 (Parte 026):
+// + Fix deferred minimize: Minimize() agora é chamado no primeiro
+//   ChartEvent (não no OnInit), garantindo que o CAppDialog já
+//   processou o Create e o botão min/max está sincronizado.
+//   Resolve: botão alterna ícone sem minimizar após troca de TF.
+//
 // v1.45 (Parte 026):
 // + IsMinimized() getter público: permite ao EA salvar estado
 //   minimizado antes do Destroy em troca de timeframe
@@ -450,6 +456,9 @@ private:
    bool               m_origMouseScroll;
    bool               m_mouseOverPanel;
 
+   // ── Deferred minimize (troca de TF) ──
+   bool               m_pendingMinimize;
+
    // ── Botões de aba ──
    CButton            m_btnTab0;
    CButton            m_btnTab1;
@@ -824,6 +833,7 @@ public:
    void              MouseProtection(const int x, const int y);
    bool              IsMinimized(void) const { return m_minimized; }
    void              DoMinimize(void)        { Minimize(); }
+   void              SetPendingMinimize(void){ m_pendingMinimize = true; }
 
    virtual bool      OnEvent(const int id, const long &lparam,
                              const double &dparam, const string &sparam);
@@ -861,7 +871,8 @@ CEPBotPanel::CEPBotPanel(void)
      m_cur_lossStreakAction(STREAK_PAUSE), m_cur_winStreakAction(STREAK_PAUSE),
      m_cur_ddType(DD_FINANCIAL), m_cur_ddPeakMode(DD_PEAK_REALIZED_ONLY),
      m_cur_profitTargetAction(PROFIT_ACTION_STOP),
-     m_cfgStatusExpiry(0)
+     m_cfgStatusExpiry(0),
+     m_pendingMinimize(false)
   {
   }
 
@@ -1027,6 +1038,25 @@ bool CEPBotPanel::CreateTabButtons(void)
 void CEPBotPanel::ChartEvent(const int id, const long &lparam,
                               const double &dparam, const string &sparam)
   {
+// ══════════════════════════════════════════════════════════════════
+// Deferred minimize: restaurar estado minimizado após troca de TF.
+// Chamamos Minimize() aqui (dentro do event loop) em vez de no OnInit,
+// para que o CAppDialog já tenha processado o Create e o estado
+// interno do botão min/max esteja sincronizado.
+// ══════════════════════════════════════════════════════════════════
+   if(m_pendingMinimize)
+     {
+      m_pendingMinimize = false;
+      Minimize();
+      // Forçar hide de todos os controles (cascade pode falhar com ~400 controles)
+      m_btnTab0.Hide(); m_btnTab1.Hide(); m_btnTab2.Hide();
+      m_btnTab3.Hide(); m_btnTab4.Hide();
+      for(int t = 0; t < TAB_COUNT; t++)
+         SetTabVis((ENUM_PANEL_TAB)t, false);
+      ChartRedraw();
+      return;
+     }
+
 // ══════════════════════════════════════════════════════════════════
 // Minimizado: passar tudo direto para CAppDialog (só o botão
 // minimize/maximize precisa responder — nossos controles estão ocultos)
