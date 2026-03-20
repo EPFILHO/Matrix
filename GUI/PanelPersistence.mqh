@@ -2,13 +2,13 @@
 //|                                           PanelPersistence.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel: Persistência de Config — Save/Load/Banner                |
-//|                     Versão 1.00 - Claude Parte 028 (Claude Code) |
+//|                     Versão 1.00 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para persistência de configurações.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
 //
 // ═══════════════════════════════════════════════════════════════
-// CHANGELOG v1.00 (Parte 028):
+// CHANGELOG v1.00 (Parte 027):
 // + SaveCurrentConfig: coleta dados dos módulos e salva em .cfg
 // + CollectConfigData: preenche SConfigData a partir dos módulos e GUI state
 // + ApplyLoadedConfig: aplica SConfigData nos módulos + atualiza GUI
@@ -206,7 +206,7 @@ void CEPBotPanel::CollectConfigData(SConfigData &data)
 // ── Trend Filter ──
    if(m_trendFilter != NULL)
      {
-      data.trendEnabled     = m_trendFilter.IsEnabled();
+      data.trendEnabled     = m_trendFilter.IsTrendFilterActive();
       data.trendPeriod      = m_trendFilter.GetMAPeriod();
       data.trendMethod      = m_trendFilter.GetMAMethod();
       data.trendApplied     = m_trendFilter.GetMAApplied();
@@ -472,6 +472,7 @@ void CEPBotPanel::ApplyLoadedConfig(const SConfigData &data)
    if(m_trendFilter != NULL)
      {
       m_trendFilter.SetEnabled(data.trendEnabled);
+      m_trendFilter.SetTrendFilterEnabled(data.trendEnabled);
       m_trendFilter.SetMACold(data.trendPeriod, data.trendMethod,
                               data.trendTF, data.trendApplied);
       m_trendFilter.SetNeutralDistance(data.trendMinDistance);

@@ -1535,6 +1535,45 @@ void CEPBotPanel::OnClickApply(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::ApplyConfig(void)
   {
+// ═══════════════════════════════════════════════
+// PRÉ-VALIDAÇÃO CRUZADA (bloqueante — antes de aplicar)
+// ═══════════════════════════════════════════════
+   int crossErrors = 0;
+   string crossMsg = "";
+
+   // ERRO: Ação de lucro = ATIVAR DD mas DD está desativado
+   if(m_cur_dailyLimitsOn &&
+      m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN &&
+      !m_cur_ddOn)
+     {
+      crossErrors++;
+      crossMsg = "Acao Meta = ATIVAR DD requer Drawdown ON";
+     }
+
+   // ERRO: Ação de lucro = ATIVAR DD mas Max Gain = 0
+   if(m_cur_dailyLimitsOn &&
+      m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN)
+     {
+      double preMaxGn = StringToDouble(m_c2_iDLGain.Text());
+      if(preMaxGn <= 0)
+        {
+         crossErrors++;
+         if(crossMsg == "")
+            crossMsg = "Max Gain deve ser > 0 para ATIVAR DD";
+         else
+            crossMsg = IntegerToString(crossErrors) + " erros de validacao cruzada";
+        }
+     }
+
+   if(crossErrors > 0)
+     {
+      m_cfg_status.Text(crossMsg);
+      m_cfg_status.Color(CLR_NEGATIVE);
+      m_cfgStatusExpiry = GetTickCount() + 15000;
+      ChartRedraw();
+      return;  // BLOQUEIA — não aplica nenhum setter
+     }
+
    int errors = 0;
 
 // ═══════════════════════════════════════════════
@@ -1813,43 +1852,17 @@ void CEPBotPanel::ApplyConfig(void)
      }
 
 // ═══════════════════════════════════════════════
-// VALIDAÇÕES CRUZADAS (Parte 028)
-// Erros bloqueiam → incrementam errors
-// Avisos informam → não bloqueiam
+// PÓS-VALIDAÇÃO: Avisos (não bloqueiam)
+// (Erros bloqueantes já foram verificados no topo)
 // ═══════════════════════════════════════════════
    int warnings = 0;
    string warnMsg = "";
-
-   // ERRO: Ação de lucro = ATIVAR DD mas DD está desativado
-   if(m_cur_dailyLimitsOn &&
-      m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN &&
-      !m_cur_ddOn)
-     {
-      errors++;
-      warnMsg = "Acao Meta = ATIVAR DD requer Drawdown ON";
-     }
-
-   // ERRO: Ação de lucro = ATIVAR DD mas Max Gain = 0
-   if(m_cur_dailyLimitsOn &&
-      m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN)
-     {
-      double maxGn = StringToDouble(m_c2_iDLGain.Text());
-      if(maxGn <= 0)
-        {
-         errors++;
-         if(warnMsg == "")
-            warnMsg = "Max Gain deve ser > 0 para ATIVAR DD";
-         else
-            warnMsg = IntegerToString(errors) + " erros de validacao cruzada";
-        }
-     }
 
    // AVISO: DD ativado mas Daily Limits OFF
    if(m_cur_ddOn && !m_cur_dailyLimitsOn)
      {
       warnings++;
-      if(warnMsg == "")
-         warnMsg = "Aviso: DD ativo sem Daily Limits";
+      warnMsg = "Aviso: DD ativo sem Daily Limits";
      }
 
    // AVISO: Daily Limits ON mas todos os valores = 0
@@ -1867,33 +1880,27 @@ void CEPBotPanel::ApplyConfig(void)
      }
 
 // ═══════════════════════════════════════════════
-// ═══════════════════════════════════════════════
 // FEEDBACK
 // ═══════════════════════════════════════════════
    if(errors == 0 && warnings == 0)
      {
       m_cfg_status.Text("Aplicado com sucesso!");
       m_cfg_status.Color(CLR_POSITIVE);
-      m_cfgStatusExpiry = GetTickCount() + 10000;   // auto-clear em 10s
-      // Persistir configuração (Parte 028)
+      m_cfgStatusExpiry = GetTickCount() + 10000;
       SaveCurrentConfig();
      }
    else if(errors == 0 && warnings > 0)
      {
       m_cfg_status.Text(warnMsg);
       m_cfg_status.Color(CLR_WARNING);
-      m_cfgStatusExpiry = GetTickCount() + 15000;   // warnings visíveis 15s
-      // Persistir mesmo com avisos (não são bloqueantes)
+      m_cfgStatusExpiry = GetTickCount() + 15000;
       SaveCurrentConfig();
      }
    else
      {
-      if(warnMsg != "")
-         m_cfg_status.Text(warnMsg);
-      else
-         m_cfg_status.Text(IntegerToString(errors) + " campo(s) invalido(s)");
+      m_cfg_status.Text(IntegerToString(errors) + " campo(s) invalido(s)");
       m_cfg_status.Color(CLR_NEGATIVE);
-      m_cfgStatusExpiry = GetTickCount() + 15000;   // errors visíveis 15s
+      m_cfgStatusExpiry = GetTickCount() + 15000;
      }
    ChartRedraw();
   }

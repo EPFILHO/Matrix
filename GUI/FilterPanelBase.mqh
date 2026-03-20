@@ -14,7 +14,7 @@ class CEPBotPanel;
 class CFilterPanelBase
   {
 protected:
-   CEPBotPanel      *m_parent;   // Referência ao painel principal (Parte 028: persistência)
+   CEPBotPanel      *m_parent;   // Referência ao painel principal (Parte 027: persistência)
    long              m_chart_id;
    int               m_subwin;
 public:

@@ -705,7 +705,7 @@ private:
    bool                      m_cur_newsOn3;
    // (MA Cross e RSI ESTRAT state vars movidos para CMACrossPanel / CRSIStrategyPanel)
 
-   // ── Banner de carregamento de config salva (Parte 028) ──
+   // ── Banner de carregamento de config salva (Parte 027) ──
    bool               m_loadBannerVisible;
    CLabel             m_lb_msg;          // "Configurações salvas encontradas (DD/MM HH:MM)"
    CButton            m_lb_btnLoad;      // "CARREGAR"
@@ -831,7 +831,7 @@ private:
    // (Trend/RSI Filter handlers movidos para GUI/Panels/TrendFilterPanel.mqh e RSIFilterPanel.mqh)
    // (CycleTF, TFName, ApplyToggleStyle, etc. movidos para GUI/PanelUtils.mqh)
 
-   // ── Persistência (Parte 028) ──
+   // ── Persistência (Parte 027) ──
    void              CollectConfigData(SConfigData &data);
    void              ApplyLoadedConfig(const SConfigData &data);
    // Load banner handlers
@@ -867,7 +867,7 @@ public:
    virtual bool      OnEvent(const int id, const long &lparam,
                              const double &dparam, const string &sparam);
 
-   // ── Persistência pública (Parte 028) ──
+   // ── Persistência pública (Parte 027) ──
    void              SaveCurrentConfig(void);
    void              ShowLoadBanner(const SConfigData &data);
    void              HideLoadBanner(void);

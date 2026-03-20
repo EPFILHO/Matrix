@@ -2,14 +2,14 @@
 //|                                           ConfigPersistence.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|     Persistência de configurações GUI — EPBot Matrix              |
-//|                     Versão 1.00 - Claude Parte 028 (Claude Code) |
+//|                     Versão 1.00 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.00"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
-// CHANGELOG v1.00 (Parte 028):
+// CHANGELOG v1.00 (Parte 027):
 // + SConfigData: struct com TODOS os parâmetros configuráveis via GUI
 // + CConfigPersistence: Save/Load/Delete/Exists/GetLastModified
 //   - Formato: key=value (legível e forward-compatible)
