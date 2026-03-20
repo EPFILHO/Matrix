@@ -1047,7 +1047,7 @@ int OnInit()
               }
            }
         }
-      // REASON_PROGRAM, REASON_ACCOUNT, REASON_RECOMPILE: auto-carregar também
+      // REASON_RECOMPILE, REASON_ACCOUNT: auto-carregar silenciosamente
       else if(prevReason == REASON_RECOMPILE || prevReason == REASON_ACCOUNT)
         {
          if(CConfigPersistence::Exists(_Symbol, inp_MagicNumber))
@@ -1059,6 +1059,22 @@ int OnInit()
                g_panel.ApplyLoadedConfig(loadedData);
                g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
                             "Config salva carregada automaticamente (recompile/account)");
+              }
+           }
+        }
+      else
+        {
+         // REASON_PROGRAM (0), REASON_CHARTCLOSE (4), etc.:
+         // EA adicionado fresh — se existe .cfg, mostrar banner
+         if(CConfigPersistence::Exists(_Symbol, inp_MagicNumber))
+           {
+            SConfigData loadedData;
+            ZeroMemory(loadedData);
+            if(CConfigPersistence::Load(_Symbol, inp_MagicNumber, loadedData))
+              {
+               g_panel.ShowLoadBanner(loadedData);
+               g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
+                            "Config salva encontrada (reason=" + IntegerToString(prevReason) + ") - banner exibido");
               }
            }
         }
