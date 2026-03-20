@@ -1307,6 +1307,10 @@ bool CEPBotPanel::OnEvent(const int id, const long &lparam,
 //+------------------------------------------------------------------+
 void CEPBotPanel::ReapplyTabVisibility(void)
   {
+   // Banner de config: re-esconder se não está ativo (CAppDialog::Show re-exibe tudo)
+   if(!m_loadBannerVisible)
+      HideLoadBanner();
+
    for(int t = 0; t < TAB_COUNT; t++)
      {
       if(t != (int)m_activeTab)
