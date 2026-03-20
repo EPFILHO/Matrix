@@ -52,6 +52,7 @@ public:
 
    virtual bool Create(CEPBotPanel *parent, long chart_id, int subwin)
      {
+      m_parent   = parent;
       m_chart_id = chart_id;
       m_subwin   = subwin;
       int y = FILTROS_CONTENT_Y;
@@ -271,6 +272,7 @@ private:
       m_lblStatus.Text(msg);
       m_lblStatus.Color(CLR_POSITIVE);
       m_statusExpiry = GetTickCount() + 10000;
+      if(m_parent != NULL) m_parent.SaveCurrentConfig();
      }
 
    void _RefreshFieldState(void)

@@ -1813,20 +1813,87 @@ void CEPBotPanel::ApplyConfig(void)
      }
 
 // ═══════════════════════════════════════════════
+// VALIDAÇÕES CRUZADAS (Parte 028)
+// Erros bloqueiam → incrementam errors
+// Avisos informam → não bloqueiam
+// ═══════════════════════════════════════════════
+   int warnings = 0;
+   string warnMsg = "";
+
+   // ERRO: Ação de lucro = ATIVAR DD mas DD está desativado
+   if(m_cur_dailyLimitsOn &&
+      m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN &&
+      !m_cur_ddOn)
+     {
+      errors++;
+      warnMsg = "Acao Meta = ATIVAR DD requer Drawdown ON";
+     }
+
+   // ERRO: Ação de lucro = ATIVAR DD mas Max Gain = 0
+   if(m_cur_dailyLimitsOn &&
+      m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN)
+     {
+      double maxGn = StringToDouble(m_c2_iDLGain.Text());
+      if(maxGn <= 0)
+        {
+         errors++;
+         if(warnMsg == "")
+            warnMsg = "Max Gain deve ser > 0 para ATIVAR DD";
+         else
+            warnMsg = IntegerToString(errors) + " erros de validacao cruzada";
+        }
+     }
+
+   // AVISO: DD ativado mas Daily Limits OFF
+   if(m_cur_ddOn && !m_cur_dailyLimitsOn)
+     {
+      warnings++;
+      if(warnMsg == "")
+         warnMsg = "Aviso: DD ativo sem Daily Limits";
+     }
+
+   // AVISO: Daily Limits ON mas todos os valores = 0
+   if(m_cur_dailyLimitsOn)
+     {
+      int maxTrd2   = (int)StringToInteger(m_c2_iDLTrd.Text());
+      double maxLs2 = StringToDouble(m_c2_iDLLoss.Text());
+      double maxGn2 = StringToDouble(m_c2_iDLGain.Text());
+      if(maxTrd2 == 0 && maxLs2 == 0.0 && maxGn2 == 0.0)
+        {
+         warnings++;
+         if(warnMsg == "")
+            warnMsg = "Aviso: Daily Limits ON mas sem valores";
+        }
+     }
+
+// ═══════════════════════════════════════════════
 // ═══════════════════════════════════════════════
 // FEEDBACK
 // ═══════════════════════════════════════════════
-   if(errors == 0)
+   if(errors == 0 && warnings == 0)
      {
       m_cfg_status.Text("Aplicado com sucesso!");
       m_cfg_status.Color(CLR_POSITIVE);
       m_cfgStatusExpiry = GetTickCount() + 10000;   // auto-clear em 10s
+      // Persistir configuração (Parte 028)
+      SaveCurrentConfig();
+     }
+   else if(errors == 0 && warnings > 0)
+     {
+      m_cfg_status.Text(warnMsg);
+      m_cfg_status.Color(CLR_WARNING);
+      m_cfgStatusExpiry = GetTickCount() + 15000;   // warnings visíveis 15s
+      // Persistir mesmo com avisos (não são bloqueantes)
+      SaveCurrentConfig();
      }
    else
      {
-      m_cfg_status.Text(IntegerToString(errors) + " campo(s) invalido(s)");
+      if(warnMsg != "")
+         m_cfg_status.Text(warnMsg);
+      else
+         m_cfg_status.Text(IntegerToString(errors) + " campo(s) invalido(s)");
       m_cfg_status.Color(CLR_NEGATIVE);
-      m_cfgStatusExpiry = GetTickCount() + 10000;   // auto-clear em 10s
+      m_cfgStatusExpiry = GetTickCount() + 15000;   // errors visíveis 15s
      }
    ChartRedraw();
   }

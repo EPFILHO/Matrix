@@ -327,6 +327,7 @@
 #include "../Core/Inputs.mqh"
 #include "../Core/Logger.mqh"
 #include "../Core/Blockers.mqh"
+#include "../Core/ConfigPersistence.mqh"
 #include "../Core/RiskManager.mqh"
 #include "../Core/TradeManager.mqh"
 #include "../Strategy/SignalManager.mqh"
@@ -704,6 +705,13 @@ private:
    bool                      m_cur_newsOn3;
    // (MA Cross e RSI ESTRAT state vars movidos para CMACrossPanel / CRSIStrategyPanel)
 
+   // ── Banner de carregamento de config salva (Parte 028) ──
+   bool               m_loadBannerVisible;
+   CLabel             m_lb_msg;          // "Configurações salvas encontradas (DD/MM HH:MM)"
+   CButton            m_lb_btnLoad;      // "CARREGAR"
+   CButton            m_lb_btnIgnore;    // "IGNORAR"
+   SConfigData        m_pendingLoadData; // Dados carregados pendentes de confirmação
+
    // ── Prioridade: resolução de conflitos entre estratégias ──
 public:
    int               ResolveStrategyPriority(int desired, string excludeName);
@@ -823,6 +831,13 @@ private:
    // (Trend/RSI Filter handlers movidos para GUI/Panels/TrendFilterPanel.mqh e RSIFilterPanel.mqh)
    // (CycleTF, TFName, ApplyToggleStyle, etc. movidos para GUI/PanelUtils.mqh)
 
+   // ── Persistência (Parte 028) ──
+   void              CollectConfigData(SConfigData &data);
+   void              ApplyLoadedConfig(const SConfigData &data);
+   // Load banner handlers
+   void              OnClickLoadBanner(void);
+   void              OnClickIgnoreBanner(void);
+
 protected:
    virtual bool      CreateButtonClose(void) { return true; }
 
@@ -851,6 +866,12 @@ public:
    void              MouseProtection(const int x, const int y);
    virtual bool      OnEvent(const int id, const long &lparam,
                              const double &dparam, const string &sparam);
+
+   // ── Persistência pública (Parte 028) ──
+   void              SaveCurrentConfig(void);
+   void              ShowLoadBanner(const SConfigData &data);
+   void              HideLoadBanner(void);
+   bool              HasSavedConfig(void);
 
 public:
    virtual void      ChartEvent(const int id, const long &lparam,
@@ -886,7 +907,8 @@ CEPBotPanel::CEPBotPanel(void)
      m_cur_lossStreakAction(STREAK_PAUSE), m_cur_winStreakAction(STREAK_PAUSE),
      m_cur_ddType(DD_FINANCIAL), m_cur_ddPeakMode(DD_PEAK_REALIZED_ONLY),
      m_cur_profitTargetAction(PROFIT_ACTION_STOP),
-     m_cfgStatusExpiry(0)
+     m_cfgStatusExpiry(0),
+     m_loadBannerVisible(false)
   {
   }
 
@@ -995,6 +1017,38 @@ bool CEPBotPanel::CreatePanel(long chart, string name, int subwin,
    if(!CreateTabEstrategias()) return false;
    if(!CreateTabFiltros())    return false;
    if(!CreateTabConfig())     return false;
+
+// ── Banner de Load Config (inicialmente oculto) ──
+   int bannerY = CONTENT_TOP + 2;
+   if(!m_lb_msg.Create(m_chart_id, PFX + "lb_msg", m_subwin,
+                       COL_LABEL_X, bannerY, COL_LABEL_X + 380, bannerY + PANEL_GAP_Y))
+      return false;
+   m_lb_msg.Text("");
+   m_lb_msg.Color(CLR_WARNING);
+   m_lb_msg.FontSize(8);
+   if(!Add(m_lb_msg)) return false;
+   m_lb_msg.Hide();
+
+   int btnY = bannerY + PANEL_GAP_Y + 2;
+   if(!m_lb_btnLoad.Create(m_chart_id, PFX + "lb_load", m_subwin,
+                           COL_LABEL_X, btnY, COL_LABEL_X + 100, btnY + 20))
+      return false;
+   m_lb_btnLoad.Text("CARREGAR");
+   m_lb_btnLoad.FontSize(8);
+   m_lb_btnLoad.ColorBackground(C'0,140,60');
+   m_lb_btnLoad.Color(clrWhite);
+   if(!Add(m_lb_btnLoad)) return false;
+   m_lb_btnLoad.Hide();
+
+   if(!m_lb_btnIgnore.Create(m_chart_id, PFX + "lb_ignore", m_subwin,
+                             COL_LABEL_X + 110, btnY, COL_LABEL_X + 210, btnY + 20))
+      return false;
+   m_lb_btnIgnore.Text("IGNORAR");
+   m_lb_btnIgnore.FontSize(8);
+   m_lb_btnIgnore.ColorBackground(C'160,60,60');
+   m_lb_btnIgnore.Color(clrWhite);
+   if(!Add(m_lb_btnIgnore)) return false;
+   m_lb_btnIgnore.Hide();
 
    m_origDragTrade  = (bool)ChartGetInteger(chart, CHART_DRAG_TRADE_LEVELS);
    m_origMouseScroll = (bool)ChartGetInteger(chart, CHART_MOUSE_SCROLL);
@@ -1210,6 +1264,10 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       if(sparam == m_cb2_bN1On.Name()) { m_cb2_bN1On.Pressed(false); OnClickNewsOn1(); ChartRedraw(); return; }
       if(sparam == m_cb2_bN2On.Name()) { m_cb2_bN2On.Pressed(false); OnClickNewsOn2(); ChartRedraw(); return; }
       if(sparam == m_cb2_bN3On.Name()) { m_cb2_bN3On.Pressed(false); OnClickNewsOn3(); ChartRedraw(); return; }
+
+      // BANNER: Load/Ignore config
+      if(sparam == m_lb_btnLoad.Name())   { m_lb_btnLoad.Pressed(false);   OnClickLoadBanner();   ChartRedraw(); return; }
+      if(sparam == m_lb_btnIgnore.Name()) { m_lb_btnIgnore.Pressed(false); OnClickIgnoreBanner(); ChartRedraw(); return; }
 
       // CONFIG: OUTROS toggles
       if(sparam == m_co_bConfl.Name()) { OnClickConflict(); ChartRedraw(); return; }
@@ -1513,6 +1571,7 @@ void CEPBotPanel::MouseProtection(const int x, const int y)
 #include "PanelTabEstrategias.mqh"
 #include "PanelTabFiltros.mqh"
 #include "PanelTabConfig.mqh"
+#include "PanelPersistence.mqh"
 
 //+------------------------------------------------------------------+
 //| RegisterPanels — factory method: cria sub-páginas de estratégia  |

@@ -1004,6 +1004,67 @@ int OnInit()
      }
 
 // ═══════════════════════════════════════════════════════════════
+// ETAPA 10: PERSISTÊNCIA DE CONFIGURAÇÕES
+// ═══════════════════════════════════════════════════════════════
+   if(!MQLInfoInteger(MQL_TESTER) && g_panel != NULL)
+     {
+      int prevReason = UninitializeReason();
+
+      if(prevReason == REASON_PARAMETERS)
+        {
+         // Usuário alterou inputs (preset): deletar config salva
+         CConfigPersistence::Delete(_Symbol, inp_MagicNumber);
+         g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
+                      "Preset alterado - config salva deletada");
+        }
+      else if(prevReason == REASON_CHARTCHANGE || prevReason == REASON_TEMPLATE)
+        {
+         // Troca de TF ou template: auto-carregar config salva silenciosamente
+         if(CConfigPersistence::Exists(_Symbol, inp_MagicNumber))
+           {
+            SConfigData loadedData;
+            ZeroMemory(loadedData);
+            if(CConfigPersistence::Load(_Symbol, inp_MagicNumber, loadedData))
+              {
+               g_panel.ApplyLoadedConfig(loadedData);
+               g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
+                            "Config salva carregada automaticamente (troca de TF/template)");
+              }
+           }
+        }
+      else if(prevReason == REASON_CLOSE || prevReason == REASON_REMOVE)
+        {
+         // Fechamento acidental do MT5 ou remoção: mostrar banner
+         if(CConfigPersistence::Exists(_Symbol, inp_MagicNumber))
+           {
+            SConfigData loadedData;
+            ZeroMemory(loadedData);
+            if(CConfigPersistence::Load(_Symbol, inp_MagicNumber, loadedData))
+              {
+               g_panel.ShowLoadBanner(loadedData);
+               g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
+                            "Config salva encontrada - banner exibido para usuario");
+              }
+           }
+        }
+      // REASON_PROGRAM, REASON_ACCOUNT, REASON_RECOMPILE: auto-carregar também
+      else if(prevReason == REASON_RECOMPILE || prevReason == REASON_ACCOUNT)
+        {
+         if(CConfigPersistence::Exists(_Symbol, inp_MagicNumber))
+           {
+            SConfigData loadedData;
+            ZeroMemory(loadedData);
+            if(CConfigPersistence::Load(_Symbol, inp_MagicNumber, loadedData))
+              {
+               g_panel.ApplyLoadedConfig(loadedData);
+               g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
+                            "Config salva carregada automaticamente (recompile/account)");
+              }
+           }
+        }
+     }
+
+// ═══════════════════════════════════════════════════════════════
 // SUCESSO!
 // ═══════════════════════════════════════════════════════════════
    Print("════════════════════════════════════════════════════════════════");

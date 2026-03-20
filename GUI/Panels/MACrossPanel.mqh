@@ -465,6 +465,8 @@ private:
       m_lblStatus.Text(msg);
       m_lblStatus.Color(CLR_POSITIVE);
       m_statusExpiry = GetTickCount() + 10000;
+      // Persistir configuração (Parte 028)
+      if(m_parent != NULL) m_parent.SaveCurrentConfig();
       ChartRedraw();
      }
   };
