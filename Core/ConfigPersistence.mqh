@@ -149,9 +149,9 @@ struct SConfigData
    ENUM_APPLIED_PRICE rsiApplied;
    ENUM_TIMEFRAMES   rsiTF;
    ENUM_RSI_SIGNAL_MODE rsiMode;
-   int               rsiOversold;
-   int               rsiOverbought;
-   int               rsiMidLevel;
+   double            rsiOversold;
+   double            rsiOverbought;
+   double            rsiMidLevel;
 
    // ── BB STRATEGY ──
    bool              bbEnabled;
@@ -170,7 +170,7 @@ struct SConfigData
    ENUM_MA_METHOD    trendMethod;
    ENUM_APPLIED_PRICE trendApplied;
    ENUM_TIMEFRAMES   trendTF;
-   int               trendMinDistance;
+   double            trendMinDistance;
 
    // ── RSI FILTER ──
    bool              rsiFiltEnabled;
@@ -178,8 +178,8 @@ struct SConfigData
    ENUM_APPLIED_PRICE rsiFiltApplied;
    ENUM_TIMEFRAMES   rsiFiltTF;
    ENUM_RSI_FILTER_MODE rsiFiltMode;
-   int               rsiFiltOversold;
-   int               rsiFiltOverbought;
+   double            rsiFiltOversold;
+   double            rsiFiltOverbought;
    double            rsiFiltLowerNeutral;
    double            rsiFiltUpperNeutral;
    int               rsiFiltShift;
@@ -440,9 +440,9 @@ bool CConfigPersistence::Save(string symbol, int magic, const SConfigData &data)
    WriteKV(h, "RSIApplied",         IntegerToString((int)data.rsiApplied));
    WriteKV(h, "RSITF",              IntegerToString((int)data.rsiTF));
    WriteKV(h, "RSIMode",            IntegerToString((int)data.rsiMode));
-   WriteKV(h, "RSIOversold",        IntegerToString(data.rsiOversold));
-   WriteKV(h, "RSIOverbought",      IntegerToString(data.rsiOverbought));
-   WriteKV(h, "RSIMidLevel",        IntegerToString(data.rsiMidLevel));
+   WriteKV(h, "RSIOversold",        DoubleToString(data.rsiOversold, 1));
+   WriteKV(h, "RSIOverbought",      DoubleToString(data.rsiOverbought, 1));
+   WriteKV(h, "RSIMidLevel",        DoubleToString(data.rsiMidLevel, 1));
 
 // ── BB Strategy ──
    FileWriteString(h, "# BB STRATEGY\n");
@@ -463,7 +463,7 @@ bool CConfigPersistence::Save(string symbol, int magic, const SConfigData &data)
    WriteKV(h, "TrendMethod",        IntegerToString((int)data.trendMethod));
    WriteKV(h, "TrendApplied",       IntegerToString((int)data.trendApplied));
    WriteKV(h, "TrendTF",            IntegerToString((int)data.trendTF));
-   WriteKV(h, "TrendMinDistance",    IntegerToString(data.trendMinDistance));
+   WriteKV(h, "TrendMinDistance",    DoubleToString(data.trendMinDistance, 2));
 
 // ── RSI Filter ──
    FileWriteString(h, "# RSI FILTER\n");
@@ -472,8 +472,8 @@ bool CConfigPersistence::Save(string symbol, int magic, const SConfigData &data)
    WriteKV(h, "RSIFiltApplied",     IntegerToString((int)data.rsiFiltApplied));
    WriteKV(h, "RSIFiltTF",          IntegerToString((int)data.rsiFiltTF));
    WriteKV(h, "RSIFiltMode",        IntegerToString((int)data.rsiFiltMode));
-   WriteKV(h, "RSIFiltOversold",    IntegerToString(data.rsiFiltOversold));
-   WriteKV(h, "RSIFiltOverbought",  IntegerToString(data.rsiFiltOverbought));
+   WriteKV(h, "RSIFiltOversold",    DoubleToString(data.rsiFiltOversold, 1));
+   WriteKV(h, "RSIFiltOverbought",  DoubleToString(data.rsiFiltOverbought, 1));
    WriteKV(h, "RSIFiltLowerNeutral",DoubleToString(data.rsiFiltLowerNeutral, 1));
    WriteKV(h, "RSIFiltUpperNeutral",DoubleToString(data.rsiFiltUpperNeutral, 1));
    WriteKV(h, "RSIFiltShift",       IntegerToString(data.rsiFiltShift));
@@ -651,9 +651,9 @@ bool CConfigPersistence::Load(string symbol, int magic, SConfigData &data)
       else if(key == "RSIApplied")         data.rsiApplied = (ENUM_APPLIED_PRICE)StringToInteger(val);
       else if(key == "RSITF")              data.rsiTF = (ENUM_TIMEFRAMES)StringToInteger(val);
       else if(key == "RSIMode")            data.rsiMode = (ENUM_RSI_SIGNAL_MODE)StringToInteger(val);
-      else if(key == "RSIOversold")        data.rsiOversold = (int)StringToInteger(val);
-      else if(key == "RSIOverbought")      data.rsiOverbought = (int)StringToInteger(val);
-      else if(key == "RSIMidLevel")        data.rsiMidLevel = (int)StringToInteger(val);
+      else if(key == "RSIOversold")        data.rsiOversold = StringToDouble(val);
+      else if(key == "RSIOverbought")      data.rsiOverbought = StringToDouble(val);
+      else if(key == "RSIMidLevel")        data.rsiMidLevel = StringToDouble(val);
       // BB Strategy
       else if(key == "BBEnabled")          data.bbEnabled = (bool)StringToInteger(val);
       else if(key == "BBPriority")         data.bbPriority = (int)StringToInteger(val);
@@ -670,15 +670,15 @@ bool CConfigPersistence::Load(string symbol, int magic, SConfigData &data)
       else if(key == "TrendMethod")        data.trendMethod = (ENUM_MA_METHOD)StringToInteger(val);
       else if(key == "TrendApplied")       data.trendApplied = (ENUM_APPLIED_PRICE)StringToInteger(val);
       else if(key == "TrendTF")            data.trendTF = (ENUM_TIMEFRAMES)StringToInteger(val);
-      else if(key == "TrendMinDistance")    data.trendMinDistance = (int)StringToInteger(val);
+      else if(key == "TrendMinDistance")    data.trendMinDistance = StringToDouble(val);
       // RSI Filter
       else if(key == "RSIFiltEnabled")     data.rsiFiltEnabled = (bool)StringToInteger(val);
       else if(key == "RSIFiltPeriod")      data.rsiFiltPeriod = (int)StringToInteger(val);
       else if(key == "RSIFiltApplied")     data.rsiFiltApplied = (ENUM_APPLIED_PRICE)StringToInteger(val);
       else if(key == "RSIFiltTF")          data.rsiFiltTF = (ENUM_TIMEFRAMES)StringToInteger(val);
       else if(key == "RSIFiltMode")        data.rsiFiltMode = (ENUM_RSI_FILTER_MODE)StringToInteger(val);
-      else if(key == "RSIFiltOversold")    data.rsiFiltOversold = (int)StringToInteger(val);
-      else if(key == "RSIFiltOverbought")  data.rsiFiltOverbought = (int)StringToInteger(val);
+      else if(key == "RSIFiltOversold")    data.rsiFiltOversold = StringToDouble(val);
+      else if(key == "RSIFiltOverbought")  data.rsiFiltOverbought = StringToDouble(val);
       else if(key == "RSIFiltLowerNeutral")data.rsiFiltLowerNeutral = StringToDouble(val);
       else if(key == "RSIFiltUpperNeutral")data.rsiFiltUpperNeutral = StringToDouble(val);
       else if(key == "RSIFiltShift")       data.rsiFiltShift = (int)StringToInteger(val);

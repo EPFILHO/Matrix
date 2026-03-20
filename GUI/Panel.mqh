@@ -831,10 +831,7 @@ private:
    // (Trend/RSI Filter handlers movidos para GUI/Panels/TrendFilterPanel.mqh e RSIFilterPanel.mqh)
    // (CycleTF, TFName, ApplyToggleStyle, etc. movidos para GUI/PanelUtils.mqh)
 
-   // ── Persistência (Parte 027) ──
-   void              CollectConfigData(SConfigData &data);
-   void              ApplyLoadedConfig(const SConfigData &data);
-   // Load banner handlers
+   // Load banner handlers (private)
    void              OnClickLoadBanner(void);
    void              OnClickIgnoreBanner(void);
 
@@ -844,6 +841,10 @@ protected:
 public:
                      CEPBotPanel(void);
                     ~CEPBotPanel(void);
+
+   // ── Persistência (Parte 027) ──
+   void              CollectConfigData(SConfigData &data);
+   void              ApplyLoadedConfig(const SConfigData &data);
 
    bool              Init(CLogger *logger, CBlockers *blockers, CRiskManager *risk,
                           CTradeManager *trade, CSignalManager *signal,
