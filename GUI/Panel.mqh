@@ -2,15 +2,20 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.49 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.50 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.49"
+#property version   "1.50"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.50 (Parte 027):
+// * Fix: CollectConfigData e ApplyLoadedConfig movidos de private para public
+//   (correção de 'cannot access private member function')
+// * Fix: m_bbStrategy e m_bbFilter inicializados com NULL no construtor
+//
 // v1.49 (Parte 027):
 // + OUTROS: Magic Number (CEdit + aviso warning) e Comentário das Ordens
 //   m_co_lMagic/iMagic, m_co_lMagicW, m_co_lComm/iComm

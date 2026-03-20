@@ -2,14 +2,22 @@
 //|                                           ConfigPersistence.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|     Persistência de configurações GUI — EPBot Matrix              |
-//|                     Versão 1.00 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.01 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.00"
+#property version   "1.01"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
-// CHANGELOG v1.00 (Parte 027):
+// CHANGELOG
+// ═══════════════════════════════════════════════════════════════
+// v1.01 (Parte 027):
+// * Fix: SConfigData campos rsiOversold, rsiOverbought, rsiMidLevel,
+//   trendMinDistance, rsiFiltOversold, rsiFiltOverbought alterados
+//   de int para double (evita truncamento de valores fracionários)
+// * Fix: Save/Load usa DoubleToString/StringToDouble para esses campos
+//
+// v1.00 (Parte 027):
 // + SConfigData: struct com TODOS os parâmetros configuráveis via GUI
 // + CConfigPersistence: Save/Load/Delete/Exists/GetLastModified
 //   - Formato: key=value (legível e forward-compatible)
