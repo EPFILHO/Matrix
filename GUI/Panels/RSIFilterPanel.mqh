@@ -2,7 +2,7 @@
 //|                                              RSIFilterPanel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — RSI Filter                               |
-//|                     Versão 1.01 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.02 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
@@ -47,6 +47,7 @@ public:
      {}
 
    virtual string GetName(void) const { return "RSI FILT"; }
+   void           SetFilter(CRSIFilter *f) { m_filter = f; }
 
    virtual bool Create(CEPBotPanel *parent, long chart_id, int subwin)
      {

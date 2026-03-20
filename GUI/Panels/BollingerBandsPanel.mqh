@@ -2,7 +2,7 @@
 //|                                           BollingerBandsPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Bollinger Bands Strategy                 |
-//|                     Versão 1.02 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.03 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
@@ -60,6 +60,7 @@ public:
      {}
 
    virtual string GetName(void) const { return "BB"; }
+   void           SetStrategy(CBollingerBandsStrategy *s) { m_strategy = s; }
 
    virtual bool Create(CEPBotPanel *parent, long chart_id, int subwin)
      {

@@ -2,13 +2,23 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.47 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.52 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.47"
+#property version   "1.52"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.52 (Parte 026):                                     |
+//| - Fix GUI na troca de TF (solução padrão ouro MQL5):             |
+//|   OnDeinit(REASON_CHARTCHANGE) NÃO destrói o painel.             |
+//|   OnInit detecta g_panel != NULL e chama ReconnectModules()      |
+//|   que re-injeta ponteiros novos sem recriar objetos gráficos.    |
+//|   Sub-painéis recebem ponteiros via SetStrategy/SetFilter tipados|
+//|   com dynamic_cast no ReconnectModules().                        |
+//|   if(!m_minimized) ShowTab() evita controles soltos ao trocar TF |
+//|   com painel minimizado.                                         |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.47 (Parte 026):                                     |
 //| - Bollinger Bands Strategy (FFFD, Rebound, Breakout)             |
@@ -378,7 +388,7 @@ void CleanupAll()
 int OnInit()
   {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.47 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v1.52 - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
 
 // ═══════════════════════════════════════════════════════════════
@@ -943,30 +953,52 @@ int OnInit()
 // ═══════════════════════════════════════════════════════════════
 // ETAPA 9: PAINEL GUI (opcional)
 // ═══════════════════════════════════════════════════════════════
+// Safety net: se painel sobreviveu ao TF change mas inp_ShowPanel está OFF, destruir
+   if(g_panel != NULL && (!inp_ShowPanel || MQLInfoInteger(MQL_TESTER)))
+     {
+      g_panel.Destroy(REASON_REMOVE);
+      delete g_panel;
+      g_panel = NULL;
+     }
+
    if(inp_ShowPanel && !MQLInfoInteger(MQL_TESTER))
      {
-      g_panel = new CEPBotPanel();
       if(g_panel != NULL)
         {
-         g_panel.Init(g_logger, g_blockers, g_riskManager, g_tradeManager,
-                      g_signalManager, g_maCrossStrategy, g_rsiStrategy,
-                      g_bbStrategy,
-                      g_trendFilter, g_rsiFilter, g_bbFilter,
-                      inp_MagicNumber, _Symbol);
+         // Painel sobreviveu à troca de TF — apenas reconectar ponteiros
+         g_panel.ReconnectModules(g_logger, g_blockers, g_riskManager, g_tradeManager,
+                                  g_signalManager, g_maCrossStrategy, g_rsiStrategy,
+                                  g_bbStrategy,
+                                  g_trendFilter, g_rsiFilter, g_bbFilter);
+         EventSetMillisecondTimer(1500);
+         g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "Painel GUI reconectado (troca de TF)");
+        }
+      else
+        {
+         // Primeira vez — criar painel do zero
+         g_panel = new CEPBotPanel();
+         if(g_panel != NULL)
+           {
+            g_panel.Init(g_logger, g_blockers, g_riskManager, g_tradeManager,
+                         g_signalManager, g_maCrossStrategy, g_rsiStrategy,
+                         g_bbStrategy,
+                         g_trendFilter, g_rsiFilter, g_bbFilter,
+                         inp_MagicNumber, _Symbol);
 
-         int chartWidth = (int)ChartGetInteger(0, CHART_WIDTH_IN_PIXELS);
-         int x1 = chartWidth - PANEL_WIDTH - 10;
-         if(!g_panel.CreatePanel(0, "EPBotMatrix - Versão 1.47", 0, x1, 20, x1 + PANEL_WIDTH, 20 + PANEL_HEIGHT))
-           {
-            g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar painel GUI");
-            delete g_panel;
-            g_panel = NULL;
-           }
-         else
-           {
-            g_panel.Run();
-            EventSetMillisecondTimer(1500);
-            g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "Painel GUI criado com sucesso");
+            int chartWidth = (int)ChartGetInteger(0, CHART_WIDTH_IN_PIXELS);
+            int x1 = chartWidth - PANEL_WIDTH - 10;
+            if(!g_panel.CreatePanel(0, "EPBotMatrix - Versão 1.52", 0, x1, 20, x1 + PANEL_WIDTH, 20 + PANEL_HEIGHT))
+              {
+               g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar painel GUI");
+               delete g_panel;
+               g_panel = NULL;
+              }
+            else
+              {
+               g_panel.Run();
+               EventSetMillisecondTimer(1500);
+               g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "Painel GUI criado com sucesso");
+              }
            }
         }
      }
@@ -978,7 +1010,7 @@ int OnInit()
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
 
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.44 - PRONTO PARA OPERAR!");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.52 - PRONTO PARA OPERAR!");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Símbolo: " + _Symbol);
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
@@ -1015,12 +1047,23 @@ void OnDeinit(const int reason)
 // LIMPEZA SEGURA - Ordem inversa da inicialização
 // ═══════════════════════════════════════════════════════════════
 
-// ETAPA 0: Destruir painel
+// ETAPA 0: Painel GUI
    if(g_panel != NULL)
      {
-      g_panel.Destroy(reason);
-      delete g_panel;
-      g_panel = NULL;
+      if(reason == REASON_CHARTCHANGE)
+        {
+         // Troca de timeframe: manter painel vivo no gráfico.
+         // CAppDialog preserva objetos gráficos em REASON_CHARTCHANGE.
+         // OnInit vai reconectar ponteiros via ReconnectModules().
+         // NÃO destruir, NÃO deletar — apenas matar o timer.
+        }
+      else
+        {
+         // Remoção real: limpar tudo
+         g_panel.Destroy(REASON_REMOVE);
+         delete g_panel;
+         g_panel = NULL;
+        }
      }
    EventKillTimer();
 
@@ -2045,5 +2088,5 @@ void OnTimer()
   }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.42                                   |
+//| FIM DO EA - EPBOT MATRIX v1.52                                   |
 //+------------------------------------------------------------------+

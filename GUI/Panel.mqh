@@ -2,28 +2,30 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.44 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.48 - Claude Parte 026 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.44"
+#property version   "1.48"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.44 (Parte 026):
-// + Fix fluidez minimize/maximize:
-//   - ChartEvent: quando m_minimized, pula toda lógica de clique
-//     customizada e passa direto para CAppDialog (evita dezenas de
-//     comparações desnecessárias que atrasavam o botão min/max)
-//   - OnEvent: ChartRedraw() após hide explícito no minimize
+// v1.48 (Parte 026):
+// + ReconnectModules(): re-injeta ponteiros após troca de TF sem
+//   recriar objetos gráficos. Usa dynamic_cast + SetStrategy/SetFilter
+//   tipados em cada sub-painel concreto.
+// + if(!m_minimized) antes de ShowTab() — evita controles soltos
+//   ao trocar TF com painel minimizado.
 //
-// v1.43 (Parte 026):
-// + Fix robusto minimize/maximize: OnEvent agora faz hide EXPLÍCITO
-//   de todos os controles (~400) após minimize via SetTabVis(false)
-//   em todas as 5 abas + botões de aba. Resolve:
-//   - Labels/controles "soltos" (CAppDialog cascade incompleto)
-//   - Botão minimize não respondendo (controles soltos bloqueavam cliques)
+// v1.47 (Parte 026):
+// - Simplificação minimize/maximize: removido deferred minimize
+//   (m_pendingMinimize), DoMinimize(), SetPendingMinimize(),
+//   IsMinimized(), explicit Hide() de ~400 controles no OnEvent.
+//   Confiamos no cascade nativo do CAppDialog para hide/show.
+//   Mantido: Update() early-return + ChartEvent bypass quando
+//   m_minimized (evita processamento desnecessário).
+//   Painel sempre inicia maximizado após troca de timeframe.
 //
 // v1.42 (Parte 026):
 // + Fix GUI minimize: Update() retorna imediatamente se m_minimized
@@ -814,11 +816,17 @@ public:
                           CBollingerBandsFilter *bbFilt,
                           int magic, string symbol);
 
+   void              ReconnectModules(CLogger *logger, CBlockers *blockers, CRiskManager *risk,
+                                     CTradeManager *trade, CSignalManager *signal,
+                                     CMACrossStrategy *maCross, CRSIStrategy *rsi,
+                                     CBollingerBandsStrategy *bb,
+                                     CTrendFilter *trend, CRSIFilter *rsiFilt,
+                                     CBollingerBandsFilter *bbFilt);
+
    bool              CreatePanel(long chart, string name, int subwin,
                                  int x1, int y1, int x2, int y2);
    void              Update(void);
    void              MouseProtection(const int x, const int y);
-
    virtual bool      OnEvent(const int id, const long &lparam,
                              const double &dparam, const string &sparam);
 
@@ -895,6 +903,58 @@ bool CEPBotPanel::Init(CLogger *logger, CBlockers *blockers, CRiskManager *risk,
    m_symbol       = symbol;
    RegisterPanels();
    return true;
+  }
+
+//+------------------------------------------------------------------+
+//| ReconnectModules — atualiza ponteiros após troca de TF            |
+//| NÃO chama RegisterPanels() (sub-painéis gráficos já existem).    |
+//| Apenas re-injeta ponteiros novos no painel e nos sub-painéis.     |
+//+------------------------------------------------------------------+
+void CEPBotPanel::ReconnectModules(CLogger *logger, CBlockers *blockers, CRiskManager *risk,
+                                   CTradeManager *trade, CSignalManager *signal,
+                                   CMACrossStrategy *maCross, CRSIStrategy *rsi,
+                                   CBollingerBandsStrategy *bb,
+                                   CTrendFilter *trend, CRSIFilter *rsiFilt,
+                                   CBollingerBandsFilter *bbFilt)
+  {
+   // 1) Atualizar ponteiros do painel principal
+   m_logger       = logger;
+   m_blockers     = blockers;
+   m_riskManager  = risk;
+   m_tradeManager = trade;
+   m_signalManager = signal;
+   m_maCross      = maCross;
+   m_rsiStrategy  = rsi;
+   m_bbStrategy   = bb;
+   m_trendFilter  = trend;
+   m_rsiFilter    = rsiFilt;
+   m_bbFilter     = bbFilt;
+
+   // 2) Propagar para sub-painéis de estratégia via cast tipado
+   //    (mesma ordem que RegisterPanels: MACross, RSI, BB)
+   int si = 0;
+   if(maCross != NULL && si < m_stratPanelCount)
+     { CMACrossPanel *p = dynamic_cast<CMACrossPanel *>(m_stratPanels[si++]); if(p != NULL) p.SetStrategy(maCross); }
+   if(rsi != NULL && si < m_stratPanelCount)
+     { CRSIStrategyPanel *p = dynamic_cast<CRSIStrategyPanel *>(m_stratPanels[si++]); if(p != NULL) p.SetStrategy(rsi); }
+   if(bb != NULL && si < m_stratPanelCount)
+     { CBollingerBandsPanel *p = dynamic_cast<CBollingerBandsPanel *>(m_stratPanels[si++]); if(p != NULL) p.SetStrategy(bb); }
+
+   // 3) Propagar para sub-painéis de filtro via cast tipado
+   //    (mesma ordem que RegisterPanels: Trend, RSI, BB)
+   int fi = 0;
+   if(trend != NULL && fi < m_filtPanelCount)
+     { CTrendFilterPanel *p = dynamic_cast<CTrendFilterPanel *>(m_filtPanels[fi++]); if(p != NULL) p.SetFilter(trend); }
+   if(rsiFilt != NULL && fi < m_filtPanelCount)
+     { CRSIFilterPanel *p = dynamic_cast<CRSIFilterPanel *>(m_filtPanels[fi++]); if(p != NULL) p.SetFilter(rsiFilt); }
+   if(bbFilt != NULL && fi < m_filtPanelCount)
+     { CBollingerBandsFilterPanel *p = dynamic_cast<CBollingerBandsFilterPanel *>(m_filtPanels[fi++]); if(p != NULL) p.SetFilter(bbFilt); }
+
+   // 4) Restaurar visibilidade: só se painel NÃO está minimizado.
+   //    Se minimizado, CAppDialog já escondeu todos os controles — ShowTab()
+   //    os traria de volta "soltos" no gráfico.
+   if(!m_minimized)
+      ShowTab(m_activeTab);
   }
 
 //+------------------------------------------------------------------+
@@ -1149,26 +1209,7 @@ bool CEPBotPanel::OnEvent(const int id, const long &lparam,
    bool result = CAppDialog::OnEvent(id, lparam, dparam, sparam);
 
    if(result)
-     {
-      if(m_minimized)
-        {
-         // Após minimize: forçar hide em TODOS os controles explicitamente.
-         // CAppDialog::Minimize() faz m_client_area.Hide() cascade, mas com
-         // muitos controles (~400) o cascade pode falhar parcialmente.
-         // Controles "soltos" ficam visíveis sem fundo e podem bloquear
-         // o botão minimize, impedindo restore.
-         m_btnTab0.Hide(); m_btnTab1.Hide(); m_btnTab2.Hide();
-         m_btnTab3.Hide(); m_btnTab4.Hide();
-         for(int t = 0; t < TAB_COUNT; t++)
-            SetTabVis((ENUM_PANEL_TAB)t, false);
-         ChartRedraw();
-        }
-      else
-        {
-         // Após maximize ou outro evento: esconder abas/sub-páginas inativas
-         ReapplyTabVisibility();
-        }
-     }
+      ReapplyTabVisibility();
 
    return result;
   }
