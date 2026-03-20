@@ -145,6 +145,9 @@ private:
    datetime          m_lastResetDate;
    ENUM_BLOCKER_REASON m_currentBlocker;
 
+   // Flag: DD foi auto-ativado na init (independente de meta diária)
+   bool              m_ddAutoActivated;
+
    // ═══════════════════════════════════════════════════════════════
    // MÉTODOS PRIVADOS
    // ═══════════════════════════════════════════════════════════════
@@ -270,6 +273,7 @@ CBlockers::CBlockers()
    m_tradeDirection      = DIRECTION_BOTH;
    m_lastResetDate       = TimeCurrent();
    m_currentBlocker      = BLOCKER_NONE;
+   m_ddAutoActivated     = false;
   }
 
 //+------------------------------------------------------------------+
@@ -337,6 +341,25 @@ bool CBlockers::Init(
 // ── DRAWDOWN ─────────────────────────────────────────────────────
    if(!m_drawdown.Init(logger, magicNumber, enableDD, ddType, ddValue, ddPeakMode))
       return false;
+
+// ── AUTO-ATIVAR DRAWDOWN se não há trigger via Daily Limits ──────
+// Se DD habilitado mas não vai ser ativado por meta de ganho,
+// ativa imediatamente com pico = 0 (início do dia)
+   m_ddAutoActivated = false;
+   if(enableDD)
+     {
+      bool willBeTriggeredByLimits = enableLimits && maxGain > 0 && profitAction == PROFIT_ACTION_ENABLE_DRAWDOWN;
+      if(!willBeTriggeredByLimits)
+        {
+         m_drawdown.ActivateDrawdownProtection(0.0, 0.0);
+         m_ddAutoActivated = true;
+         if(m_logger != NULL)
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT",
+               "🛡️ Drawdown auto-ativado (independente de meta diária) — pico inicial: $0.00");
+         else
+            Print("🛡️ Drawdown auto-ativado (independente de meta diária) — pico inicial: $0.00");
+        }
+     }
 
 // ── DIREÇÃO ──────────────────────────────────────────────────────
    m_inputTradeDirection = tradeDirection;
@@ -527,6 +550,17 @@ void CBlockers::ResetDaily()
    m_drawdown.ResetDaily();
    m_currentBlocker = BLOCKER_NONE;
    m_lastResetDate  = TimeCurrent();
+
+// Reativar DD auto se foi auto-ativado na init
+   if(m_ddAutoActivated && m_drawdown.IsEnabled())
+     {
+      m_drawdown.ActivateDrawdownProtection(0.0, 0.0);
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "RESET",
+            "🛡️ Drawdown reativado após reset diário — pico: $0.00");
+      else
+         Print("🛡️ Drawdown reativado após reset diário — pico: $0.00");
+     }
 
    if(m_logger != NULL)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "RESET", "✅ Contadores zerados!");
