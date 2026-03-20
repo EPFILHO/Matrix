@@ -94,7 +94,6 @@ public:
    // ═══════════════════════════════════════════════════════════════
    double            GetCurrentDrawdown();
    double            GetDailyPeakProfit() const          { return m_dailyPeakProfit; }
-   bool              IsEnabled() const                    { return m_enableDrawdown; }
    bool              IsDrawdownProtectionActive() const  { return m_drawdownProtectionActive; }
    bool              IsDrawdownLimitReached() const      { return m_drawdownLimitReached; }
    ENUM_DRAWDOWN_TYPE      GetDrawdownType() const       { return m_drawdownType; }
