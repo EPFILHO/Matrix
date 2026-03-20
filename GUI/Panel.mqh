@@ -2,15 +2,27 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.48 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.49 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.48"
+#property version   "1.49"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.49 (Parte 027):
+// + OUTROS: Magic Number (CEdit + aviso warning) e Comentário das Ordens
+//   m_co_lMagic/iMagic, m_co_lMagicW, m_co_lComm/iComm
+//   Posicionados acima de Slippage/Conflito; Debug e Debug Cooldown por último
+// + RISCO 2: Limites Diários movidos de BLOQUEIOS com toggle ON/OFF dinâmico
+//   m_c2_hdr4, m_c2_lDLAct/bDLAct, lDLTrd/iDLTrd, lDLLoss/iDLLoss,
+//   lDLGain/iDLGain, lDLPTA/bDLPTA[2] — posicionados ACIMA de TRAILING
+//   m_cur_dailyLimitsOn: novo estado
+//   OnClickDailyLimitsToggle, RefreshDailyLimitsState, OnClickDLProfitTargetAction
+// + Removidos: m_cb_hdr2/lTrd/iTrd/lLoss/iLoss/lGain/iGain/lPTA/bPTA (BLOQUEIOS)
+//   OnClickProfitTargetAction → substituído por OnClickDLProfitTargetAction
+//
 // v1.48 (Parte 026):
 // + ReconnectModules(): re-injeta ponteiros após troca de TF sem
 //   recriar objetos gráficos. Usa dynamic_cast + SetStrategy/SetFilter
@@ -571,6 +583,13 @@ private:
    CLabel   m_c2_lBEAct;   CButton m_c2_bBEAct;   // BE ON/OFF
    CLabel   m_c2_lBEVal;   CEdit   m_c2_iBEVal;
    CLabel   m_c2_lBEOff;   CEdit   m_c2_iBEOff;
+   // --- Limites Diários (movido de BLOQUEIOS para RISCO 2 — Parte 027) ---
+   CLabel   m_c2_hdr4;                              // Header "LIMITES DIARIOS"
+   CLabel   m_c2_lDLAct;    CButton m_c2_bDLAct;    // Daily Limits ON/OFF toggle
+   CLabel   m_c2_lDLTrd;    CEdit   m_c2_iDLTrd;    // Max Trades/Dia
+   CLabel   m_c2_lDLLoss;   CEdit   m_c2_iDLLoss;   // Max Loss/Dia
+   CLabel   m_c2_lDLGain;   CEdit   m_c2_iDLGain;   // Max Gain/Dia
+   CLabel   m_c2_lDLPTA;    CButton m_c2_bDLPTA[2];  // Radio: PARAR | ATIVAR DD
    CLabel   m_c2_hdr3;                              // Header "DRAWDOWN"
    CLabel   m_c2_lDDAct;    CButton m_c2_bDDAct;    // DrawDown ON/OFF
    CLabel   m_c2_lDD;       CEdit   m_c2_iDD;
@@ -581,11 +600,7 @@ private:
    CLabel   m_cb_hdr1;
    CLabel   m_cb_lSpr;    CEdit   m_cb_iSpr;
    CLabel   m_cb_lDir;    CButton m_cb_bDir[3];   // Radio: AMBOS | BUY | SELL
-   CLabel   m_cb_hdr2;
-   CLabel   m_cb_lTrd;    CEdit   m_cb_iTrd;
-   CLabel   m_cb_lLoss;   CEdit   m_cb_iLoss;
-   CLabel   m_cb_lGain;   CEdit   m_cb_iGain;
-   CLabel   m_cb_lPTA;    CButton m_cb_bPTA[2];   // Radio: PARAR | ATIVAR DD
+   // (Daily Limits movido para RISCO 2 — Parte 027: m_c2_hdr4/lDL*/iDL*/bDL*)
    CLabel   m_cb_hdr3;
    CLabel   m_cb_lLStrOn; CButton m_cb_bLStrOn;   // Loss Streak ON/OFF
    CLabel   m_cb_lLStr;   CEdit   m_cb_iLStr;
@@ -637,6 +652,9 @@ private:
    CLabel   m_co_hdr1;
    CLabel   m_co_lSlip;   CEdit   m_co_iSlip;
    CLabel   m_co_lConfl;  CButton m_co_bConfl;
+   CLabel   m_co_lMagic;  CEdit   m_co_iMagic;   // Magic Number (v1.28 Parte 027)
+   CLabel   m_co_lMagicW;                         // Aviso Magic Number
+   CLabel   m_co_lComm;   CEdit   m_co_iComm;    // Comentário das Ordens (v1.28 Parte 027)
    CLabel   m_co_lDbg;    CButton m_co_bDbg;
    CLabel   m_co_lDbgCd;  CEdit   m_co_iDbgCd;
 
@@ -667,6 +685,7 @@ private:
    bool                      m_cur_compTrail;
    bool                      m_cur_trailOn;
    bool                      m_cur_beOn;
+   bool                      m_cur_dailyLimitsOn;  // Daily Limits toggle (Parte 027)
    bool                      m_cur_ddOn;
    bool                      m_cur_lossStreakOn;
    bool                      m_cur_winStreakOn;
@@ -780,6 +799,9 @@ private:
    void              OnClickCompTrail(void);
    void              OnClickTrailToggle(void);
    void              OnClickBEToggle(void);
+   void              OnClickDailyLimitsToggle(void);  // Parte 027
+   void              RefreshDailyLimitsState(void);    // Parte 027
+   void              OnClickDLProfitTargetAction(int selected);  // Parte 027
    void              OnClickDDToggle(void);
    void              OnClickLossStreakToggle(void);
    void              OnClickWinStreakToggle(void);
@@ -791,7 +813,7 @@ private:
    void              OnClickWinStreakAction(int selected);
    void              OnClickDDType(int selected);
    void              OnClickDDPeakMode(int selected);
-   void              OnClickProfitTargetAction(int selected);
+   // OnClickProfitTargetAction removido (Parte 027): substituído por OnClickDLProfitTargetAction
    void              OnClickCfgBloq2(void);
    void              OnClickNewsOn1(void);
    void              OnClickNewsOn2(void);
@@ -858,6 +880,7 @@ CEPBotPanel::CEPBotPanel(void)
      m_cur_debug(false), m_cur_partialTP(false),
      m_cur_compSL(false), m_cur_compTP(false), m_cur_compTrail(false),
      m_cur_trailOn(false), m_cur_beOn(false),
+     m_cur_dailyLimitsOn(false),
      m_cur_ddOn(false), m_cur_lossStreakOn(false), m_cur_winStreakOn(false),
      m_cur_tfOn(false), m_cur_tfClose(false), m_cur_cbsOn(false),
      m_cur_lossStreakAction(STREAK_PAUSE), m_cur_winStreakAction(STREAK_PAUSE),
@@ -1156,6 +1179,7 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       if(sparam == m_cr_bPTP.Name()) { OnClickPartialTP(); ChartRedraw(); return; }
 
       // CONFIG: RISCO 2 toggles
+      if(sparam == m_c2_bDLAct.Name())  { OnClickDailyLimitsToggle(); ChartRedraw(); return; }
       if(sparam == m_c2_bTrlAct.Name()) { OnClickTrailToggle(); ChartRedraw(); return; }
       if(sparam == m_c2_bBEAct.Name())  { OnClickBEToggle();    ChartRedraw(); return; }
       if(sparam == m_c2_bCTrl.Name())   { OnClickCompTrail();   ChartRedraw(); return; }
@@ -1173,13 +1197,13 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
         {
          if(sparam == m_cb_bLStrA[i].Name())  { OnClickLossStreakAction(i);   ChartRedraw(); return; }
          if(sparam == m_cb_bWStrA[i].Name())  { OnClickWinStreakAction(i);    ChartRedraw(); return; }
-         if(sparam == m_cb_bPTA[i].Name())    { OnClickProfitTargetAction(i); ChartRedraw(); return; }
         }
-      // CONFIG: RISCO 2 radio groups — DrawDown (movido de BLOQUEIOS em v1.18)
+      // CONFIG: RISCO 2 radio groups — Daily Limits + DrawDown
       for(int i = 0; i < 2; i++)
         {
-         if(sparam == m_c2_bDDT[i].Name())    { OnClickDDType(i);             ChartRedraw(); return; }
-         if(sparam == m_c2_bDDPk[i].Name())   { OnClickDDPeakMode(i);         ChartRedraw(); return; }
+         if(sparam == m_c2_bDLPTA[i].Name())  { OnClickDLProfitTargetAction(i); ChartRedraw(); return; }
+         if(sparam == m_c2_bDDT[i].Name())    { OnClickDDType(i);               ChartRedraw(); return; }
+         if(sparam == m_c2_bDDPk[i].Name())   { OnClickDDPeakMode(i);           ChartRedraw(); return; }
         }
 
       // CONFIG: BLOQUEIO 2 — news window toggles
