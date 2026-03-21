@@ -2,10 +2,21 @@
 //|                                             FilterPanelBase.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Interface base para sub-páginas de filtro                 |
-//|                     Versão 1.00 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.01 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh ANTES da definição de CEPBotPanel.
 // Usa forward declaration para CEPBotPanel.
+//
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG
+// ═══════════════════════════════════════════════════════════════
+// v1.01 (Parte 027):
+// + m_parent (CEPBotPanel*): referência ao painel principal
+//   Necessário para persistência de config (acesso a helpers públicos)
+//
+// v1.00 (Parte 025):
+// + Interface base CFilterPanelBase para sub-páginas de filtro
+// ═══════════════════════════════════════════════════════════════
 //+------------------------------------------------------------------+
 
 // Forward declaration — CEPBotPanel é definido em Panel.mqh

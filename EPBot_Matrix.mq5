@@ -2,13 +2,31 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.52 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.54 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.52"
+#property version   "1.54"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.54 (Parte 027):                                     |
+//| - Config Persistence: banner redesenhado com caixa de destaque,  |
+//|   descrições explicativas e bloqueio de navegação enquanto visível|
+//| - Fix: banner reaparecendo após minimize/restore do painel       |
+//| - Fix: banner exibido para REASON_PROGRAM (EA adicionado fresh)  |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.53 (Parte 027):                                     |
+//| - Config Persistence: salva/carrega configurações GUI entre      |
+//|   restarts do EA (arquivo .cfg por símbolo+magic)                |
+//|   REASON_PARAMETERS: deleta config salva (preset alterado)       |
+//|   REASON_CHARTCHANGE/TEMPLATE: auto-carrega silenciosamente      |
+//|   REASON_CLOSE/REMOVE: mostra banner Carregar/Ignorar            |
+//|   REASON_RECOMPILE/ACCOUNT: auto-carrega silenciosamente         |
+//| - Panel v1.52: banner com caixa de destaque + bloqueio de abas   |
+//| - PanelPersistence v1.01: Show/Hide banner atualizados           |
+//| - PanelTabConfig v1.28: Magic Number, Comentário, Limites Diários|
+//| - Inputs v1.09: inp_MagicNumber e inp_OrderComment               |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.52 (Parte 026):                                     |
 //| - Fix GUI na troca de TF (solução padrão ouro MQL5):             |
