@@ -1,4 +1,4 @@
-# PLANO: Correção Completa da Persistência + Hot-Reload do Magic Number (Parte 028)
+# PLANO: Correção Completa da Persistência + Hot-Reload do Magic Number (Parte 027)
 
 ## Contexto
 O hot-reload do Magic Number (e outros campos) via painel GUI tem múltiplos furos:
@@ -335,14 +335,14 @@ Atualizar headers de versão nos arquivos modificados:
 
 | Arquivo | Mudança principal | Parte |
 |---------|-------------------|-------|
-| ConfigPersistence.mqh | +4 campos SConfigData, validação enums | 028 |
-| PanelPersistence.mqh | Collect/Apply novos campos, fix double-assign | 028 |
-| PanelTabConfig.mqh | ApplyMagicNumberChange(), hot-reload centralizado | 028 |
-| Logger.mqh | ReloadForMagic() | 028 |
-| BlockerDrawdown.mqh | SetMagicNumber() com reset de estado | 028 |
-| BlockerFilters.mqh | SetMagicNumber() limpa caches transição | 028 |
-| Blockers.mqh | SetMagicNumber() completo + ReconstructStreaks() | 028 |
-| TradeManager.mqh | SetMagicNumber() com cleanup + resync | 028 |
+| ConfigPersistence.mqh | +4 campos SConfigData, validação enums | 027 |
+| PanelPersistence.mqh | Collect/Apply novos campos, fix double-assign | 027 |
+| PanelTabConfig.mqh | ApplyMagicNumberChange(), hot-reload centralizado | 027 |
+| Logger.mqh | ReloadForMagic() | 027 |
+| BlockerDrawdown.mqh | SetMagicNumber() com reset de estado | 027 |
+| BlockerFilters.mqh | SetMagicNumber() limpa caches transição | 027 |
+| Blockers.mqh | SetMagicNumber() completo + ReconstructStreaks() | 027 |
+| TradeManager.mqh | SetMagicNumber() com cleanup + resync | 027 |
 
 ---
 
