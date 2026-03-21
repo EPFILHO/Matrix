@@ -2,13 +2,20 @@
 //|                                           PanelPersistence.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel: Persistência de Config — Save/Load/Banner                |
-//|                     Versão 1.00 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.01 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para persistência de configurações.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
 //
 // ═══════════════════════════════════════════════════════════════
-// CHANGELOG v1.00 (Parte 027):
+// CHANGELOG
+// ═══════════════════════════════════════════════════════════════
+// v1.01 (Parte 027):
+// + ShowLoadBanner: atualizado para exibir novos controles do banner
+//   redesenhado (m_lb_bg, m_lb_descLoad, m_lb_descIgnore)
+// + HideLoadBanner: atualizado para esconder todos os 6 controles do banner
+//
+// v1.00 (Parte 027):
 // + SaveCurrentConfig: coleta dados dos módulos e salva em .cfg
 // + CollectConfigData: preenche SConfigData a partir dos módulos e GUI state
 // + ApplyLoadedConfig: aplica SConfigData nos módulos + atualiza GUI

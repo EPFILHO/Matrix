@@ -2,15 +2,31 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.50 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.52 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.50"
+#property version   "1.52"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.52 (Parte 027):
+// + Banner: bloqueio de navegação (abas/sub-páginas) enquanto banner visível
+//   Força o usuário a escolher CARREGAR ou IGNORAR antes de navegar
+//   Handlers do banner movidos para o topo do CHARTEVENT_OBJECT_CLICK
+//
+// v1.51 (Parte 027):
+// + Banner redesenhado: caixa de destaque centralizada (CEdit background)
+//   Fundo C'40,45,60' com borda azul C'80,130,200', título amarelo 9pt
+//   Botões centralizados (120px) + descrições explicativas (7pt):
+//   "Carregar: aplica config salva (substitui inputs)"
+//   "Ignorar: apaga config salva e usa inputs do .set"
+//   Novos membros: m_lb_bg (CEdit), m_lb_descLoad, m_lb_descIgnore (CLabel)
+// * Fix: banner reaparecendo após minimize/restore do painel
+//   ReapplyTabVisibility() agora re-esconde banner quando !m_loadBannerVisible
+//   (CAppDialog::Show re-exibe todos os controles filhos ao restaurar)
+//
 // v1.50 (Parte 027):
 // * Fix: CollectConfigData e ApplyLoadedConfig movidos de private para public
 //   (correção de 'cannot access private member function')
