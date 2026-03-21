@@ -2,7 +2,7 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.56 - Claude Parte 028 (Claude Code) |
+//|                     Versão 1.56 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
@@ -13,8 +13,8 @@
 #define EA_VERSION "1.56"
 
 //+------------------------------------------------------------------+
-//| CHANGELOG v1.56 (Parte 028):                                     |
-//| - Botão INICIAR/PAUSAR no header do painel (entre tabs e conteúdo)|
+//| CHANGELOG v1.56 (Parte 027):                                     |
+//| - Botão INICIAR/PAUSAR no topo do painel (acima das tabs)         |
 //|   Visível em TODAS as abas, sempre acessível                      |
 //|   Estado inicial: PAUSADO (verde "INICIAR EA")                    |
 //|   Ao clicar: alterna para ATIVO (amarelo "PAUSAR EA")            |

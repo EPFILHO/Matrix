@@ -2,7 +2,7 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.53 - Claude Parte 028 (Claude Code) |
+//|                     Versão 1.53 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.53"
@@ -11,10 +11,10 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.53 (Parte 028):
-// + Botão INICIAR/PAUSAR no header (entre tabs e conteúdo)
+// v1.53 (Parte 027):
+// + Botão INICIAR/PAUSAR no topo do painel (acima das tabs)
 //   Novo membro: CButton m_btnStart, bool m_eaStarted
-//   CreateStartButton(): botão largo Y=32..54, verde/amarelo toggle
+//   CreateStartButton(): botão largo Y=3..25, verde/amarelo toggle
 //   OnClickStart(): alterna m_eaStarted e visual do botão
 //   SetStarted(): API pública para controlar estado (usada pelo EA)
 //   IsStarted(): getter público consultado no OnTick do EA
@@ -383,7 +383,9 @@
 #define COL_VALUE_W          255
 
 #define START_BTN_H          22
-#define CONTENT_TOP          (32 + START_BTN_H + 4)
+#define START_BTN_Y          3
+#define TAB_BTN_Y            (START_BTN_Y + START_BTN_H + 2)
+#define CONTENT_TOP          (TAB_BTN_Y + TAB_BTN_H + 8)
 #define TAB_BTN_H            22
 
 // Layout sub-páginas (CONFIG, ESTRAT., FILTROS)
@@ -739,7 +741,7 @@ private:
    bool                      m_cur_newsOn3;
    // (MA Cross e RSI ESTRAT state vars movidos para CMACrossPanel / CRSIStrategyPanel)
 
-   // ── Botão INICIAR/PAUSAR (Parte 028) ──
+   // ── Botão INICIAR/PAUSAR (Parte 027) ──
    CButton            m_btnStart;
    bool               m_eaStarted;
 
@@ -917,7 +919,7 @@ public:
    void              HideLoadBanner(void);
    bool              HasSavedConfig(void);
 
-   // ── Controle INICIAR/PAUSAR (Parte 028) ──
+   // ── Controle INICIAR/PAUSAR (Parte 027) ──
    bool              IsStarted(void) const { return m_eaStarted; }
    void              SetStarted(bool started);
 
@@ -1208,7 +1210,7 @@ void CEPBotPanel::SetEV(CLabel &val, string value, color clr)
 //+------------------------------------------------------------------+
 bool CEPBotPanel::CreateStartButton(void)
   {
-   int y1 = 32;  // logo abaixo das tabs originais (tab Y=3..25)
+   int y1 = START_BTN_Y;  // topo do painel, acima das tabs
    int y2 = y1 + START_BTN_H;
 
    if(!m_btnStart.Create(m_chart_id, PFX + "btnStart", m_subwin,
@@ -1257,7 +1259,7 @@ void CEPBotPanel::SetStarted(bool started)
 bool CEPBotPanel::CreateTabButtons(void)
   {
    int w = (PANEL_WIDTH - 30) / TAB_COUNT;
-   int y1 = 3, y2 = 3 + TAB_BTN_H;
+   int y1 = TAB_BTN_Y, y2 = TAB_BTN_Y + TAB_BTN_H;
 
    if(!m_btnTab0.Create(m_chart_id, PFX + "tab0", m_subwin, 5, y1, 5 + w, y2))
       return false;
