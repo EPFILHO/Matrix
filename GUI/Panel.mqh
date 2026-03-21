@@ -2,15 +2,27 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.52 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.53 - Claude Parte 028 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.52"
+#property version   "1.53"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.53 (Parte 028):
+// + Botão INICIAR/PAUSAR no header (entre tabs e conteúdo)
+//   Novo membro: CButton m_btnStart, bool m_eaStarted
+//   CreateStartButton(): botão largo Y=32..54, verde/amarelo toggle
+//   OnClickStart(): alterna m_eaStarted e visual do botão
+//   SetStarted(): API pública para controlar estado (usada pelo EA)
+//   IsStarted(): getter público consultado no OnTick do EA
+//   Handler no ChartEvent (CHARTEVENT_OBJECT_CLICK) sempre acessível
+// + Layout: PANEL_HEIGHT 600→626, START_BTN_H=22, CONTENT_TOP +26px
+//   CFG_APPLY_Y 520→546 (proporcional)
+//   Todas as coordenadas usam constantes — zero hardcode
+//
 // v1.52 (Parte 027):
 // + Banner: bloqueio de navegação (abas/sub-páginas) enquanto banner visível
 //   Força o usuário a escolher CARREGAR ou IGNORAR antes de navegar

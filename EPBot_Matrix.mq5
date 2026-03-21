@@ -2,16 +2,29 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.55 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.56 - Claude Parte 028 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.55"
+#property version   "1.56"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //--- Constante centralizada de versão
-#define EA_VERSION "1.55"
+#define EA_VERSION "1.56"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.56 (Parte 028):                                     |
+//| - Botão INICIAR/PAUSAR no header do painel (entre tabs e conteúdo)|
+//|   Visível em TODAS as abas, sempre acessível                      |
+//|   Estado inicial: PAUSADO (verde "INICIAR EA")                    |
+//|   Ao clicar: alterna para ATIVO (amarelo "PAUSAR EA")            |
+//| - Guard no OnTick: bloqueia abertura de novas posições quando     |
+//|   pausado, mas NÃO afeta gerenciamento de posições abertas        |
+//|   (trailing, breakeven, partial TP continuam funcionando)          |
+//| - Tester: g_panel==NULL → guard bypassed, trading funciona normal |
+//| - STATUS tab: mostra "PAUSADO" (amarelo) quando EA não iniciado   |
+//| - Layout: PANEL_HEIGHT 600→626, CONTENT_TOP +26px (START_BTN_H)   |
+//|   CFG_APPLY_Y 520→546, todas as coordenadas parametrizadas        |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.55 (Parte 027):                                     |
 //| - Runtime vars: g_magicNumber, g_slippage, g_tradeComment        |
