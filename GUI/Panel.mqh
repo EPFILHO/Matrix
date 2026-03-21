@@ -712,7 +712,10 @@ private:
 
    // ── Banner de carregamento de config salva (Parte 027) ──
    bool               m_loadBannerVisible;
-   CLabel             m_lb_msg;          // "Configurações salvas encontradas (DD/MM HH:MM)"
+   CEdit              m_lb_bg;           // Fundo do banner (caixa colorida)
+   CLabel             m_lb_msg;          // "Config salva encontrada (DD/MM HH:MM)"
+   CLabel             m_lb_descLoad;     // Descrição do botão Carregar
+   CLabel             m_lb_descIgnore;   // Descrição do botão Ignorar
    CButton            m_lb_btnLoad;      // "CARREGAR"
    CButton            m_lb_btnIgnore;    // "IGNORAR"
    SConfigData        m_pendingLoadData; // Dados carregados pendentes de confirmação
@@ -1025,36 +1028,84 @@ bool CEPBotPanel::CreatePanel(long chart, string name, int subwin,
    if(!CreateTabConfig())     return false;
 
 // ── Banner de Load Config (inicialmente oculto) ──
-   int bannerY = CONTENT_TOP + 2;
+// Layout centralizado com caixa de destaque
+   int bw     = PANEL_WIDTH - 20;          // largura interna do banner
+   int bx     = 5;                         // margem esquerda
+   int by     = CONTENT_TOP + TAB_BTN_H + 4; // logo abaixo das abas
+   int bh     = 100;                       // altura total da caixa
+
+   // Fundo (CEdit read-only como caixa colorida)
+   if(!m_lb_bg.Create(m_chart_id, PFX + "lb_bg", m_subwin,
+                      bx, by, bx + bw, by + bh))
+      return false;
+   m_lb_bg.Text("");
+   m_lb_bg.ReadOnly(true);
+   m_lb_bg.ColorBackground(C'40,45,60');
+   m_lb_bg.ColorBorder(C'80,130,200');
+   m_lb_bg.Color(clrNONE);
+   if(!Add(m_lb_bg)) return false;
+   m_lb_bg.Hide();
+
+   // Titulo centralizado
+   int msgX = bx + 10;
+   int msgY = by + 6;
    if(!m_lb_msg.Create(m_chart_id, PFX + "lb_msg", m_subwin,
-                       COL_LABEL_X, bannerY, COL_LABEL_X + 380, bannerY + PANEL_GAP_Y))
+                       msgX, msgY, msgX + bw - 20, msgY + 16))
       return false;
    m_lb_msg.Text("");
-   m_lb_msg.Color(CLR_WARNING);
-   m_lb_msg.FontSize(8);
+   m_lb_msg.Color(C'255,200,60');
+   m_lb_msg.FontSize(9);
    if(!Add(m_lb_msg)) return false;
    m_lb_msg.Hide();
 
-   int btnY = bannerY + PANEL_GAP_Y + 2;
+   // Botoes centralizados
+   int btnW   = 120;
+   int btnGap = 20;
+   int totalW = btnW * 2 + btnGap;
+   int btnX   = bx + (bw - totalW) / 2;
+   int btnY   = msgY + 22;
+
    if(!m_lb_btnLoad.Create(m_chart_id, PFX + "lb_load", m_subwin,
-                           COL_LABEL_X, btnY, COL_LABEL_X + 100, btnY + 20))
+                           btnX, btnY, btnX + btnW, btnY + 22))
       return false;
    m_lb_btnLoad.Text("CARREGAR");
-   m_lb_btnLoad.FontSize(8);
+   m_lb_btnLoad.FontSize(9);
    m_lb_btnLoad.ColorBackground(C'0,140,60');
    m_lb_btnLoad.Color(clrWhite);
    if(!Add(m_lb_btnLoad)) return false;
    m_lb_btnLoad.Hide();
 
    if(!m_lb_btnIgnore.Create(m_chart_id, PFX + "lb_ignore", m_subwin,
-                             COL_LABEL_X + 110, btnY, COL_LABEL_X + 210, btnY + 20))
+                             btnX + btnW + btnGap, btnY,
+                             btnX + btnW + btnGap + btnW, btnY + 22))
       return false;
    m_lb_btnIgnore.Text("IGNORAR");
-   m_lb_btnIgnore.FontSize(8);
+   m_lb_btnIgnore.FontSize(9);
    m_lb_btnIgnore.ColorBackground(C'160,60,60');
    m_lb_btnIgnore.Color(clrWhite);
    if(!Add(m_lb_btnIgnore)) return false;
    m_lb_btnIgnore.Hide();
+
+   // Descricoes abaixo dos botoes
+   int descY = btnY + 28;
+   if(!m_lb_descLoad.Create(m_chart_id, PFX + "lb_dLoad", m_subwin,
+                            msgX, descY, msgX + bw - 20, descY + 14))
+      return false;
+   m_lb_descLoad.Text("Carregar: aplica config salva (substitui inputs)");
+   m_lb_descLoad.Color(C'160,180,200');
+   m_lb_descLoad.FontSize(7);
+   if(!Add(m_lb_descLoad)) return false;
+   m_lb_descLoad.Hide();
+
+   int descY2 = descY + 16;
+   if(!m_lb_descIgnore.Create(m_chart_id, PFX + "lb_dIgn", m_subwin,
+                              msgX, descY2, msgX + bw - 20, descY2 + 14))
+      return false;
+   m_lb_descIgnore.Text("Ignorar: apaga config salva e usa inputs do .set");
+   m_lb_descIgnore.Color(C'160,180,200');
+   m_lb_descIgnore.FontSize(7);
+   if(!Add(m_lb_descIgnore)) return false;
+   m_lb_descIgnore.Hide();
 
    m_origDragTrade  = (bool)ChartGetInteger(chart, CHART_DRAG_TRADE_LEVELS);
    m_origMouseScroll = (bool)ChartGetInteger(chart, CHART_MOUSE_SCROLL);

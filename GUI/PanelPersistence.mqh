@@ -527,10 +527,13 @@ void CEPBotPanel::ShowLoadBanner(const SConfigData &data)
 
    string timeStr = TimeToString(data.lastModified, TIME_DATE | TIME_MINUTES);
    m_lb_msg.Text("Config salva encontrada (" + timeStr + ")");
-   m_lb_msg.Color(CLR_WARNING);
+   m_lb_msg.Color(C'255,200,60');
+   m_lb_bg.Show();
    m_lb_msg.Show();
    m_lb_btnLoad.Show();
    m_lb_btnIgnore.Show();
+   m_lb_descLoad.Show();
+   m_lb_descIgnore.Show();
    ChartRedraw();
   }
 
@@ -540,9 +543,12 @@ void CEPBotPanel::ShowLoadBanner(const SConfigData &data)
 void CEPBotPanel::HideLoadBanner(void)
   {
    m_loadBannerVisible = false;
+   m_lb_bg.Hide();
    m_lb_msg.Hide();
    m_lb_btnLoad.Hide();
    m_lb_btnIgnore.Hide();
+   m_lb_descLoad.Hide();
+   m_lb_descIgnore.Hide();
    ChartRedraw();
   }
 
