@@ -1,9 +1,39 @@
-# PLANO: Correção Completa da Persistência + Hot-Reload do Magic Number (Parte 027)
+# PLANO: Persistência + Hot-Reload + Controle de Estado do EA (Parte 027)
 
 ## Contexto
 O hot-reload do Magic Number (e outros campos) via painel GUI tem múltiplos furos:
 módulos não atualizados, campos não persistidos, estados stale, e riscos de
 comportamento perigoso (drawdown não protege, streaks errados, etc.).
+
+Além disso, o EA permite edição de parâmetros enquanto está rodando, criando
+risco de inconsistência e operações órfãs. Este plano implementa um modelo
+de estado robusto:
+
+### Modelo de Estado do EA
+```
+┌─────────────────────────────────────────────────────────────┐
+│  PAUSADO (sem posições abertas)                             │
+│  → Todos os controles HABILITADOS (edição livre)            │
+│  → Botão verde: "▶ INICIAR EA"                             │
+│  → Ao clicar INICIAR:                                       │
+│    1. Valida TUDO (config + estratégias + filtros)           │
+│    2. Aplica TUDO nos módulos                               │
+│    3. Salva .cfg                                            │
+│    4. Inicia trading                                        │
+├─────────────────────────────────────────────────────────────┤
+│  RODANDO                                                    │
+│  → Todos os controles DESABILITADOS (read-only)             │
+│  → Botão amarelo: "⏸ PAUSAR EA"                            │
+│  → Ao clicar PAUSAR:                                        │
+│    - Se há posições abertas → BLOQUEIA com mensagem:        │
+│      "Feche as posições antes de pausar"                    │
+│    - Se não há posições → pausa e libera controles          │
+├─────────────────────────────────────────────────────────────┤
+│  PAUSADO (com posições abertas) — estado transitório        │
+│  → NÃO DEVE OCORRER (pausar é bloqueado com posições)       │
+│  → Se ocorrer (edge case): controles DESABILITADOS          │
+└─────────────────────────────────────────────────────────────┘
+```
 
 Este plano corrige TUDO de uma vez, organizado em etapas lógicas.
 
@@ -346,21 +376,291 @@ Atualizar headers de versão nos arquivos modificados:
 
 ---
 
+## ETAPA 12: Remover botões APLICAR individuais dos sub-painéis
+**Arquivos:** `GUI/Panels/MACrossPanel.mqh`, `RSIStrategyPanel.mqh`,
+`BollingerBandsPanel.mqh`, `TrendFilterPanel.mqh`, `RSIFilterPanel.mqh`,
+`BollingerBandsFilterPanel.mqh`
+
+Em cada um dos 6 sub-painéis:
+
+### 12a. Remover criação do botão APLICAR:
+Remover o bloco `m_btnApply.Create(...)` + `m_btnApply.Text("APLICAR ...")` +
+`parent.AddControl(m_btnApply)` do método `Create()`.
+
+### 12b. Remover handler de click:
+Remover a verificação `if(name == m_btnApply.Name())` do `OnEvent()`.
+
+### 12c. Manter o método `_OnApply()`:
+O método `_OnApply()` (validação + aplicação nos módulos) continua existindo,
+mas agora será chamado pelo INICIAR centralizado (Etapa 14), não pelo botão.
+Remover a chamada `m_parent.SaveCurrentConfig()` de dentro do `_OnApply()`
+(o save será feito uma única vez pelo INICIAR, após tudo aplicado).
+
+### 12d. Tornar `_OnApply()` público:
+Mudar de private para public para que o painel principal possa chamá-lo.
+Retornar `bool` (true=sucesso, false=erro de validação):
+```cpp
+public:
+   bool  Apply(void);   // antigo _OnApply(), agora retorna sucesso/erro
+```
+
+---
+
+## ETAPA 13: SetAllControlsEnabled() — Travar/liberar controles
+**Arquivo:** `GUI/PanelTabConfig.mqh` (novo método) + `GUI/Panels/*.mqh`
+
+### 13a. Método no painel principal:
+```cpp
+void CEPBotPanel::SetAllControlsEnabled(bool enable)
+{
+   // ── CONFIG: RISCO ──
+   SetEditEnabled(m_cr_lLot, m_cr_iLot, enable);
+   SetEditEnabled(m_cr_lSL,  m_cr_iSL,  enable);
+   SetEditEnabled(m_cr_lTP,  m_cr_iTP,  enable);
+   SetEditEnabled(m_cr_lATRp, m_cr_iATRp, enable);
+   SetEditEnabled(m_cr_lRngP, m_cr_iRngP, enable);
+   SetEditEnabled(m_cr_lTP1p, m_cr_iTP1p, enable);
+   SetEditEnabled(m_cr_lTP1d, m_cr_iTP1d, enable);
+   SetEditEnabled(m_cr_lTP2p, m_cr_iTP2p, enable);
+   SetEditEnabled(m_cr_lTP2d, m_cr_iTP2d, enable);
+   // radio buttons SL/TP type, toggles PTP, CompSpread...
+   // (usar SetButtonEnabled para cada toggle/radio)
+
+   // ── CONFIG: RISCO 2 ──
+   SetEditEnabled(m_c2_lTrlSt, m_c2_iTrlSt, enable);
+   SetEditEnabled(m_c2_lTrlSp, m_c2_iTrlSp, enable);
+   SetEditEnabled(m_c2_lBEVal, m_c2_iBEVal, enable);
+   SetEditEnabled(m_c2_lBEOff, m_c2_iBEOff, enable);
+   SetEditEnabled(m_c2_lDLTrd, m_c2_iDLTrd, enable);
+   SetEditEnabled(m_c2_lDLLoss, m_c2_iDLLoss, enable);
+   SetEditEnabled(m_c2_lDLGain, m_c2_iDLGain, enable);
+   SetEditEnabled(m_c2_lDD, m_c2_iDD, enable);
+   // toggles: Trailing, BE, DailyLimits, DD, radios DDType/DDPeak/PTA
+
+   // ── CONFIG: BLOQUEIOS ──
+   SetEditEnabled(m_cb_lSpr, m_cb_iSpr, enable);
+   // streaks, time filter, CBS edits + toggles...
+
+   // ── CONFIG: BLOQ2 (NEWS) ──
+   // 3 janelas de notícias: toggles + edits H/M
+
+   // ── CONFIG: OUTROS ──
+   SetEditEnabled(m_co_lMagic, m_co_iMagic, enable);
+   SetEditEnabled(m_co_lComm, m_co_iComm, enable);
+   SetEditEnabled(m_co_lSlip, m_co_iSlip, enable);
+   SetEditEnabled(m_co_lDbgCd, m_co_iDbgCd, enable);
+   // toggles debug, conflict
+
+   // ── BOTÃO APLICAR CONFIG (removido? ou desabilitado) ──
+   m_cfg_btnApply.ColorBackground(enable ? C'30,120,70' : C'80,80,80');
+
+   // ── SUB-PAINÉIS: Estratégias + Filtros ──
+   for(int i = 0; i < m_stratPanelCount; i++)
+      m_stratPanels[i].SetEnabled(enable);
+   for(int i = 0; i < m_filtPanelCount; i++)
+      m_filtPanels[i].SetEnabled(enable);
+
+   ChartRedraw();
+}
+```
+
+### 13b. Método SetEnabled() nos sub-painéis (base class):
+Cada sub-painel precisa de um `SetEnabled(bool enable)` que desabilita/habilita
+seus CEdits e CButtons internos. Implementar na classe base `CStrategyPanelBase`
+ou em cada sub-painel individualmente.
+
+```cpp
+// Em CStrategyPanelBase ou em cada panel:
+virtual void SetEnabled(bool enable);
+```
+
+Cada sub-painel implementa desabilitando seus próprios campos:
+- CEdits: `ReadOnly(!enable)` + cor de fundo cinza
+- CButtons (toggles/radios): cor esmaecida + ignorar clicks
+
+### 13c. Sobre o botão APLICAR CONFIG principal:
+O botão APLICAR da aba CONFIG pode ser **mantido** como alternativa rápida
+para testar configs sem iniciar o EA (validar e aplicar sem iniciar trading).
+Quando o EA está rodando, fica desabilitado (cinza).
+
+---
+
+## ETAPA 14: OnClickStart — Validar/Aplicar tudo + checar posições
+**Arquivo:** `GUI/Panel.mqh` ou `GUI/PanelTabConfig.mqh`
+
+Reescrever `OnClickStart()`:
+
+```cpp
+void CEPBotPanel::OnClickStart(void)
+{
+   m_btnStart.Pressed(false);
+
+   // ═══════════════════════════════════════════════════════
+   // PAUSAR (EA rodando → quer pausar)
+   // ═══════════════════════════════════════════════════════
+   if(m_eaStarted)
+   {
+      // Checar posições abertas do magic atual
+      int openPositions = CountOpenPositions(m_magicNumber);
+      if(openPositions > 0)
+      {
+         // BLOQUEAR pausa — posições abertas
+         m_cfg_status.Text("Feche " + IntegerToString(openPositions)
+                          + " posição(ões) antes de pausar");
+         m_cfg_status.Color(CLR_NEGATIVE);
+         m_cfgStatusExpiry = GetTickCount() + 10000;
+         ChartRedraw();
+         return;
+      }
+
+      // OK: sem posições → pausar
+      SetStarted(false);
+      SetAllControlsEnabled(true);  // Liberar controles
+      return;
+   }
+
+   // ═══════════════════════════════════════════════════════
+   // INICIAR (EA pausado → quer iniciar)
+   // ═══════════════════════════════════════════════════════
+
+   // 1. Aplicar CONFIG geral (valida + aplica nos módulos)
+   ApplyConfig();
+   // Checar se ApplyConfig reportou erros
+   // (ApplyConfig seta m_cfg_status com erro se houver)
+   // Precisamos de um retorno bool ou flag para saber se deu erro
+   // → Refatorar ApplyConfig() para retornar bool
+
+   // 2. Aplicar cada sub-painel de estratégia ativo
+   bool hasErrors = false;
+   for(int i = 0; i < m_stratPanelCount; i++)
+   {
+      if(!m_stratPanels[i].Apply())
+         hasErrors = true;
+   }
+
+   // 3. Aplicar cada sub-painel de filtro ativo
+   for(int i = 0; i < m_filtPanelCount; i++)
+   {
+      if(!m_filtPanels[i].Apply())
+         hasErrors = true;
+   }
+
+   // 4. Se houve erros, NÃO iniciar
+   if(hasErrors)
+   {
+      m_cfg_status.Text("Corrija os erros antes de iniciar");
+      m_cfg_status.Color(CLR_NEGATIVE);
+      m_cfgStatusExpiry = GetTickCount() + 10000;
+      ChartRedraw();
+      return;
+   }
+
+   // 5. Tudo OK → salvar config e iniciar
+   SaveCurrentConfig();
+   SetStarted(true);
+   SetAllControlsEnabled(false);  // Travar controles
+}
+```
+
+### 14a. Refatorar ApplyConfig() para retornar bool:
+Atualmente `ApplyConfig()` é `void`. Mudar para `bool`:
+```cpp
+bool CEPBotPanel::ApplyConfig(void)   // era void
+{
+   // ... validação existente ...
+   if(errors > 0)
+      return false;
+   // ... aplicação ...
+   return true;
+}
+```
+
+### 14b. CountOpenPositions() — Novo helper:
+```cpp
+int CEPBotPanel::CountOpenPositions(int magic)
+{
+   int count = 0;
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      if(PositionSelectByIndex(i))
+      {
+         if(PositionGetString(POSITION_SYMBOL) == m_symbol &&
+            PositionGetInteger(POSITION_MAGIC) == magic)
+            count++;
+      }
+   }
+   return count;
+}
+```
+
+---
+
+## ETAPA 15: Estado inicial do EA — Controles habilitados ao iniciar
+**Arquivo:** `GUI/Panel.mqh`
+
+### 15a. No Init() / CreatePanel():
+Após criar todos os controles, como `m_eaStarted` começa `false` (EA pausado),
+os controles já devem estar habilitados. Nenhuma mudança necessária aqui.
+
+### 15b. No ApplyLoadedConfig():
+Após carregar config (banner CARREGAR ou auto-load), NÃO iniciar o EA
+automaticamente. Os controles ficam habilitados, o EA fica pausado.
+O usuário precisa clicar INICIAR para validar/aplicar/começar.
+
+### 15c. Exibir status visual claro:
+Quando pausado, a aba STATUS deve mostrar "PAUSADO" (amarelo) — já implementado
+na Parte 027 anterior.
+
+---
+
+## ETAPA 11: Changelogs
+Atualizar headers de versão nos arquivos modificados:
+
+| Arquivo | Mudança principal | Parte |
+|---------|-------------------|-------|
+| ConfigPersistence.mqh | +4 campos SConfigData, validação enums | 027 |
+| PanelPersistence.mqh | Collect/Apply novos campos, fix double-assign | 027 |
+| PanelTabConfig.mqh | ApplyMagicNumberChange(), SetAllControlsEnabled(), ApplyConfig→bool | 027 |
+| Panel.mqh | OnClickStart() reescrito, CountOpenPositions() | 027 |
+| Logger.mqh | ReloadForMagic() | 027 |
+| BlockerDrawdown.mqh | SetMagicNumber() com reset de estado | 027 |
+| BlockerFilters.mqh | SetMagicNumber() limpa caches transição | 027 |
+| Blockers.mqh | SetMagicNumber() completo + ReconstructStreaks() | 027 |
+| TradeManager.mqh | SetMagicNumber() com cleanup + resync | 027 |
+| MACrossPanel.mqh | Remover APLICAR, Apply() público | 027 |
+| RSIStrategyPanel.mqh | Remover APLICAR, Apply() público | 027 |
+| BollingerBandsPanel.mqh | Remover APLICAR, Apply() público | 027 |
+| TrendFilterPanel.mqh | Remover APLICAR, Apply() público | 027 |
+| RSIFilterPanel.mqh | Remover APLICAR, Apply() público | 027 |
+| BollingerBandsFilterPanel.mqh | Remover APLICAR, Apply() público | 027 |
+
+---
+
 ## ORDEM DE IMPLEMENTAÇÃO
 
 ```
-1. ConfigPersistence.mqh  ← struct + Save + Load + validação  (base de tudo)
-2. Logger.mqh             ← ReloadForMagic()                  (sem dependências)
-3. BlockerDrawdown.mqh    ← SetMagicNumber()                  (sem dependências)
-4. BlockerFilters.mqh     ← expandir SetMagicNumber()         (sem dependências)
-5. TradeManager.mqh       ← expandir SetMagicNumber()         (sem dependências)
-6. Blockers.mqh           ← expandir SetMagicNumber() + ReconstructStreaks()
-7. PanelPersistence.mqh   ← Collect + Apply + fix assignments
-8. PanelTabConfig.mqh     ← ApplyMagicNumberChange() + hot-reload
+FASE 1 — PERSISTÊNCIA + HOT-RELOAD (sem mudança de UX)
+  1. ConfigPersistence.mqh  ← struct + Save + Load + validação
+  2. Logger.mqh             ← ReloadForMagic()
+  3. BlockerDrawdown.mqh    ← SetMagicNumber()
+  4. BlockerFilters.mqh     ← expandir SetMagicNumber()
+  5. TradeManager.mqh       ← expandir SetMagicNumber()
+  6. Blockers.mqh           ← expandir SetMagicNumber() + ReconstructStreaks()
+  7. PanelPersistence.mqh   ← Collect + Apply + fix assignments
+  8. PanelTabConfig.mqh     ← ApplyMagicNumberChange() + hot-reload
+
+FASE 2 — CONTROLE DE ESTADO (UX: travar controles + INICIAR aplica tudo)
+  9.  Sub-painéis (6 arqs)  ← Remover APLICAR, Apply() público, SetEnabled()
+  10. PanelTabConfig.mqh    ← SetAllControlsEnabled(), ApplyConfig()→bool
+  11. Panel.mqh             ← OnClickStart() reescrito, CountOpenPositions()
+
+FASE 3 — CHANGELOGS
+  12. Todos os arquivos     ← Atualizar versões/changelogs
 ```
 
 Etapas 2-5 podem ser feitas em paralelo (sem dependências entre si).
-Etapa 6 depende de 3+4. Etapa 7 depende de 1. Etapa 8 depende de todas.
+Etapa 6 depende de 3+4. Etapa 7 depende de 1. Etapa 8 depende de 6+7.
+Fase 2 depende da Fase 1 estar completa.
 
 ---
 
@@ -381,9 +681,8 @@ Nenhuma migração necessária. Configs antigos carregam normalmente.
 
 ## RISCOS E CUIDADOS
 
-1. **Posições abertas ao mudar magic**: O ResyncExistingPositions() só encontrará
-   posições do NOVO magic. Posições do magic antigo ficam "órfãs" (sem trailing,
-   sem BE, sem parciais). Logar warning se houver posições abertas com magic antigo.
+1. **Posições abertas ao mudar magic**: Com o novo modelo, magic SÓ pode ser
+   alterado com EA pausado (sem posições). O risco de operação órfã é eliminado.
 
 2. **Nome do .cfg muda com o magic**: O .cfg antigo fica intacto para se o
    usuário voltar ao magic anterior → stats e config restauram automaticamente.
@@ -395,10 +694,18 @@ Nenhuma migração necessária. Configs antigos carregam normalmente.
 4. **Ordem das chamadas**: Logger DEVE ser recarregado ANTES de
    Blockers.ReconstructStreaks(), pois os streaks leem do Logger.
 
+5. **APLICAR CONFIG mantido**: O botão APLICAR da aba CONFIG continua existindo
+   (para testar configs sem iniciar), mas fica desabilitado quando EA está rodando.
+
+6. **Edge case: MT5 fecha com posição aberta**: No restart, EA inicia pausado
+   (m_eaStarted=false). Se há posição aberta do magic, os controles devem ficar
+   travados. O OnInit deve verificar posições abertas e travar se necessário.
+
 ---
 
 ## TOTAL ESTIMADO
-- **8 arquivos** modificados
-- **~80-100 linhas** de código novo
+- **15 arquivos** modificados
+- **~200-250 linhas** de código novo/alterado
+- **~30 linhas** removidas (botões APLICAR dos sub-painéis)
 - **0 arquivos** novos criados
-- **0 mudanças** em lógica de trading existente
+- Lógica de trading existente: **inalterada**
