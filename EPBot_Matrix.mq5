@@ -2,13 +2,19 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.54 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.55 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.54"
+#property version   "1.55"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.55 (Parte 027):                                     |
+//| - Runtime vars: g_magicNumber, g_slippage, g_tradeComment        |
+//|   substituem inp_* (read-only) para suportar hot reload           |
+//| - Todas as referências a inp_MagicNumber, inp_Slippage e         |
+//|   inp_TradeComment no EA principal agora usam as vars editáveis   |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.54 (Parte 027):                                     |
 //| - Config Persistence: banner redesenhado com caixa de destaque,  |

@@ -2,11 +2,16 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.23 - Claude Parte 025 (Claude Code) |
+//|                     Versão 3.24 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.23"
+#property version   "3.24"
 #property strict
+
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.24 (Parte 027):
+// + SetMagicNumber() — facade para BlockerFilters.SetMagicNumber()
+// ═══════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.23 (Parte 025):

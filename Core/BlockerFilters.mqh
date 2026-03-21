@@ -2,7 +2,9 @@
 //|                                             BlockerFilters.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|              Filtros de Condição de Mercado - EPBot Matrix       |
-//|                     Versão 1.00 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.01 - Claude Parte 027 (Claude Code) |
+// CHANGELOG v1.01 (Parte 027):
+// + SetMagicNumber() / GetMagicNumber() — hot reload do Magic Number
 //+------------------------------------------------------------------+
 // NOTA: Enums (ENUM_BLOCKER_REASON, ENUM_SESSION_STATE, etc.) e
 // Logger.mqh são incluídos por Blockers.mqh ANTES deste arquivo.

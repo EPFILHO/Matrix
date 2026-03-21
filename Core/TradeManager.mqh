@@ -2,10 +2,13 @@
 //|                                                 TradeManager.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|             Gerenciamento de Posições Individuais - EPBot Matrix |
-//|                     Versão 1.22 - Claude Parte 021 (Claude Code) |
+//|                     Versão 1.23 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.22"
+#property version   "1.23"
+
+// CHANGELOG v1.23 (Parte 027):
+// + SetMagicNumber() / GetMagicNumber() — hot reload do Magic Number
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
