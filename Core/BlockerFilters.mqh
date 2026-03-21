@@ -144,12 +144,14 @@ public:
    void              SetCloseBeforeSessionEnd(bool close, int minutes);
    void              SetNewsFilter(int window, bool enable, int startH, int startM, int endH, int endM);
    void              SetMaxSpread(int newMaxSpread);
+   void              SetMagicNumber(int newMagic);
 
    // ═══════════════════════════════════════════════════════════════
    // GETTERS
    // ═══════════════════════════════════════════════════════════════
    int               GetMaxSpread() const      { return m_maxSpread; }
    int               GetInputMaxSpread() const { return m_inputMaxSpread; }
+   int               GetMagicNumber() const    { return m_magicNumber; }
   };
 
 //+------------------------------------------------------------------+
@@ -783,6 +785,14 @@ void CBlockerFilters::SetMaxSpread(int newMaxSpread)
       else
          Print("🔄 Spread máximo alterado: ", oldValue, " → ", newMaxSpread, " pontos");
      }
+  }
+
+//+------------------------------------------------------------------+
+//| Hot Reload — Magic Number                                        |
+//+------------------------------------------------------------------+
+void CBlockerFilters::SetMagicNumber(int newMagic)
+  {
+   m_magicNumber = newMagic;
   }
 
 //+------------------------------------------------------------------+

@@ -291,6 +291,12 @@
 //| INCLUDES - ORDEM IMPORTANTE                                      |
 //+------------------------------------------------------------------+
 
+// 0️⃣ RUNTIME VARS — cópias editáveis dos inputs (hot reload)
+//    Declaradas antes dos includes para serem visíveis nos .mqh
+int    g_magicNumber   = 0;
+int    g_slippage      = 0;
+string g_tradeComment  = "";
+
 // 1️⃣ INPUTS CENTRALIZADOS (primeiro!)
 #include "Core/Inputs.mqh"
 
@@ -410,6 +416,13 @@ int OnInit()
    Print("════════════════════════════════════════════════════════════════");
 
 // ═══════════════════════════════════════════════════════════════
+// RUNTIME VARS — inicializar a partir dos inputs
+// ═══════════════════════════════════════════════════════════════
+   g_magicNumber  = inp_MagicNumber;
+   g_slippage     = inp_Slippage;
+   g_tradeComment = inp_TradeComment;
+
+// ═══════════════════════════════════════════════════════════════
 // ETAPA 1: INICIALIZAR LOGGER (sempre primeiro!)
 // ═══════════════════════════════════════════════════════════════
    g_logger = new CLogger();
@@ -419,7 +432,7 @@ int OnInit()
       return INIT_FAILED;
      }
 
-   if(!g_logger.Init(inp_ShowDebugLogs, _Symbol, inp_MagicNumber, inp_DebugCooldownSec))
+   if(!g_logger.Init(inp_ShowDebugLogs, _Symbol, g_magicNumber, inp_DebugCooldownSec))
      {
       Print("❌ ERRO CRÍTICO: Falha ao inicializar Logger!");
       CleanupAll();
@@ -439,7 +452,7 @@ int OnInit()
 
    if(!g_blockers.Init(
          g_logger,
-         inp_MagicNumber,
+         g_magicNumber,
          inp_EnableTimeFilter,
          inp_StartHour,
          inp_StartMinute,
@@ -616,8 +629,8 @@ int OnInit()
          g_logger,
          g_riskManager,
          _Symbol,
-         inp_MagicNumber,
-         inp_Slippage
+         g_magicNumber,
+         g_slippage
       ))
      {
       g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar TradeManager!");
@@ -640,7 +653,7 @@ int OnInit()
       for(int i = PositionsTotal() - 1; i >= 0; i--)
         {
          if(PositionGetSymbol(i) == _Symbol && 
-            PositionGetInteger(POSITION_MAGIC) == inp_MagicNumber)
+            PositionGetInteger(POSITION_MAGIC) == g_magicNumber)
            {
             g_lastPositionTicket = PositionGetTicket(i);
             
@@ -1001,7 +1014,7 @@ int OnInit()
                          g_signalManager, g_maCrossStrategy, g_rsiStrategy,
                          g_bbStrategy,
                          g_trendFilter, g_rsiFilter, g_bbFilter,
-                         inp_MagicNumber, _Symbol);
+                         g_magicNumber, _Symbol);
 
             int chartWidth = (int)ChartGetInteger(0, CHART_WIDTH_IN_PIXELS);
             int x1 = chartWidth - PANEL_WIDTH - 10;
@@ -1031,18 +1044,18 @@ int OnInit()
       if(prevReason == REASON_PARAMETERS)
         {
          // Usuário alterou inputs (preset): deletar config salva
-         CConfigPersistence::Delete(_Symbol, inp_MagicNumber);
+         CConfigPersistence::Delete(_Symbol, g_magicNumber);
          g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
                       "Preset alterado - config salva deletada");
         }
       else if(prevReason == REASON_CHARTCHANGE || prevReason == REASON_TEMPLATE)
         {
          // Troca de TF ou template: auto-carregar config salva silenciosamente
-         if(CConfigPersistence::Exists(_Symbol, inp_MagicNumber))
+         if(CConfigPersistence::Exists(_Symbol, g_magicNumber))
            {
             SConfigData loadedData;
             ZeroMemory(loadedData);
-            if(CConfigPersistence::Load(_Symbol, inp_MagicNumber, loadedData))
+            if(CConfigPersistence::Load(_Symbol, g_magicNumber, loadedData))
               {
                g_panel.ApplyLoadedConfig(loadedData);
                g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
@@ -1053,11 +1066,11 @@ int OnInit()
       else if(prevReason == REASON_CLOSE || prevReason == REASON_REMOVE)
         {
          // Fechamento acidental do MT5 ou remoção: mostrar banner
-         if(CConfigPersistence::Exists(_Symbol, inp_MagicNumber))
+         if(CConfigPersistence::Exists(_Symbol, g_magicNumber))
            {
             SConfigData loadedData;
             ZeroMemory(loadedData);
-            if(CConfigPersistence::Load(_Symbol, inp_MagicNumber, loadedData))
+            if(CConfigPersistence::Load(_Symbol, g_magicNumber, loadedData))
               {
                g_panel.ShowLoadBanner(loadedData);
                g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
@@ -1068,11 +1081,11 @@ int OnInit()
       // REASON_RECOMPILE, REASON_ACCOUNT: auto-carregar silenciosamente
       else if(prevReason == REASON_RECOMPILE || prevReason == REASON_ACCOUNT)
         {
-         if(CConfigPersistence::Exists(_Symbol, inp_MagicNumber))
+         if(CConfigPersistence::Exists(_Symbol, g_magicNumber))
            {
             SConfigData loadedData;
             ZeroMemory(loadedData);
-            if(CConfigPersistence::Load(_Symbol, inp_MagicNumber, loadedData))
+            if(CConfigPersistence::Load(_Symbol, g_magicNumber, loadedData))
               {
                g_panel.ApplyLoadedConfig(loadedData);
                g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
@@ -1084,11 +1097,11 @@ int OnInit()
         {
          // REASON_PROGRAM (0), REASON_CHARTCLOSE (4), etc.:
          // EA adicionado fresh — se existe .cfg, mostrar banner
-         if(CConfigPersistence::Exists(_Symbol, inp_MagicNumber))
+         if(CConfigPersistence::Exists(_Symbol, g_magicNumber))
            {
             SConfigData loadedData;
             ZeroMemory(loadedData);
-            if(CConfigPersistence::Load(_Symbol, inp_MagicNumber, loadedData))
+            if(CConfigPersistence::Load(_Symbol, g_magicNumber, loadedData))
               {
                g_panel.ShowLoadBanner(loadedData);
                g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
@@ -1108,7 +1121,7 @@ int OnInit()
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.52 - PRONTO PARA OPERAR!");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Símbolo: " + _Symbol);
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(g_magicNumber));
 
    if(inp_UsePartialTP)
       g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Partial TP: ATIVADO");
@@ -1299,7 +1312,7 @@ void OnTick()
       if(PositionGetSymbol(i) != _Symbol)
          continue;
 
-      if(PositionGetInteger(POSITION_MAGIC) == inp_MagicNumber)
+      if(PositionGetInteger(POSITION_MAGIC) == g_magicNumber)
         {
          hasMyPosition = true;
          myPositionTicket = PositionGetTicket(i);
@@ -1460,10 +1473,10 @@ void OnTick()
          request.symbol       = _Symbol;
          request.volume       = volume;
          request.price        = closePrice;
-         request.deviation    = inp_Slippage;
+         request.deviation    = g_slippage;
          request.type         = (posType == POSITION_TYPE_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
          request.type_filling = GetTypeFilling(_Symbol);
-         request.magic        = inp_MagicNumber;
+         request.magic        = g_magicNumber;
          request.comment      = "Close[" + closeTrigger + "]";
 
          g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TIME_CLOSE", "════════════════════════════════════════════════════════════════");
@@ -1619,8 +1632,8 @@ void ManageOpenPosition(ulong ticket)
       request.price = (posType == POSITION_TYPE_BUY) ?
                      SymbolInfoDouble(_Symbol, SYMBOL_BID) :
                      SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-      request.deviation = inp_Slippage;
-      request.magic = inp_MagicNumber;
+      request.deviation = g_slippage;
+      request.magic = g_magicNumber;
       request.comment = "Daily Limit";
       request.type_filling = GetTypeFilling(_Symbol);
 
@@ -1680,8 +1693,8 @@ void ManageOpenPosition(ulong ticket)
          request.price = (posType == POSITION_TYPE_BUY) ?
                         SymbolInfoDouble(_Symbol, SYMBOL_BID) :
                         SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-         request.deviation = inp_Slippage;
-         request.magic = inp_MagicNumber;
+         request.deviation = g_slippage;
+         request.magic = g_magicNumber;
          request.comment = "Drawdown Limit";
          request.type_filling = GetTypeFilling(_Symbol);
 
@@ -1820,8 +1833,8 @@ if(g_riskManager.ShouldActivateTrailing(tp1Executed, tp2Executed))
       request.volume = PositionGetDouble(POSITION_VOLUME);
       request.type = (posType == POSITION_TYPE_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
       request.price = currentPrice;
-      request.deviation = inp_Slippage;
-      request.magic = inp_MagicNumber;
+      request.deviation = g_slippage;
+      request.magic = g_magicNumber;
       request.comment = "Exit: " + g_signalManager.GetLastSignalSource();
       request.type_filling = GetTypeFilling(_Symbol);
 
@@ -1949,9 +1962,9 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
    request.price = price;
    request.sl = slPrice;
    request.tp = tpPrice;  // 0 se usar Partial TP
-   request.deviation = inp_Slippage;
-   request.magic = inp_MagicNumber;
-   request.comment = inp_TradeComment;
+   request.deviation = g_slippage;
+   request.magic = g_magicNumber;
+   request.comment = g_tradeComment;
    request.type_filling = GetTypeFilling(_Symbol);
 
 // Log dos parâmetros
@@ -2032,7 +2045,7 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
             if(ticket == 0) continue;
             
             if(PositionGetString(POSITION_SYMBOL) == _Symbol &&
-               PositionGetInteger(POSITION_MAGIC) == inp_MagicNumber)
+               PositionGetInteger(POSITION_MAGIC) == g_magicNumber)
               {
                // Verificar se foi aberta "agora" (últimos 5 segundos)
                datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);

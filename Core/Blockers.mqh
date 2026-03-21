@@ -218,6 +218,7 @@ public:
    void              SetCloseOnEndTime(bool close);
    void              SetCloseBeforeSessionEnd(bool close, int minutes);
    void              SetNewsFilter(int window, bool enable, int startH, int startM, int endH, int endM);
+   void              SetMagicNumber(int newMagic);
 
    // ═══════════════════════════════════════════════════════════════
    // GETTERS — ESTADO
@@ -620,6 +621,14 @@ void CBlockers::SetDrawdownPeakMode(ENUM_DRAWDOWN_PEAK_MODE newMode)
 void CBlockers::TryActivateDrawdownNow(double dailyProfit)
   {
    m_drawdown.TryActivateDrawdownNow(dailyProfit);
+  }
+
+//+------------------------------------------------------------------+
+//| Hot Reload — Magic Number                                        |
+//+------------------------------------------------------------------+
+void CBlockers::SetMagicNumber(int newMagic)
+  {
+   m_filters.SetMagicNumber(newMagic);
   }
 
 //+------------------------------------------------------------------+

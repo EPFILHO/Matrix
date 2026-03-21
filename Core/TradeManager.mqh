@@ -128,8 +128,10 @@ public:
    void              Clear();
 
    void              SetSlippage(int newSlippage);
+   void              SetMagicNumber(int newMagic);
    int               GetInputSlippage() const { return m_inputSlippage; }
    int               GetSlippage() const { return m_slippage; }
+   int               GetMagicNumber() const { return m_magicNumber; }
 
    void              PrintAllPositions();
   };
@@ -861,6 +863,19 @@ void CTradeManager::SetSlippage(int newSlippage)
    if(m_logger != NULL)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", 
          "🔄 Slippage: " + IntegerToString(oldValue) + " → " + IntegerToString(newSlippage) + " pts");
+  }
+
+//+------------------------------------------------------------------+
+//| Hot Reload — Magic Number                                        |
+//+------------------------------------------------------------------+
+void CTradeManager::SetMagicNumber(int newMagic)
+  {
+   int oldValue = m_magicNumber;
+   m_magicNumber = newMagic;
+
+   if(m_logger != NULL && oldValue != newMagic)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 Magic Number: " + IntegerToString(oldValue) + " → " + IntegerToString(newMagic));
   }
 
 //+------------------------------------------------------------------+

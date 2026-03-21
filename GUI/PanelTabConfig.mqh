@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.29 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.30 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -14,6 +14,14 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.30 (Parte 027):
+// * Hot Reload: Magic Number, Trade Comment e Slippage (runtime vars)
+//   - Magic Number aplicado em TradeManager + BlockerFilters + g_magicNumber
+//   - Trade Comment aplicado em g_tradeComment
+//   - Slippage aplicado em g_slippage (+ TradeManager que já existia)
+//   - Variáveis globais g_magicNumber/g_slippage/g_tradeComment substituem
+//     inp_* no EA principal para serem editáveis em runtime
+//
 // v1.29 (Parte 027):
 // * Fix: TryActivateDrawdownNow no hot reload ativava DD imediatamente
 //   mesmo quando ação = ATIVAR DD (deveria esperar Max Gain ser atingido)
@@ -1845,9 +1853,30 @@ void CEPBotPanel::ApplyConfig(void)
 // ═══════════════════════════════════════════════
    if(m_tradeManager != NULL)
      {
+      // Slippage
       int slip = (int)StringToInteger(m_co_iSlip.Text());
-      if(slip >= 0 && slip <= 10000) m_tradeManager.SetSlippage(slip); else errors++;
+      if(slip >= 0 && slip <= 10000)
+        {
+         m_tradeManager.SetSlippage(slip);
+         g_slippage = slip;
+        }
+      else
+         errors++;
+
+      // Magic Number
+      int magic = (int)StringToInteger(m_co_iMagic.Text());
+      if(magic > 0)
+        {
+         m_tradeManager.SetMagicNumber(magic);
+         if(m_blockers != NULL) m_blockers.SetMagicNumber(magic);
+         g_magicNumber = magic;
+        }
+      else
+         errors++;
      }
+
+   // Trade Comment
+   g_tradeComment = m_co_iComm.Text();
 
    if(m_signalManager != NULL)
       m_signalManager.SetConflictResolution(m_cur_conflict);
