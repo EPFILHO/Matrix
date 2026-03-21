@@ -2,10 +2,14 @@
 //|                                              PanelTabStatus.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: STATUS — Create + Update                      |
-//|                     Versão 1.12 - Claude Parte 024 (Claude Code) |
+//|                     Versão 1.13 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba STATUS.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
+//
+// v1.13 (Parte 027):
+// + Trading status mostra "PAUSADO" (amarelo) quando m_eaStarted==false
+//   Integração com botão INICIAR/PAUSAR do header do painel
 //
 // v1.12 (Parte 024):
 // + SIGNAL MANAGER movido de ESTRAT. → STATUS (abaixo de SINAIS)
