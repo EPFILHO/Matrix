@@ -361,7 +361,7 @@
 // DIMENSÕES E LAYOUT
 // ═══════════════════════════════════════════════════════════════
 #define PANEL_WIDTH          430
-#define PANEL_HEIGHT         600
+#define PANEL_HEIGHT         626
 
 #define PANEL_GAP_Y          18
 #define PANEL_GAP_SECTION    8
@@ -370,14 +370,15 @@
 #define COL_VALUE_X          150
 #define COL_VALUE_W          255
 
-#define CONTENT_TOP          32
+#define START_BTN_H          22
+#define CONTENT_TOP          (32 + START_BTN_H + 4)
 #define TAB_BTN_H            22
 
 // Layout sub-páginas (CONFIG, ESTRAT., FILTROS)
 #define CFG_CONTENT_Y        (CONTENT_TOP + TAB_BTN_H + 6)
 #define ESTRAT_CONTENT_Y     (CONTENT_TOP + TAB_BTN_H + 6)
 #define FILTROS_CONTENT_Y    (CONTENT_TOP + TAB_BTN_H + 6)
-#define CFG_APPLY_Y          520
+#define CFG_APPLY_Y          546
 
 // ═══════════════════════════════════════════════════════════════
 // CORES
@@ -726,6 +727,10 @@ private:
    bool                      m_cur_newsOn3;
    // (MA Cross e RSI ESTRAT state vars movidos para CMACrossPanel / CRSIStrategyPanel)
 
+   // ── Botão INICIAR/PAUSAR (Parte 028) ──
+   CButton            m_btnStart;
+   bool               m_eaStarted;
+
    // ── Banner de carregamento de config salva (Parte 027) ──
    bool               m_loadBannerVisible;
    CEdit              m_lb_bg;           // Fundo do banner (caixa colorida)
@@ -762,6 +767,8 @@ private:
    int               TPTypeToIndex(ENUM_TP_TYPE t);
    ENUM_TP_TYPE      IndexToTPType(int i);
 
+   bool              CreateStartButton(void);
+   void              OnClickStart(void);
    bool              CreateTabButtons(void);
    bool              CreateTabStatus(void);
    bool              CreateTabResultados(void);
@@ -898,6 +905,10 @@ public:
    void              HideLoadBanner(void);
    bool              HasSavedConfig(void);
 
+   // ── Controle INICIAR/PAUSAR (Parte 028) ──
+   bool              IsStarted(void) const { return m_eaStarted; }
+   void              SetStarted(bool started);
+
 public:
    virtual void      ChartEvent(const int id, const long &lparam,
                                 const double &dparam, const string &sparam);
@@ -933,7 +944,8 @@ CEPBotPanel::CEPBotPanel(void)
      m_cur_ddType(DD_FINANCIAL), m_cur_ddPeakMode(DD_PEAK_REALIZED_ONLY),
      m_cur_profitTargetAction(PROFIT_ACTION_STOP),
      m_cfgStatusExpiry(0),
-     m_loadBannerVisible(false)
+     m_loadBannerVisible(false),
+     m_eaStarted(false)
   {
   }
 
@@ -1037,6 +1049,7 @@ bool CEPBotPanel::CreatePanel(long chart, string name, int subwin,
       return false;
 
    if(!CreateTabButtons())    return false;
+   if(!CreateStartButton())   return false;
    if(!CreateTabStatus())     return false;
    if(!CreateTabResultados()) return false;
    if(!CreateTabEstrategias()) return false;
@@ -1179,6 +1192,54 @@ void CEPBotPanel::SetEV(CLabel &val, string value, color clr)
   }
 
 //+------------------------------------------------------------------+
+//| Botão INICIAR/PAUSAR (header, visível em todas as abas)           |
+//+------------------------------------------------------------------+
+bool CEPBotPanel::CreateStartButton(void)
+  {
+   int y1 = 32;  // logo abaixo das tabs originais (tab Y=3..25)
+   int y2 = y1 + START_BTN_H;
+
+   if(!m_btnStart.Create(m_chart_id, PFX + "btnStart", m_subwin,
+                         5, y1, PANEL_WIDTH - 15, y2))
+      return false;
+   m_btnStart.Text("▶  INICIAR EA");
+   m_btnStart.FontSize(9);
+   m_btnStart.Color(clrWhite);
+   m_btnStart.ColorBackground(C'0,140,60');
+   if(!Add(m_btnStart))
+      return false;
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| OnClickStart — alterna estado INICIAR/PAUSAR                      |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickStart(void)
+  {
+   m_btnStart.Pressed(false);
+   SetStarted(!m_eaStarted);
+  }
+
+//+------------------------------------------------------------------+
+//| SetStarted — atualiza flag e visual do botão                      |
+//+------------------------------------------------------------------+
+void CEPBotPanel::SetStarted(bool started)
+  {
+   m_eaStarted = started;
+   if(m_eaStarted)
+     {
+      m_btnStart.Text("⏸  PAUSAR EA");
+      m_btnStart.ColorBackground(C'200,140,0');
+     }
+   else
+     {
+      m_btnStart.Text("▶  INICIAR EA");
+      m_btnStart.ColorBackground(C'0,140,60');
+     }
+   ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
 //| Botões de aba                                                     |
 //+------------------------------------------------------------------+
 bool CEPBotPanel::CreateTabButtons(void)
@@ -1249,6 +1310,9 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
 // ══════════════════════════════════════════════════════════════════
    if(id == CHARTEVENT_OBJECT_CLICK)
      {
+      // INICIAR/PAUSAR — sempre acessível (header)
+      if(sparam == m_btnStart.Name()) { OnClickStart(); ChartRedraw(); return; }
+
       // BANNER: Load/Ignore config — sempre acessível
       if(sparam == m_lb_btnLoad.Name())   { m_lb_btnLoad.Pressed(false);   OnClickLoadBanner();   ChartRedraw(); return; }
       if(sparam == m_lb_btnIgnore.Name()) { m_lb_btnIgnore.Pressed(false); OnClickIgnoreBanner(); ChartRedraw(); return; }

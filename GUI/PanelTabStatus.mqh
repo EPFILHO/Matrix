@@ -78,8 +78,11 @@ void CEPBotPanel::UpdateStatus(void)
                         (m_logger != NULL) ? m_logger.GetDailyProfit() : 0,
                         blockReason);
 
-      SetEV(m_s_eTrading, blocked ? "BLOQUEADO" : "Permitido",
-            blocked ? CLR_NEGATIVE : CLR_POSITIVE);
+      if(!m_eaStarted)
+         SetEV(m_s_eTrading, "PAUSADO", CLR_WARNING);
+      else
+         SetEV(m_s_eTrading, blocked ? "BLOQUEADO" : "Permitido",
+               blocked ? CLR_NEGATIVE : CLR_POSITIVE);
       SetEV(m_s_eBlocker, blocked ? BlockerToStr(m_blockers.GetActiveBlocker()) : "Nenhum",
             blocked ? CLR_WARNING : CLR_NEUTRAL);
 

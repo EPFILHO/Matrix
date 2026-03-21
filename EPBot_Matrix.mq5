@@ -1527,6 +1527,13 @@ void OnTick()
      }
 
 // ═══════════════════════════════════════════════════════════════
+// GUARD: EA não iniciado pelo usuário → não abrir novas posições
+// (gerenciamento de posições abertas já foi feito acima)
+// ═══════════════════════════════════════════════════════════════
+   if(g_panel != NULL && !g_panel.IsStarted())
+      return;
+
+// ═══════════════════════════════════════════════════════════════
 // ETAPA 2: VERIFICAR BLOCKERS (só se NÃO tem posição!)
 // ═══════════════════════════════════════════════════════════════
 
