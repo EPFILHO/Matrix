@@ -107,6 +107,7 @@ private:
 
    bool              ExecutePartialClose(ulong ticket, double lot, string comment, ulong &outDealTicket);
    ENUM_ORDER_TYPE_FILLING GetTypeFilling();
+   bool              m_isResyncing;
    string            GetStateFileName();
    void              WriteKV(int handle, string key, string value);
    string            ReadKey(string line);
@@ -168,6 +169,7 @@ CTradeManager::CTradeManager()
    m_symbol = _Symbol;
    m_magicNumber = 0;
    m_slippage = 10;
+   m_isResyncing = false;
    ArrayResize(m_positions, 0);
   }
 
@@ -210,6 +212,7 @@ bool CTradeManager::Init(CLogger* logger, CRiskManager* riskManager, string symb
 int CTradeManager::ResyncExistingPositions()
   {
    int synced = 0;
+   m_isResyncing = true;
 
    for(int i = PositionsTotal() - 1; i >= 0; i--)
      {
@@ -244,9 +247,14 @@ int CTradeManager::ResyncExistingPositions()
             "🔄 Posição ressincronizada: #" + IntegerToString(ticket));
      }
 
+   m_isResyncing = false;
+
    // Após resync, restaurar estado salvo (TP1/TP2/BE/Trailing)
    if(synced > 0)
+     {
       LoadState();
+      SaveState();  // Salvar estado restaurado
+     }
 
    return synced;
   }
@@ -1020,6 +1028,7 @@ string CTradeManager::ReadValue(string line)
 bool CTradeManager::SaveState()
   {
    if(MQLInfoInteger(MQL_TESTER)) return false;
+   if(m_isResyncing) return true;  // Suprimir durante resync (LoadState vem depois)
 
    int count = ArraySize(m_positions);
 
