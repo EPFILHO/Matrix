@@ -1233,6 +1233,21 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
 // ══════════════════════════════════════════════════════════════════
    if(id == CHARTEVENT_OBJECT_CLICK)
      {
+      // BANNER: Load/Ignore config — sempre acessível
+      if(sparam == m_lb_btnLoad.Name())   { m_lb_btnLoad.Pressed(false);   OnClickLoadBanner();   ChartRedraw(); return; }
+      if(sparam == m_lb_btnIgnore.Name()) { m_lb_btnIgnore.Pressed(false); OnClickIgnoreBanner(); ChartRedraw(); return; }
+
+      // Enquanto o banner está visível, bloquear TODOS os outros cliques
+      // (abas, sub-páginas, configs, etc.) — força o usuário a decidir primeiro
+      if(m_loadBannerVisible)
+        {
+         // Desfaz o estado "pressed" dos botões de aba para evitar visual errado
+         m_btnTab0.Pressed(false); m_btnTab1.Pressed(false); m_btnTab2.Pressed(false);
+         m_btnTab3.Pressed(false); m_btnTab4.Pressed(false);
+         ChartRedraw();
+         return;
+        }
+
       // Abas principais
       if(sparam == m_btnTab0.Name()) { m_btnTab0.Pressed(false); OnClickTab0(); ChartRedraw(); return; }
       if(sparam == m_btnTab1.Name()) { m_btnTab1.Pressed(false); OnClickTab1(); ChartRedraw(); return; }
@@ -1321,10 +1336,6 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       if(sparam == m_cb2_bN1On.Name()) { m_cb2_bN1On.Pressed(false); OnClickNewsOn1(); ChartRedraw(); return; }
       if(sparam == m_cb2_bN2On.Name()) { m_cb2_bN2On.Pressed(false); OnClickNewsOn2(); ChartRedraw(); return; }
       if(sparam == m_cb2_bN3On.Name()) { m_cb2_bN3On.Pressed(false); OnClickNewsOn3(); ChartRedraw(); return; }
-
-      // BANNER: Load/Ignore config
-      if(sparam == m_lb_btnLoad.Name())   { m_lb_btnLoad.Pressed(false);   OnClickLoadBanner();   ChartRedraw(); return; }
-      if(sparam == m_lb_btnIgnore.Name()) { m_lb_btnIgnore.Pressed(false); OnClickIgnoreBanner(); ChartRedraw(); return; }
 
       // CONFIG: OUTROS toggles
       if(sparam == m_co_bConfl.Name()) { OnClickConflict(); ChartRedraw(); return; }
