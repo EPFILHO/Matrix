@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.28 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.29 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -14,6 +14,11 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.29 (Parte 027):
+// * Fix: TryActivateDrawdownNow no hot reload ativava DD imediatamente
+//   mesmo quando ação = ATIVAR DD (deveria esperar Max Gain ser atingido)
+//   Agora só ativa se lucro atual já ultrapassou Max Gain
+//
 // v1.28 (Parte 027):
 // + OUTROS: Magic Number (CEdit + label aviso CLR_WARNING) e Comentário
 //   das Ordens (CEdit) — acima de Slippage/Conflito; Debug por último
@@ -1771,9 +1776,12 @@ void CEPBotPanel::ApplyConfig(void)
             m_blockers.SetDrawdownValue(dd);
             m_blockers.SetDrawdownType(m_cur_ddType);
             m_blockers.SetDrawdownPeakMode(m_cur_ddPeakMode);
-            // Ativa proteção imediatamente se DD foi ligado via painel sem meta de lucro
+            // Só ativa DD imediatamente se lucro atual já ultrapassou Max Gain
+            // Caso contrário, CanTrade() ativa quando meta for atingida
             double curDailyProfit = (m_logger != NULL) ? m_logger.GetDailyProfit() : 0.0;
-            m_blockers.TryActivateDrawdownNow(curDailyProfit);
+            double maxGn = StringToDouble(m_c2_iDLGain.Text());
+            if(maxGn > 0 && curDailyProfit >= maxGn)
+               m_blockers.TryActivateDrawdownNow(curDailyProfit);
            }
          else
             errors++;
