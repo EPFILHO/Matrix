@@ -1253,109 +1253,115 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
       if(sparam == m_lb_btnLoad.Name())   { m_lb_btnLoad.Pressed(false);   OnClickLoadBanner();   ChartRedraw(); return; }
       if(sparam == m_lb_btnIgnore.Name()) { m_lb_btnIgnore.Pressed(false); OnClickIgnoreBanner(); ChartRedraw(); return; }
 
-      // Enquanto o banner está visível, bloquear TODOS os outros cliques
-      // (abas, sub-páginas, configs, etc.) — força o usuário a decidir primeiro
+      // Enquanto o banner está visível, bloquear cliques de navegação
+      // (abas, sub-páginas, configs, etc.) — força o usuário a decidir primeiro.
+      // NÃO fazemos return — o fluxo cai no CAppDialog::ChartEvent() abaixo
+      // para que minimize, maximize, close e drag continuem funcionando.
       if(m_loadBannerVisible)
         {
          // Desfaz o estado "pressed" dos botões de aba para evitar visual errado
          m_btnTab0.Pressed(false); m_btnTab1.Pressed(false); m_btnTab2.Pressed(false);
          m_btnTab3.Pressed(false); m_btnTab4.Pressed(false);
          ChartRedraw();
-         return;
+         // Não interceptamos — cai direto no CAppDialog::ChartEvent() abaixo
         }
-
-      // Abas principais
-      if(sparam == m_btnTab0.Name()) { m_btnTab0.Pressed(false); OnClickTab0(); ChartRedraw(); return; }
-      if(sparam == m_btnTab1.Name()) { m_btnTab1.Pressed(false); OnClickTab1(); ChartRedraw(); return; }
-      if(sparam == m_btnTab2.Name()) { m_btnTab2.Pressed(false); OnClickTab2(); ChartRedraw(); return; }
-      if(sparam == m_btnTab3.Name()) { m_btnTab3.Pressed(false); OnClickTab3(); ChartRedraw(); return; }
-      if(sparam == m_btnTab4.Name()) { m_btnTab4.Pressed(false); OnClickTab4(); ChartRedraw(); return; }
-
-      // ESTRAT.: botões de navegação (genérico)
-      for(int i = 0; i < m_stratBtnCount; i++)
+      else
         {
-         if(sparam == m_e_stratBtns[i].Name())
-           { m_e_stratBtns[i].Pressed(false); ShowEstratPage(i); ChartRedraw(); return; }
+         // ── Navegação normal (só quando banner NÃO está visível) ──
+
+         // Abas principais
+         if(sparam == m_btnTab0.Name()) { m_btnTab0.Pressed(false); OnClickTab0(); ChartRedraw(); return; }
+         if(sparam == m_btnTab1.Name()) { m_btnTab1.Pressed(false); OnClickTab1(); ChartRedraw(); return; }
+         if(sparam == m_btnTab2.Name()) { m_btnTab2.Pressed(false); OnClickTab2(); ChartRedraw(); return; }
+         if(sparam == m_btnTab3.Name()) { m_btnTab3.Pressed(false); OnClickTab3(); ChartRedraw(); return; }
+         if(sparam == m_btnTab4.Name()) { m_btnTab4.Pressed(false); OnClickTab4(); ChartRedraw(); return; }
+
+         // ESTRAT.: botões de navegação (genérico)
+         for(int i = 0; i < m_stratBtnCount; i++)
+           {
+            if(sparam == m_e_stratBtns[i].Name())
+              { m_e_stratBtns[i].Pressed(false); ShowEstratPage(i); ChartRedraw(); return; }
+           }
+         // ESTRAT.: eventos dos painéis (genérico)
+         for(int i = 0; i < m_stratPanelCount; i++)
+           {
+            if(m_stratPanels[i] != NULL && m_stratPanels[i].OnClick(sparam)) { ChartRedraw(); return; }
+           }
+
+         // FILTROS: botões de navegação (genérico)
+         for(int i = 0; i < m_filtBtnCount; i++)
+           {
+            if(sparam == m_f_filtBtns[i].Name())
+              { m_f_filtBtns[i].Pressed(false); ShowFiltrosPage(i); ChartRedraw(); return; }
+           }
+         // FILTROS: eventos dos painéis (genérico)
+         for(int i = 0; i < m_filtPanelCount; i++)
+           {
+            if(m_filtPanels[i] != NULL && m_filtPanels[i].OnClick(sparam)) { ChartRedraw(); return; }
+           }
+
+         // CONFIG: sub-páginas
+         if(sparam == m_cfg_btnRisco.Name())  { m_cfg_btnRisco.Pressed(false);  OnClickCfgRisco();  ChartRedraw(); return; }
+         if(sparam == m_cfg_btnRisco2.Name()) { m_cfg_btnRisco2.Pressed(false); OnClickCfgRisco2(); ChartRedraw(); return; }
+         if(sparam == m_cfg_btnBloq.Name())   { m_cfg_btnBloq.Pressed(false);   OnClickCfgBloq();   ChartRedraw(); return; }
+         if(sparam == m_cfg_btnOutros.Name()) { m_cfg_btnOutros.Pressed(false); OnClickCfgOutros(); ChartRedraw(); return; }
+         if(sparam == m_cfg_btnBloq2.Name())  { m_cfg_btnBloq2.Pressed(false);  OnClickCfgBloq2();  ChartRedraw(); return; }
+
+         // CONFIG: APLICAR
+         if(sparam == m_cfg_btnApply.Name())  { m_cfg_btnApply.Pressed(false); OnClickApply(); ChartRedraw(); return; }
+
+         // CONFIG: radio groups (SL Type, TP Type, Direction)
+         for(int i = 0; i < 3; i++)
+           {
+            if(sparam == m_cr_bSLT[i].Name()) { OnClickSLType(i);    ChartRedraw(); return; }
+            if(sparam == m_cr_bTPT[i].Name()) { OnClickTPType(i);    ChartRedraw(); return; }
+            if(sparam == m_cb_bDir[i].Name()) { OnClickDirection(i);  ChartRedraw(); return; }
+           }
+
+         // CONFIG: RISCO toggles
+         if(sparam == m_cr_bCSL.Name()) { OnClickCompSL();  ChartRedraw(); return; }
+         if(sparam == m_cr_bCTP.Name()) { OnClickCompTP();  ChartRedraw(); return; }
+
+         // CONFIG: RISCO toggles (Partial TP agora em RISCO)
+         if(sparam == m_cr_bPTP.Name()) { OnClickPartialTP(); ChartRedraw(); return; }
+
+         // CONFIG: RISCO 2 toggles
+         if(sparam == m_c2_bDLAct.Name())  { OnClickDailyLimitsToggle(); ChartRedraw(); return; }
+         if(sparam == m_c2_bTrlAct.Name()) { OnClickTrailToggle(); ChartRedraw(); return; }
+         if(sparam == m_c2_bBEAct.Name())  { OnClickBEToggle();    ChartRedraw(); return; }
+         if(sparam == m_c2_bCTrl.Name())   { OnClickCompTrail();   ChartRedraw(); return; }
+         if(sparam == m_c2_bDDAct.Name())  { OnClickDDToggle();    ChartRedraw(); return; }
+
+         // CONFIG: BLOQUEIOS toggles
+         if(sparam == m_cb_bLStrOn.Name()) { OnClickLossStreakToggle(); ChartRedraw(); return; }
+         if(sparam == m_cb_bWStrOn.Name()) { OnClickWinStreakToggle();  ChartRedraw(); return; }
+         if(sparam == m_cb_bTFOn.Name())   { OnClickTFToggle();         ChartRedraw(); return; }
+         if(sparam == m_cb_bTFCl.Name())   { OnClickTFClose();          ChartRedraw(); return; }
+         if(sparam == m_cb_bCBSOn.Name())  { OnClickCBSToggle();        ChartRedraw(); return; }
+
+         // CONFIG: BLOQUEIOS radio groups (2 opções cada)
+         for(int i = 0; i < 2; i++)
+           {
+            if(sparam == m_cb_bLStrA[i].Name())  { OnClickLossStreakAction(i);   ChartRedraw(); return; }
+            if(sparam == m_cb_bWStrA[i].Name())  { OnClickWinStreakAction(i);    ChartRedraw(); return; }
+           }
+         // CONFIG: RISCO 2 radio groups — Daily Limits + DrawDown
+         for(int i = 0; i < 2; i++)
+           {
+            if(sparam == m_c2_bDLPTA[i].Name())  { OnClickDLProfitTargetAction(i); ChartRedraw(); return; }
+            if(sparam == m_c2_bDDT[i].Name())    { OnClickDDType(i);               ChartRedraw(); return; }
+            if(sparam == m_c2_bDDPk[i].Name())   { OnClickDDPeakMode(i);           ChartRedraw(); return; }
+           }
+
+         // CONFIG: BLOQUEIO 2 — news window toggles
+         if(sparam == m_cb2_bN1On.Name()) { m_cb2_bN1On.Pressed(false); OnClickNewsOn1(); ChartRedraw(); return; }
+         if(sparam == m_cb2_bN2On.Name()) { m_cb2_bN2On.Pressed(false); OnClickNewsOn2(); ChartRedraw(); return; }
+         if(sparam == m_cb2_bN3On.Name()) { m_cb2_bN3On.Pressed(false); OnClickNewsOn3(); ChartRedraw(); return; }
+
+         // CONFIG: OUTROS toggles
+         if(sparam == m_co_bConfl.Name()) { OnClickConflict(); ChartRedraw(); return; }
+         if(sparam == m_co_bDbg.Name())   { OnClickDebug();    ChartRedraw(); return; }
         }
-      // ESTRAT.: eventos dos painéis (genérico)
-      for(int i = 0; i < m_stratPanelCount; i++)
-        {
-         if(m_stratPanels[i] != NULL && m_stratPanels[i].OnClick(sparam)) { ChartRedraw(); return; }
-        }
-
-      // FILTROS: botões de navegação (genérico)
-      for(int i = 0; i < m_filtBtnCount; i++)
-        {
-         if(sparam == m_f_filtBtns[i].Name())
-           { m_f_filtBtns[i].Pressed(false); ShowFiltrosPage(i); ChartRedraw(); return; }
-        }
-      // FILTROS: eventos dos painéis (genérico)
-      for(int i = 0; i < m_filtPanelCount; i++)
-        {
-         if(m_filtPanels[i] != NULL && m_filtPanels[i].OnClick(sparam)) { ChartRedraw(); return; }
-        }
-
-      // CONFIG: sub-páginas
-      if(sparam == m_cfg_btnRisco.Name())  { m_cfg_btnRisco.Pressed(false);  OnClickCfgRisco();  ChartRedraw(); return; }
-      if(sparam == m_cfg_btnRisco2.Name()) { m_cfg_btnRisco2.Pressed(false); OnClickCfgRisco2(); ChartRedraw(); return; }
-      if(sparam == m_cfg_btnBloq.Name())   { m_cfg_btnBloq.Pressed(false);   OnClickCfgBloq();   ChartRedraw(); return; }
-      if(sparam == m_cfg_btnOutros.Name()) { m_cfg_btnOutros.Pressed(false); OnClickCfgOutros(); ChartRedraw(); return; }
-      if(sparam == m_cfg_btnBloq2.Name())  { m_cfg_btnBloq2.Pressed(false);  OnClickCfgBloq2();  ChartRedraw(); return; }
-
-      // CONFIG: APLICAR
-      if(sparam == m_cfg_btnApply.Name())  { m_cfg_btnApply.Pressed(false); OnClickApply(); ChartRedraw(); return; }
-
-      // CONFIG: radio groups (SL Type, TP Type, Direction)
-      for(int i = 0; i < 3; i++)
-        {
-         if(sparam == m_cr_bSLT[i].Name()) { OnClickSLType(i);    ChartRedraw(); return; }
-         if(sparam == m_cr_bTPT[i].Name()) { OnClickTPType(i);    ChartRedraw(); return; }
-         if(sparam == m_cb_bDir[i].Name()) { OnClickDirection(i);  ChartRedraw(); return; }
-        }
-
-      // CONFIG: RISCO toggles
-      if(sparam == m_cr_bCSL.Name()) { OnClickCompSL();  ChartRedraw(); return; }
-      if(sparam == m_cr_bCTP.Name()) { OnClickCompTP();  ChartRedraw(); return; }
-
-      // CONFIG: RISCO toggles (Partial TP agora em RISCO)
-      if(sparam == m_cr_bPTP.Name()) { OnClickPartialTP(); ChartRedraw(); return; }
-
-      // CONFIG: RISCO 2 toggles
-      if(sparam == m_c2_bDLAct.Name())  { OnClickDailyLimitsToggle(); ChartRedraw(); return; }
-      if(sparam == m_c2_bTrlAct.Name()) { OnClickTrailToggle(); ChartRedraw(); return; }
-      if(sparam == m_c2_bBEAct.Name())  { OnClickBEToggle();    ChartRedraw(); return; }
-      if(sparam == m_c2_bCTrl.Name())   { OnClickCompTrail();   ChartRedraw(); return; }
-      if(sparam == m_c2_bDDAct.Name())  { OnClickDDToggle();    ChartRedraw(); return; }
-
-      // CONFIG: BLOQUEIOS toggles
-      if(sparam == m_cb_bLStrOn.Name()) { OnClickLossStreakToggle(); ChartRedraw(); return; }
-      if(sparam == m_cb_bWStrOn.Name()) { OnClickWinStreakToggle();  ChartRedraw(); return; }
-      if(sparam == m_cb_bTFOn.Name())   { OnClickTFToggle();         ChartRedraw(); return; }
-      if(sparam == m_cb_bTFCl.Name())   { OnClickTFClose();          ChartRedraw(); return; }
-      if(sparam == m_cb_bCBSOn.Name())  { OnClickCBSToggle();        ChartRedraw(); return; }
-
-      // CONFIG: BLOQUEIOS radio groups (2 opções cada)
-      for(int i = 0; i < 2; i++)
-        {
-         if(sparam == m_cb_bLStrA[i].Name())  { OnClickLossStreakAction(i);   ChartRedraw(); return; }
-         if(sparam == m_cb_bWStrA[i].Name())  { OnClickWinStreakAction(i);    ChartRedraw(); return; }
-        }
-      // CONFIG: RISCO 2 radio groups — Daily Limits + DrawDown
-      for(int i = 0; i < 2; i++)
-        {
-         if(sparam == m_c2_bDLPTA[i].Name())  { OnClickDLProfitTargetAction(i); ChartRedraw(); return; }
-         if(sparam == m_c2_bDDT[i].Name())    { OnClickDDType(i);               ChartRedraw(); return; }
-         if(sparam == m_c2_bDDPk[i].Name())   { OnClickDDPeakMode(i);           ChartRedraw(); return; }
-        }
-
-      // CONFIG: BLOQUEIO 2 — news window toggles
-      if(sparam == m_cb2_bN1On.Name()) { m_cb2_bN1On.Pressed(false); OnClickNewsOn1(); ChartRedraw(); return; }
-      if(sparam == m_cb2_bN2On.Name()) { m_cb2_bN2On.Pressed(false); OnClickNewsOn2(); ChartRedraw(); return; }
-      if(sparam == m_cb2_bN3On.Name()) { m_cb2_bN3On.Pressed(false); OnClickNewsOn3(); ChartRedraw(); return; }
-
-      // CONFIG: OUTROS toggles
-      if(sparam == m_co_bConfl.Name()) { OnClickConflict(); ChartRedraw(); return; }
-      if(sparam == m_co_bDbg.Name())   { OnClickDebug();    ChartRedraw(); return; }
 
       // Não é nosso → cai pro CAppDialog abaixo
      }
