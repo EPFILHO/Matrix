@@ -80,6 +80,7 @@ public:
    // ═══════════════════════════════════════════════════════════════
    // HOT RELOAD
    // ═══════════════════════════════════════════════════════════════
+   void              SetMagicNumber(int newMagic);
    void              SetDrawdownValue(double newValue);
    void              SetDrawdownType(ENUM_DRAWDOWN_TYPE newType);
    void              SetDrawdownPeakMode(ENUM_DRAWDOWN_PEAK_MODE newMode);
@@ -580,6 +581,20 @@ void CBlockerDrawdown::SetDrawdownPeakMode(ENUM_DRAWDOWN_PEAK_MODE newMode)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "DrawdownPeakMode: " + modeText);
    else
       Print("🔄 DrawdownPeakMode: ", modeText);
+  }
+
+//+------------------------------------------------------------------+
+//| Hot Reload — Magic Number (reseta estado de drawdown)            |
+//+------------------------------------------------------------------+
+void CBlockerDrawdown::SetMagicNumber(int newMagic)
+  {
+   m_magicNumber = newMagic;
+
+   // Resetar estado de drawdown (peak calculado com magic antigo é inválido)
+   m_dailyPeakProfit          = 0.0;
+   m_drawdownProtectionActive = false;
+   m_drawdownLimitReached     = false;
+   m_drawdownActivationTime   = 0;
   }
 
 //+------------------------------------------------------------------+

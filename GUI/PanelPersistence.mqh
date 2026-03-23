@@ -61,31 +61,48 @@ void CEPBotPanel::CollectConfigData(SConfigData &data)
 // ── RISCO ──
    data.lotSize           = StringToDouble(m_cr_iLot.Text());
    data.slType            = m_cur_slType;
-   data.fixedSL           = (int)StringToInteger(m_cr_iSL.Text());
-   data.slATRMultiplier   = StringToDouble(m_cr_iSL.Text());  // mesmo campo, valor depende do tipo
-   data.rangeMultiplier   = StringToDouble(m_cr_iSL.Text());  // idem
+   if(m_cur_slType == SL_FIXED)
+      data.fixedSL        = (int)StringToInteger(m_cr_iSL.Text());
+   else if(m_cur_slType == SL_ATR)
+      data.slATRMultiplier = StringToDouble(m_cr_iSL.Text());
+   else // SL_RANGE
+      data.rangeMultiplier = StringToDouble(m_cr_iSL.Text());
    data.slCompensateSpread = m_cur_compSL;
    data.tpType            = m_cur_tpType;
-   data.fixedTP           = (int)StringToInteger(m_cr_iTP.Text());
-   data.tpATRMultiplier   = StringToDouble(m_cr_iTP.Text());
+   if(m_cur_tpType == TP_FIXED)
+      data.fixedTP        = (int)StringToInteger(m_cr_iTP.Text());
+   else
+      data.tpATRMultiplier = StringToDouble(m_cr_iTP.Text());
    data.tpCompensateSpread = m_cur_compTP;
    data.atrPeriod         = (int)StringToInteger(m_cr_iATRp.Text());
    data.rangePeriod       = (int)StringToInteger(m_cr_iRngP.Text());
 
 // ── Trailing ──
    data.trailOn               = m_cur_trailOn;
-   data.trailStartFixed       = (int)StringToInteger(m_c2_iTrlSt.Text());
-   data.trailStepFixed        = (int)StringToInteger(m_c2_iTrlSp.Text());
-   data.trailStartATR         = StringToDouble(m_c2_iTrlSt.Text());
-   data.trailStepATR          = StringToDouble(m_c2_iTrlSp.Text());
+   if(m_cur_trailingType == TRAILING_FIXED)
+     {
+      data.trailStartFixed    = (int)StringToInteger(m_c2_iTrlSt.Text());
+      data.trailStepFixed     = (int)StringToInteger(m_c2_iTrlSp.Text());
+     }
+   else
+     {
+      data.trailStartATR      = StringToDouble(m_c2_iTrlSt.Text());
+      data.trailStepATR       = StringToDouble(m_c2_iTrlSp.Text());
+     }
    data.trailCompensateSpread = m_cur_compTrail;
 
 // ── Breakeven ──
    data.beOn              = m_cur_beOn;
-   data.beActivationFixed = (int)StringToInteger(m_c2_iBEVal.Text());
-   data.beOffsetFixed     = (int)StringToInteger(m_c2_iBEOff.Text());
-   data.beActivationATR   = StringToDouble(m_c2_iBEVal.Text());
-   data.beOffsetATR       = StringToDouble(m_c2_iBEOff.Text());
+   if(m_cur_beType == BE_FIXED)
+     {
+      data.beActivationFixed = (int)StringToInteger(m_c2_iBEVal.Text());
+      data.beOffsetFixed     = (int)StringToInteger(m_c2_iBEOff.Text());
+     }
+   else
+     {
+      data.beActivationATR   = StringToDouble(m_c2_iBEVal.Text());
+      data.beOffsetATR       = StringToDouble(m_c2_iBEOff.Text());
+     }
 
 // ── Partial TP ──
    data.partialTP         = m_cur_partialTP;
@@ -151,10 +168,14 @@ void CEPBotPanel::CollectConfigData(SConfigData &data)
    data.news3EM           = (int)StringToInteger(m_cb2_iN3EM.Text());
 
 // ── Outros ──
+   data.magicNumber       = m_magicNumber;
+   data.tradeComment      = m_co_iComm.Text();
    data.slippage          = (int)StringToInteger(m_co_iSlip.Text());
    data.conflictMode      = m_cur_conflict;
    data.showDebug         = m_cur_debug;
    data.debugCooldown     = (int)StringToInteger(m_co_iDbgCd.Text());
+   data.trailingType      = m_cur_trailingType;
+   data.beType            = m_cur_beType;
 
 // ═══════════════════════════════════════════════
 // STRATEGIES: lê dos objetos via getters
@@ -284,10 +305,13 @@ void CEPBotPanel::ApplyLoadedConfig(const SConfigData &data)
    m_cur_newsOn3           = data.newsOn3;
    m_cur_conflict          = data.conflictMode;
    m_cur_debug             = data.showDebug;
+   m_cur_trailingType      = data.trailingType;
+   m_cur_beType            = data.beType;
 
    // Recalcular feature flags
    m_cfg_hasTP    = (m_cur_tpType != TP_NONE);
-   m_cfg_hasATR   = (m_cur_slType == SL_ATR || m_cur_tpType == TP_ATR);
+   m_cfg_hasATR   = (m_cur_slType == SL_ATR || m_cur_tpType == TP_ATR ||
+                     m_cur_trailingType == TRAILING_ATR || m_cur_beType == BE_ATR);
    m_cfg_hasRange = (m_cur_slType == SL_RANGE);
 
 // ═══════════════════════════════════════════════
@@ -313,7 +337,7 @@ void CEPBotPanel::ApplyLoadedConfig(const SConfigData &data)
    m_cr_iRngP.Text(IntegerToString(data.rangePeriod));
 
    // Trailing
-   if(inp_TrailingType == TRAILING_FIXED)
+   if(m_cur_trailingType == TRAILING_FIXED)
      {
       m_c2_iTrlSt.Text(IntegerToString(data.trailStartFixed));
       m_c2_iTrlSp.Text(IntegerToString(data.trailStepFixed));
@@ -325,7 +349,7 @@ void CEPBotPanel::ApplyLoadedConfig(const SConfigData &data)
      }
 
    // Breakeven
-   if(inp_BEType == BE_FIXED)
+   if(m_cur_beType == BE_FIXED)
      {
       m_c2_iBEVal.Text(IntegerToString(data.beActivationFixed));
       m_c2_iBEOff.Text(IntegerToString(data.beOffsetFixed));
@@ -383,6 +407,10 @@ void CEPBotPanel::ApplyLoadedConfig(const SConfigData &data)
    m_cb2_iN3EM.Text(IntegerToString(data.news3EM));
 
    // Outros
+   if(data.magicNumber > 0)
+      m_co_iMagic.Text(IntegerToString(data.magicNumber));
+   if(data.tradeComment != "")
+      m_co_iComm.Text(data.tradeComment);
    m_co_iSlip.Text(IntegerToString(data.slippage));
    m_co_iDbgCd.Text(IntegerToString(data.debugCooldown));
 

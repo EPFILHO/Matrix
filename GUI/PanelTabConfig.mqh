@@ -317,7 +317,7 @@ bool CEPBotPanel::CreateTabConfig(void)
    m_cfg_hasStreak     = inp_EnableStreakControl;
    m_cfg_hasDrawdown   = inp_EnableDrawdown;
    m_cfg_hasATR        = (inp_SLType == SL_ATR || inp_TPType == TP_ATR ||
-                           inp_TrailingType == TRAILING_ATR || inp_BEType == BE_ATR);
+                           m_cur_trailingType == TRAILING_ATR || m_cur_beType == BE_ATR);
    m_cfg_hasRange      = (inp_SLType == SL_RANGE);
 
 // ── Botões de sub-página (4 botões) ──
@@ -475,7 +475,7 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLB(m_c2_lTrlAct, m_c2_bTrlAct, "c2_lTA", "c2_bTA", "Trailing:", y)) return false;
    y += PANEL_GAP_Y + 2;
    {
-    string trSuffix = (inp_TrailingType == TRAILING_FIXED) ? " (pts):" : " (ATR x):";
+    string trSuffix = (m_cur_trailingType == TRAILING_FIXED) ? " (pts):" : " (ATR x):";
     if(!CreateLI(m_c2_lTrlSt, m_c2_iTrlSt, "c2_lTS", "c2_iTS", "Trail Start" + trSuffix, y)) return false;
     y += PANEL_GAP_Y;
     if(!CreateLI(m_c2_lTrlSp, m_c2_iTrlSp, "c2_lTP2", "c2_iTP2", "Trail Step" + trSuffix, y)) return false;
@@ -491,7 +491,7 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLB(m_c2_lBEAct, m_c2_bBEAct, "c2_lBA", "c2_bBA", "Break Even:", y)) return false;
    y += PANEL_GAP_Y + 2;
    {
-    string beSuffix = (inp_BEType == BE_FIXED) ? " (pts):" : " (ATR x):";
+    string beSuffix = (m_cur_beType == BE_FIXED) ? " (pts):" : " (ATR x):";
     if(!CreateLI(m_c2_lBEVal, m_c2_iBEVal, "c2_lBV", "c2_iBV", "BE Ativacao" + beSuffix, y)) return false;
     y += PANEL_GAP_Y;
     if(!CreateLI(m_c2_lBEOff, m_c2_iBEOff, "c2_lBO", "c2_iBO", "BE Offset" + beSuffix, y)) return false;
@@ -713,17 +713,19 @@ bool CEPBotPanel::CreateTabConfig(void)
 void CEPBotPanel::PopulateConfig(void)
   {
 // ── Estado dos toggles/cycles ──
-   m_cur_direction = inp_TradeDirection;
-   m_cur_conflict  = inp_ConflictMode;
-   m_cur_slType    = inp_SLType;
-   m_cur_tpType    = inp_TPType;
-   m_cur_debug     = inp_ShowDebugLogs;
-   m_cur_partialTP = inp_UsePartialTP;
+   m_cur_direction     = inp_TradeDirection;
+   m_cur_conflict      = inp_ConflictMode;
+   m_cur_slType        = inp_SLType;
+   m_cur_tpType        = inp_TPType;
+   m_cur_debug         = inp_ShowDebugLogs;
+   m_cur_partialTP     = inp_UsePartialTP;
+   m_cur_trailingType  = inp_TrailingType;
+   m_cur_beType        = inp_BEType;
 
 // ── Recalcular flags dinâmicos ──
    m_cfg_hasTP    = (m_cur_tpType != TP_NONE);
    m_cfg_hasATR   = (m_cur_slType == SL_ATR || m_cur_tpType == TP_ATR ||
-                     inp_TrailingType == TRAILING_ATR || inp_BEType == BE_ATR);
+                     m_cur_trailingType == TRAILING_ATR || m_cur_beType == BE_ATR);
    m_cfg_hasRange = (m_cur_slType == SL_RANGE);
 
 // ── Risco (radio groups) ──
@@ -778,7 +780,7 @@ void CEPBotPanel::PopulateConfig(void)
    m_c2_bTrlAct.ColorBackground(m_cur_trailOn ? C'30,120,70' : C'120,50,50');
    m_c2_bTrlAct.Color(clrWhite);
 
-   if(inp_TrailingType == TRAILING_FIXED)
+   if(m_cur_trailingType == TRAILING_FIXED)
      {
       m_c2_iTrlSt.Text(IntegerToString(inp_TrailingStart));
       m_c2_iTrlSp.Text(IntegerToString(inp_TrailingStep));
@@ -799,7 +801,7 @@ void CEPBotPanel::PopulateConfig(void)
    m_c2_bBEAct.ColorBackground(m_cur_beOn ? C'30,120,70' : C'120,50,50');
    m_c2_bBEAct.Color(clrWhite);
 
-   if(inp_BEType == BE_FIXED)
+   if(m_cur_beType == BE_FIXED)
      {
       m_c2_iBEVal.Text(IntegerToString(inp_BEActivation));
       m_c2_iBEOff.Text(IntegerToString(inp_BEOffset));
@@ -1491,7 +1493,7 @@ void CEPBotPanel::OnClickSLType(int selected)
 
 // Recalcular flags e atualizar estado visual
    m_cfg_hasATR   = (m_cur_slType == SL_ATR || m_cur_tpType == TP_ATR ||
-                     inp_TrailingType == TRAILING_ATR || inp_BEType == BE_ATR);
+                     m_cur_trailingType == TRAILING_ATR || m_cur_beType == BE_ATR);
    m_cfg_hasRange = (m_cur_slType == SL_RANGE);
 
    RefreshRiscoState();
@@ -1510,7 +1512,7 @@ void CEPBotPanel::OnClickTPType(int selected)
 // Recalcular flags
    m_cfg_hasTP  = (m_cur_tpType != TP_NONE);
    m_cfg_hasATR = (m_cur_slType == SL_ATR || m_cur_tpType == TP_ATR ||
-                   inp_TrailingType == TRAILING_ATR || inp_BEType == BE_ATR);
+                   m_cur_trailingType == TRAILING_ATR || m_cur_beType == BE_ATR);
 
 // TP value + label
    if(m_cfg_hasTP)
@@ -1645,7 +1647,7 @@ void CEPBotPanel::ApplyConfig(void)
       // Trailing params (só se toggle ON)
       if(m_cur_trailOn)
         {
-         if(inp_TrailingType == TRAILING_FIXED)
+         if(m_cur_trailingType == TRAILING_FIXED)
            {
             int start = (int)StringToInteger(m_c2_iTrlSt.Text());
             int step  = (int)StringToInteger(m_c2_iTrlSp.Text());
@@ -1671,7 +1673,7 @@ void CEPBotPanel::ApplyConfig(void)
       // BE params (só se toggle ON)
       if(m_cur_beOn)
         {
-         if(inp_BEType == BE_FIXED)
+         if(m_cur_beType == BE_FIXED)
            {
             int act = (int)StringToInteger(m_c2_iBEVal.Text());
             int off = (int)StringToInteger(m_c2_iBEOff.Text());
@@ -1866,11 +1868,7 @@ void CEPBotPanel::ApplyConfig(void)
       // Magic Number
       int magic = (int)StringToInteger(m_co_iMagic.Text());
       if(magic > 0)
-        {
-         m_tradeManager.SetMagicNumber(magic);
-         if(m_blockers != NULL) m_blockers.SetMagicNumber(magic);
-         g_magicNumber = magic;
-        }
+         ApplyMagicNumberChange(magic);
       else
          errors++;
      }
@@ -1940,6 +1938,33 @@ void CEPBotPanel::ApplyConfig(void)
       m_cfgStatusExpiry = GetTickCount() + 15000;
      }
    ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
+//| Hot Reload — Magic Number centralizado                            |
+//| Atualiza TODOS os módulos na ordem correta                        |
+//+------------------------------------------------------------------+
+void CEPBotPanel::ApplyMagicNumberChange(int newMagic)
+  {
+   int oldMagic = m_magicNumber;
+   if(newMagic == oldMagic) return;
+
+   // 1. Atualizar painel
+   m_magicNumber = newMagic;
+
+   // 2. Atualizar global
+   g_magicNumber = newMagic;
+
+   // 3. Logger PRIMEIRO (precisa estar pronto antes dos blockers reconstruírem streaks)
+   if(m_logger != NULL)
+      m_logger.ReloadForMagic(newMagic);
+
+   // 4. TradeManager: atualizar magic + limpar positions + resync
+   m_tradeManager.SetMagicNumber(newMagic);
+
+   // 5. Blockers: TODOS os submódulos (filters + drawdown + reconstruct streaks)
+   if(m_blockers != NULL)
+      m_blockers.SetMagicNumber(newMagic);
   }
 
 //+------------------------------------------------------------------+

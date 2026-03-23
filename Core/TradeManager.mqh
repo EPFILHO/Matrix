@@ -916,11 +916,23 @@ void CTradeManager::SetSlippage(int newSlippage)
 void CTradeManager::SetMagicNumber(int newMagic)
   {
    int oldValue = m_magicNumber;
+   if(oldValue == newMagic) return;
+
    m_magicNumber = newMagic;
 
-   if(m_logger != NULL && oldValue != newMagic)
+   // Limpar posições registradas (pertencem ao magic antigo)
+   ArrayResize(m_positions, 0);
+
+   // Deletar state file do magic antigo
+   DeleteState();
+
+   // Re-sincronizar posições abertas do novo magic (se houver)
+   ResyncExistingPositions();
+
+   if(m_logger != NULL)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         "🔄 Magic Number: " + IntegerToString(oldValue) + " → " + IntegerToString(newMagic));
+         "Magic Number: " + IntegerToString(oldValue) + " -> " + IntegerToString(newMagic)
+         + " | Posicoes resincronizadas");
   }
 
 //+------------------------------------------------------------------+

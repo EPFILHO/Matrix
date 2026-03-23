@@ -130,10 +130,16 @@ struct SConfigData
    int               news3SH, news3SM, news3EH, news3EM;
 
    // ── OUTROS ──
+   int               magicNumber;         // Hot-reload magic
+   string            tradeComment;        // Hot-reload comment
    int               slippage;
    ENUM_CONFLICT_RESOLUTION conflictMode;
    bool              showDebug;
    int               debugCooldown;
+
+   // ── RISCO: Tipos Trailing/BE ──
+   ENUM_TRAILING_TYPE trailingType;       // TRAILING_FIXED ou TRAILING_ATR
+   ENUM_BE_TYPE       beType;             // BE_FIXED ou BE_ATR
 
    // ── MA CROSS STRATEGY ──
    bool              maEnabled;
@@ -419,10 +425,14 @@ bool CConfigPersistence::Save(string symbol, int magic, const SConfigData &data)
 
 // ── Outros ──
    FileWriteString(h, "# OUTROS\n");
+   WriteKV(h, "MagicNumber",        IntegerToString(data.magicNumber));
+   WriteKV(h, "TradeComment",       data.tradeComment);
    WriteKV(h, "Slippage",           IntegerToString(data.slippage));
    WriteKV(h, "ConflictMode",       IntegerToString((int)data.conflictMode));
    WriteKV(h, "ShowDebug",          IntegerToString(data.showDebug));
    WriteKV(h, "DebugCooldown",      IntegerToString(data.debugCooldown));
+   WriteKV(h, "TrailingType",       IntegerToString((int)data.trailingType));
+   WriteKV(h, "BEType",             IntegerToString((int)data.beType));
 
 // ── MA Cross Strategy ──
    FileWriteString(h, "# MA CROSS\n");
@@ -634,10 +644,14 @@ bool CConfigPersistence::Load(string symbol, int magic, SConfigData &data)
       else if(key == "News3EH")            data.news3EH = (int)StringToInteger(val);
       else if(key == "News3EM")            data.news3EM = (int)StringToInteger(val);
       // Outros
+      else if(key == "MagicNumber")        data.magicNumber = (int)StringToInteger(val);
+      else if(key == "TradeComment")       data.tradeComment = val;
       else if(key == "Slippage")           data.slippage = (int)StringToInteger(val);
       else if(key == "ConflictMode")       data.conflictMode = (ENUM_CONFLICT_RESOLUTION)StringToInteger(val);
       else if(key == "ShowDebug")          data.showDebug = (bool)StringToInteger(val);
       else if(key == "DebugCooldown")      data.debugCooldown = (int)StringToInteger(val);
+      else if(key == "TrailingType")       data.trailingType = (ENUM_TRAILING_TYPE)StringToInteger(val);
+      else if(key == "BEType")             data.beType = (ENUM_BE_TYPE)StringToInteger(val);
       // MA Cross
       else if(key == "MAEnabled")          data.maEnabled = (bool)StringToInteger(val);
       else if(key == "MAPriority")         data.maPriority = (int)StringToInteger(val);
@@ -702,9 +716,22 @@ bool CConfigPersistence::Load(string symbol, int magic, SConfigData &data)
      }
 
    FileClose(h);
+
+// ── Validação de enums (proteção contra .cfg corrompido) ──
+   if(data.slType < SL_FIXED || data.slType > SL_RANGE)
+      data.slType = SL_FIXED;
+   if(data.tpType < TP_FIXED || data.tpType > TP_ATR)
+      data.tpType = TP_FIXED;
+   if(data.trailingType < TRAILING_FIXED || data.trailingType > TRAILING_ATR)
+      data.trailingType = TRAILING_FIXED;
+   if(data.beType < BE_FIXED || data.beType > BE_ATR)
+      data.beType = BE_FIXED;
+   if(data.tradeDirection < TRADE_BUY || data.tradeDirection > TRADE_BOTH)
+      data.tradeDirection = TRADE_BOTH;
+
    return true;
   }
 
 //+------------------------------------------------------------------+
-//| FIM DO ARQUIVO ConfigPersistence.mqh v1.00                        |
+//| FIM DO ARQUIVO ConfigPersistence.mqh v1.01                        |
 //+------------------------------------------------------------------+

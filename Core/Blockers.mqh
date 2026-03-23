@@ -634,6 +634,8 @@ void CBlockers::TryActivateDrawdownNow(double dailyProfit)
 void CBlockers::SetMagicNumber(int newMagic)
   {
    m_filters.SetMagicNumber(newMagic);
+   m_drawdown.SetMagicNumber(newMagic);
+   m_limits.ReconstructStreakFromHistory();
   }
 
 //+------------------------------------------------------------------+

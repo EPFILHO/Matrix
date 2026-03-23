@@ -388,7 +388,7 @@ void CTrendFilter::Deinitialize()
 bool CTrendFilter::UpdateIndicators()
   {
    if(m_handleMA == INVALID_HANDLE)
-      return true;
+      return false;   // Sem handle = dados não disponíveis
 
    int calculated = BarsCalculated(m_handleMA);
    if(calculated <= 0)
@@ -549,7 +549,7 @@ bool CTrendFilter::ValidateSignal(ENUM_SIGNAL_TYPE signal)
    // ═══════════════════════════════════════════════════════════════
    // VALIDAÇÃO - Dados da MA inválidos (zero)
    // ═══════════════════════════════════════════════════════════════
-   if(m_ma[0] == 0 || m_ma[1] == 0)
+   if(ArraySize(m_ma) < 2 || m_ma[0] == 0 || m_ma[1] == 0)
      {
       string msg = "⚠️ [Trend Filter] Dados da MA ainda inválidos - aguardando próximo tick";
       if(m_logger != NULL)

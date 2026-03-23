@@ -735,6 +735,8 @@ private:
    ENUM_DRAWDOWN_TYPE        m_cur_ddType;
    ENUM_DRAWDOWN_PEAK_MODE   m_cur_ddPeakMode;
    ENUM_PROFIT_TARGET_ACTION m_cur_profitTargetAction;
+   ENUM_TRAILING_TYPE        m_cur_trailingType;   // runtime (inp_ é read-only)
+   ENUM_BE_TYPE              m_cur_beType;          // runtime (inp_ é read-only)
    // Filtro de Notícias (v1.22)
    bool                      m_cur_newsOn1;
    bool                      m_cur_newsOn2;
@@ -821,6 +823,7 @@ private:
    // Panel factory
    void              RegisterPanels(void);
    void              ApplyConfig(void);
+   void              ApplyMagicNumberChange(int newMagic);
 
    // Estado visual RISCO (enable/disable campos por tipo SL/TP)
    void              RefreshRiscoState(void);
@@ -957,6 +960,8 @@ CEPBotPanel::CEPBotPanel(void)
      m_cur_lossStreakAction(STREAK_PAUSE), m_cur_winStreakAction(STREAK_PAUSE),
      m_cur_ddType(DD_FINANCIAL), m_cur_ddPeakMode(DD_PEAK_REALIZED_ONLY),
      m_cur_profitTargetAction(PROFIT_ACTION_STOP),
+     m_cur_trailingType(TRAILING_FIXED),
+     m_cur_beType(BE_FIXED),
      m_cfgStatusExpiry(0),
      m_loadBannerVisible(false),
      m_eaStarted(false)

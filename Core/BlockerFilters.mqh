@@ -795,6 +795,10 @@ void CBlockerFilters::SetMaxSpread(int newMaxSpread)
 void CBlockerFilters::SetMagicNumber(int newMagic)
   {
    m_magicNumber = newMagic;
+
+   // Limpar caches de transição (tickets do magic antigo são inválidos)
+   m_sCloseOnEndLastTicket         = 0;
+   m_sCloseBeforeSessionLastTicket = 0;
   }
 
 //+------------------------------------------------------------------+
