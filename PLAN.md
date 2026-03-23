@@ -61,7 +61,8 @@ ENUM_BE_TYPE       beType;             // BE_FIXED ou BE_ATR
   (do .set) e pode interpretar 50pts fixos como 50x ATR — catastrófico
 
 **Nota:** `m_eaStarted` NÃO será persistido (decisão de segurança: EA sempre
-inicia pausado após restart, forçando o usuário a confirmar).
+inicia pausado após restart, forçando o usuário a confirmar — exceto se houver
+posições abertas, ver Etapa 16).
 
 ---
 
@@ -107,15 +108,36 @@ if(data.tradeDirection < TRADE_BUY || data.tradeDirection > TRADE_BOTH)
 ## ETAPA 3: CollectConfigData — Coletar novos campos + fix double-assignment
 **Arquivo:** `GUI/PanelPersistence.mqh` (CollectConfigData, ~linha 52)
 
-### 3a. Adicionar coleta dos novos campos:
+### 3a. Novos membros runtime para tipos Trailing/BE:
+**Arquivo:** `GUI/Panel.mqh` (declaração de membros)
+
+Em MQL5, variáveis `input` são **read-only** em runtime. O plano original usava
+`inp_TrailingType` / `inp_BEType` mas esses valores não podem ser alterados via GUI.
+Criar membros mutáveis no painel:
+
+```cpp
+ENUM_TRAILING_TYPE  m_cur_trailingType;  // runtime, editável via GUI
+ENUM_BE_TYPE        m_cur_beType;        // runtime, editável via GUI
+```
+
+Inicializar no `Init()`:
+```cpp
+m_cur_trailingType = inp_TrailingType;
+m_cur_beType       = inp_BEType;
+```
+
+E substituir **TODAS** as referências a `inp_TrailingType` / `inp_BEType` no painel
+por `m_cur_trailingType` / `m_cur_beType`.
+
+### 3b. Adicionar coleta dos novos campos:
 ```cpp
 data.magicNumber   = m_magicNumber;
 data.tradeComment  = m_co_iComm.Text();
-data.trailingType  = inp_TrailingType;
-data.beType        = inp_BEType;
+data.trailingType  = m_cur_trailingType;   // CORRIGIDO: usa membro runtime
+data.beType        = m_cur_beType;         // CORRIGIDO: usa membro runtime
 ```
 
-### 3b. Fix double-assignment SL/TP/Trailing/BE:
+### 3c. Fix double-assignment SL/TP/Trailing/BE:
 Substituir a coleta "cega" (que lê o mesmo CEdit 3x com casts diferentes) por
 coleta condicional baseada no tipo ativo:
 
@@ -141,7 +163,7 @@ else
 
 **Trailing (linhas ~77-80):**
 ```cpp
-if(inp_TrailingType == TRAILING_FIXED) {
+if(m_cur_trailingType == TRAILING_FIXED) {   // CORRIGIDO: era inp_TrailingType
    data.trailStartFixed = (int)StringToInteger(m_c2_iTrlSt.Text());
    data.trailStepFixed  = (int)StringToInteger(m_c2_iTrlSp.Text());
 } else {
@@ -152,7 +174,7 @@ if(inp_TrailingType == TRAILING_FIXED) {
 
 **BE (linhas ~85-88):**
 ```cpp
-if(inp_BEType == BE_FIXED) {
+if(m_cur_beType == BE_FIXED) {               // CORRIGIDO: era inp_BEType
    data.beActivationFixed = (int)StringToInteger(m_c2_iBEVal.Text());
    data.beOffsetFixed     = (int)StringToInteger(m_c2_iBEOff.Text());
 } else {
@@ -262,8 +284,8 @@ void CEPBotPanel::ApplyMagicNumberChange(int newMagic)
    if(m_blockers != NULL)
       m_blockers.SetMagicNumber(newMagic);
 
-   // 6. Persistência: salvar no arquivo do NOVO magic
-   SaveCurrentConfig();
+   // NÃO chama SaveCurrentConfig() aqui — o caller é responsável pelo save
+   // (evita double-save quando chamado por INICIAR ou SALVAR)
 }
 ```
 
@@ -276,8 +298,8 @@ else
    errors++;
 ```
 
-**Nota:** O SaveCurrentConfig() no final do ApplyMagicNumberChange() agora já
-usa m_magicNumber atualizado, então o .cfg é salvo com o nome do NOVO magic.
+**Nota:** O caller (INICIAR/SALVAR) chama SaveCurrentConfig() após
+ValidateAndApplyAll(), já com m_magicNumber atualizado.
 
 ---
 
@@ -362,43 +384,27 @@ void CTradeManager::SetMagicNumber(int newMagic)
 
 ---
 
-## ETAPA 11: Changelogs
-Atualizar headers de versão nos arquivos modificados:
-
-| Arquivo | Mudança principal | Parte |
-|---------|-------------------|-------|
-| ConfigPersistence.mqh | +4 campos SConfigData, validação enums | 027 |
-| PanelPersistence.mqh | Collect/Apply novos campos, fix double-assign | 027 |
-| PanelTabConfig.mqh | ApplyMagicNumberChange(), hot-reload centralizado | 027 |
-| Logger.mqh | ReloadForMagic() | 027 |
-| BlockerDrawdown.mqh | SetMagicNumber() com reset de estado | 027 |
-| BlockerFilters.mqh | SetMagicNumber() limpa caches transição | 027 |
-| Blockers.mqh | SetMagicNumber() completo + ReconstructStreaks() | 027 |
-| TradeManager.mqh | SetMagicNumber() com cleanup + resync | 027 |
-
----
-
-## ETAPA 12: Remover botões APLICAR individuais dos sub-painéis
+## ETAPA 11: Remover botões APLICAR individuais dos sub-painéis (+ SetEnabled)
 **Arquivos:** `GUI/Panels/MACrossPanel.mqh`, `RSIStrategyPanel.mqh`,
 `BollingerBandsPanel.mqh`, `TrendFilterPanel.mqh`, `RSIFilterPanel.mqh`,
 `BollingerBandsFilterPanel.mqh`
 
 Em cada um dos 6 sub-painéis:
 
-### 12a. Remover criação do botão APLICAR:
+### 11a. Remover criação do botão APLICAR:
 Remover o bloco `m_btnApply.Create(...)` + `m_btnApply.Text("APLICAR ...")` +
 `parent.AddControl(m_btnApply)` do método `Create()`.
 
-### 12b. Remover handler de click:
+### 11b. Remover handler de click:
 Remover a verificação `if(name == m_btnApply.Name())` do `OnEvent()`.
 
-### 12c. Manter o método `_OnApply()`:
+### 11c. Manter o método `_OnApply()`:
 O método `_OnApply()` (validação + aplicação nos módulos) continua existindo,
 mas agora será chamado pelo INICIAR centralizado (Etapa 14), não pelo botão.
 Remover a chamada `m_parent.SaveCurrentConfig()` de dentro do `_OnApply()`
 (o save será feito uma única vez pelo INICIAR, após tudo aplicado).
 
-### 12d. Tornar `_OnApply()` público:
+### 11d. Tornar `_OnApply()` público:
 Mudar de private para public para que o painel principal possa chamá-lo.
 Retornar `bool` (true=sucesso, false=erro de validação):
 ```cpp
@@ -453,8 +459,7 @@ void CEPBotPanel::SetAllControlsEnabled(bool enable)
    SetEditEnabled(m_co_lDbgCd, m_co_iDbgCd, enable);
    // toggles debug, conflict
 
-   // ── BOTÃO APLICAR CONFIG (removido? ou desabilitado) ──
-   m_cfg_btnApply.ColorBackground(enable ? C'30,120,70' : C'80,80,80');
+   // (m_cfg_btnApply REMOVIDO — substituído pelo SALVAR no topo)
 
    // ── SUB-PAINÉIS: Estratégias + Filtros ──
    for(int i = 0; i < m_stratPanelCount; i++)
@@ -497,14 +502,32 @@ PANEL_WIDTH = 430, margem = 5+10 → espaço útil ≈ 415px
 
 ┌──────────────────────────────────────────┐
 │ [▶ INICIAR EA] [💾 SALVAR] [✖ CANCELAR] │  ← y=3, h=22
+│  [ status msg aqui - visível sempre ]    │  ← y=27, h=14 (novo)
 ├──────────────────────────────────────────┤
-│  STATUS | CONFIG | ESTRAT | FILTROS      │  ← tabs
+│  STATUS | CONFIG | ESTRAT | FILTROS      │  ← tabs (deslocadas +16px)
 ```
 
 ```cpp
-CButton  m_btnStart;     // ▶ INICIAR EA  /  ⏸ PAUSAR EA (toggle)
-CButton  m_btnSave;      // 💾 SALVAR
-CButton  m_btnCancel;    // ✖ CANCELAR
+CButton  m_btnStart;       // INICIAR EA / PAUSAR EA (toggle)
+CButton  m_btnSave;        // SALVAR
+CButton  m_btnCancel;      // CANCELAR
+CLabel   m_headerStatus;   // NOVO: label de status no topo (visível em TODAS as abas)
+SConfigData m_savedConfig;  // NOVO: snapshot da última config salva (para CANCELAR)
+```
+
+**FURO 1 corrigido:** `m_headerStatus` substitui `m_cfg_status` como destino de
+mensagens de INICIAR/SALVAR/CANCELAR. Fica no topo, visível em qualquer aba.
+O antigo `m_cfg_status` do rodapé CONFIG é removido junto com `m_cfg_btnApply`.
+
+**FURO 2 corrigido:** `m_savedConfig` armazena snapshot da config no momento do
+último save. O CANCELAR lê dessa variável (não do disco).
+Atualizado em `SaveCurrentConfig()`:
+```cpp
+void CEPBotPanel::SaveCurrentConfig(void)
+{
+   CollectConfigData(m_savedConfig);   // snapshot antes de salvar
+   // ... save no disco ...
+}
 ```
 
 **Cores (EA pausado):**
@@ -520,6 +543,13 @@ CButton  m_btnCancel;    // ✖ CANCELAR
 **Layout (EA pausado):** 3 botões lado a lado no topo (INICIAR verde, SALVAR azul, CANCELAR vermelho)
 **Layout (EA rodando):** PAUSAR amarelo, SALVAR e CANCELAR cinza (desabilitados)
 
+**FURO 7 - Nota sobre toggles dos sub-painéis:**
+Os toggles ON/OFF das estratégias/filtros são **visuais** até que INICIAR ou SALVAR
+seja clicado. O `Apply()` de cada sub-painel aplica `m_pendingEnabled` no módulo.
+Como INICIAR/SALVAR chamam `ValidateAndApplyAll()` que chama `Apply()` em todos
+os sub-painéis, o toggle será efetivado nesse momento. Sem o botão APLICAR
+individual, o toggle não tem efeito imediato — isso é intencional e seguro.
+
 ### 14b. OnClickStart (INICIAR / PAUSAR):
 ```cpp
 void CEPBotPanel::OnClickStart(void)
@@ -532,8 +562,8 @@ void CEPBotPanel::OnClickStart(void)
       int openPos = CountOpenPositions(m_magicNumber);
       if(openPos > 0)
       {
-         ShowStatus("Feche " + IntegerToString(openPos)
-                    + " posição(ões) antes de pausar", CLR_NEGATIVE);
+         ShowHeaderStatus("Feche " + IntegerToString(openPos)
+                          + " posicao(oes) antes de pausar", CLR_NEGATIVE);
          return;
       }
       SetStarted(false);
@@ -558,12 +588,13 @@ void CEPBotPanel::OnClickStart(void)
 void CEPBotPanel::OnClickSave(void)
 {
    m_btnSave.Pressed(false);
+   if(m_eaStarted) return;              // FURO 6: guard — botão cinza mas MQL5 permite click
 
    if(!ValidateAndApplyAll())
       return;
 
    SaveCurrentConfig();
-   ShowStatus("Config salva com sucesso!", CLR_POSITIVE);
+   ShowHeaderStatus("Config salva com sucesso!", CLR_POSITIVE);
 }
 ```
 
@@ -572,29 +603,33 @@ void CEPBotPanel::OnClickSave(void)
 void CEPBotPanel::OnClickCancel(void)
 {
    m_btnCancel.Pressed(false);
+   if(m_eaStarted) return;              // FURO 6: guard
 
-   // Recarregar último .cfg salvo (reverte todas as edições)
-   if(!LoadCurrentConfig())
+   // Verificar se há config salva (m_savedConfig preenchido)
+   if(m_savedConfig.magicNumber == 0 && m_savedConfig.fixedSL == 0)
    {
-      ShowStatus("Nenhuma config salva encontrada", CLR_NEGATIVE);
+      ShowHeaderStatus("Nenhuma config salva encontrada", CLR_NEGATIVE);
       return;
    }
 
-   // ApplyLoadedConfig() preenche todos os CEdits/botões com valores do .cfg
-   ApplyLoadedConfig(m_lastLoadedConfig);
-   ShowStatus("Config restaurada do último save", CLR_POSITIVE);
+   // Restaurar todos os CEdits/botões com valores do snapshot salvo
+   ApplyLoadedConfig(m_savedConfig);
+   ShowHeaderStatus("Config restaurada do ultimo save", CLR_POSITIVE);
 }
 ```
 
-### 14e. ValidateAndApplyAll() — Método compartilhado:
+### 14e. ValidateAndApplyAll() — Método compartilhado (INICIAR + SALVAR):
 ```cpp
 bool CEPBotPanel::ValidateAndApplyAll(void)
 {
-   // 1. CONFIG geral
-   if(!ApplyConfig())    // Refatorado para retornar bool
+   // 1. CONFIG geral (RiskManager + Blockers)
+   if(!ApplyConfig())                   // Refatorado para retornar bool
+   {
+      // ApplyConfig já mostra mensagem de erro específica
       return false;
+   }
 
-   // 2. Estratégias ativas
+   // 2. Estratégias ativas (valida + aplica params + toggle ON/OFF)
    bool hasErrors = false;
    for(int i = 0; i < m_stratPanelCount; i++)
       if(!m_stratPanels[i].Apply())
@@ -607,7 +642,7 @@ bool CEPBotPanel::ValidateAndApplyAll(void)
 
    if(hasErrors)
    {
-      ShowStatus("Corrija os erros antes de prosseguir", CLR_NEGATIVE);
+      ShowHeaderStatus("Corrija os erros antes de prosseguir", CLR_NEGATIVE);
       return false;
    }
    return true;
@@ -631,19 +666,16 @@ int CEPBotPanel::CountOpenPositions(int magic)
 
 void CEPBotPanel::SetSaveCancelEnabled(bool enable)
 {
-   // Habilitar/desabilitar SALVAR e CANCELAR
-   color bgColor = enable ? C'30,90,160' : C'80,80,80';
-   m_btnSave.ColorBackground(bgColor);
-   color bgCancel = enable ? C'160,50,50' : C'80,80,80';
-   m_btnCancel.ColorBackground(bgCancel);
-   // Os handlers de click ignoram se !enable (m_eaStarted=true)
+   m_btnSave.ColorBackground(enable ? C'30,90,160' : C'80,80,80');
+   m_btnCancel.ColorBackground(enable ? C'160,50,50' : C'80,80,80');
 }
 
-void CEPBotPanel::ShowStatus(string text, color clr)
+// FURO 1 corrigido: status no TOPO (visível em todas as abas)
+void CEPBotPanel::ShowHeaderStatus(string text, color clr)
 {
-   m_cfg_status.Text(text);
-   m_cfg_status.Color(clr);
-   m_cfgStatusExpiry = GetTickCount() + 10000;
+   m_headerStatus.Text(text);
+   m_headerStatus.Color(clr);
+   m_headerStatusExpiry = GetTickCount() + 10000;
    ChartRedraw();
 }
 
@@ -651,8 +683,12 @@ void CEPBotPanel::ShowStatus(string text, color clr)
 bool CEPBotPanel::ApplyConfig(void)   // era void
 {
    // ... validação existente ...
-   if(errors > 0) return false;
-   // ... aplicação ...
+   if(errors > 0)
+   {
+      ShowHeaderStatus("Erros na config — verifique campos", CLR_NEGATIVE);
+      return false;
+   }
+   // ... aplicação nos módulos ...
    return true;
 }
 ```
@@ -702,25 +738,61 @@ if(ArraySize(m_ma) < 2 || m_ma[0] == 0 || m_ma[1] == 0)
 
 ---
 
-## ETAPA 16: Estado inicial do EA — Controles habilitados ao iniciar
+## ETAPA 16: Estado inicial do EA + Edge case restart com posições
 **Arquivo:** `GUI/Panel.mqh`
 
 ### 16a. No Init() / CreatePanel():
-Após criar todos os controles, como `m_eaStarted` começa `false` (EA pausado),
-os controles já devem estar habilitados. Mostrar os 3 botões (INICIAR/SALVAR/CANCELAR).
+Após criar todos os controles, verificar se há posições abertas:
+
+```cpp
+// Após CreateStartButton() + criar todos os controles:
+int openPos = CountOpenPositions(m_magicNumber);
+if(openPos > 0)
+{
+   // FURO 9: Auto-start para proteger posições existentes
+   SetStarted(true);
+   SetAllControlsEnabled(false);
+   SetSaveCancelEnabled(false);
+   ShowHeaderStatus(IntegerToString(openPos) +
+      " posicao(oes) abertas detectadas - EA retomado", C'200,140,0');
+}
+else
+{
+   // Normal: EA pausado, controles livres
+   SetStarted(false);
+   SetAllControlsEnabled(true);
+   SetSaveCancelEnabled(true);
+}
+```
+
+**Justificativa:** Se o MT5 reinicia com posições abertas do magic, o EA
+precisa continuar gerenciando (trailing, BE, parciais, horários). Iniciar
+pausado deixaria essas posições órfãs — perigoso. Forçar auto-start é a
+opção mais segura. O usuário pode pausar depois que as posições fecharem.
 
 ### 16b. No ApplyLoadedConfig():
 Após carregar config (banner CARREGAR ou auto-load), NÃO iniciar o EA
 automaticamente. Os controles ficam habilitados, o EA fica pausado.
 O usuário precisa clicar INICIAR para validar/aplicar/começar.
 
-### 16c. Exibir status visual claro:
+### 16c. Inicializar m_savedConfig:
+No Init, após carregar config do disco (se existir), preencher `m_savedConfig`
+para que CANCELAR tenha algo para restaurar:
+```cpp
+if(LoadCurrentConfig())
+{
+   m_savedConfig = m_pendingLoadData;  // snapshot inicial
+   ApplyLoadedConfig(m_pendingLoadData);
+}
+```
+
+### 16d. Exibir status visual claro:
 Quando pausado, a aba STATUS deve mostrar "PAUSADO" (amarelo) — já implementado
 na Parte 027 anterior.
 
 ---
 
-## ETAPA 11: Changelogs
+## ETAPA 17: Changelogs
 Atualizar headers de versão nos arquivos modificados:
 
 | Arquivo | Mudança principal | Parte |
@@ -728,19 +800,19 @@ Atualizar headers de versão nos arquivos modificados:
 | ConfigPersistence.mqh | +4 campos SConfigData, validação enums | 027 |
 | PanelPersistence.mqh | Collect/Apply novos campos, fix double-assign | 027 |
 | PanelTabConfig.mqh | ApplyMagicNumberChange(), SetAllControlsEnabled(), ApplyConfig→bool | 027 |
-| Panel.mqh | 3 botões (INICIAR/SALVAR/CANCELAR), CountOpenPositions() | 027 |
+| Panel.mqh | 3 botões topo, m_headerStatus, m_savedConfig, m_cur_trailingType/beType, CountOpenPositions, auto-start com posições | 027 |
 | TrendFilter.mqh | Fix array out of range (handle INVALID retornava true) | 027 |
 | Logger.mqh | ReloadForMagic() | 027 |
 | BlockerDrawdown.mqh | SetMagicNumber() com reset de estado | 027 |
 | BlockerFilters.mqh | SetMagicNumber() limpa caches transição | 027 |
 | Blockers.mqh | SetMagicNumber() completo + ReconstructStreaks() | 027 |
 | TradeManager.mqh | SetMagicNumber() com cleanup + resync | 027 |
-| MACrossPanel.mqh | Remover APLICAR, Apply() público | 027 |
-| RSIStrategyPanel.mqh | Remover APLICAR, Apply() público | 027 |
-| BollingerBandsPanel.mqh | Remover APLICAR, Apply() público | 027 |
-| TrendFilterPanel.mqh | Remover APLICAR, Apply() público | 027 |
-| RSIFilterPanel.mqh | Remover APLICAR, Apply() público | 027 |
-| BollingerBandsFilterPanel.mqh | Remover APLICAR, Apply() público | 027 |
+| MACrossPanel.mqh | Remover APLICAR, Apply() público, SetEnabled() | 027 |
+| RSIStrategyPanel.mqh | Remover APLICAR, Apply() público, SetEnabled() | 027 |
+| BollingerBandsPanel.mqh | Remover APLICAR, Apply() público, SetEnabled() | 027 |
+| TrendFilterPanel.mqh | Remover APLICAR, Apply() público, SetEnabled() | 027 |
+| RSIFilterPanel.mqh | Remover APLICAR, Apply() público, SetEnabled() | 027 |
+| BollingerBandsFilterPanel.mqh | Remover APLICAR, Apply() público, SetEnabled() | 027 |
 
 ---
 
@@ -816,9 +888,9 @@ Nenhuma migração necessária. Configs antigos carregam normalmente.
    `m_handleMA == INVALID_HANDLE`, causando acesso a array vazio. Fix simples
    mas impacto alto (remove o EA do gráfico).
 
-6. **Edge case: MT5 fecha com posição aberta**: No restart, EA inicia pausado
-   (m_eaStarted=false). Se há posição aberta do magic, os controles devem ficar
-   travados. O OnInit deve verificar posições abertas e travar se necessário.
+8. **Edge case: MT5 fecha com posição aberta**: No restart, se há posições abertas
+   do magic, o EA auto-inicia em modo RODANDO (controles travados) para continuar
+   gerenciando trailing/BE/parciais. O usuário pode pausar após fechar posições.
 
 ---
 
