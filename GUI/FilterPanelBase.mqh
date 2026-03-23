@@ -2,7 +2,7 @@
 //|                                             FilterPanelBase.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Interface base para sub-páginas de filtro                 |
-//|                     Versão 1.02 - Claude Parte 028 (Claude Code) |
+//|                     Versão 1.02 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh ANTES da definição de CEPBotPanel.
 // Usa forward declaration para CEPBotPanel.
@@ -10,7 +10,7 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.02 (Parte 028) — Fase 2: Controle de Estado:
+// v1.02 (Parte 027) — Fase 2: Controle de Estado:
 // + Pure virtual Apply() e SetEnabled(bool) para controle centralizado
 //
 // v1.01 (Parte 027):

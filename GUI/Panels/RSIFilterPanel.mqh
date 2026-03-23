@@ -2,12 +2,15 @@
 //|                                              RSIFilterPanel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — RSI Filter                               |
-//|                     Versão 1.04 - Claude Parte 028 (Claude Code) |
+//|                     Versão 1.05 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
 //
-// CHANGELOG v1.04 (Parte 028) — Fase 2: Controle de Estado:
+// CHANGELOG v1.05 (Parte 027) — Bugfix:
+// * Fix: trailing comma na lista de inicialização do construtor
+//
+// CHANGELOG v1.04 (Parte 027) — Fase 2: Controle de Estado:
 // * Removido botão APLICAR (m_btnApply) — aplicação centralizada
 // * _OnApply convertido para Apply() público; adicionado SetEnabled()
 //

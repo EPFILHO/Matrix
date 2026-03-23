@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.31 - Claude Parte 028 (Claude Code) |
+//|                     Versão 1.31 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -14,7 +14,7 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.31 (Parte 028) — Fase 2: Controle de Estado:
+// v1.31 (Parte 027) — Fase 2: Controle de Estado:
 // * inp_TrailingType/inp_BEType substituídos por m_cur_trailingType/m_cur_beType
 // * PopulateConfig inicializa runtime vars; magic reload via ApplyMagicNumberChange
 // * Removidos m_cfg_btnApply (criação) e OnClickApply (handler)

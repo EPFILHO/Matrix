@@ -2,16 +2,21 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.54 - Claude Parte 028 (Claude Code) |
+//|                     Versão 1.55 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.54"
+#property version   "1.55"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.54 (Parte 028) — Fase 2: Controle de Estado:
+// v1.55 (Parte 027) — Bugfix:
+// * Fix: NULL guards em ValidateAndApplyAll() e SetAllControlsEnabled()
+//   para evitar crash quando sub-painéis são NULL
+// + Adicionado #include BollingerBandsStrategy.mqh e BollingerBandsFilter.mqh
+//
+// v1.54 (Parte 027) — Fase 2: Controle de Estado:
 // + Barra 3 botões: m_btnStart/m_btnSave/m_btnCancel substitui botão único
 // + m_headerStatus, m_eaStarted, m_savedConfig snapshot de estado
 // + m_cur_trailingType/m_cur_beType runtime vars (desacoplados de inputs)

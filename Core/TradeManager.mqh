@@ -2,12 +2,12 @@
 //|                                                 TradeManager.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|             Gerenciamento de Posições Individuais - EPBot Matrix |
-//|                     Versão 1.24 - Claude Parte 028 (Claude Code) |
+//|                     Versão 1.24 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.24"
 
-// CHANGELOG v1.24 (Parte 028):
+// CHANGELOG v1.24 (Parte 027):
 // + SaveState() / LoadState() / DeleteState() — persistência do estado
 //   das posições (BE, Trailing, TP1/TP2 executed) em arquivo .state
 // + Arquivo: MQL5/Files/Matrix_{symbol}_{magic}.state
