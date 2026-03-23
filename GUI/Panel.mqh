@@ -377,6 +377,8 @@
 #include "../Strategy/Strategies/RSIStrategy.mqh"
 #include "../Strategy/Filters/TrendFilter.mqh"
 #include "../Strategy/Filters/RSIFilter.mqh"
+#include "../Strategy/Strategies/BollingerBandsStrategy.mqh"
+#include "../Strategy/Filters/BollingerBandsFilter.mqh"
 
 // ═══════════════════════════════════════════════════════════════
 // DIMENSÕES E LAYOUT
@@ -1401,12 +1403,12 @@ bool CEPBotPanel::ValidateAndApplyAll(void)
    // Verificar sub-painéis de estratégias
    bool hasErrors = false;
    for(int i = 0; i < m_stratPanelCount; i++)
-      if(!m_stratPanels[i].Apply())
+      if(m_stratPanels[i] != NULL && !m_stratPanels[i].Apply())
          hasErrors = true;
 
    // Verificar sub-painéis de filtros
    for(int i = 0; i < m_filtPanelCount; i++)
-      if(!m_filtPanels[i].Apply())
+      if(m_filtPanels[i] != NULL && !m_filtPanels[i].Apply())
          hasErrors = true;
 
    if(hasErrors)
@@ -1509,9 +1511,9 @@ void CEPBotPanel::SetAllControlsEnabled(bool enable)
 
 // ── SUB-PAINÉIS: Estratégias + Filtros ──
    for(int i = 0; i < m_stratPanelCount; i++)
-      m_stratPanels[i].SetEnabled(enable);
+      if(m_stratPanels[i] != NULL) m_stratPanels[i].SetEnabled(enable);
    for(int i = 0; i < m_filtPanelCount; i++)
-      m_filtPanels[i].SetEnabled(enable);
+      if(m_filtPanels[i] != NULL) m_filtPanels[i].SetEnabled(enable);
 
    ChartRedraw();
   }

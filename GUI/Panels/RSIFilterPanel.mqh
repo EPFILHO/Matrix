@@ -47,7 +47,7 @@ public:
       : m_filter(filter),
         m_pendingEnabled(false),
         m_cur_TF(PERIOD_CURRENT),
-        m_cur_mode(RSI_FILTER_ZONE),
+        m_cur_mode(RSI_FILTER_ZONE)
      {}
 
    virtual string GetName(void) const { return "RSI FILT"; }
