@@ -14,16 +14,18 @@ de estado robusto:
 ┌─────────────────────────────────────────────────────────────┐
 │  PAUSADO (sem posições abertas)                             │
 │  → Todos os controles HABILITADOS (edição livre)            │
-│  → Botão verde: "▶ INICIAR EA"                             │
-│  → Ao clicar INICIAR:                                       │
-│    1. Valida TUDO (config + estratégias + filtros)           │
-│    2. Aplica TUDO nos módulos                               │
-│    3. Salva .cfg                                            │
-│    4. Inicia trading                                        │
+│  → 3 botões visíveis:                                       │
+│    [▶ INICIAR]  [💾 SALVAR]  [✖ CANCELAR]                  │
+│                                                             │
+│  INICIAR: valida tudo → aplica → salva .cfg → inicia       │
+│  SALVAR:  valida tudo → aplica → salva .cfg (sem iniciar)  │
+│  CANCELAR: recarrega último .cfg salvo → reverte edits     │
 ├─────────────────────────────────────────────────────────────┤
 │  RODANDO                                                    │
 │  → Todos os controles DESABILITADOS (read-only)             │
-│  → Botão amarelo: "⏸ PAUSAR EA"                            │
+│  → Apenas 1 botão visível:                                  │
+│    [⏸ PAUSAR EA]                                            │
+│  → SALVAR e CANCELAR ocultos/desabilitados (nada a editar)  │
 │  → Ao clicar PAUSAR:                                        │
 │    - Se há posições abertas → BLOQUEIA com mensagem:        │
 │      "Feche as posições antes de pausar"                    │
@@ -485,97 +487,114 @@ Quando o EA está rodando, fica desabilitado (cinza).
 
 ---
 
-## ETAPA 14: OnClickStart — Validar/Aplicar tudo + checar posições
+## ETAPA 14: 3 Botões (INICIAR / SALVAR / CANCELAR) + checar posições
 **Arquivo:** `GUI/Panel.mqh` ou `GUI/PanelTabConfig.mqh`
 
-Reescrever `OnClickStart()`:
+### 14a. Criar os 3 botões (substituem o botão único INICIAR/PAUSAR):
+```cpp
+CButton  m_btnStart;     // ▶ INICIAR EA  /  ⏸ PAUSAR EA (toggle)
+CButton  m_btnSave;      // 💾 SALVAR
+CButton  m_btnCancel;    // ✖ CANCELAR
+```
 
+**Layout (EA pausado):** 3 botões lado a lado na área de controle
+**Layout (EA rodando):** Só PAUSAR visível; SALVAR e CANCELAR ocultos/desabilitados
+
+### 14b. OnClickStart (INICIAR / PAUSAR):
 ```cpp
 void CEPBotPanel::OnClickStart(void)
 {
    m_btnStart.Pressed(false);
 
-   // ═══════════════════════════════════════════════════════
-   // PAUSAR (EA rodando → quer pausar)
-   // ═══════════════════════════════════════════════════════
+   // ═══ PAUSAR (EA rodando → quer pausar) ═══
    if(m_eaStarted)
    {
-      // Checar posições abertas do magic atual
-      int openPositions = CountOpenPositions(m_magicNumber);
-      if(openPositions > 0)
+      int openPos = CountOpenPositions(m_magicNumber);
+      if(openPos > 0)
       {
-         // BLOQUEAR pausa — posições abertas
-         m_cfg_status.Text("Feche " + IntegerToString(openPositions)
-                          + " posição(ões) antes de pausar");
-         m_cfg_status.Color(CLR_NEGATIVE);
-         m_cfgStatusExpiry = GetTickCount() + 10000;
-         ChartRedraw();
+         ShowStatus("Feche " + IntegerToString(openPos)
+                    + " posição(ões) antes de pausar", CLR_NEGATIVE);
          return;
       }
-
-      // OK: sem posições → pausar
       SetStarted(false);
-      SetAllControlsEnabled(true);  // Liberar controles
+      SetAllControlsEnabled(true);
+      ShowSaveCancelButtons(true);   // Mostrar SALVAR + CANCELAR
       return;
    }
 
-   // ═══════════════════════════════════════════════════════
-   // INICIAR (EA pausado → quer iniciar)
-   // ═══════════════════════════════════════════════════════
+   // ═══ INICIAR (EA pausado → quer iniciar) ═══
+   if(!ValidateAndApplyAll())        // Valida + aplica config + estratégias + filtros
+      return;                        // Erros → não inicia
 
-   // 1. Aplicar CONFIG geral (valida + aplica nos módulos)
-   ApplyConfig();
-   // Checar se ApplyConfig reportou erros
-   // (ApplyConfig seta m_cfg_status com erro se houver)
-   // Precisamos de um retorno bool ou flag para saber se deu erro
-   // → Refatorar ApplyConfig() para retornar bool
-
-   // 2. Aplicar cada sub-painel de estratégia ativo
-   bool hasErrors = false;
-   for(int i = 0; i < m_stratPanelCount; i++)
-   {
-      if(!m_stratPanels[i].Apply())
-         hasErrors = true;
-   }
-
-   // 3. Aplicar cada sub-painel de filtro ativo
-   for(int i = 0; i < m_filtPanelCount; i++)
-   {
-      if(!m_filtPanels[i].Apply())
-         hasErrors = true;
-   }
-
-   // 4. Se houve erros, NÃO iniciar
-   if(hasErrors)
-   {
-      m_cfg_status.Text("Corrija os erros antes de iniciar");
-      m_cfg_status.Color(CLR_NEGATIVE);
-      m_cfgStatusExpiry = GetTickCount() + 10000;
-      ChartRedraw();
-      return;
-   }
-
-   // 5. Tudo OK → salvar config e iniciar
    SaveCurrentConfig();
    SetStarted(true);
-   SetAllControlsEnabled(false);  // Travar controles
+   SetAllControlsEnabled(false);
+   ShowSaveCancelButtons(false);     // Ocultar SALVAR + CANCELAR
 }
 ```
 
-### 14a. Refatorar ApplyConfig() para retornar bool:
-Atualmente `ApplyConfig()` é `void`. Mudar para `bool`:
+### 14c. OnClickSave (SALVAR):
 ```cpp
-bool CEPBotPanel::ApplyConfig(void)   // era void
+void CEPBotPanel::OnClickSave(void)
 {
-   // ... validação existente ...
-   if(errors > 0)
+   m_btnSave.Pressed(false);
+
+   if(!ValidateAndApplyAll())
+      return;
+
+   SaveCurrentConfig();
+   ShowStatus("Config salva com sucesso!", CLR_POSITIVE);
+}
+```
+
+### 14d. OnClickCancel (CANCELAR):
+```cpp
+void CEPBotPanel::OnClickCancel(void)
+{
+   m_btnCancel.Pressed(false);
+
+   // Recarregar último .cfg salvo (reverte todas as edições)
+   if(!LoadCurrentConfig())
+   {
+      ShowStatus("Nenhuma config salva encontrada", CLR_NEGATIVE);
+      return;
+   }
+
+   // ApplyLoadedConfig() preenche todos os CEdits/botões com valores do .cfg
+   ApplyLoadedConfig(m_lastLoadedConfig);
+   ShowStatus("Config restaurada do último save", CLR_POSITIVE);
+}
+```
+
+### 14e. ValidateAndApplyAll() — Método compartilhado:
+```cpp
+bool CEPBotPanel::ValidateAndApplyAll(void)
+{
+   // 1. CONFIG geral
+   if(!ApplyConfig())    // Refatorado para retornar bool
       return false;
-   // ... aplicação ...
+
+   // 2. Estratégias ativas
+   bool hasErrors = false;
+   for(int i = 0; i < m_stratPanelCount; i++)
+      if(!m_stratPanels[i].Apply())
+         hasErrors = true;
+
+   // 3. Filtros ativos
+   for(int i = 0; i < m_filtPanelCount; i++)
+      if(!m_filtPanels[i].Apply())
+         hasErrors = true;
+
+   if(hasErrors)
+   {
+      ShowStatus("Corrija os erros antes de prosseguir", CLR_NEGATIVE);
+      return false;
+   }
    return true;
 }
 ```
 
-### 14b. CountOpenPositions() — Novo helper:
+### 14f. Helpers:
 ```cpp
 int CEPBotPanel::CountOpenPositions(int magic)
 {
@@ -583,31 +602,96 @@ int CEPBotPanel::CountOpenPositions(int magic)
    for(int i = PositionsTotal() - 1; i >= 0; i--)
    {
       if(PositionSelectByIndex(i))
-      {
          if(PositionGetString(POSITION_SYMBOL) == m_symbol &&
             PositionGetInteger(POSITION_MAGIC) == magic)
             count++;
-      }
    }
    return count;
+}
+
+void CEPBotPanel::ShowSaveCancelButtons(bool show)
+{
+   // Mostrar/ocultar SALVAR e CANCELAR
+   // Quando EA rodando: só PAUSAR visível
+   // Quando EA pausado: todos visíveis
+}
+
+void CEPBotPanel::ShowStatus(string text, color clr)
+{
+   m_cfg_status.Text(text);
+   m_cfg_status.Color(clr);
+   m_cfgStatusExpiry = GetTickCount() + 10000;
+   ChartRedraw();
+}
+
+// Refatorar ApplyConfig() para retornar bool:
+bool CEPBotPanel::ApplyConfig(void)   // era void
+{
+   // ... validação existente ...
+   if(errors > 0) return false;
+   // ... aplicação ...
+   return true;
 }
 ```
 
 ---
 
-## ETAPA 15: Estado inicial do EA — Controles habilitados ao iniciar
+## ETAPA 15: Fix TrendFilter.mqh — array out of range (linha 552)
+**Arquivo:** `Strategy/Filters/TrendFilter.mqh`
+
+**Bug:** Erro fatal `array out of range in 'TrendFilter.mqh' (552,12)` que
+remove o EA do gráfico.
+
+**Causa raiz:** `UpdateIndicators()` linha 390-391:
+```cpp
+if(m_handleMA == INVALID_HANDLE)
+   return true;   // ← BUG! Retorna TRUE sem popular m_ma[]
+```
+Quando `m_handleMA == INVALID_HANDLE`, o método retorna `true` (indicando sucesso),
+mas `m_ma[]` nunca foi preenchido via `CopyBuffer`. Na sequência, `ValidateSignal()`
+linha 552 acessa `m_ma[0]` e `m_ma[1]` → crash.
+
+**Cenários que disparam:**
+- TrendFilter criado mas `Init()` falhou (handle inválido permanece INVALID_HANDLE)
+- Handle liberado via `Cleanup()` mas `ValidateSignal()` ainda é chamado
+- Hot-reload recriando indicador → handle temporariamente INVALID_HANDLE
+
+**Fix:**
+```cpp
+// ANTES (bugado):
+if(m_handleMA == INVALID_HANDLE)
+   return true;
+
+// DEPOIS (correto):
+if(m_handleMA == INVALID_HANDLE)
+   return false;   // Sem handle = dados não disponíveis
+```
+
+**Fix adicional de segurança:** Adicionar guard antes do acesso ao array na
+linha 552:
+```cpp
+// ANTES:
+if(m_ma[0] == 0 || m_ma[1] == 0)
+
+// DEPOIS:
+if(ArraySize(m_ma) < 2 || m_ma[0] == 0 || m_ma[1] == 0)
+```
+
+---
+
+## ETAPA 16: Estado inicial do EA — Controles habilitados ao iniciar
 **Arquivo:** `GUI/Panel.mqh`
 
-### 15a. No Init() / CreatePanel():
+### 16a. No Init() / CreatePanel():
 Após criar todos os controles, como `m_eaStarted` começa `false` (EA pausado),
-os controles já devem estar habilitados. Nenhuma mudança necessária aqui.
+os controles já devem estar habilitados. Mostrar os 3 botões (INICIAR/SALVAR/CANCELAR).
 
-### 15b. No ApplyLoadedConfig():
+### 16b. No ApplyLoadedConfig():
 Após carregar config (banner CARREGAR ou auto-load), NÃO iniciar o EA
 automaticamente. Os controles ficam habilitados, o EA fica pausado.
 O usuário precisa clicar INICIAR para validar/aplicar/começar.
 
-### 15c. Exibir status visual claro:
+### 16c. Exibir status visual claro:
 Quando pausado, a aba STATUS deve mostrar "PAUSADO" (amarelo) — já implementado
 na Parte 027 anterior.
 
@@ -621,7 +705,8 @@ Atualizar headers de versão nos arquivos modificados:
 | ConfigPersistence.mqh | +4 campos SConfigData, validação enums | 027 |
 | PanelPersistence.mqh | Collect/Apply novos campos, fix double-assign | 027 |
 | PanelTabConfig.mqh | ApplyMagicNumberChange(), SetAllControlsEnabled(), ApplyConfig→bool | 027 |
-| Panel.mqh | OnClickStart() reescrito, CountOpenPositions() | 027 |
+| Panel.mqh | 3 botões (INICIAR/SALVAR/CANCELAR), CountOpenPositions() | 027 |
+| TrendFilter.mqh | Fix array out of range (handle INVALID retornava true) | 027 |
 | Logger.mqh | ReloadForMagic() | 027 |
 | BlockerDrawdown.mqh | SetMagicNumber() com reset de estado | 027 |
 | BlockerFilters.mqh | SetMagicNumber() limpa caches transição | 027 |
@@ -649,13 +734,16 @@ FASE 1 — PERSISTÊNCIA + HOT-RELOAD (sem mudança de UX)
   7. PanelPersistence.mqh   ← Collect + Apply + fix assignments
   8. PanelTabConfig.mqh     ← ApplyMagicNumberChange() + hot-reload
 
-FASE 2 — CONTROLE DE ESTADO (UX: travar controles + INICIAR aplica tudo)
+FASE 2 — CONTROLE DE ESTADO (UX: 3 botões + travar controles)
   9.  Sub-painéis (6 arqs)  ← Remover APLICAR, Apply() público, SetEnabled()
   10. PanelTabConfig.mqh    ← SetAllControlsEnabled(), ApplyConfig()→bool
-  11. Panel.mqh             ← OnClickStart() reescrito, CountOpenPositions()
+  11. Panel.mqh             ← 3 botões (INICIAR/SALVAR/CANCELAR), CountOpenPositions()
 
-FASE 3 — CHANGELOGS
-  12. Todos os arquivos     ← Atualizar versões/changelogs
+FASE 3 — BUGFIX
+  12. TrendFilter.mqh       ← Fix array out of range (handle INVALID → return false)
+
+FASE 4 — CHANGELOGS
+  13. Todos os arquivos     ← Atualizar versões/changelogs
 ```
 
 Etapas 2-5 podem ser feitas em paralelo (sem dependências entre si).
@@ -694,8 +782,15 @@ Nenhuma migração necessária. Configs antigos carregam normalmente.
 4. **Ordem das chamadas**: Logger DEVE ser recarregado ANTES de
    Blockers.ReconstructStreaks(), pois os streaks leem do Logger.
 
-5. **APLICAR CONFIG mantido**: O botão APLICAR da aba CONFIG continua existindo
-   (para testar configs sem iniciar), mas fica desabilitado quando EA está rodando.
+5. **Botão SALVAR**: Substitui o antigo APLICAR CONFIG. Valida + aplica + salva
+   sem iniciar trading. Desabilitado quando EA está rodando.
+
+7. **Botão CANCELAR**: Recarrega último .cfg salvo. Se nunca salvou, mostra
+   mensagem "Nenhuma config salva". Desabilitado quando EA está rodando.
+
+8. **TrendFilter crash**: Bug crítico — `UpdateIndicators()` retorna `true` com
+   `m_handleMA == INVALID_HANDLE`, causando acesso a array vazio. Fix simples
+   mas impacto alto (remove o EA do gráfico).
 
 6. **Edge case: MT5 fecha com posição aberta**: No restart, EA inicia pausado
    (m_eaStarted=false). Se há posição aberta do magic, os controles devem ficar
@@ -704,8 +799,9 @@ Nenhuma migração necessária. Configs antigos carregam normalmente.
 ---
 
 ## TOTAL ESTIMADO
-- **15 arquivos** modificados
-- **~200-250 linhas** de código novo/alterado
+- **16 arquivos** modificados
+- **~250-300 linhas** de código novo/alterado
 - **~30 linhas** removidas (botões APLICAR dos sub-painéis)
 - **0 arquivos** novos criados
 - Lógica de trading existente: **inalterada**
+- **1 bugfix crítico** (TrendFilter array out of range)
