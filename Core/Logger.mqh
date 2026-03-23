@@ -2,13 +2,18 @@
 //|                                                       Logger.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                                Sistema de Logging - EPBot Matrix |
-//|                     Versão 3.26 - Claude Parte 023 (Claude Code) |
+//|                     Versão 3.27 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "3.26"
+#property version   "3.27"
 
 // ═══════════════════════════════════════════════════════════════════
+// CHANGELOG v3.27 (Parte 027):
+// + ReloadForMagic(int newMagic): hot reload do Magic Number
+//   Salva relatório do magic atual, atualiza filenames CSV/TXT,
+//   reconstrói stats via LoadDailyStats()
+//
 // CHANGELOG v3.26 (Parte 023):
 // ✅ Novo: m_dailyTradeResults[] armazena sequência ordenada win/loss
 // ✅ Novo: GetDailyTradeResults() expõe sequência para Blockers

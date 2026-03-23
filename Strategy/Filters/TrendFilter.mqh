@@ -2,10 +2,10 @@
 //|                                                  TrendFilter.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                      Filtro de Tendência por MA - EPBot Matrix   |
-//|                                   Versão 2.19 - Claude Parte 024 |
+//|                     Versão 2.20 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.19"
+#property version   "2.20"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,12 @@
 #include "../Base/FilterBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.20 (Parte 027):
+// * Fix: UpdateIndicators() retorna false quando handle é inválido
+//   (antes retornava true, mascarando ausência de dados)
+// * Fix: ValidateSignal() verifica ArraySize(m_ma) < 2 antes de acessar
+//   m_ma[0]/m_ma[1] (previne array out of range)
+//
 // NOVIDADES v2.19 (Parte 024):
 // + SetMAApplied(ENUM_APPLIED_PRICE): cold reload do applied price
 // + SetMACold(period, method, tf, applied): setter combinado — 1 única reinicialização
