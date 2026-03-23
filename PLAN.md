@@ -480,25 +480,45 @@ Cada sub-painel implementa desabilitando seus próprios campos:
 - CEdits: `ReadOnly(!enable)` + cor de fundo cinza
 - CButtons (toggles/radios): cor esmaecida + ignorar clicks
 
-### 13c. Sobre o botão APLICAR CONFIG principal:
-O botão APLICAR da aba CONFIG pode ser **mantido** como alternativa rápida
-para testar configs sem iniciar o EA (validar e aplicar sem iniciar trading).
-Quando o EA está rodando, fica desabilitado (cinza).
+### 13c. Remover botão APLICAR CONFIG (rodapé):
+O botão APLICAR da aba CONFIG (y=546) é **removido**. Sua função é substituída
+pelo botão SALVAR no topo. O espaço liberado no rodapé pode ser usado para
+a linha de status (mensagens de erro/sucesso).
 
 ---
 
-## ETAPA 14: 3 Botões (INICIAR / SALVAR / CANCELAR) + checar posições
-**Arquivo:** `GUI/Panel.mqh` ou `GUI/PanelTabConfig.mqh`
+## ETAPA 14: 3 Botões no topo (INICIAR / SALVAR / CANCELAR) + checar posições
+**Arquivo:** `GUI/Panel.mqh`
 
-### 14a. Criar os 3 botões (substituem o botão único INICIAR/PAUSAR):
+### 14a. Layout no topo (substituem o botão único INICIAR/PAUSAR):
+```
+PANEL_WIDTH = 430, margem = 5+10 → espaço útil ≈ 415px
+3 botões com gap de 4px: (415 - 8) / 3 ≈ 135px cada
+
+┌──────────────────────────────────────────┐
+│ [▶ INICIAR EA] [💾 SALVAR] [✖ CANCELAR] │  ← y=3, h=22
+├──────────────────────────────────────────┤
+│  STATUS | CONFIG | ESTRAT | FILTROS      │  ← tabs
+```
+
 ```cpp
 CButton  m_btnStart;     // ▶ INICIAR EA  /  ⏸ PAUSAR EA (toggle)
 CButton  m_btnSave;      // 💾 SALVAR
 CButton  m_btnCancel;    // ✖ CANCELAR
 ```
 
-**Layout (EA pausado):** 3 botões lado a lado na área de controle
-**Layout (EA rodando):** Só PAUSAR visível; SALVAR e CANCELAR ocultos/desabilitados
+**Cores (EA pausado):**
+- INICIAR: verde `C'0,140,60'` / branco
+- SALVAR: azul `C'30,90,160'` / branco
+- CANCELAR: vermelho escuro `C'160,50,50'` / branco
+
+**Cores (EA rodando):**
+- PAUSAR: amarelo `C'200,140,0'` / branco
+- SALVAR: cinza `C'80,80,80'` (desabilitado)
+- CANCELAR: cinza `C'80,80,80'` (desabilitado)
+
+**Layout (EA pausado):** 3 botões lado a lado no topo (INICIAR verde, SALVAR azul, CANCELAR vermelho)
+**Layout (EA rodando):** PAUSAR amarelo, SALVAR e CANCELAR cinza (desabilitados)
 
 ### 14b. OnClickStart (INICIAR / PAUSAR):
 ```cpp
@@ -517,19 +537,19 @@ void CEPBotPanel::OnClickStart(void)
          return;
       }
       SetStarted(false);
-      SetAllControlsEnabled(true);
-      ShowSaveCancelButtons(true);   // Mostrar SALVAR + CANCELAR
+      SetAllControlsEnabled(true);       // Liberar controles
+      SetSaveCancelEnabled(true);        // SALVAR + CANCELAR ativos
       return;
    }
 
    // ═══ INICIAR (EA pausado → quer iniciar) ═══
-   if(!ValidateAndApplyAll())        // Valida + aplica config + estratégias + filtros
-      return;                        // Erros → não inicia
+   if(!ValidateAndApplyAll())            // Valida + aplica config + estratégias + filtros
+      return;                            // Erros → não inicia
 
    SaveCurrentConfig();
    SetStarted(true);
-   SetAllControlsEnabled(false);
-   ShowSaveCancelButtons(false);     // Ocultar SALVAR + CANCELAR
+   SetAllControlsEnabled(false);         // Travar controles
+   SetSaveCancelEnabled(false);          // SALVAR + CANCELAR cinza
 }
 ```
 
@@ -609,11 +629,14 @@ int CEPBotPanel::CountOpenPositions(int magic)
    return count;
 }
 
-void CEPBotPanel::ShowSaveCancelButtons(bool show)
+void CEPBotPanel::SetSaveCancelEnabled(bool enable)
 {
-   // Mostrar/ocultar SALVAR e CANCELAR
-   // Quando EA rodando: só PAUSAR visível
-   // Quando EA pausado: todos visíveis
+   // Habilitar/desabilitar SALVAR e CANCELAR
+   color bgColor = enable ? C'30,90,160' : C'80,80,80';
+   m_btnSave.ColorBackground(bgColor);
+   color bgCancel = enable ? C'160,50,50' : C'80,80,80';
+   m_btnCancel.ColorBackground(bgCancel);
+   // Os handlers de click ignoram se !enable (m_eaStarted=true)
 }
 
 void CEPBotPanel::ShowStatus(string text, color clr)
@@ -782,13 +805,14 @@ Nenhuma migração necessária. Configs antigos carregam normalmente.
 4. **Ordem das chamadas**: Logger DEVE ser recarregado ANTES de
    Blockers.ReconstructStreaks(), pois os streaks leem do Logger.
 
-5. **Botão SALVAR**: Substitui o antigo APLICAR CONFIG. Valida + aplica + salva
-   sem iniciar trading. Desabilitado quando EA está rodando.
+5. **3 botões no topo**: INICIAR(verde)/SALVAR(azul)/CANCELAR(vermelho) ficam
+   sempre visíveis no topo, acima das tabs. Quando EA rodando, SALVAR e CANCELAR
+   ficam cinza (desabilitados). O antigo APLICAR CONFIG (rodapé) é removido.
 
-7. **Botão CANCELAR**: Recarrega último .cfg salvo. Se nunca salvou, mostra
+6. **Botão CANCELAR**: Recarrega último .cfg salvo. Se nunca salvou, mostra
    mensagem "Nenhuma config salva". Desabilitado quando EA está rodando.
 
-8. **TrendFilter crash**: Bug crítico — `UpdateIndicators()` retorna `true` com
+7. **TrendFilter crash**: Bug crítico — `UpdateIndicators()` retorna `true` com
    `m_handleMA == INVALID_HANDLE`, causando acesso a array vazio. Fix simples
    mas impacto alto (remove o EA do gráfico).
 
