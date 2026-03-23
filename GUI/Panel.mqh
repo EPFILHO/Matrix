@@ -2,15 +2,24 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.53 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.54 - Claude Parte 028 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.53"
+#property version   "1.54"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.54 (Parte 028) — Fase 2: Controle de Estado:
+// + Barra 3 botões: m_btnStart/m_btnSave/m_btnCancel substitui botão único
+// + m_headerStatus, m_eaStarted, m_savedConfig snapshot de estado
+// + m_cur_trailingType/m_cur_beType runtime vars (desacoplados de inputs)
+// + ValidateAndApplyAll, SetAllControlsEnabled, SetSaveCancelEnabled,
+//   ShowHeaderStatus, CountOpenPositions, ApplyMagicNumberChange
+// + OnClickSave/OnClickCancel handlers; reescrita de OnClickStart/CreateStartButton
+// + Auto-start logic (Etapa 16); removido m_cfg_btnApply
+//
 // v1.53 (Parte 027):
 // + Botão INICIAR/PAUSAR no topo do painel (acima das tabs)
 //   Novo membro: CButton m_btnStart, bool m_eaStarted
@@ -384,7 +393,9 @@
 
 #define START_BTN_H          22
 #define START_BTN_Y          3
-#define TAB_BTN_Y            (START_BTN_Y + START_BTN_H + 2)
+#define HEADER_STATUS_Y      (START_BTN_Y + START_BTN_H + 2)
+#define HEADER_STATUS_H      14
+#define TAB_BTN_Y            (HEADER_STATUS_Y + HEADER_STATUS_H + 2)
 #define CONTENT_TOP          (TAB_BTN_Y + TAB_BTN_H + 8)
 #define TAB_BTN_H            22
 
@@ -695,8 +706,7 @@ private:
    CLabel   m_co_lDbg;    CButton m_co_bDbg;
    CLabel   m_co_lDbgCd;  CEdit   m_co_iDbgCd;
 
-   // APLICAR + status
-   CButton  m_cfg_btnApply;
+   // Config status
    CLabel   m_cfg_status;
    uint     m_cfgStatusExpiry;     // GetTickCount() em que a msg expira
 
@@ -743,9 +753,14 @@ private:
    bool                      m_cur_newsOn3;
    // (MA Cross e RSI ESTRAT state vars movidos para CMACrossPanel / CRSIStrategyPanel)
 
-   // ── Botão INICIAR/PAUSAR (Parte 027) ──
-   CButton            m_btnStart;
+   // ── 3 Botões no topo: INICIAR/SALVAR/CANCELAR (Parte 027) ──
+   CButton            m_btnStart;       // INICIAR EA / PAUSAR EA (toggle)
+   CButton            m_btnSave;        // SALVAR
+   CButton            m_btnCancel;      // CANCELAR
+   CLabel             m_headerStatus;   // Status no topo (visível em todas as abas)
+   uint               m_headerStatusExpiry;
    bool               m_eaStarted;
+   SConfigData        m_savedConfig;    // Snapshot da última config salva (para CANCELAR)
 
    // ── Banner de carregamento de config salva (Parte 027) ──
    bool               m_loadBannerVisible;
@@ -785,6 +800,14 @@ private:
 
    bool              CreateStartButton(void);
    void              OnClickStart(void);
+   void              OnClickSave(void);
+   void              OnClickCancel(void);
+   bool              ValidateAndApplyAll(void);
+   void              SetAllControlsEnabled(bool enable);
+   void              SetSaveCancelEnabled(bool enable);
+   void              ShowHeaderStatus(string text, color clr);
+   int               CountOpenPositions(int magic);
+   void              SetStarted(bool started);
    bool              CreateTabButtons(void);
    bool              CreateTabStatus(void);
    bool              CreateTabResultados(void);
@@ -843,7 +866,6 @@ private:
    void              OnClickCfgRisco2(void);
    void              OnClickCfgBloq(void);
    void              OnClickCfgOutros(void);
-   void              OnClickApply(void);
    void              OnClickDirection(int selected);
    void              OnClickConflict(void);
    void              OnClickDebug(void);
@@ -1160,6 +1182,35 @@ bool CEPBotPanel::CreatePanel(long chart, string name, int subwin,
    ChartSetInteger(chart, CHART_EVENT_MOUSE_MOVE, true);
 
    PopulateConfig();
+
+   // ── Carregar config salva e inicializar m_savedConfig ──
+   if(HasSavedConfig())
+     {
+      SConfigData loadData;
+      ZeroMemory(loadData);
+      if(CConfigPersistence::Load(m_symbol, m_magicNumber, loadData))
+        {
+         m_savedConfig = loadData;
+        }
+     }
+
+   // ── Estado inicial: verificar posições abertas ──
+   int openPos = CountOpenPositions(m_magicNumber);
+   if(openPos > 0)
+     {
+      SetStarted(true);
+      SetAllControlsEnabled(false);
+      SetSaveCancelEnabled(false);
+      ShowHeaderStatus(IntegerToString(openPos) +
+         " posicao(oes) abertas detectadas - EA retomado", C'200,140,0');
+     }
+   else
+     {
+      SetStarted(false);
+      SetAllControlsEnabled(true);
+      SetSaveCancelEnabled(true);
+     }
+
    ShowTab(TAB_STATUS);
    return true;
   }
@@ -1215,18 +1266,60 @@ void CEPBotPanel::SetEV(CLabel &val, string value, color clr)
 //+------------------------------------------------------------------+
 bool CEPBotPanel::CreateStartButton(void)
   {
-   int y1 = START_BTN_Y;  // topo do painel, acima das tabs
+   int y1 = START_BTN_Y;
    int y2 = y1 + START_BTN_H;
+   int margin = 5;
+   int gap = 4;
+   int totalW = PANEL_WIDTH - 20;
+   int btnW = (totalW - gap * 2) / 3;
+   int x1_start = margin;
+   int x2_start = x1_start + btnW;
+   int x1_save  = x2_start + gap;
+   int x2_save  = x1_save + btnW;
+   int x1_cancel = x2_save + gap;
+   int x2_cancel = x1_cancel + btnW;
 
+   // Botão INICIAR EA
    if(!m_btnStart.Create(m_chart_id, PFX + "btnStart", m_subwin,
-                         5, y1, PANEL_WIDTH - 15, y2))
+                         x1_start, y1, x2_start, y2))
       return false;
-   m_btnStart.Text("▶  INICIAR EA");
+   m_btnStart.Text("INICIAR EA");
    m_btnStart.FontSize(9);
    m_btnStart.Color(clrWhite);
    m_btnStart.ColorBackground(C'0,140,60');
-   if(!Add(m_btnStart))
+   if(!Add(m_btnStart)) return false;
+
+   // Botão SALVAR
+   if(!m_btnSave.Create(m_chart_id, PFX + "btnSave", m_subwin,
+                        x1_save, y1, x2_save, y2))
       return false;
+   m_btnSave.Text("SALVAR");
+   m_btnSave.FontSize(9);
+   m_btnSave.Color(clrWhite);
+   m_btnSave.ColorBackground(C'30,90,160');
+   if(!Add(m_btnSave)) return false;
+
+   // Botão CANCELAR
+   if(!m_btnCancel.Create(m_chart_id, PFX + "btnCancel", m_subwin,
+                          x1_cancel, y1, x2_cancel, y2))
+      return false;
+   m_btnCancel.Text("CANCELAR");
+   m_btnCancel.FontSize(9);
+   m_btnCancel.Color(clrWhite);
+   m_btnCancel.ColorBackground(C'160,50,50');
+   if(!Add(m_btnCancel)) return false;
+
+   // Label de status no topo (visível em todas as abas)
+   if(!m_headerStatus.Create(m_chart_id, PFX + "headerStat", m_subwin,
+                              margin, HEADER_STATUS_Y,
+                              PANEL_WIDTH - 15, HEADER_STATUS_Y + HEADER_STATUS_H))
+      return false;
+   m_headerStatus.Text("");
+   m_headerStatus.FontSize(8);
+   m_headerStatus.Color(CLR_NEUTRAL);
+   if(!Add(m_headerStatus)) return false;
+
+   m_headerStatusExpiry = 0;
    return true;
   }
 
@@ -1236,7 +1329,128 @@ bool CEPBotPanel::CreateStartButton(void)
 void CEPBotPanel::OnClickStart(void)
   {
    m_btnStart.Pressed(false);
-   SetStarted(!m_eaStarted);
+
+   // ═══ PAUSAR (EA rodando → quer pausar) ═══
+   if(m_eaStarted)
+     {
+      int openPos = CountOpenPositions(m_magicNumber);
+      if(openPos > 0)
+        {
+         ShowHeaderStatus("Feche " + IntegerToString(openPos)
+                          + " posicao(oes) antes de pausar", CLR_NEGATIVE);
+         return;
+        }
+      SetStarted(false);
+      SetAllControlsEnabled(true);
+      SetSaveCancelEnabled(true);
+      ShowHeaderStatus("EA pausado", CLR_WARNING);
+      return;
+     }
+
+   // ═══ INICIAR (EA pausado → quer iniciar) ═══
+   if(!ValidateAndApplyAll())
+      return;
+
+   SaveCurrentConfig();
+   SetStarted(true);
+   SetAllControlsEnabled(false);
+   SetSaveCancelEnabled(false);
+   ShowHeaderStatus("EA iniciado!", CLR_POSITIVE);
+  }
+
+//+------------------------------------------------------------------+
+//| OnClickSave — salva config sem iniciar                            |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickSave(void)
+  {
+   m_btnSave.Pressed(false);
+   if(m_eaStarted) return;
+
+   if(!ValidateAndApplyAll())
+      return;
+
+   SaveCurrentConfig();
+   ShowHeaderStatus("Config salva com sucesso!", CLR_POSITIVE);
+  }
+
+//+------------------------------------------------------------------+
+//| OnClickCancel — restaura última config salva                      |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickCancel(void)
+  {
+   m_btnCancel.Pressed(false);
+   if(m_eaStarted) return;
+
+   if(m_savedConfig.magicNumber == 0 && m_savedConfig.fixedSL == 0)
+     {
+      ShowHeaderStatus("Nenhuma config salva encontrada", CLR_NEGATIVE);
+      return;
+     }
+
+   ApplyLoadedConfig(m_savedConfig);
+   ShowHeaderStatus("Config restaurada do ultimo save", CLR_POSITIVE);
+  }
+
+//+------------------------------------------------------------------+
+//| ValidateAndApplyAll — valida + aplica config + estratégias         |
+//+------------------------------------------------------------------+
+bool CEPBotPanel::ValidateAndApplyAll(void)
+  {
+   ApplyConfig();
+
+   // Verificar sub-painéis de estratégias
+   bool hasErrors = false;
+   for(int i = 0; i < m_stratPanelCount; i++)
+      if(!m_stratPanels[i].Apply())
+         hasErrors = true;
+
+   // Verificar sub-painéis de filtros
+   for(int i = 0; i < m_filtPanelCount; i++)
+      if(!m_filtPanels[i].Apply())
+         hasErrors = true;
+
+   if(hasErrors)
+     {
+      ShowHeaderStatus("Corrija os erros antes de prosseguir", CLR_NEGATIVE);
+      return false;
+     }
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| CountOpenPositions — conta posições do magic no símbolo            |
+//+------------------------------------------------------------------+
+int CEPBotPanel::CountOpenPositions(int magic)
+  {
+   int count = 0;
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+     {
+      if(PositionSelectByIndex(i))
+         if(PositionGetString(POSITION_SYMBOL) == m_symbol &&
+            PositionGetInteger(POSITION_MAGIC) == magic)
+            count++;
+     }
+   return count;
+  }
+
+//+------------------------------------------------------------------+
+//| SetSaveCancelEnabled — habilita/desabilita SALVAR e CANCELAR       |
+//+------------------------------------------------------------------+
+void CEPBotPanel::SetSaveCancelEnabled(bool enable)
+  {
+   m_btnSave.ColorBackground(enable ? C'30,90,160' : C'80,80,80');
+   m_btnCancel.ColorBackground(enable ? C'160,50,50' : C'80,80,80');
+  }
+
+//+------------------------------------------------------------------+
+//| ShowHeaderStatus — exibe msg de status no topo (todas as abas)     |
+//+------------------------------------------------------------------+
+void CEPBotPanel::ShowHeaderStatus(string text, color clr)
+  {
+   m_headerStatus.Text(text);
+   m_headerStatus.Color(clr);
+   m_headerStatusExpiry = GetTickCount() + 10000;
+   ChartRedraw();
   }
 
 //+------------------------------------------------------------------+
@@ -1247,14 +1461,58 @@ void CEPBotPanel::SetStarted(bool started)
    m_eaStarted = started;
    if(m_eaStarted)
      {
-      m_btnStart.Text("⏸  PAUSAR EA");
+      m_btnStart.Text("PAUSAR EA");
       m_btnStart.ColorBackground(C'200,140,0');
      }
    else
      {
-      m_btnStart.Text("▶  INICIAR EA");
+      m_btnStart.Text("INICIAR EA");
       m_btnStart.ColorBackground(C'0,140,60');
      }
+   ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
+//| SetAllControlsEnabled — travar/liberar todos os controles         |
+//+------------------------------------------------------------------+
+void CEPBotPanel::SetAllControlsEnabled(bool enable)
+  {
+// ── CONFIG: RISCO ──
+   SetEditEnabled(m_cr_lLot, m_cr_iLot, enable);
+   SetEditEnabled(m_cr_lSL,  m_cr_iSL,  enable);
+   SetEditEnabled(m_cr_lTP,  m_cr_iTP,  enable);
+   SetEditEnabled(m_cr_lATRp, m_cr_iATRp, enable);
+   SetEditEnabled(m_cr_lRngP, m_cr_iRngP, enable);
+   SetEditEnabled(m_cr_lTP1p, m_cr_iTP1p, enable);
+   SetEditEnabled(m_cr_lTP1d, m_cr_iTP1d, enable);
+   SetEditEnabled(m_cr_lTP2p, m_cr_iTP2p, enable);
+   SetEditEnabled(m_cr_lTP2d, m_cr_iTP2d, enable);
+
+// ── CONFIG: RISCO 2 ──
+   SetEditEnabled(m_c2_lTrlSt, m_c2_iTrlSt, enable);
+   SetEditEnabled(m_c2_lTrlSp, m_c2_iTrlSp, enable);
+   SetEditEnabled(m_c2_lBEVal, m_c2_iBEVal, enable);
+   SetEditEnabled(m_c2_lBEOff, m_c2_iBEOff, enable);
+   SetEditEnabled(m_c2_lDLTrd, m_c2_iDLTrd, enable);
+   SetEditEnabled(m_c2_lDLLoss, m_c2_iDLLoss, enable);
+   SetEditEnabled(m_c2_lDLGain, m_c2_iDLGain, enable);
+   SetEditEnabled(m_c2_lDD, m_c2_iDD, enable);
+
+// ── CONFIG: BLOQUEIOS ──
+   SetEditEnabled(m_cb_lSpr, m_cb_iSpr, enable);
+
+// ── CONFIG: OUTROS ──
+   SetEditEnabled(m_co_lMagic, m_co_iMagic, enable);
+   SetEditEnabled(m_co_lComm, m_co_iComm, enable);
+   SetEditEnabled(m_co_lSlip, m_co_iSlip, enable);
+   SetEditEnabled(m_co_lDbgCd, m_co_iDbgCd, enable);
+
+// ── SUB-PAINÉIS: Estratégias + Filtros ──
+   for(int i = 0; i < m_stratPanelCount; i++)
+      m_stratPanels[i].SetEnabled(enable);
+   for(int i = 0; i < m_filtPanelCount; i++)
+      m_filtPanels[i].SetEnabled(enable);
+
    ChartRedraw();
   }
 
@@ -1330,7 +1588,9 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
    if(id == CHARTEVENT_OBJECT_CLICK)
      {
       // INICIAR/PAUSAR — sempre acessível (header)
-      if(sparam == m_btnStart.Name()) { OnClickStart(); ChartRedraw(); return; }
+      if(sparam == m_btnStart.Name())  { OnClickStart();  ChartRedraw(); return; }
+      if(sparam == m_btnSave.Name())   { OnClickSave();   ChartRedraw(); return; }
+      if(sparam == m_btnCancel.Name()) { OnClickCancel(); ChartRedraw(); return; }
 
       // BANNER: Load/Ignore config — sempre acessível
       if(sparam == m_lb_btnLoad.Name())   { m_lb_btnLoad.Pressed(false);   OnClickLoadBanner();   ChartRedraw(); return; }
@@ -1389,9 +1649,6 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
          if(sparam == m_cfg_btnBloq.Name())   { m_cfg_btnBloq.Pressed(false);   OnClickCfgBloq();   ChartRedraw(); return; }
          if(sparam == m_cfg_btnOutros.Name()) { m_cfg_btnOutros.Pressed(false); OnClickCfgOutros(); ChartRedraw(); return; }
          if(sparam == m_cfg_btnBloq2.Name())  { m_cfg_btnBloq2.Pressed(false);  OnClickCfgBloq2();  ChartRedraw(); return; }
-
-         // CONFIG: APLICAR
-         if(sparam == m_cfg_btnApply.Name())  { m_cfg_btnApply.Pressed(false); OnClickApply(); ChartRedraw(); return; }
 
          // CONFIG: radio groups (SL Type, TP Type, Direction)
          for(int i = 0; i < 3; i++)
@@ -1642,7 +1899,7 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
             // Sub-page buttons + apply + status
             m_cfg_btnRisco.Show(); m_cfg_btnRisco2.Show();
             m_cfg_btnBloq.Show(); m_cfg_btnOutros.Show(); m_cfg_btnBloq2.Show();
-            m_cfg_btnApply.Show(); m_cfg_status.Show();
+            m_cfg_status.Show();
             // Show active sub-page
             ShowCfgPage(m_cfgPage);
            }
@@ -1650,7 +1907,7 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
            {
             m_cfg_btnRisco.Hide(); m_cfg_btnRisco2.Hide();
             m_cfg_btnBloq.Hide(); m_cfg_btnOutros.Hide(); m_cfg_btnBloq2.Hide();
-            m_cfg_btnApply.Hide(); m_cfg_status.Hide();
+            m_cfg_status.Hide();
             SetCfgPageVis(CFG_RISCO, false);
             SetCfgPageVis(CFG_RISCO2, false);
             SetCfgPageVis(CFG_BLOQUEIOS, false);
@@ -1691,6 +1948,10 @@ void CEPBotPanel::Update(void)
    // Não atualiza se minimizado — evita labels "soltos" no gráfico
    if(m_minimized)
       return;
+
+   // Auto-clear header status (visível em todas as abas)
+   if(m_headerStatusExpiry > 0 && GetTickCount() >= m_headerStatusExpiry)
+     { m_headerStatus.Text(""); m_headerStatusExpiry = 0; ChartRedraw(); }
 
    switch(m_activeTab)
      {

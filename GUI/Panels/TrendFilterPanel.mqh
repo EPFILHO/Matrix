@@ -2,10 +2,14 @@
 //|                                             TrendFilterPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Trend Filter                             |
-//|                     Versão 1.03 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.04 - Claude Parte 028 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.04 (Parte 028) — Fase 2: Controle de Estado:
+// * Removido botão APLICAR (m_btnApply) — aplicação centralizada
+// * _OnApply convertido para Apply() público; adicionado SetEnabled()
 //
 // CHANGELOG v1.03 (Parte 027):
 // + SetFilter(): setter tipado para re-injeção de ponteiro
@@ -22,8 +26,6 @@ private:
    ENUM_MA_METHOD     m_cur_method;
    ENUM_TIMEFRAMES    m_cur_TF;
    ENUM_APPLIED_PRICE m_cur_price;
-   uint               m_statusExpiry;
-
    // Controles — display
    CLabel   m_hdr;
    CLabel   m_lStatus;  CLabel  m_eStatus;
@@ -38,8 +40,6 @@ private:
    CLabel   m_lTF;      CButton m_bTF;
    CLabel   m_lPrice;   CButton m_bPrice;
    CLabel   m_lNeutDist; CEdit  m_iNeutDist;
-   CButton  m_btnApply;
-   CLabel   m_lblStatus;
 
 public:
    CTrendFilterPanel(CTrendFilter *filter)
@@ -47,8 +47,7 @@ public:
         m_pendingEnabled(false),
         m_cur_method(MODE_SMA),
         m_cur_TF(PERIOD_CURRENT),
-        m_cur_price(PRICE_CLOSE),
-        m_statusExpiry(0)
+        m_cur_price(PRICE_CLOSE)
      {}
 
    virtual string GetName(void) const { return "TREND"; }
@@ -133,24 +132,6 @@ public:
       }
       y += PANEL_GAP_Y + 8;
 
-      // Botão APLICAR
-      if(!m_btnApply.Create(chart_id, PFX + "f_applyTr", subwin,
-                             COL_LABEL_X, CFG_APPLY_Y,
-                             COL_VALUE_X + COL_VALUE_W, CFG_APPLY_Y + 24))
-         return false;
-      m_btnApply.Text("APLICAR TREND FILTER");
-      m_btnApply.FontSize(9);
-      m_btnApply.ColorBackground(C'30,120,70');
-      m_btnApply.Color(clrWhite);
-      if(!parent.AddControl(m_btnApply)) return false;
-
-      if(!m_lblStatus.Create(chart_id, PFX + "f_stTr", subwin,
-                              COL_LABEL_X, CFG_APPLY_Y + 28,
-                              COL_VALUE_X + COL_VALUE_W, CFG_APPLY_Y + 28 + PANEL_GAP_Y))
-         return false;
-      m_lblStatus.Text(""); m_lblStatus.FontSize(8); m_lblStatus.Color(CLR_NEUTRAL);
-      if(!parent.AddControl(m_lblStatus)) return false;
-      m_statusExpiry = 0;
       return true;
      }
 
@@ -166,7 +147,6 @@ public:
       m_lTF.Show(); m_bTF.Show();
       m_lPrice.Show(); m_bPrice.Show();
       m_lNeutDist.Show(); m_iNeutDist.Show();
-      m_btnApply.Show(); m_lblStatus.Show();
      }
 
    virtual void Hide(void)
@@ -181,7 +161,6 @@ public:
       m_lTF.Hide(); m_bTF.Hide();
       m_lPrice.Hide(); m_bPrice.Hide();
       m_lNeutDist.Hide(); m_iNeutDist.Hide();
-      m_btnApply.Hide(); m_lblStatus.Hide();
      }
 
    virtual void Update(void)
@@ -204,8 +183,6 @@ public:
          m_eDist.Text("--");             m_eDist.Color(CLR_NEUTRAL);
         }
       _RefreshFieldState();
-      if(m_statusExpiry > 0 && GetTickCount() >= m_statusExpiry)
-        { m_lblStatus.Text(""); m_statusExpiry = 0; ChartRedraw(); }
      }
 
    virtual bool OnClick(string name)
@@ -218,8 +195,6 @@ public:
          _RefreshFieldState();
          return true;
         }
-      if(name == m_btnApply.Name())
-        { m_btnApply.Pressed(false); _OnApply(); return true; }
       for(int i = 0; i < 4; i++)
          if(name == m_bMethod[i].Name())
            { m_cur_method = IndexToMAMethod(i); SetRadioSel(m_bMethod, 4, i); return true; }
@@ -240,44 +215,37 @@ public:
       return false;
      }
 
-private:
-   void _OnApply(void)
+public:
+   bool Apply(void)
      {
       if(m_filter == NULL)
-        {
-         m_lblStatus.Text("Filtro nao disponivel");
-         m_lblStatus.Color(CLR_NEGATIVE);
-         m_statusExpiry = GetTickCount() + 10000;
-         return;
-        }
+         return false;
+
       int    period   = (int)StringToInteger(m_iPeriod.Text());
       double neutDist = StringToDouble(m_iNeutDist.Text());
-      string errorMsg = "";
       if(period <= 0 || period > 1000)
-         errorMsg = "Periodo invalido (1-1000)";
-      else if(neutDist < 0)
-         errorMsg = "Zona neutra deve ser >= 0";
-
-      if(errorMsg != "")
-        {
-         m_lblStatus.Text(errorMsg);
-         m_lblStatus.Color(CLR_NEGATIVE);
-         m_statusExpiry = GetTickCount() + 10000;
-         return;
-        }
+         return false;
+      if(neutDist < 0)
+         return false;
 
       m_filter.SetEnabled(m_pendingEnabled);
       m_filter.SetTrendFilterEnabled(m_pendingEnabled);
       m_filter.SetNeutralDistance(neutDist);
       bool coldOk = m_filter.SetMACold(period, m_cur_method, m_cur_TF, m_cur_price);
 
-      string msg = "Aplicado" + (m_pendingEnabled ? " [ON]" : " [OFF]");
-      if(!coldOk) msg += " (aviso: falha cold reload)";
-      m_lblStatus.Text(msg);
-      m_lblStatus.Color(CLR_POSITIVE);
-      m_statusExpiry = GetTickCount() + 10000;
-      if(m_parent != NULL) m_parent.SaveCurrentConfig();
+      return coldOk;
      }
+
+   void SetEnabled(bool enable)
+     {
+      color bg = enable ? clrWhite : C'60,60,60';
+      m_iPeriod.ReadOnly(!enable);
+      m_iPeriod.ColorBackground(bg);
+      m_iNeutDist.ReadOnly(!enable);
+      m_iNeutDist.ColorBackground(bg);
+     }
+
+private:
 
    void _RefreshFieldState(void)
      {

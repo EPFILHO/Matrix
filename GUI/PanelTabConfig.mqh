@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.30 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.31 - Claude Parte 028 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -14,6 +14,11 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.31 (Parte 028) — Fase 2: Controle de Estado:
+// * inp_TrailingType/inp_BEType substituídos por m_cur_trailingType/m_cur_beType
+// * PopulateConfig inicializa runtime vars; magic reload via ApplyMagicNumberChange
+// * Removidos m_cfg_btnApply (criação) e OnClickApply (handler)
+//
 // v1.30 (Parte 027):
 // * Hot Reload: Magic Number, Trade Comment e Slippage (runtime vars)
 //   - Magic Number aplicado em TradeManager + BlockerFilters + g_magicNumber
@@ -681,19 +686,8 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLI(m_cb2_lN3EM, m_cb2_iN3EM, "cb2_lN3EM","cb2_iN3EM","Fim M:", y)) return false;
 
 // ════════════════════════════════════════════════════════════
-// APLICAR + STATUS (fixos, visíveis em todas sub-páginas)
+// STATUS (fixo, visível em todas sub-páginas)
 // ════════════════════════════════════════════════════════════
-   if(!m_cfg_btnApply.Create(m_chart_id, PFX + "cfg_apply", m_subwin,
-                             COL_LABEL_X, CFG_APPLY_Y,
-                             COL_VALUE_X + COL_VALUE_W, CFG_APPLY_Y + 24))
-      return false;
-   m_cfg_btnApply.Text("APLICAR");
-   m_cfg_btnApply.FontSize(9);
-   m_cfg_btnApply.ColorBackground(C'30,120,70');
-   m_cfg_btnApply.Color(clrWhite);
-   if(!Add(m_cfg_btnApply))
-      return false;
-
    if(!m_cfg_status.Create(m_chart_id, PFX + "cfg_st", m_subwin,
                            COL_LABEL_X, CFG_APPLY_Y + 28,
                            COL_VALUE_X + COL_VALUE_W, CFG_APPLY_Y + 28 + PANEL_GAP_Y))
@@ -1534,15 +1528,6 @@ void CEPBotPanel::OnClickTPType(int selected)
    RefreshRisco2State();
 // Atualizar estado visual RISCO (usa m_cur_partialTP já atualizado)
    RefreshRiscoState();
-  }
-
-//+------------------------------------------------------------------+
-//| OnClickApply — valida campos e chama setters hot-reload            |
-//+------------------------------------------------------------------+
-void CEPBotPanel::OnClickApply(void)
-  {
-   m_cfg_btnApply.Pressed(false);
-   ApplyConfig();
   }
 
 //+------------------------------------------------------------------+

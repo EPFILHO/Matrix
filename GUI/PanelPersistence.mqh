@@ -2,7 +2,7 @@
 //|                                           PanelPersistence.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel: Persistência de Config — Save/Load/Banner                |
-//|                     Versão 1.01 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.02 - Claude Parte 028 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para persistência de configurações.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -10,6 +10,12 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.02 (Parte 028) — Fase 2: Controle de Estado:
+// + SaveCurrentConfig: snapshot m_savedConfig para rollback
+// + CollectConfigData: inclui magicNumber/tradeComment/trailingType/beType
+// + ApplyLoadedConfig: aplica m_cur_trailingType/m_cur_beType
+// + Substituição de inp_TrailingType/inp_BEType por runtime vars
+//
 // v1.01 (Parte 027):
 // + ShowLoadBanner: atualizado para exibir novos controles do banner
 //   redesenhado (m_lb_bg, m_lb_descLoad, m_lb_descIgnore)
@@ -34,6 +40,7 @@ void CEPBotPanel::SaveCurrentConfig(void)
    SConfigData data;
    ZeroMemory(data);
    CollectConfigData(data);
+   m_savedConfig = data;   // Snapshot para CANCELAR
    CConfigPersistence::Save(m_symbol, m_magicNumber, data);
   }
 

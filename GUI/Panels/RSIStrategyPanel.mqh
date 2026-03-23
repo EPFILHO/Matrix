@@ -2,10 +2,14 @@
 //|                                            RSIStrategyPanel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — RSI Strategy                             |
-//|                     Versão 1.04 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.05 - Claude Parte 028 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.05 (Parte 028) — Fase 2: Controle de Estado:
+// * Removido botão APLICAR (m_btnApply) — aplicação centralizada
+// * _OnApply convertido para Apply() público; adicionado SetEnabled()
 //
 // CHANGELOG v1.04 (Parte 027):
 // + SetStrategy(): setter tipado para re-injeção de ponteiro
@@ -41,7 +45,6 @@ private:
    CLabel   m_lOversold;   CEdit m_iOversold;
    CLabel   m_lOverbought; CEdit m_iOverbought;
    CLabel   m_lMiddle;     CEdit m_iMiddle;
-   CButton  m_btnApply;
    CLabel   m_lblStatus;
 
 public:
@@ -129,17 +132,6 @@ public:
       if(!parent.CreateLI(m_lMiddle,     m_iMiddle,     "re_lMI", "re_iMI", "Medio:",      y)) return false;
       y += PANEL_GAP_Y + 8;
 
-      // Botão APLICAR
-      if(!m_btnApply.Create(chart_id, PFX + "e_applyRSI", subwin,
-                             COL_LABEL_X, CFG_APPLY_Y,
-                             COL_VALUE_X + COL_VALUE_W, CFG_APPLY_Y + 24))
-         return false;
-      m_btnApply.Text("APLICAR RSI");
-      m_btnApply.FontSize(9);
-      m_btnApply.ColorBackground(C'30,120,70');
-      m_btnApply.Color(clrWhite);
-      if(!parent.AddControl(m_btnApply)) return false;
-
       // Label de status
       if(!m_lblStatus.Create(chart_id, PFX + "e_stRSI", subwin,
                               COL_LABEL_X, CFG_APPLY_Y + 28,
@@ -170,7 +162,7 @@ public:
       m_lOversold.Show(); m_iOversold.Show();
       m_lOverbought.Show(); m_iOverbought.Show();
       m_lMiddle.Show(); m_iMiddle.Show();
-      m_btnApply.Show(); m_lblStatus.Show();
+      m_lblStatus.Show();
      }
 
    virtual void Hide(void)
@@ -189,7 +181,7 @@ public:
       m_lOversold.Hide(); m_iOversold.Hide();
       m_lOverbought.Hide(); m_iOverbought.Hide();
       m_lMiddle.Hide(); m_iMiddle.Hide();
-      m_btnApply.Hide(); m_lblStatus.Hide();
+      m_lblStatus.Hide();
      }
 
    virtual void Update(void)
@@ -229,8 +221,6 @@ public:
          ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
          return true;
         }
-      if(name == m_btnApply.Name())
-        { m_btnApply.Pressed(false); _OnApply(); return true; }
       if(name == m_bTF.Name())
         {
          m_bTF.Pressed(false);
@@ -282,84 +272,52 @@ private:
       SetEditEnabled(m_lMiddle, m_iMiddle, useMiddle);
      }
 
-   void _OnApply(void)
+public:
+   bool Apply(void)
      {
-      if(m_strategy == NULL)
-        {
-         m_lblStatus.Text("Estrategia nao disponivel");
-         m_lblStatus.Color(CLR_NEGATIVE);
-         m_statusExpiry = GetTickCount() + 10000;
-         return;
-        }
+      if(m_strategy == NULL) return false;
       int period = (int)StringToInteger(m_iPeriod.Text());
       int prio   = (int)StringToInteger(m_iPriority.Text());
       double os  = StringToDouble(m_iOversold.Text());
       double ob  = StringToDouble(m_iOverbought.Text());
       double mi  = StringToDouble(m_iMiddle.Text());
 
-      // Validação
       string errorMsg = "";
-      if(period < 2 || period > 500)
-         errorMsg = "Periodo invalido (2-500)";
-      else if(prio <= 0)
-         errorMsg = "Prioridade deve ser > 0";
-      else if(m_cur_rsiMode == RSI_MODE_MIDDLE)
-        {
-         if(mi <= 0 || mi >= 100) errorMsg = "Medio invalido (1-99)";
-        }
-      else
-        {
-         if(os <= 0 || os >= 100) errorMsg = "Sobrevendido invalido (1-99)";
-         else if(ob <= 0 || ob >= 100) errorMsg = "Sobrecomprado invalido (1-99)";
-         else if(ob <= os) errorMsg = "Sobrecomprado deve ser > Sobrevendido";
-        }
+      if(period < 2 || period > 500) errorMsg = "Periodo invalido";
+      else if(prio <= 0) errorMsg = "Prioridade deve ser > 0";
+      else if(m_cur_rsiMode == RSI_MODE_MIDDLE) { if(mi <= 0 || mi >= 100) errorMsg = "Medio invalido"; }
+      else { if(os <= 0 || os >= 100 || ob <= 0 || ob >= 100 || ob <= os) errorMsg = "Niveis invalidos"; }
 
       if(errorMsg != "")
         {
-         m_lblStatus.Text(errorMsg);
-         m_lblStatus.Color(CLR_NEGATIVE);
-         m_statusExpiry = GetTickCount() + 10000;
-         ChartRedraw();
-         return;
+         m_lblStatus.Text(errorMsg); m_lblStatus.Color(CLR_NEGATIVE);
+         m_statusExpiry = GetTickCount() + 10000; ChartRedraw();
+         return false;
         }
 
-      // Aplicar
-      if(!m_strategy.SetPeriod(period))
-        {
-         m_lblStatus.Text("Erro ao aplicar periodo");
-         m_lblStatus.Color(CLR_NEGATIVE);
-         m_statusExpiry = GetTickCount() + 10000;
-         ChartRedraw();
-         return;
-        }
-
+      if(!m_strategy.SetPeriod(period)) return false;
       m_strategy.SetTimeframe(m_cur_rsiTF);
       m_strategy.SetSignalMode(m_cur_rsiMode);
-      m_strategy.SetOversold(os);
-      m_strategy.SetOverbought(ob);
-      m_strategy.SetMiddle(mi);
+      m_strategy.SetOversold(os); m_strategy.SetOverbought(ob); m_strategy.SetMiddle(mi);
 
-      // Auto-ajuste de prioridade
       if(m_parent != NULL)
-        {
-         int resolved = m_parent.ResolveStrategyPriority(prio, "RSI Strategy");
-         if(resolved != prio)
-           {
-            prio = resolved;
-            m_iPriority.Text(IntegerToString(prio));
-           }
-        }
+        { int resolved = m_parent.ResolveStrategyPriority(prio, "RSI Strategy");
+          if(resolved != prio) { prio = resolved; m_iPriority.Text(IntegerToString(prio)); } }
 
       m_strategy.SetPriority(prio);
       m_strategy.SetEnabled(m_pendingEnabled);
+      return true;
+     }
 
-      string msg = "Aplicado! Prioridade: " + IntegerToString(prio);
-      m_lblStatus.Text(msg);
-      m_lblStatus.Color(CLR_POSITIVE);
-      m_statusExpiry = GetTickCount() + 10000;
-      // Persistir configuração (Parte 027)
-      if(m_parent != NULL) m_parent.SaveCurrentConfig();
-      ChartRedraw();
+   void SetEnabled(bool enable)
+     {
+      m_iPeriod.ReadOnly(!enable); m_iOversold.ReadOnly(!enable);
+      m_iOverbought.ReadOnly(!enable); m_iMiddle.ReadOnly(!enable);
+      m_iPriority.ReadOnly(!enable);
+      color bg = enable ? C'25,25,25' : C'50,50,50';
+      m_iPeriod.ColorBackground(bg); m_iOversold.ColorBackground(bg);
+      m_iOverbought.ColorBackground(bg); m_iMiddle.ColorBackground(bg);
+      m_iPriority.ColorBackground(bg);
      }
   };
 //+------------------------------------------------------------------+

@@ -2,10 +2,14 @@
 //|                                           BollingerBandsPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Bollinger Bands Strategy                 |
-//|                     Versão 1.04 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.05 - Claude Parte 028 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.05 (Parte 028) — Fase 2: Controle de Estado:
+// * Removido botão APLICAR (m_btnApply) — aplicação centralizada
+// * _OnApply convertido para Apply() público; adicionado SetEnabled()
 //
 // CHANGELOG v1.04 (Parte 027):
 // + SetStrategy(): setter tipado para re-injeção de ponteiro
@@ -49,7 +53,6 @@ private:
    CLabel   m_lEntryDesc;
    CLabel   m_lExit;     CButton m_bExit[3];
    CLabel   m_lExitDesc;
-   CButton  m_btnApply;
    CLabel   m_lblStatus;
 
 public:
@@ -65,6 +68,59 @@ public:
 
    virtual string GetName(void) const { return "BB"; }
    void           SetStrategy(CBollingerBandsStrategy *s) { m_strategy = s; }
+
+   bool Apply(void)
+     {
+      if(m_strategy == NULL)
+         return false;
+
+      int period = (int)StringToInteger(m_iPeriod.Text());
+      double dev = StringToDouble(m_iDev.Text());
+      int prio = (int)StringToInteger(m_iPriority.Text());
+
+      // Validação
+      if(period < 2 || period > 500)
+         return false;
+      if(dev <= 0 || dev > 10.0)
+         return false;
+      if(prio <= 0)
+         return false;
+
+      // Aplicar
+      if(!m_strategy.SetPeriod(period) || !m_strategy.SetDeviation(dev))
+         return false;
+
+      // Auto-ajuste de prioridade se conflitar com outra estratégia
+      if(m_parent != NULL)
+        {
+         int resolved = m_parent.ResolveStrategyPriority(prio, "BB Strategy");
+         if(resolved != prio)
+           {
+            prio = resolved;
+            m_iPriority.Text(IntegerToString(prio));
+           }
+        }
+
+      m_strategy.SetPriority(prio);
+      m_strategy.SetTimeframe(m_cur_TF);
+      m_strategy.SetSignalMode(m_cur_mode);
+      m_strategy.SetEntryMode(m_cur_entry);
+      m_strategy.SetExitMode(m_cur_exit);
+      m_strategy.SetEnabled(m_pendingEnabled);
+      ChartRedraw();
+      return true;
+     }
+
+   void SetEnabled(bool enable)
+     {
+      color bg = enable ? clrWhite : C'200,200,200';
+      m_iPeriod.ReadOnly(!enable);
+      m_iPeriod.ColorBackground(bg);
+      m_iDev.ReadOnly(!enable);
+      m_iDev.ColorBackground(bg);
+      m_iPriority.ReadOnly(!enable);
+      m_iPriority.ColorBackground(bg);
+     }
 
    virtual bool Create(CEPBotPanel *parent, long chart_id, int subwin)
      {
@@ -187,17 +243,6 @@ public:
       m_lExitDesc.Text(_ExitDesc(m_cur_exit));
       if(!parent.AddControl(m_lExitDesc)) return false;
 
-      // Botão APLICAR
-      if(!m_btnApply.Create(chart_id, PFX + "e_applyBB", subwin,
-                             COL_LABEL_X, CFG_APPLY_Y,
-                             COL_VALUE_X + COL_VALUE_W, CFG_APPLY_Y + 24))
-         return false;
-      m_btnApply.Text("APLICAR BB STRATEGY");
-      m_btnApply.FontSize(9);
-      m_btnApply.ColorBackground(C'30,120,70');
-      m_btnApply.Color(clrWhite);
-      if(!parent.AddControl(m_btnApply)) return false;
-
       // Label de status
       if(!m_lblStatus.Create(chart_id, PFX + "e_stBB", subwin,
                               COL_LABEL_X, CFG_APPLY_Y + 28,
@@ -232,7 +277,7 @@ public:
       m_lEntryDesc.Show();
       m_lExit.Show();  for(int i = 0; i < 3; i++) m_bExit[i].Show();
       m_lExitDesc.Show();
-      m_btnApply.Show(); m_lblStatus.Show();
+      m_lblStatus.Show();
      }
 
    virtual void Hide(void)
@@ -255,7 +300,7 @@ public:
       m_lEntryDesc.Hide();
       m_lExit.Hide();  for(int i = 0; i < 3; i++) m_bExit[i].Hide();
       m_lExitDesc.Hide();
-      m_btnApply.Hide(); m_lblStatus.Hide();
+      m_lblStatus.Hide();
      }
 
    virtual void Update(void)
@@ -299,8 +344,6 @@ public:
          ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
          return true;
         }
-      if(name == m_btnApply.Name())
-        { m_btnApply.Pressed(false); _OnApply(); return true; }
       if(name == m_bTF.Name())
         {
          m_bTF.Pressed(false);
@@ -386,72 +429,6 @@ private:
       SetRadioSel(m_bExit,  3, (ex == EXIT_FCO) ? 0 : (ex == EXIT_VM) ? 1 : 2);
      }
 
-   void _OnApply(void)
-     {
-      if(m_strategy == NULL)
-        {
-         m_lblStatus.Text("Estratégia não disponível");
-         m_lblStatus.Color(CLR_NEGATIVE);
-         m_statusExpiry = GetTickCount() + 10000;
-         return;
-        }
-      int period = (int)StringToInteger(m_iPeriod.Text());
-      double dev = StringToDouble(m_iDev.Text());
-      int prio = (int)StringToInteger(m_iPriority.Text());
-
-      // Validação primeiro
-      string errorMsg = "";
-      if(period < 2 || period > 500)
-         errorMsg = "Periodo invalido (2-500)";
-      else if(dev <= 0 || dev > 10.0)
-         errorMsg = "Desvio invalido (0.1 - 10.0)";
-      else if(prio <= 0)
-         errorMsg = "Prioridade deve ser > 0";
-
-      if(errorMsg != "")
-        {
-         m_lblStatus.Text(errorMsg);
-         m_lblStatus.Color(CLR_NEGATIVE);
-         m_statusExpiry = GetTickCount() + 10000;
-         ChartRedraw();
-         return;
-        }
-
-      // Aplicar
-      if(!m_strategy.SetPeriod(period) || !m_strategy.SetDeviation(dev))
-        {
-         m_lblStatus.Text("Erro ao aplicar parametros");
-         m_lblStatus.Color(CLR_NEGATIVE);
-         m_statusExpiry = GetTickCount() + 10000;
-         ChartRedraw();
-         return;
-        }
-
-      // Auto-ajuste de prioridade se conflitar com outra estratégia
-      if(m_parent != NULL)
-        {
-         int resolved = m_parent.ResolveStrategyPriority(prio, "BB Strategy");
-         if(resolved != prio)
-           {
-            prio = resolved;
-            m_iPriority.Text(IntegerToString(prio));
-           }
-        }
-
-      m_strategy.SetPriority(prio);
-      m_strategy.SetTimeframe(m_cur_TF);
-      m_strategy.SetSignalMode(m_cur_mode);
-      m_strategy.SetEntryMode(m_cur_entry);
-      m_strategy.SetExitMode(m_cur_exit);
-      m_strategy.SetEnabled(m_pendingEnabled);
-
-      string msg = "Aplicado! Prioridade: " + IntegerToString(prio);
-      m_lblStatus.Text(msg);
-      m_lblStatus.Color(CLR_POSITIVE);
-      m_statusExpiry = GetTickCount() + 10000;
-      // Persistir configuração (Parte 027)
-      if(m_parent != NULL) m_parent.SaveCurrentConfig();
-      ChartRedraw();
-     }
+   void _placeholder_private_end(void) {} // anchor
   };
 //+------------------------------------------------------------------+
