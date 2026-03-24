@@ -2,13 +2,53 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.52 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.56 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.52"
+#property version   "1.56"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
+//--- Constante centralizada de versão
+#define EA_VERSION "1.56"
+
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.56 (Parte 027):                                     |
+//| - Botão INICIAR/PAUSAR no topo do painel (acima das tabs)         |
+//|   Visível em TODAS as abas, sempre acessível                      |
+//|   Estado inicial: PAUSADO (verde "INICIAR EA")                    |
+//|   Ao clicar: alterna para ATIVO (amarelo "PAUSAR EA")            |
+//| - Guard no OnTick: bloqueia abertura de novas posições quando     |
+//|   pausado, mas NÃO afeta gerenciamento de posições abertas        |
+//|   (trailing, breakeven, partial TP continuam funcionando)          |
+//| - Tester: g_panel==NULL → guard bypassed, trading funciona normal |
+//| - STATUS tab: mostra "PAUSADO" (amarelo) quando EA não iniciado   |
+//| - Layout: PANEL_HEIGHT 600→626, CONTENT_TOP +26px (START_BTN_H)   |
+//|   CFG_APPLY_Y 520→546, todas as coordenadas parametrizadas        |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.55 (Parte 027):                                     |
+//| - Runtime vars: g_magicNumber, g_slippage, g_tradeComment        |
+//|   substituem inp_* (read-only) para suportar hot reload           |
+//| - Todas as referências a inp_MagicNumber, inp_Slippage e         |
+//|   inp_TradeComment no EA principal agora usam as vars editáveis   |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.54 (Parte 027):                                     |
+//| - Config Persistence: banner redesenhado com caixa de destaque,  |
+//|   descrições explicativas e bloqueio de navegação enquanto visível|
+//| - Fix: banner reaparecendo após minimize/restore do painel       |
+//| - Fix: banner exibido para REASON_PROGRAM (EA adicionado fresh)  |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.53 (Parte 027):                                     |
+//| - Config Persistence: salva/carrega configurações GUI entre      |
+//|   restarts do EA (arquivo .cfg por símbolo+magic)                |
+//|   REASON_PARAMETERS: deleta config salva (preset alterado)       |
+//|   REASON_CHARTCHANGE/TEMPLATE: auto-carrega silenciosamente      |
+//|   REASON_CLOSE/REMOVE: mostra banner Carregar/Ignorar            |
+//|   REASON_RECOMPILE/ACCOUNT: auto-carrega silenciosamente         |
+//| - Panel v1.52: banner com caixa de destaque + bloqueio de abas   |
+//| - PanelPersistence v1.01: Show/Hide banner atualizados           |
+//| - PanelTabConfig v1.28: Magic Number, Comentário, Limites Diários|
+//| - Inputs v1.09: inp_MagicNumber e inp_OrderComment               |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.52 (Parte 026):                                     |
 //| - Fix GUI na troca de TF (solução padrão ouro MQL5):             |
@@ -273,6 +313,12 @@
 //| INCLUDES - ORDEM IMPORTANTE                                      |
 //+------------------------------------------------------------------+
 
+// 0️⃣ RUNTIME VARS — cópias editáveis dos inputs (hot reload)
+//    Declaradas antes dos includes para serem visíveis nos .mqh
+int    g_magicNumber   = 0;
+int    g_slippage      = 0;
+string g_tradeComment  = "";
+
 // 1️⃣ INPUTS CENTRALIZADOS (primeiro!)
 #include "Core/Inputs.mqh"
 
@@ -388,8 +434,15 @@ void CleanupAll()
 int OnInit()
   {
    Print("════════════════════════════════════════════════════════════════");
-   Print("            EPBOT MATRIX v1.52 - INICIALIZANDO...              ");
+   Print("            EPBOT MATRIX v" + EA_VERSION + " - INICIALIZANDO...              ");
    Print("════════════════════════════════════════════════════════════════");
+
+// ═══════════════════════════════════════════════════════════════
+// RUNTIME VARS — inicializar a partir dos inputs
+// ═══════════════════════════════════════════════════════════════
+   g_magicNumber  = inp_MagicNumber;
+   g_slippage     = inp_Slippage;
+   g_tradeComment = inp_TradeComment;
 
 // ═══════════════════════════════════════════════════════════════
 // ETAPA 1: INICIALIZAR LOGGER (sempre primeiro!)
@@ -401,7 +454,7 @@ int OnInit()
       return INIT_FAILED;
      }
 
-   if(!g_logger.Init(inp_ShowDebugLogs, _Symbol, inp_MagicNumber, inp_DebugCooldownSec))
+   if(!g_logger.Init(inp_ShowDebugLogs, _Symbol, g_magicNumber, inp_DebugCooldownSec))
      {
       Print("❌ ERRO CRÍTICO: Falha ao inicializar Logger!");
       CleanupAll();
@@ -421,7 +474,7 @@ int OnInit()
 
    if(!g_blockers.Init(
          g_logger,
-         inp_MagicNumber,
+         g_magicNumber,
          inp_EnableTimeFilter,
          inp_StartHour,
          inp_StartMinute,
@@ -598,8 +651,8 @@ int OnInit()
          g_logger,
          g_riskManager,
          _Symbol,
-         inp_MagicNumber,
-         inp_Slippage
+         g_magicNumber,
+         g_slippage
       ))
      {
       g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar TradeManager!");
@@ -622,7 +675,7 @@ int OnInit()
       for(int i = PositionsTotal() - 1; i >= 0; i--)
         {
          if(PositionGetSymbol(i) == _Symbol && 
-            PositionGetInteger(POSITION_MAGIC) == inp_MagicNumber)
+            PositionGetInteger(POSITION_MAGIC) == g_magicNumber)
            {
             g_lastPositionTicket = PositionGetTicket(i);
             
@@ -983,11 +1036,11 @@ int OnInit()
                          g_signalManager, g_maCrossStrategy, g_rsiStrategy,
                          g_bbStrategy,
                          g_trendFilter, g_rsiFilter, g_bbFilter,
-                         inp_MagicNumber, _Symbol);
+                         g_magicNumber, _Symbol);
 
             int chartWidth = (int)ChartGetInteger(0, CHART_WIDTH_IN_PIXELS);
             int x1 = chartWidth - PANEL_WIDTH - 10;
-            if(!g_panel.CreatePanel(0, "EPBotMatrix - Versão 1.52", 0, x1, 20, x1 + PANEL_WIDTH, 20 + PANEL_HEIGHT))
+            if(!g_panel.CreatePanel(0, "EPBotMatrix - Versão " + EA_VERSION, 0, x1, 20, x1 + PANEL_WIDTH, 20 + PANEL_HEIGHT))
               {
                g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar painel GUI");
                delete g_panel;
@@ -1004,16 +1057,93 @@ int OnInit()
      }
 
 // ═══════════════════════════════════════════════════════════════
+// ETAPA 10: PERSISTÊNCIA DE CONFIGURAÇÕES
+// ═══════════════════════════════════════════════════════════════
+   if(!MQLInfoInteger(MQL_TESTER) && g_panel != NULL)
+     {
+      int prevReason = UninitializeReason();
+
+      if(prevReason == REASON_PARAMETERS)
+        {
+         // Usuário alterou inputs (preset): deletar config salva
+         CConfigPersistence::Delete(_Symbol, g_magicNumber);
+         g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
+                      "Preset alterado - config salva deletada");
+        }
+      else if(prevReason == REASON_CHARTCHANGE || prevReason == REASON_TEMPLATE)
+        {
+         // Troca de TF ou template: auto-carregar config salva silenciosamente
+         if(CConfigPersistence::Exists(_Symbol, g_magicNumber))
+           {
+            SConfigData loadedData;
+            ZeroMemory(loadedData);
+            if(CConfigPersistence::Load(_Symbol, g_magicNumber, loadedData))
+              {
+               g_panel.ApplyLoadedConfig(loadedData);
+               g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
+                            "Config salva carregada automaticamente (troca de TF/template)");
+              }
+           }
+        }
+      else if(prevReason == REASON_CLOSE || prevReason == REASON_REMOVE)
+        {
+         // Fechamento acidental do MT5 ou remoção: mostrar banner
+         if(CConfigPersistence::Exists(_Symbol, g_magicNumber))
+           {
+            SConfigData loadedData;
+            ZeroMemory(loadedData);
+            if(CConfigPersistence::Load(_Symbol, g_magicNumber, loadedData))
+              {
+               g_panel.ShowLoadBanner(loadedData);
+               g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
+                            "Config salva encontrada - banner exibido para usuario");
+              }
+           }
+        }
+      // REASON_RECOMPILE, REASON_ACCOUNT: auto-carregar silenciosamente
+      else if(prevReason == REASON_RECOMPILE || prevReason == REASON_ACCOUNT)
+        {
+         if(CConfigPersistence::Exists(_Symbol, g_magicNumber))
+           {
+            SConfigData loadedData;
+            ZeroMemory(loadedData);
+            if(CConfigPersistence::Load(_Symbol, g_magicNumber, loadedData))
+              {
+               g_panel.ApplyLoadedConfig(loadedData);
+               g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
+                            "Config salva carregada automaticamente (recompile/account)");
+              }
+           }
+        }
+      else
+        {
+         // REASON_PROGRAM (0), REASON_CHARTCLOSE (4), etc.:
+         // EA adicionado fresh — se existe .cfg, mostrar banner
+         if(CConfigPersistence::Exists(_Symbol, g_magicNumber))
+           {
+            SConfigData loadedData;
+            ZeroMemory(loadedData);
+            if(CConfigPersistence::Load(_Symbol, g_magicNumber, loadedData))
+              {
+               g_panel.ShowLoadBanner(loadedData);
+               g_logger.Log(LOG_EVENT, THROTTLE_NONE, "CONFIG",
+                            "Config salva encontrada (reason=" + IntegerToString(prevReason) + ") - banner exibido");
+              }
+           }
+        }
+     }
+
+// ═══════════════════════════════════════════════════════════════
 // SUCESSO!
 // ═══════════════════════════════════════════════════════════════
    Print("════════════════════════════════════════════════════════════════");
    Print("          ✅ EPBOT MATRIX INICIALIZADO COM SUCESSO!            ");
    Print("════════════════════════════════════════════════════════════════");
 
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v1.52 - PRONTO PARA OPERAR!");
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v" + EA_VERSION + " - PRONTO PARA OPERAR!");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Símbolo: " + _Symbol);
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(inp_MagicNumber));
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(g_magicNumber));
 
    if(inp_UsePartialTP)
       g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Partial TP: ATIVADO");
@@ -1204,7 +1334,7 @@ void OnTick()
       if(PositionGetSymbol(i) != _Symbol)
          continue;
 
-      if(PositionGetInteger(POSITION_MAGIC) == inp_MagicNumber)
+      if(PositionGetInteger(POSITION_MAGIC) == g_magicNumber)
         {
          hasMyPosition = true;
          myPositionTicket = PositionGetTicket(i);
@@ -1365,10 +1495,10 @@ void OnTick()
          request.symbol       = _Symbol;
          request.volume       = volume;
          request.price        = closePrice;
-         request.deviation    = inp_Slippage;
+         request.deviation    = g_slippage;
          request.type         = (posType == POSITION_TYPE_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
          request.type_filling = GetTypeFilling(_Symbol);
-         request.magic        = inp_MagicNumber;
+         request.magic        = g_magicNumber;
          request.comment      = "Close[" + closeTrigger + "]";
 
          g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TIME_CLOSE", "════════════════════════════════════════════════════════════════");
@@ -1408,6 +1538,13 @@ void OnTick()
       ManageOpenPosition(ticket);
       return;  // ✅ SEMPRE SAI APÓS GERENCIAR
      }
+
+// ═══════════════════════════════════════════════════════════════
+// GUARD: EA não iniciado pelo usuário → não abrir novas posições
+// (gerenciamento de posições abertas já foi feito acima)
+// ═══════════════════════════════════════════════════════════════
+   if(g_panel != NULL && !g_panel.IsStarted())
+      return;
 
 // ═══════════════════════════════════════════════════════════════
 // ETAPA 2: VERIFICAR BLOCKERS (só se NÃO tem posição!)
@@ -1524,8 +1661,8 @@ void ManageOpenPosition(ulong ticket)
       request.price = (posType == POSITION_TYPE_BUY) ?
                      SymbolInfoDouble(_Symbol, SYMBOL_BID) :
                      SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-      request.deviation = inp_Slippage;
-      request.magic = inp_MagicNumber;
+      request.deviation = g_slippage;
+      request.magic = g_magicNumber;
       request.comment = "Daily Limit";
       request.type_filling = GetTypeFilling(_Symbol);
 
@@ -1585,8 +1722,8 @@ void ManageOpenPosition(ulong ticket)
          request.price = (posType == POSITION_TYPE_BUY) ?
                         SymbolInfoDouble(_Symbol, SYMBOL_BID) :
                         SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-         request.deviation = inp_Slippage;
-         request.magic = inp_MagicNumber;
+         request.deviation = g_slippage;
+         request.magic = g_magicNumber;
          request.comment = "Drawdown Limit";
          request.type_filling = GetTypeFilling(_Symbol);
 
@@ -1725,8 +1862,8 @@ if(g_riskManager.ShouldActivateTrailing(tp1Executed, tp2Executed))
       request.volume = PositionGetDouble(POSITION_VOLUME);
       request.type = (posType == POSITION_TYPE_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
       request.price = currentPrice;
-      request.deviation = inp_Slippage;
-      request.magic = inp_MagicNumber;
+      request.deviation = g_slippage;
+      request.magic = g_magicNumber;
       request.comment = "Exit: " + g_signalManager.GetLastSignalSource();
       request.type_filling = GetTypeFilling(_Symbol);
 
@@ -1854,9 +1991,9 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
    request.price = price;
    request.sl = slPrice;
    request.tp = tpPrice;  // 0 se usar Partial TP
-   request.deviation = inp_Slippage;
-   request.magic = inp_MagicNumber;
-   request.comment = inp_TradeComment;
+   request.deviation = g_slippage;
+   request.magic = g_magicNumber;
+   request.comment = g_tradeComment;
    request.type_filling = GetTypeFilling(_Symbol);
 
 // Log dos parâmetros
@@ -1937,7 +2074,7 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
             if(ticket == 0) continue;
             
             if(PositionGetString(POSITION_SYMBOL) == _Symbol &&
-               PositionGetInteger(POSITION_MAGIC) == inp_MagicNumber)
+               PositionGetInteger(POSITION_MAGIC) == g_magicNumber)
               {
                // Verificar se foi aberta "agora" (últimos 5 segundos)
                datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
@@ -2088,5 +2225,5 @@ void OnTimer()
   }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.52                                   |
+//| FIM DO EA - EPBOT MATRIX                                         |
 //+------------------------------------------------------------------+

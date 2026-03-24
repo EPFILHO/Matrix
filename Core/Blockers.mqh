@@ -2,11 +2,16 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.23 - Claude Parte 025 (Claude Code) |
+//|                     Versão 3.24 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.23"
+#property version   "3.24"
 #property strict
+
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.24 (Parte 027):
+// + SetMagicNumber() — facade para BlockerFilters.SetMagicNumber()
+// ═══════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.23 (Parte 025):
@@ -218,6 +223,7 @@ public:
    void              SetCloseOnEndTime(bool close);
    void              SetCloseBeforeSessionEnd(bool close, int minutes);
    void              SetNewsFilter(int window, bool enable, int startH, int startM, int endH, int endM);
+   void              SetMagicNumber(int newMagic);
 
    // ═══════════════════════════════════════════════════════════════
    // GETTERS — ESTADO
@@ -306,14 +312,14 @@ bool CBlockers::Init(
      {
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "╔══════════════════════════════════════════════════════╗");
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║              VERSÃO COMPLETA v3.23                   ║");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "║              VERSÃO COMPLETA v3.24                   ║");
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "╚══════════════════════════════════════════════════════╝");
      }
    else
      {
       Print("╔══════════════════════════════════════════════════════╗");
       Print("║        EPBOT MATRIX - INICIALIZANDO BLOCKERS        ║");
-      Print("║              VERSÃO COMPLETA v3.23                   ║");
+      Print("║              VERSÃO COMPLETA v3.24                   ║");
       Print("╚══════════════════════════════════════════════════════╝");
      }
 
@@ -620,6 +626,16 @@ void CBlockers::SetDrawdownPeakMode(ENUM_DRAWDOWN_PEAK_MODE newMode)
 void CBlockers::TryActivateDrawdownNow(double dailyProfit)
   {
    m_drawdown.TryActivateDrawdownNow(dailyProfit);
+  }
+
+//+------------------------------------------------------------------+
+//| Hot Reload — Magic Number                                        |
+//+------------------------------------------------------------------+
+void CBlockers::SetMagicNumber(int newMagic)
+  {
+   m_filters.SetMagicNumber(newMagic);
+   m_drawdown.SetMagicNumber(newMagic);
+   m_limits.ReconstructStreakFromHistory();
   }
 
 //+------------------------------------------------------------------+

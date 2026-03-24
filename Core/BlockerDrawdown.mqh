@@ -2,10 +2,14 @@
 //|                                            BlockerDrawdown.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|                    Proteção de Drawdown - EPBot Matrix           |
-//|                     Versão 1.00 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.01 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 // NOTA: Enums (ENUM_DRAWDOWN_TYPE, ENUM_DRAWDOWN_PEAK_MODE, etc.) e
 // Logger.mqh são incluídos por Blockers.mqh ANTES deste arquivo.
+//
+// CHANGELOG v1.01 (Parte 027):
+// + SetMagicNumber(int newMagic): hot reload do Magic Number
+//   Reseta peak/drawdown state (peak calculado com magic antigo é inválido)
 #ifndef BLOCKER_DRAWDOWN_MQH
 #define BLOCKER_DRAWDOWN_MQH
 
@@ -80,6 +84,7 @@ public:
    // ═══════════════════════════════════════════════════════════════
    // HOT RELOAD
    // ═══════════════════════════════════════════════════════════════
+   void              SetMagicNumber(int newMagic);
    void              SetDrawdownValue(double newValue);
    void              SetDrawdownType(ENUM_DRAWDOWN_TYPE newType);
    void              SetDrawdownPeakMode(ENUM_DRAWDOWN_PEAK_MODE newMode);
@@ -580,6 +585,20 @@ void CBlockerDrawdown::SetDrawdownPeakMode(ENUM_DRAWDOWN_PEAK_MODE newMode)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "DrawdownPeakMode: " + modeText);
    else
       Print("🔄 DrawdownPeakMode: ", modeText);
+  }
+
+//+------------------------------------------------------------------+
+//| Hot Reload — Magic Number (reseta estado de drawdown)            |
+//+------------------------------------------------------------------+
+void CBlockerDrawdown::SetMagicNumber(int newMagic)
+  {
+   m_magicNumber = newMagic;
+
+   // Resetar estado de drawdown (peak calculado com magic antigo é inválido)
+   m_dailyPeakProfit          = 0.0;
+   m_drawdownProtectionActive = false;
+   m_drawdownLimitReached     = false;
+   m_drawdownActivationTime   = 0;
   }
 
 //+------------------------------------------------------------------+

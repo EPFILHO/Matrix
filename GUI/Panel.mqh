@@ -2,15 +2,79 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.48 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.56 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.48"
+#property version   "1.56"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.56 (Parte 027) — Fix minimize aleatório:
+// * Override CreateButtonMinMax() → suprime botão MinMax no caption
+// * Guard anti-minimize em ChartEvent() e Update():
+//   se m_minimized ficar true inesperadamente, Show()+revert imediato
+//
+// v1.55 (Parte 027) — Bugfix:
+// * Fix: NULL guards em ValidateAndApplyAll() e SetAllControlsEnabled()
+//   para evitar crash quando sub-painéis são NULL
+// + Adicionado #include BollingerBandsStrategy.mqh e BollingerBandsFilter.mqh
+//
+// v1.54 (Parte 027) — Fase 2: Controle de Estado:
+// + Barra 3 botões: m_btnStart/m_btnSave/m_btnCancel substitui botão único
+// + m_headerStatus, m_eaStarted, m_savedConfig snapshot de estado
+// + m_cur_trailingType/m_cur_beType runtime vars (desacoplados de inputs)
+// + ValidateAndApplyAll, SetAllControlsEnabled, SetSaveCancelEnabled,
+//   ShowHeaderStatus, CountOpenPositions, ApplyMagicNumberChange
+// + OnClickSave/OnClickCancel handlers; reescrita de OnClickStart/CreateStartButton
+// + Auto-start logic (Etapa 16); removido m_cfg_btnApply
+//
+// v1.53 (Parte 027):
+// + Botão INICIAR/PAUSAR no topo do painel (acima das tabs)
+//   Novo membro: CButton m_btnStart, bool m_eaStarted
+//   CreateStartButton(): botão largo Y=3..25, verde/amarelo toggle
+//   OnClickStart(): alterna m_eaStarted e visual do botão
+//   SetStarted(): API pública para controlar estado (usada pelo EA)
+//   IsStarted(): getter público consultado no OnTick do EA
+//   Handler no ChartEvent (CHARTEVENT_OBJECT_CLICK) sempre acessível
+// + Layout: PANEL_HEIGHT 600→626, START_BTN_H=22, CONTENT_TOP +26px
+//   CFG_APPLY_Y 520→546 (proporcional)
+//   Todas as coordenadas usam constantes — zero hardcode
+//
+// v1.52 (Parte 027):
+// + Banner: bloqueio de navegação (abas/sub-páginas) enquanto banner visível
+//   Força o usuário a escolher CARREGAR ou IGNORAR antes de navegar
+//   Handlers do banner movidos para o topo do CHARTEVENT_OBJECT_CLICK
+//
+// v1.51 (Parte 027):
+// + Banner redesenhado: caixa de destaque centralizada (CEdit background)
+//   Fundo C'40,45,60' com borda azul C'80,130,200', título amarelo 9pt
+//   Botões centralizados (120px) + descrições explicativas (7pt):
+//   "Carregar: aplica config salva (substitui inputs)"
+//   "Ignorar: apaga config salva e usa inputs do .set"
+//   Novos membros: m_lb_bg (CEdit), m_lb_descLoad, m_lb_descIgnore (CLabel)
+// * Fix: banner reaparecendo após minimize/restore do painel
+//   ReapplyTabVisibility() agora re-esconde banner quando !m_loadBannerVisible
+//   (CAppDialog::Show re-exibe todos os controles filhos ao restaurar)
+//
+// v1.50 (Parte 027):
+// * Fix: CollectConfigData e ApplyLoadedConfig movidos de private para public
+//   (correção de 'cannot access private member function')
+// * Fix: m_bbStrategy e m_bbFilter inicializados com NULL no construtor
+//
+// v1.49 (Parte 027):
+// + OUTROS: Magic Number (CEdit + aviso warning) e Comentário das Ordens
+//   m_co_lMagic/iMagic, m_co_lMagicW, m_co_lComm/iComm
+//   Posicionados acima de Slippage/Conflito; Debug e Debug Cooldown por último
+// + RISCO 2: Limites Diários movidos de BLOQUEIOS com toggle ON/OFF dinâmico
+//   m_c2_hdr4, m_c2_lDLAct/bDLAct, lDLTrd/iDLTrd, lDLLoss/iDLLoss,
+//   lDLGain/iDLGain, lDLPTA/bDLPTA[2] — posicionados ACIMA de TRAILING
+//   m_cur_dailyLimitsOn: novo estado
+//   OnClickDailyLimitsToggle, RefreshDailyLimitsState, OnClickDLProfitTargetAction
+// + Removidos: m_cb_hdr2/lTrd/iTrd/lLoss/iLoss/lGain/iGain/lPTA/bPTA (BLOQUEIOS)
+//   OnClickProfitTargetAction → substituído por OnClickDLProfitTargetAction
+//
 // v1.48 (Parte 026):
 // + ReconnectModules(): re-injeta ponteiros após troca de TF sem
 //   recriar objetos gráficos. Usa dynamic_cast + SetStrategy/SetFilter
@@ -315,6 +379,7 @@
 #include "../Core/Inputs.mqh"
 #include "../Core/Logger.mqh"
 #include "../Core/Blockers.mqh"
+#include "../Core/ConfigPersistence.mqh"
 #include "../Core/RiskManager.mqh"
 #include "../Core/TradeManager.mqh"
 #include "../Strategy/SignalManager.mqh"
@@ -322,12 +387,14 @@
 #include "../Strategy/Strategies/RSIStrategy.mqh"
 #include "../Strategy/Filters/TrendFilter.mqh"
 #include "../Strategy/Filters/RSIFilter.mqh"
+#include "../Strategy/Strategies/BollingerBandsStrategy.mqh"
+#include "../Strategy/Filters/BollingerBandsFilter.mqh"
 
 // ═══════════════════════════════════════════════════════════════
 // DIMENSÕES E LAYOUT
 // ═══════════════════════════════════════════════════════════════
 #define PANEL_WIDTH          430
-#define PANEL_HEIGHT         600
+#define PANEL_HEIGHT         626
 
 #define PANEL_GAP_Y          18
 #define PANEL_GAP_SECTION    8
@@ -336,14 +403,19 @@
 #define COL_VALUE_X          150
 #define COL_VALUE_W          255
 
-#define CONTENT_TOP          32
+#define START_BTN_H          22
+#define START_BTN_Y          3
+#define HEADER_STATUS_Y      (START_BTN_Y + START_BTN_H + 2)
+#define HEADER_STATUS_H      14
+#define TAB_BTN_Y            (HEADER_STATUS_Y + HEADER_STATUS_H + 2)
+#define CONTENT_TOP          (TAB_BTN_Y + TAB_BTN_H + 8)
 #define TAB_BTN_H            22
 
 // Layout sub-páginas (CONFIG, ESTRAT., FILTROS)
 #define CFG_CONTENT_Y        (CONTENT_TOP + TAB_BTN_H + 6)
 #define ESTRAT_CONTENT_Y     (CONTENT_TOP + TAB_BTN_H + 6)
 #define FILTROS_CONTENT_Y    (CONTENT_TOP + TAB_BTN_H + 6)
-#define CFG_APPLY_Y          520
+#define CFG_APPLY_Y          546
 
 // ═══════════════════════════════════════════════════════════════
 // CORES
@@ -571,6 +643,13 @@ private:
    CLabel   m_c2_lBEAct;   CButton m_c2_bBEAct;   // BE ON/OFF
    CLabel   m_c2_lBEVal;   CEdit   m_c2_iBEVal;
    CLabel   m_c2_lBEOff;   CEdit   m_c2_iBEOff;
+   // --- Limites Diários (movido de BLOQUEIOS para RISCO 2 — Parte 027) ---
+   CLabel   m_c2_hdr4;                              // Header "LIMITES DIARIOS"
+   CLabel   m_c2_lDLAct;    CButton m_c2_bDLAct;    // Daily Limits ON/OFF toggle
+   CLabel   m_c2_lDLTrd;    CEdit   m_c2_iDLTrd;    // Max Trades/Dia
+   CLabel   m_c2_lDLLoss;   CEdit   m_c2_iDLLoss;   // Max Loss/Dia
+   CLabel   m_c2_lDLGain;   CEdit   m_c2_iDLGain;   // Max Gain/Dia
+   CLabel   m_c2_lDLPTA;    CButton m_c2_bDLPTA[2];  // Radio: PARAR | ATIVAR DD
    CLabel   m_c2_hdr3;                              // Header "DRAWDOWN"
    CLabel   m_c2_lDDAct;    CButton m_c2_bDDAct;    // DrawDown ON/OFF
    CLabel   m_c2_lDD;       CEdit   m_c2_iDD;
@@ -581,11 +660,7 @@ private:
    CLabel   m_cb_hdr1;
    CLabel   m_cb_lSpr;    CEdit   m_cb_iSpr;
    CLabel   m_cb_lDir;    CButton m_cb_bDir[3];   // Radio: AMBOS | BUY | SELL
-   CLabel   m_cb_hdr2;
-   CLabel   m_cb_lTrd;    CEdit   m_cb_iTrd;
-   CLabel   m_cb_lLoss;   CEdit   m_cb_iLoss;
-   CLabel   m_cb_lGain;   CEdit   m_cb_iGain;
-   CLabel   m_cb_lPTA;    CButton m_cb_bPTA[2];   // Radio: PARAR | ATIVAR DD
+   // (Daily Limits movido para RISCO 2 — Parte 027: m_c2_hdr4/lDL*/iDL*/bDL*)
    CLabel   m_cb_hdr3;
    CLabel   m_cb_lLStrOn; CButton m_cb_bLStrOn;   // Loss Streak ON/OFF
    CLabel   m_cb_lLStr;   CEdit   m_cb_iLStr;
@@ -637,11 +712,13 @@ private:
    CLabel   m_co_hdr1;
    CLabel   m_co_lSlip;   CEdit   m_co_iSlip;
    CLabel   m_co_lConfl;  CButton m_co_bConfl;
+   CLabel   m_co_lMagic;  CEdit   m_co_iMagic;   // Magic Number (v1.28 Parte 027)
+   CLabel   m_co_lMagicW;                         // Aviso Magic Number
+   CLabel   m_co_lComm;   CEdit   m_co_iComm;    // Comentário das Ordens (v1.28 Parte 027)
    CLabel   m_co_lDbg;    CButton m_co_bDbg;
    CLabel   m_co_lDbgCd;  CEdit   m_co_iDbgCd;
 
-   // APLICAR + status
-   CButton  m_cfg_btnApply;
+   // Config status
    CLabel   m_cfg_status;
    uint     m_cfgStatusExpiry;     // GetTickCount() em que a msg expira
 
@@ -667,6 +744,7 @@ private:
    bool                      m_cur_compTrail;
    bool                      m_cur_trailOn;
    bool                      m_cur_beOn;
+   bool                      m_cur_dailyLimitsOn;  // Daily Limits toggle (Parte 027)
    bool                      m_cur_ddOn;
    bool                      m_cur_lossStreakOn;
    bool                      m_cur_winStreakOn;
@@ -679,11 +757,32 @@ private:
    ENUM_DRAWDOWN_TYPE        m_cur_ddType;
    ENUM_DRAWDOWN_PEAK_MODE   m_cur_ddPeakMode;
    ENUM_PROFIT_TARGET_ACTION m_cur_profitTargetAction;
+   ENUM_TRAILING_TYPE        m_cur_trailingType;   // runtime (inp_ é read-only)
+   ENUM_BE_TYPE              m_cur_beType;          // runtime (inp_ é read-only)
    // Filtro de Notícias (v1.22)
    bool                      m_cur_newsOn1;
    bool                      m_cur_newsOn2;
    bool                      m_cur_newsOn3;
    // (MA Cross e RSI ESTRAT state vars movidos para CMACrossPanel / CRSIStrategyPanel)
+
+   // ── 3 Botões no topo: INICIAR/SALVAR/CANCELAR (Parte 027) ──
+   CButton            m_btnStart;       // INICIAR EA / PAUSAR EA (toggle)
+   CButton            m_btnSave;        // SALVAR
+   CButton            m_btnCancel;      // CANCELAR
+   CLabel             m_headerStatus;   // Status no topo (visível em todas as abas)
+   uint               m_headerStatusExpiry;
+   bool               m_eaStarted;
+   SConfigData        m_savedConfig;    // Snapshot da última config salva (para CANCELAR)
+
+   // ── Banner de carregamento de config salva (Parte 027) ──
+   bool               m_loadBannerVisible;
+   CEdit              m_lb_bg;           // Fundo do banner (caixa colorida)
+   CLabel             m_lb_msg;          // "Config salva encontrada (DD/MM HH:MM)"
+   CLabel             m_lb_descLoad;     // Descrição do botão Carregar
+   CLabel             m_lb_descIgnore;   // Descrição do botão Ignorar
+   CButton            m_lb_btnLoad;      // "CARREGAR"
+   CButton            m_lb_btnIgnore;    // "IGNORAR"
+   SConfigData        m_pendingLoadData; // Dados carregados pendentes de confirmação
 
    // ── Prioridade: resolução de conflitos entre estratégias ──
 public:
@@ -711,6 +810,16 @@ private:
    int               TPTypeToIndex(ENUM_TP_TYPE t);
    ENUM_TP_TYPE      IndexToTPType(int i);
 
+   bool              CreateStartButton(void);
+   void              OnClickStart(void);
+   void              OnClickSave(void);
+   void              OnClickCancel(void);
+   bool              ValidateAndApplyAll(void);
+   void              SetAllControlsEnabled(bool enable);
+   void              SetSaveCancelEnabled(bool enable);
+   void              ShowHeaderStatus(string text, color clr);
+   int               CountOpenPositions(int magic);
+   void              SetStarted(bool started);
    bool              CreateTabButtons(void);
    bool              CreateTabStatus(void);
    bool              CreateTabResultados(void);
@@ -749,6 +858,7 @@ private:
    // Panel factory
    void              RegisterPanels(void);
    void              ApplyConfig(void);
+   void              ApplyMagicNumberChange(int newMagic);
 
    // Estado visual RISCO (enable/disable campos por tipo SL/TP)
    void              RefreshRiscoState(void);
@@ -768,7 +878,6 @@ private:
    void              OnClickCfgRisco2(void);
    void              OnClickCfgBloq(void);
    void              OnClickCfgOutros(void);
-   void              OnClickApply(void);
    void              OnClickDirection(int selected);
    void              OnClickConflict(void);
    void              OnClickDebug(void);
@@ -780,6 +889,9 @@ private:
    void              OnClickCompTrail(void);
    void              OnClickTrailToggle(void);
    void              OnClickBEToggle(void);
+   void              OnClickDailyLimitsToggle(void);  // Parte 027
+   void              RefreshDailyLimitsState(void);    // Parte 027
+   void              OnClickDLProfitTargetAction(int selected);  // Parte 027
    void              OnClickDDToggle(void);
    void              OnClickLossStreakToggle(void);
    void              OnClickWinStreakToggle(void);
@@ -791,7 +903,7 @@ private:
    void              OnClickWinStreakAction(int selected);
    void              OnClickDDType(int selected);
    void              OnClickDDPeakMode(int selected);
-   void              OnClickProfitTargetAction(int selected);
+   // OnClickProfitTargetAction removido (Parte 027): substituído por OnClickDLProfitTargetAction
    void              OnClickCfgBloq2(void);
    void              OnClickNewsOn1(void);
    void              OnClickNewsOn2(void);
@@ -801,12 +913,21 @@ private:
    // (Trend/RSI Filter handlers movidos para GUI/Panels/TrendFilterPanel.mqh e RSIFilterPanel.mqh)
    // (CycleTF, TFName, ApplyToggleStyle, etc. movidos para GUI/PanelUtils.mqh)
 
+   // Load banner handlers (private)
+   void              OnClickLoadBanner(void);
+   void              OnClickIgnoreBanner(void);
+
 protected:
-   virtual bool      CreateButtonClose(void) { return true; }
+   virtual bool      CreateButtonClose(void)  { return true; }
+   virtual bool      CreateButtonMinMax(void) { return true; }  // Suprime botão MinMax → previne minimize aleatório
 
 public:
                      CEPBotPanel(void);
                     ~CEPBotPanel(void);
+
+   // ── Persistência (Parte 027) ──
+   void              CollectConfigData(SConfigData &data);
+   void              ApplyLoadedConfig(const SConfigData &data);
 
    bool              Init(CLogger *logger, CBlockers *blockers, CRiskManager *risk,
                           CTradeManager *trade, CSignalManager *signal,
@@ -830,6 +951,16 @@ public:
    virtual bool      OnEvent(const int id, const long &lparam,
                              const double &dparam, const string &sparam);
 
+   // ── Persistência pública (Parte 027) ──
+   void              SaveCurrentConfig(void);
+   void              ShowLoadBanner(const SConfigData &data);
+   void              HideLoadBanner(void);
+   bool              HasSavedConfig(void);
+
+   // ── Controle INICIAR/PAUSAR (Parte 027) ──
+   bool              IsStarted(void) const { return m_eaStarted; }
+   // SetStarted() já declarado na seção privada (linha 817)
+
 public:
    virtual void      ChartEvent(const int id, const long &lparam,
                                 const double &dparam, const string &sparam);
@@ -844,8 +975,8 @@ CEPBotPanel::CEPBotPanel(void)
      m_estratPage(1), m_filtrosPage(1),
      m_logger(NULL), m_blockers(NULL), m_riskManager(NULL),
      m_tradeManager(NULL), m_signalManager(NULL),
-     m_maCross(NULL), m_rsiStrategy(NULL),
-     m_trendFilter(NULL), m_rsiFilter(NULL),
+     m_maCross(NULL), m_rsiStrategy(NULL), m_bbStrategy(NULL),
+     m_trendFilter(NULL), m_rsiFilter(NULL), m_bbFilter(NULL),
      m_stratPanelCount(0), m_filtPanelCount(0),
      m_stratBtnCount(0), m_filtBtnCount(0),
      m_magicNumber(0), m_symbol(""),
@@ -858,12 +989,17 @@ CEPBotPanel::CEPBotPanel(void)
      m_cur_debug(false), m_cur_partialTP(false),
      m_cur_compSL(false), m_cur_compTP(false), m_cur_compTrail(false),
      m_cur_trailOn(false), m_cur_beOn(false),
+     m_cur_dailyLimitsOn(false),
      m_cur_ddOn(false), m_cur_lossStreakOn(false), m_cur_winStreakOn(false),
      m_cur_tfOn(false), m_cur_tfClose(false), m_cur_cbsOn(false),
      m_cur_lossStreakAction(STREAK_PAUSE), m_cur_winStreakAction(STREAK_PAUSE),
      m_cur_ddType(DD_FINANCIAL), m_cur_ddPeakMode(DD_PEAK_REALIZED_ONLY),
      m_cur_profitTargetAction(PROFIT_ACTION_STOP),
-     m_cfgStatusExpiry(0)
+     m_cur_trailingType(TRAILING_FIXED),
+     m_cur_beType(BE_FIXED),
+     m_cfgStatusExpiry(0),
+     m_loadBannerVisible(false),
+     m_eaStarted(false)
   {
   }
 
@@ -967,17 +1103,127 @@ bool CEPBotPanel::CreatePanel(long chart, string name, int subwin,
       return false;
 
    if(!CreateTabButtons())    return false;
+   if(!CreateStartButton())   return false;
    if(!CreateTabStatus())     return false;
    if(!CreateTabResultados()) return false;
    if(!CreateTabEstrategias()) return false;
    if(!CreateTabFiltros())    return false;
    if(!CreateTabConfig())     return false;
 
+// ── Banner de Load Config (inicialmente oculto) ──
+// Layout centralizado com caixa de destaque
+   int bw     = PANEL_WIDTH - 20;          // largura interna do banner
+   int bx     = 5;                         // margem esquerda
+   int by     = CONTENT_TOP + TAB_BTN_H + 4; // logo abaixo das abas
+   int bh     = 100;                       // altura total da caixa
+
+   // Fundo (CEdit read-only como caixa colorida)
+   if(!m_lb_bg.Create(m_chart_id, PFX + "lb_bg", m_subwin,
+                      bx, by, bx + bw, by + bh))
+      return false;
+   m_lb_bg.Text("");
+   m_lb_bg.ReadOnly(true);
+   m_lb_bg.ColorBackground(C'40,45,60');
+   m_lb_bg.ColorBorder(C'80,130,200');
+   m_lb_bg.Color(clrNONE);
+   if(!Add(m_lb_bg)) return false;
+   m_lb_bg.Hide();
+
+   // Titulo centralizado
+   int msgX = bx + 10;
+   int msgY = by + 6;
+   if(!m_lb_msg.Create(m_chart_id, PFX + "lb_msg", m_subwin,
+                       msgX, msgY, msgX + bw - 20, msgY + 16))
+      return false;
+   m_lb_msg.Text("");
+   m_lb_msg.Color(C'255,200,60');
+   m_lb_msg.FontSize(9);
+   if(!Add(m_lb_msg)) return false;
+   m_lb_msg.Hide();
+
+   // Botoes centralizados
+   int btnW   = 120;
+   int btnGap = 20;
+   int totalW = btnW * 2 + btnGap;
+   int btnX   = bx + (bw - totalW) / 2;
+   int btnY   = msgY + 22;
+
+   if(!m_lb_btnLoad.Create(m_chart_id, PFX + "lb_load", m_subwin,
+                           btnX, btnY, btnX + btnW, btnY + 22))
+      return false;
+   m_lb_btnLoad.Text("CARREGAR");
+   m_lb_btnLoad.FontSize(9);
+   m_lb_btnLoad.ColorBackground(C'0,140,60');
+   m_lb_btnLoad.Color(clrWhite);
+   if(!Add(m_lb_btnLoad)) return false;
+   m_lb_btnLoad.Hide();
+
+   if(!m_lb_btnIgnore.Create(m_chart_id, PFX + "lb_ignore", m_subwin,
+                             btnX + btnW + btnGap, btnY,
+                             btnX + btnW + btnGap + btnW, btnY + 22))
+      return false;
+   m_lb_btnIgnore.Text("IGNORAR");
+   m_lb_btnIgnore.FontSize(9);
+   m_lb_btnIgnore.ColorBackground(C'160,60,60');
+   m_lb_btnIgnore.Color(clrWhite);
+   if(!Add(m_lb_btnIgnore)) return false;
+   m_lb_btnIgnore.Hide();
+
+   // Descricoes abaixo dos botoes
+   int descY = btnY + 28;
+   if(!m_lb_descLoad.Create(m_chart_id, PFX + "lb_dLoad", m_subwin,
+                            msgX, descY, msgX + bw - 20, descY + 14))
+      return false;
+   m_lb_descLoad.Text("Carregar: aplica config salva (substitui inputs)");
+   m_lb_descLoad.Color(C'160,180,200');
+   m_lb_descLoad.FontSize(7);
+   if(!Add(m_lb_descLoad)) return false;
+   m_lb_descLoad.Hide();
+
+   int descY2 = descY + 16;
+   if(!m_lb_descIgnore.Create(m_chart_id, PFX + "lb_dIgn", m_subwin,
+                              msgX, descY2, msgX + bw - 20, descY2 + 14))
+      return false;
+   m_lb_descIgnore.Text("Ignorar: apaga config salva e usa inputs do .set");
+   m_lb_descIgnore.Color(C'160,180,200');
+   m_lb_descIgnore.FontSize(7);
+   if(!Add(m_lb_descIgnore)) return false;
+   m_lb_descIgnore.Hide();
+
    m_origDragTrade  = (bool)ChartGetInteger(chart, CHART_DRAG_TRADE_LEVELS);
    m_origMouseScroll = (bool)ChartGetInteger(chart, CHART_MOUSE_SCROLL);
    ChartSetInteger(chart, CHART_EVENT_MOUSE_MOVE, true);
 
    PopulateConfig();
+
+   // ── Carregar config salva e inicializar m_savedConfig ──
+   if(HasSavedConfig())
+     {
+      SConfigData loadData;
+      ZeroMemory(loadData);
+      if(CConfigPersistence::Load(m_symbol, m_magicNumber, loadData))
+        {
+         m_savedConfig = loadData;
+        }
+     }
+
+   // ── Estado inicial: verificar posições abertas ──
+   int openPos = CountOpenPositions(m_magicNumber);
+   if(openPos > 0)
+     {
+      SetStarted(true);
+      SetAllControlsEnabled(false);
+      SetSaveCancelEnabled(false);
+      ShowHeaderStatus(IntegerToString(openPos) +
+         " posicao(oes) abertas detectadas - EA retomado", C'200,140,0');
+     }
+   else
+     {
+      SetStarted(false);
+      SetAllControlsEnabled(true);
+      SetSaveCancelEnabled(true);
+     }
+
    ShowTab(TAB_STATUS);
    return true;
   }
@@ -1029,12 +1275,267 @@ void CEPBotPanel::SetEV(CLabel &val, string value, color clr)
   }
 
 //+------------------------------------------------------------------+
+//| Botão INICIAR/PAUSAR (header, visível em todas as abas)           |
+//+------------------------------------------------------------------+
+bool CEPBotPanel::CreateStartButton(void)
+  {
+   int y1 = START_BTN_Y;
+   int y2 = y1 + START_BTN_H;
+   int margin = 5;
+   int gap = 4;
+   int totalW = PANEL_WIDTH - 20;
+   int btnW = (totalW - gap * 2) / 3;
+   int x1_start = margin;
+   int x2_start = x1_start + btnW;
+   int x1_save  = x2_start + gap;
+   int x2_save  = x1_save + btnW;
+   int x1_cancel = x2_save + gap;
+   int x2_cancel = x1_cancel + btnW;
+
+   // Botão INICIAR EA
+   if(!m_btnStart.Create(m_chart_id, PFX + "btnStart", m_subwin,
+                         x1_start, y1, x2_start, y2))
+      return false;
+   m_btnStart.Text("INICIAR EA");
+   m_btnStart.FontSize(9);
+   m_btnStart.Color(clrWhite);
+   m_btnStart.ColorBackground(C'0,140,60');
+   if(!Add(m_btnStart)) return false;
+
+   // Botão SALVAR
+   if(!m_btnSave.Create(m_chart_id, PFX + "btnSave", m_subwin,
+                        x1_save, y1, x2_save, y2))
+      return false;
+   m_btnSave.Text("SALVAR");
+   m_btnSave.FontSize(9);
+   m_btnSave.Color(clrWhite);
+   m_btnSave.ColorBackground(C'30,90,160');
+   if(!Add(m_btnSave)) return false;
+
+   // Botão CANCELAR
+   if(!m_btnCancel.Create(m_chart_id, PFX + "btnCancel", m_subwin,
+                          x1_cancel, y1, x2_cancel, y2))
+      return false;
+   m_btnCancel.Text("CANCELAR");
+   m_btnCancel.FontSize(9);
+   m_btnCancel.Color(clrWhite);
+   m_btnCancel.ColorBackground(C'160,50,50');
+   if(!Add(m_btnCancel)) return false;
+
+   // Label de status no topo (visível em todas as abas)
+   if(!m_headerStatus.Create(m_chart_id, PFX + "headerStat", m_subwin,
+                              margin, HEADER_STATUS_Y,
+                              PANEL_WIDTH - 15, HEADER_STATUS_Y + HEADER_STATUS_H))
+      return false;
+   m_headerStatus.Text("");
+   m_headerStatus.FontSize(8);
+   m_headerStatus.Color(CLR_NEUTRAL);
+   if(!Add(m_headerStatus)) return false;
+
+   m_headerStatusExpiry = 0;
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| OnClickStart — alterna estado INICIAR/PAUSAR                      |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickStart(void)
+  {
+   m_btnStart.Pressed(false);
+
+   // ═══ PAUSAR (EA rodando → quer pausar) ═══
+   if(m_eaStarted)
+     {
+      int openPos = CountOpenPositions(m_magicNumber);
+      if(openPos > 0)
+        {
+         ShowHeaderStatus("Feche " + IntegerToString(openPos)
+                          + " posicao(oes) antes de pausar", CLR_NEGATIVE);
+         return;
+        }
+      SetStarted(false);
+      SetAllControlsEnabled(true);
+      SetSaveCancelEnabled(true);
+      ShowHeaderStatus("EA pausado", CLR_WARNING);
+      return;
+     }
+
+   // ═══ INICIAR (EA pausado → quer iniciar) ═══
+   if(!ValidateAndApplyAll())
+      return;
+
+   SaveCurrentConfig();
+   SetStarted(true);
+   SetAllControlsEnabled(false);
+   SetSaveCancelEnabled(false);
+   ShowHeaderStatus("EA iniciado!", CLR_POSITIVE);
+  }
+
+//+------------------------------------------------------------------+
+//| OnClickSave — salva config sem iniciar                            |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickSave(void)
+  {
+   m_btnSave.Pressed(false);
+   if(m_eaStarted) return;
+
+   if(!ValidateAndApplyAll())
+      return;
+
+   SaveCurrentConfig();
+   ShowHeaderStatus("Config salva com sucesso!", CLR_POSITIVE);
+  }
+
+//+------------------------------------------------------------------+
+//| OnClickCancel — restaura última config salva                      |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickCancel(void)
+  {
+   m_btnCancel.Pressed(false);
+   if(m_eaStarted) return;
+
+   if(m_savedConfig.magicNumber == 0 && m_savedConfig.fixedSL == 0)
+     {
+      ShowHeaderStatus("Nenhuma config salva encontrada", CLR_NEGATIVE);
+      return;
+     }
+
+   ApplyLoadedConfig(m_savedConfig);
+   ShowHeaderStatus("Config restaurada do ultimo save", CLR_POSITIVE);
+  }
+
+//+------------------------------------------------------------------+
+//| ValidateAndApplyAll — valida + aplica config + estratégias         |
+//+------------------------------------------------------------------+
+bool CEPBotPanel::ValidateAndApplyAll(void)
+  {
+   ApplyConfig();
+
+   // Verificar sub-painéis de estratégias
+   bool hasErrors = false;
+   for(int i = 0; i < m_stratPanelCount; i++)
+      if(m_stratPanels[i] != NULL && !m_stratPanels[i].Apply())
+         hasErrors = true;
+
+   // Verificar sub-painéis de filtros
+   for(int i = 0; i < m_filtPanelCount; i++)
+      if(m_filtPanels[i] != NULL && !m_filtPanels[i].Apply())
+         hasErrors = true;
+
+   if(hasErrors)
+     {
+      ShowHeaderStatus("Corrija os erros antes de prosseguir", CLR_NEGATIVE);
+      return false;
+     }
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| CountOpenPositions — conta posições do magic no símbolo            |
+//+------------------------------------------------------------------+
+int CEPBotPanel::CountOpenPositions(int magic)
+  {
+   int count = 0;
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+     {
+      if(PositionGetTicket(i) > 0)
+         if(PositionGetString(POSITION_SYMBOL) == m_symbol &&
+            PositionGetInteger(POSITION_MAGIC) == magic)
+            count++;
+     }
+   return count;
+  }
+
+//+------------------------------------------------------------------+
+//| SetSaveCancelEnabled — habilita/desabilita SALVAR e CANCELAR       |
+//+------------------------------------------------------------------+
+void CEPBotPanel::SetSaveCancelEnabled(bool enable)
+  {
+   m_btnSave.ColorBackground(enable ? C'30,90,160' : C'80,80,80');
+   m_btnCancel.ColorBackground(enable ? C'160,50,50' : C'80,80,80');
+  }
+
+//+------------------------------------------------------------------+
+//| ShowHeaderStatus — exibe msg de status no topo (todas as abas)     |
+//+------------------------------------------------------------------+
+void CEPBotPanel::ShowHeaderStatus(string text, color clr)
+  {
+   m_headerStatus.Text(text);
+   m_headerStatus.Color(clr);
+   m_headerStatusExpiry = GetTickCount() + 10000;
+   ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
+//| SetStarted — atualiza flag e visual do botão                      |
+//+------------------------------------------------------------------+
+void CEPBotPanel::SetStarted(bool started)
+  {
+   m_eaStarted = started;
+   if(m_eaStarted)
+     {
+      m_btnStart.Text("PAUSAR EA");
+      m_btnStart.ColorBackground(C'200,140,0');
+     }
+   else
+     {
+      m_btnStart.Text("INICIAR EA");
+      m_btnStart.ColorBackground(C'0,140,60');
+     }
+   ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
+//| SetAllControlsEnabled — travar/liberar todos os controles         |
+//+------------------------------------------------------------------+
+void CEPBotPanel::SetAllControlsEnabled(bool enable)
+  {
+// ── CONFIG: RISCO ──
+   SetEditEnabled(m_cr_lLot, m_cr_iLot, enable);
+   SetEditEnabled(m_cr_lSL,  m_cr_iSL,  enable);
+   SetEditEnabled(m_cr_lTP,  m_cr_iTP,  enable);
+   SetEditEnabled(m_cr_lATRp, m_cr_iATRp, enable);
+   SetEditEnabled(m_cr_lRngP, m_cr_iRngP, enable);
+   SetEditEnabled(m_cr_lTP1p, m_cr_iTP1p, enable);
+   SetEditEnabled(m_cr_lTP1d, m_cr_iTP1d, enable);
+   SetEditEnabled(m_cr_lTP2p, m_cr_iTP2p, enable);
+   SetEditEnabled(m_cr_lTP2d, m_cr_iTP2d, enable);
+
+// ── CONFIG: RISCO 2 ──
+   SetEditEnabled(m_c2_lTrlSt, m_c2_iTrlSt, enable);
+   SetEditEnabled(m_c2_lTrlSp, m_c2_iTrlSp, enable);
+   SetEditEnabled(m_c2_lBEVal, m_c2_iBEVal, enable);
+   SetEditEnabled(m_c2_lBEOff, m_c2_iBEOff, enable);
+   SetEditEnabled(m_c2_lDLTrd, m_c2_iDLTrd, enable);
+   SetEditEnabled(m_c2_lDLLoss, m_c2_iDLLoss, enable);
+   SetEditEnabled(m_c2_lDLGain, m_c2_iDLGain, enable);
+   SetEditEnabled(m_c2_lDD, m_c2_iDD, enable);
+
+// ── CONFIG: BLOQUEIOS ──
+   SetEditEnabled(m_cb_lSpr, m_cb_iSpr, enable);
+
+// ── CONFIG: OUTROS ──
+   SetEditEnabled(m_co_lMagic, m_co_iMagic, enable);
+   SetEditEnabled(m_co_lComm, m_co_iComm, enable);
+   SetEditEnabled(m_co_lSlip, m_co_iSlip, enable);
+   SetEditEnabled(m_co_lDbgCd, m_co_iDbgCd, enable);
+
+// ── SUB-PAINÉIS: Estratégias + Filtros ──
+   for(int i = 0; i < m_stratPanelCount; i++)
+      if(m_stratPanels[i] != NULL) m_stratPanels[i].SetEnabled(enable);
+   for(int i = 0; i < m_filtPanelCount; i++)
+      if(m_filtPanels[i] != NULL) m_filtPanels[i].SetEnabled(enable);
+
+   ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
 //| Botões de aba                                                     |
 //+------------------------------------------------------------------+
 bool CEPBotPanel::CreateTabButtons(void)
   {
    int w = (PANEL_WIDTH - 30) / TAB_COUNT;
-   int y1 = 3, y2 = 3 + TAB_BTN_H;
+   int y1 = TAB_BTN_Y, y2 = TAB_BTN_Y + TAB_BTN_H;
 
    if(!m_btnTab0.Create(m_chart_id, PFX + "tab0", m_subwin, 5, y1, 5 + w, y2))
       return false;
@@ -1082,12 +1583,22 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
                               const double &dparam, const string &sparam)
   {
 // ══════════════════════════════════════════════════════════════════
-// Minimizado: passar tudo direto para CAppDialog (só o botão
-// minimize/maximize precisa responder — nossos controles estão ocultos)
+// Guard anti-minimize: botão MinMax suprimido (CreateButtonMinMax),
+// mas CAppDialog ainda pode setar m_minimized via eventos internos.
+// Se detectar minimize inesperado, reverter imediatamente.
 // ══════════════════════════════════════════════════════════════════
    if(m_minimized)
      {
+      // Forçar maximize — painel NUNCA deve estar minimizado
       CAppDialog::ChartEvent(id, lparam, dparam, sparam);
+      if(m_minimized)
+        {
+         // CAppDialog não reverteu: forçar via Show() do client area
+         Show();
+         m_minimized = false;
+         ShowTab(m_activeTab);
+         ChartRedraw();
+        }
       return;
      }
 
@@ -1099,97 +1610,121 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
 // ══════════════════════════════════════════════════════════════════
    if(id == CHARTEVENT_OBJECT_CLICK)
      {
-      // Abas principais
-      if(sparam == m_btnTab0.Name()) { m_btnTab0.Pressed(false); OnClickTab0(); ChartRedraw(); return; }
-      if(sparam == m_btnTab1.Name()) { m_btnTab1.Pressed(false); OnClickTab1(); ChartRedraw(); return; }
-      if(sparam == m_btnTab2.Name()) { m_btnTab2.Pressed(false); OnClickTab2(); ChartRedraw(); return; }
-      if(sparam == m_btnTab3.Name()) { m_btnTab3.Pressed(false); OnClickTab3(); ChartRedraw(); return; }
-      if(sparam == m_btnTab4.Name()) { m_btnTab4.Pressed(false); OnClickTab4(); ChartRedraw(); return; }
+      // INICIAR/PAUSAR — sempre acessível (header)
+      if(sparam == m_btnStart.Name())  { OnClickStart();  ChartRedraw(); return; }
+      if(sparam == m_btnSave.Name())   { OnClickSave();   ChartRedraw(); return; }
+      if(sparam == m_btnCancel.Name()) { OnClickCancel(); ChartRedraw(); return; }
 
-      // ESTRAT.: botões de navegação (genérico)
-      for(int i = 0; i < m_stratBtnCount; i++)
+      // BANNER: Load/Ignore config — sempre acessível
+      if(sparam == m_lb_btnLoad.Name())   { m_lb_btnLoad.Pressed(false);   OnClickLoadBanner();   ChartRedraw(); return; }
+      if(sparam == m_lb_btnIgnore.Name()) { m_lb_btnIgnore.Pressed(false); OnClickIgnoreBanner(); ChartRedraw(); return; }
+
+      // Enquanto o banner está visível, bloquear cliques de navegação
+      // (abas, sub-páginas, configs, etc.) — força o usuário a decidir primeiro.
+      // NÃO fazemos return — o fluxo cai no CAppDialog::ChartEvent() abaixo
+      // para que minimize, maximize, close e drag continuem funcionando.
+      if(m_loadBannerVisible)
         {
-         if(sparam == m_e_stratBtns[i].Name())
-           { m_e_stratBtns[i].Pressed(false); ShowEstratPage(i); ChartRedraw(); return; }
+         // Desfaz o estado "pressed" dos botões de aba para evitar visual errado
+         m_btnTab0.Pressed(false); m_btnTab1.Pressed(false); m_btnTab2.Pressed(false);
+         m_btnTab3.Pressed(false); m_btnTab4.Pressed(false);
+         ChartRedraw();
+         // Não interceptamos — cai direto no CAppDialog::ChartEvent() abaixo
         }
-      // ESTRAT.: eventos dos painéis (genérico)
-      for(int i = 0; i < m_stratPanelCount; i++)
+      else
         {
-         if(m_stratPanels[i] != NULL && m_stratPanels[i].OnClick(sparam)) { ChartRedraw(); return; }
+         // ── Navegação normal (só quando banner NÃO está visível) ──
+
+         // Abas principais
+         if(sparam == m_btnTab0.Name()) { m_btnTab0.Pressed(false); OnClickTab0(); ChartRedraw(); return; }
+         if(sparam == m_btnTab1.Name()) { m_btnTab1.Pressed(false); OnClickTab1(); ChartRedraw(); return; }
+         if(sparam == m_btnTab2.Name()) { m_btnTab2.Pressed(false); OnClickTab2(); ChartRedraw(); return; }
+         if(sparam == m_btnTab3.Name()) { m_btnTab3.Pressed(false); OnClickTab3(); ChartRedraw(); return; }
+         if(sparam == m_btnTab4.Name()) { m_btnTab4.Pressed(false); OnClickTab4(); ChartRedraw(); return; }
+
+         // ESTRAT.: botões de navegação (genérico)
+         for(int i = 0; i < m_stratBtnCount; i++)
+           {
+            if(sparam == m_e_stratBtns[i].Name())
+              { m_e_stratBtns[i].Pressed(false); ShowEstratPage(i); ChartRedraw(); return; }
+           }
+         // ESTRAT.: eventos dos painéis (genérico)
+         for(int i = 0; i < m_stratPanelCount; i++)
+           {
+            if(m_stratPanels[i] != NULL && m_stratPanels[i].OnClick(sparam)) { ChartRedraw(); return; }
+           }
+
+         // FILTROS: botões de navegação (genérico)
+         for(int i = 0; i < m_filtBtnCount; i++)
+           {
+            if(sparam == m_f_filtBtns[i].Name())
+              { m_f_filtBtns[i].Pressed(false); ShowFiltrosPage(i); ChartRedraw(); return; }
+           }
+         // FILTROS: eventos dos painéis (genérico)
+         for(int i = 0; i < m_filtPanelCount; i++)
+           {
+            if(m_filtPanels[i] != NULL && m_filtPanels[i].OnClick(sparam)) { ChartRedraw(); return; }
+           }
+
+         // CONFIG: sub-páginas
+         if(sparam == m_cfg_btnRisco.Name())  { m_cfg_btnRisco.Pressed(false);  OnClickCfgRisco();  ChartRedraw(); return; }
+         if(sparam == m_cfg_btnRisco2.Name()) { m_cfg_btnRisco2.Pressed(false); OnClickCfgRisco2(); ChartRedraw(); return; }
+         if(sparam == m_cfg_btnBloq.Name())   { m_cfg_btnBloq.Pressed(false);   OnClickCfgBloq();   ChartRedraw(); return; }
+         if(sparam == m_cfg_btnOutros.Name()) { m_cfg_btnOutros.Pressed(false); OnClickCfgOutros(); ChartRedraw(); return; }
+         if(sparam == m_cfg_btnBloq2.Name())  { m_cfg_btnBloq2.Pressed(false);  OnClickCfgBloq2();  ChartRedraw(); return; }
+
+         // CONFIG: radio groups (SL Type, TP Type, Direction)
+         for(int i = 0; i < 3; i++)
+           {
+            if(sparam == m_cr_bSLT[i].Name()) { OnClickSLType(i);    ChartRedraw(); return; }
+            if(sparam == m_cr_bTPT[i].Name()) { OnClickTPType(i);    ChartRedraw(); return; }
+            if(sparam == m_cb_bDir[i].Name()) { OnClickDirection(i);  ChartRedraw(); return; }
+           }
+
+         // CONFIG: RISCO toggles
+         if(sparam == m_cr_bCSL.Name()) { OnClickCompSL();  ChartRedraw(); return; }
+         if(sparam == m_cr_bCTP.Name()) { OnClickCompTP();  ChartRedraw(); return; }
+
+         // CONFIG: RISCO toggles (Partial TP agora em RISCO)
+         if(sparam == m_cr_bPTP.Name()) { OnClickPartialTP(); ChartRedraw(); return; }
+
+         // CONFIG: RISCO 2 toggles
+         if(sparam == m_c2_bDLAct.Name())  { OnClickDailyLimitsToggle(); ChartRedraw(); return; }
+         if(sparam == m_c2_bTrlAct.Name()) { OnClickTrailToggle(); ChartRedraw(); return; }
+         if(sparam == m_c2_bBEAct.Name())  { OnClickBEToggle();    ChartRedraw(); return; }
+         if(sparam == m_c2_bCTrl.Name())   { OnClickCompTrail();   ChartRedraw(); return; }
+         if(sparam == m_c2_bDDAct.Name())  { OnClickDDToggle();    ChartRedraw(); return; }
+
+         // CONFIG: BLOQUEIOS toggles
+         if(sparam == m_cb_bLStrOn.Name()) { OnClickLossStreakToggle(); ChartRedraw(); return; }
+         if(sparam == m_cb_bWStrOn.Name()) { OnClickWinStreakToggle();  ChartRedraw(); return; }
+         if(sparam == m_cb_bTFOn.Name())   { OnClickTFToggle();         ChartRedraw(); return; }
+         if(sparam == m_cb_bTFCl.Name())   { OnClickTFClose();          ChartRedraw(); return; }
+         if(sparam == m_cb_bCBSOn.Name())  { OnClickCBSToggle();        ChartRedraw(); return; }
+
+         // CONFIG: BLOQUEIOS radio groups (2 opções cada)
+         for(int i = 0; i < 2; i++)
+           {
+            if(sparam == m_cb_bLStrA[i].Name())  { OnClickLossStreakAction(i);   ChartRedraw(); return; }
+            if(sparam == m_cb_bWStrA[i].Name())  { OnClickWinStreakAction(i);    ChartRedraw(); return; }
+           }
+         // CONFIG: RISCO 2 radio groups — Daily Limits + DrawDown
+         for(int i = 0; i < 2; i++)
+           {
+            if(sparam == m_c2_bDLPTA[i].Name())  { OnClickDLProfitTargetAction(i); ChartRedraw(); return; }
+            if(sparam == m_c2_bDDT[i].Name())    { OnClickDDType(i);               ChartRedraw(); return; }
+            if(sparam == m_c2_bDDPk[i].Name())   { OnClickDDPeakMode(i);           ChartRedraw(); return; }
+           }
+
+         // CONFIG: BLOQUEIO 2 — news window toggles
+         if(sparam == m_cb2_bN1On.Name()) { m_cb2_bN1On.Pressed(false); OnClickNewsOn1(); ChartRedraw(); return; }
+         if(sparam == m_cb2_bN2On.Name()) { m_cb2_bN2On.Pressed(false); OnClickNewsOn2(); ChartRedraw(); return; }
+         if(sparam == m_cb2_bN3On.Name()) { m_cb2_bN3On.Pressed(false); OnClickNewsOn3(); ChartRedraw(); return; }
+
+         // CONFIG: OUTROS toggles
+         if(sparam == m_co_bConfl.Name()) { OnClickConflict(); ChartRedraw(); return; }
+         if(sparam == m_co_bDbg.Name())   { OnClickDebug();    ChartRedraw(); return; }
         }
-
-      // FILTROS: botões de navegação (genérico)
-      for(int i = 0; i < m_filtBtnCount; i++)
-        {
-         if(sparam == m_f_filtBtns[i].Name())
-           { m_f_filtBtns[i].Pressed(false); ShowFiltrosPage(i); ChartRedraw(); return; }
-        }
-      // FILTROS: eventos dos painéis (genérico)
-      for(int i = 0; i < m_filtPanelCount; i++)
-        {
-         if(m_filtPanels[i] != NULL && m_filtPanels[i].OnClick(sparam)) { ChartRedraw(); return; }
-        }
-
-      // CONFIG: sub-páginas
-      if(sparam == m_cfg_btnRisco.Name())  { m_cfg_btnRisco.Pressed(false);  OnClickCfgRisco();  ChartRedraw(); return; }
-      if(sparam == m_cfg_btnRisco2.Name()) { m_cfg_btnRisco2.Pressed(false); OnClickCfgRisco2(); ChartRedraw(); return; }
-      if(sparam == m_cfg_btnBloq.Name())   { m_cfg_btnBloq.Pressed(false);   OnClickCfgBloq();   ChartRedraw(); return; }
-      if(sparam == m_cfg_btnOutros.Name()) { m_cfg_btnOutros.Pressed(false); OnClickCfgOutros(); ChartRedraw(); return; }
-      if(sparam == m_cfg_btnBloq2.Name())  { m_cfg_btnBloq2.Pressed(false);  OnClickCfgBloq2();  ChartRedraw(); return; }
-
-      // CONFIG: APLICAR
-      if(sparam == m_cfg_btnApply.Name())  { m_cfg_btnApply.Pressed(false); OnClickApply(); ChartRedraw(); return; }
-
-      // CONFIG: radio groups (SL Type, TP Type, Direction)
-      for(int i = 0; i < 3; i++)
-        {
-         if(sparam == m_cr_bSLT[i].Name()) { OnClickSLType(i);    ChartRedraw(); return; }
-         if(sparam == m_cr_bTPT[i].Name()) { OnClickTPType(i);    ChartRedraw(); return; }
-         if(sparam == m_cb_bDir[i].Name()) { OnClickDirection(i);  ChartRedraw(); return; }
-        }
-
-      // CONFIG: RISCO toggles
-      if(sparam == m_cr_bCSL.Name()) { OnClickCompSL();  ChartRedraw(); return; }
-      if(sparam == m_cr_bCTP.Name()) { OnClickCompTP();  ChartRedraw(); return; }
-
-      // CONFIG: RISCO toggles (Partial TP agora em RISCO)
-      if(sparam == m_cr_bPTP.Name()) { OnClickPartialTP(); ChartRedraw(); return; }
-
-      // CONFIG: RISCO 2 toggles
-      if(sparam == m_c2_bTrlAct.Name()) { OnClickTrailToggle(); ChartRedraw(); return; }
-      if(sparam == m_c2_bBEAct.Name())  { OnClickBEToggle();    ChartRedraw(); return; }
-      if(sparam == m_c2_bCTrl.Name())   { OnClickCompTrail();   ChartRedraw(); return; }
-      if(sparam == m_c2_bDDAct.Name())  { OnClickDDToggle();    ChartRedraw(); return; }
-
-      // CONFIG: BLOQUEIOS toggles
-      if(sparam == m_cb_bLStrOn.Name()) { OnClickLossStreakToggle(); ChartRedraw(); return; }
-      if(sparam == m_cb_bWStrOn.Name()) { OnClickWinStreakToggle();  ChartRedraw(); return; }
-      if(sparam == m_cb_bTFOn.Name())   { OnClickTFToggle();         ChartRedraw(); return; }
-      if(sparam == m_cb_bTFCl.Name())   { OnClickTFClose();          ChartRedraw(); return; }
-      if(sparam == m_cb_bCBSOn.Name())  { OnClickCBSToggle();        ChartRedraw(); return; }
-
-      // CONFIG: BLOQUEIOS radio groups (2 opções cada)
-      for(int i = 0; i < 2; i++)
-        {
-         if(sparam == m_cb_bLStrA[i].Name())  { OnClickLossStreakAction(i);   ChartRedraw(); return; }
-         if(sparam == m_cb_bWStrA[i].Name())  { OnClickWinStreakAction(i);    ChartRedraw(); return; }
-         if(sparam == m_cb_bPTA[i].Name())    { OnClickProfitTargetAction(i); ChartRedraw(); return; }
-        }
-      // CONFIG: RISCO 2 radio groups — DrawDown (movido de BLOQUEIOS em v1.18)
-      for(int i = 0; i < 2; i++)
-        {
-         if(sparam == m_c2_bDDT[i].Name())    { OnClickDDType(i);             ChartRedraw(); return; }
-         if(sparam == m_c2_bDDPk[i].Name())   { OnClickDDPeakMode(i);         ChartRedraw(); return; }
-        }
-
-      // CONFIG: BLOQUEIO 2 — news window toggles
-      if(sparam == m_cb2_bN1On.Name()) { m_cb2_bN1On.Pressed(false); OnClickNewsOn1(); ChartRedraw(); return; }
-      if(sparam == m_cb2_bN2On.Name()) { m_cb2_bN2On.Pressed(false); OnClickNewsOn2(); ChartRedraw(); return; }
-      if(sparam == m_cb2_bN3On.Name()) { m_cb2_bN3On.Pressed(false); OnClickNewsOn3(); ChartRedraw(); return; }
-
-      // CONFIG: OUTROS toggles
-      if(sparam == m_co_bConfl.Name()) { OnClickConflict(); ChartRedraw(); return; }
-      if(sparam == m_co_bDbg.Name())   { OnClickDebug();    ChartRedraw(); return; }
 
       // Não é nosso → cai pro CAppDialog abaixo
      }
@@ -1219,6 +1754,10 @@ bool CEPBotPanel::OnEvent(const int id, const long &lparam,
 //+------------------------------------------------------------------+
 void CEPBotPanel::ReapplyTabVisibility(void)
   {
+   // Banner de config: re-esconder se não está ativo (CAppDialog::Show re-exibe tudo)
+   if(!m_loadBannerVisible)
+      HideLoadBanner();
+
    for(int t = 0; t < TAB_COUNT; t++)
      {
       if(t != (int)m_activeTab)
@@ -1383,7 +1922,7 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
             // Sub-page buttons + apply + status
             m_cfg_btnRisco.Show(); m_cfg_btnRisco2.Show();
             m_cfg_btnBloq.Show(); m_cfg_btnOutros.Show(); m_cfg_btnBloq2.Show();
-            m_cfg_btnApply.Show(); m_cfg_status.Show();
+            m_cfg_status.Show();
             // Show active sub-page
             ShowCfgPage(m_cfgPage);
            }
@@ -1391,7 +1930,7 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
            {
             m_cfg_btnRisco.Hide(); m_cfg_btnRisco2.Hide();
             m_cfg_btnBloq.Hide(); m_cfg_btnOutros.Hide(); m_cfg_btnBloq2.Hide();
-            m_cfg_btnApply.Hide(); m_cfg_status.Hide();
+            m_cfg_status.Hide();
             SetCfgPageVis(CFG_RISCO, false);
             SetCfgPageVis(CFG_RISCO2, false);
             SetCfgPageVis(CFG_BLOQUEIOS, false);
@@ -1429,9 +1968,19 @@ void CEPBotPanel::UpdateTabStyles(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::Update(void)
   {
-   // Não atualiza se minimizado — evita labels "soltos" no gráfico
+   // Guard anti-minimize: se CAppDialog minimizou por conta própria, reverter
    if(m_minimized)
-      return;
+     {
+      Show();
+      m_minimized = false;
+      ShowTab(m_activeTab);
+      ChartRedraw();
+      return;   // Este ciclo apenas restaura; próximo Update() atualiza dados
+     }
+
+   // Auto-clear header status (visível em todas as abas)
+   if(m_headerStatusExpiry > 0 && GetTickCount() >= m_headerStatusExpiry)
+     { m_headerStatus.Text(""); m_headerStatusExpiry = 0; ChartRedraw(); }
 
    switch(m_activeTab)
      {
@@ -1489,6 +2038,7 @@ void CEPBotPanel::MouseProtection(const int x, const int y)
 #include "PanelTabEstrategias.mqh"
 #include "PanelTabFiltros.mqh"
 #include "PanelTabConfig.mqh"
+#include "PanelPersistence.mqh"
 
 //+------------------------------------------------------------------+
 //| RegisterPanels — factory method: cria sub-páginas de estratégia  |

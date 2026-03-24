@@ -2,12 +2,16 @@
 //|                                                       Inputs.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                   Sistema de Inputs Centralizados - EPBot Matrix |
-//|                     Versão 1.08 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.09 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.08"
+#property version   "1.09"
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v1.09 (Parte 027):
+// ✅ Sem novos inputs (apenas GUI expõe campos existentes)
+//    Magic Number, Trade Comment, Daily Limits agora na GUI
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v1.08 (Parte 026):
 // ✅ Novos inputs para BB Strategy (Bollinger Bands):
@@ -296,5 +300,5 @@ input group "═══════════════ 🖥️ PAINEL GUI �
 input bool inp_ShowPanel = true;                     // Mostrar Painel no Gráfico
 
 //+------------------------------------------------------------------+
-//| FIM DO ARQUIVO DE INPUTS v1.07                                   |
+//| FIM DO ARQUIVO DE INPUTS v1.09                                   |
 //+------------------------------------------------------------------+

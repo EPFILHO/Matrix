@@ -2,7 +2,9 @@
 //|                                             BlockerFilters.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|              Filtros de Condição de Mercado - EPBot Matrix       |
-//|                     Versão 1.00 - Claude Parte 025 (Claude Code) |
+//|                     Versão 1.01 - Claude Parte 027 (Claude Code) |
+// CHANGELOG v1.01 (Parte 027):
+// + SetMagicNumber() / GetMagicNumber() — hot reload do Magic Number
 //+------------------------------------------------------------------+
 // NOTA: Enums (ENUM_BLOCKER_REASON, ENUM_SESSION_STATE, etc.) e
 // Logger.mqh são incluídos por Blockers.mqh ANTES deste arquivo.
@@ -144,12 +146,14 @@ public:
    void              SetCloseBeforeSessionEnd(bool close, int minutes);
    void              SetNewsFilter(int window, bool enable, int startH, int startM, int endH, int endM);
    void              SetMaxSpread(int newMaxSpread);
+   void              SetMagicNumber(int newMagic);
 
    // ═══════════════════════════════════════════════════════════════
    // GETTERS
    // ═══════════════════════════════════════════════════════════════
    int               GetMaxSpread() const      { return m_maxSpread; }
    int               GetInputMaxSpread() const { return m_inputMaxSpread; }
+   int               GetMagicNumber() const    { return m_magicNumber; }
   };
 
 //+------------------------------------------------------------------+
@@ -783,6 +787,18 @@ void CBlockerFilters::SetMaxSpread(int newMaxSpread)
       else
          Print("🔄 Spread máximo alterado: ", oldValue, " → ", newMaxSpread, " pontos");
      }
+  }
+
+//+------------------------------------------------------------------+
+//| Hot Reload — Magic Number                                        |
+//+------------------------------------------------------------------+
+void CBlockerFilters::SetMagicNumber(int newMagic)
+  {
+   m_magicNumber = newMagic;
+
+   // Limpar caches de transição (tickets do magic antigo são inválidos)
+   m_sCloseOnEndLastTicket         = 0;
+   m_sCloseBeforeSessionLastTicket = 0;
   }
 
 //+------------------------------------------------------------------+

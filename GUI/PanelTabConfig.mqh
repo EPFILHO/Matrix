@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.27 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.31 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -14,6 +14,36 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.31 (Parte 027) — Fase 2: Controle de Estado:
+// * inp_TrailingType/inp_BEType substituídos por m_cur_trailingType/m_cur_beType
+// * PopulateConfig inicializa runtime vars; magic reload via ApplyMagicNumberChange
+// * Removidos m_cfg_btnApply (criação) e OnClickApply (handler)
+//
+// v1.30 (Parte 027):
+// * Hot Reload: Magic Number, Trade Comment e Slippage (runtime vars)
+//   - Magic Number aplicado em TradeManager + BlockerFilters + g_magicNumber
+//   - Trade Comment aplicado em g_tradeComment
+//   - Slippage aplicado em g_slippage (+ TradeManager que já existia)
+//   - Variáveis globais g_magicNumber/g_slippage/g_tradeComment substituem
+//     inp_* no EA principal para serem editáveis em runtime
+//
+// v1.29 (Parte 027):
+// * Fix: TryActivateDrawdownNow no hot reload ativava DD imediatamente
+//   mesmo quando ação = ATIVAR DD (deveria esperar Max Gain ser atingido)
+//   Agora só ativa se lucro atual já ultrapassou Max Gain
+//
+// v1.28 (Parte 027):
+// + OUTROS: Magic Number (CEdit + label aviso CLR_WARNING) e Comentário
+//   das Ordens (CEdit) — acima de Slippage/Conflito; Debug por último
+// + RISCO 2: Limites Diários movidos de BLOQUEIOS → RISCO 2 com toggle
+//   ON/OFF dinâmico (m_c2_hdr4, lDLAct/bDLAct, lDLTrd/iDLTrd, etc.)
+//   Seção posicionada ACIMA de TRAILING
+// + RefreshDailyLimitsState: enable/disable campos por toggle
+// + OnClickDailyLimitsToggle, OnClickDLProfitTargetAction: novos handlers
+// + Removidos m_cb_hdr2/lTrd/iTrd/lLoss/iLoss/lGain/iGain/lPTA/bPTA
+//   OnClickProfitTargetAction substituído por OnClickDLProfitTargetAction
+// + PopulateConfig/ApplyConfig/SetCfgPageVis atualizados
+//
 // v1.27 (Parte 026):
 // + Slippage max aumentado de 500 para 10000 pts (suporte BTC e ativos
 //   de alto spread)
@@ -292,7 +322,7 @@ bool CEPBotPanel::CreateTabConfig(void)
    m_cfg_hasStreak     = inp_EnableStreakControl;
    m_cfg_hasDrawdown   = inp_EnableDrawdown;
    m_cfg_hasATR        = (inp_SLType == SL_ATR || inp_TPType == TP_ATR ||
-                           inp_TrailingType == TRAILING_ATR || inp_BEType == BE_ATR);
+                           m_cur_trailingType == TRAILING_ATR || m_cur_beType == BE_ATR);
    m_cfg_hasRange      = (inp_SLType == SL_RANGE);
 
 // ── Botões de sub-página (4 botões) ──
@@ -422,9 +452,27 @@ bool CEPBotPanel::CreateTabConfig(void)
    y += PANEL_GAP_Y * 2;
 
 // ════════════════════════════════════════════════════════════
-// SUB-PÁGINA: RISCO 2 (Trailing/BE)
+// SUB-PÁGINA: RISCO 2 (Limites Diários/Trailing/BE/DrawDown)
 // ════════════════════════════════════════════════════════════
    y = CFG_CONTENT_Y;
+
+// ── LIMITES DIÁRIOS (movido de BLOQUEIOS — Parte 027, toggle ON/OFF) ──
+   if(!CreateHdr(m_c2_hdr4, "c2_h4", "LIMITES DIARIOS", y)) return false;
+   y += PANEL_GAP_Y + 2;
+   if(!CreateLB(m_c2_lDLAct, m_c2_bDLAct, "c2_lDLA", "c2_bDLA", "Limites Diarios:", y)) return false;
+   y += PANEL_GAP_Y + 2;
+   if(!CreateLI(m_c2_lDLTrd, m_c2_iDLTrd, "c2_lDLT", "c2_iDLT", "Max Trades (0=sem):", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_c2_lDLLoss, m_c2_iDLLoss, "c2_lDLL", "c2_iDLL", "Max Loss $:", y)) return false;
+   y += PANEL_GAP_Y;
+   if(!CreateLI(m_c2_lDLGain, m_c2_iDLGain, "c2_lDLG", "c2_iDLG", "Max Gain $:", y)) return false;
+   y += PANEL_GAP_Y;
+   {
+    string dlptaTexts[] = {"PARAR", "ATIVAR DD"};
+    if(!CreateRadioGroup(m_c2_lDLPTA, m_c2_bDLPTA, "c2_lDLP", "c2_bDLP", "Profit Acao:", dlptaTexts, 2, y))
+       return false;
+   }
+   y += PANEL_GAP_Y + 2;
 
 // TRAILING
    if(!CreateHdr(m_c2_hdr1, "c2_h1", "TRAILING", y)) return false;
@@ -432,7 +480,7 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLB(m_c2_lTrlAct, m_c2_bTrlAct, "c2_lTA", "c2_bTA", "Trailing:", y)) return false;
    y += PANEL_GAP_Y + 2;
    {
-    string trSuffix = (inp_TrailingType == TRAILING_FIXED) ? " (pts):" : " (ATR x):";
+    string trSuffix = (m_cur_trailingType == TRAILING_FIXED) ? " (pts):" : " (ATR x):";
     if(!CreateLI(m_c2_lTrlSt, m_c2_iTrlSt, "c2_lTS", "c2_iTS", "Trail Start" + trSuffix, y)) return false;
     y += PANEL_GAP_Y;
     if(!CreateLI(m_c2_lTrlSp, m_c2_iTrlSp, "c2_lTP2", "c2_iTP2", "Trail Step" + trSuffix, y)) return false;
@@ -448,7 +496,7 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLB(m_c2_lBEAct, m_c2_bBEAct, "c2_lBA", "c2_bBA", "Break Even:", y)) return false;
    y += PANEL_GAP_Y + 2;
    {
-    string beSuffix = (inp_BEType == BE_FIXED) ? " (pts):" : " (ATR x):";
+    string beSuffix = (m_cur_beType == BE_FIXED) ? " (pts):" : " (ATR x):";
     if(!CreateLI(m_c2_lBEVal, m_c2_iBEVal, "c2_lBV", "c2_iBV", "BE Ativacao" + beSuffix, y)) return false;
     y += PANEL_GAP_Y;
     if(!CreateLI(m_c2_lBEOff, m_c2_iBEOff, "c2_lBO", "c2_iBO", "BE Offset" + beSuffix, y)) return false;
@@ -496,25 +544,7 @@ bool CEPBotPanel::CreateTabConfig(void)
    }
    y += PANEL_GAP_Y + 2;
 
-   if(m_cfg_hasDailyLimits)
-     {
-      y += PANEL_GAP_SECTION;
-      if(!CreateHdr(m_cb_hdr2, "cb_h2", "LIMITES DIARIOS", y)) return false;
-      y += PANEL_GAP_Y + 2;
-      if(!CreateLI(m_cb_lTrd, m_cb_iTrd, "cb_lTd", "cb_iTd", "Max Trades (0=sem):", y)) return false;
-      y += PANEL_GAP_Y;
-      if(!CreateLI(m_cb_lLoss, m_cb_iLoss, "cb_lLs", "cb_iLs", "Max Loss $:", y)) return false;
-      y += PANEL_GAP_Y;
-      if(!CreateLI(m_cb_lGain, m_cb_iGain, "cb_lGn", "cb_iGn", "Max Gain $:", y)) return false;
-      y += PANEL_GAP_Y;
-      // Profit Target Action
-      {
-       string ptaTexts[] = {"PARAR", "ATIVAR DD"};
-       if(!CreateRadioGroup(m_cb_lPTA, m_cb_bPTA, "cb_lPTA", "cb_bPTA", "Profit Acao:", ptaTexts, 2, y))
-          return false;
-      }
-      y += PANEL_GAP_Y + 2;
-     }
+   // (Daily Limits movido para RISCO 2 — Parte 027)
 
 // ── SEQUENCIAS (toggles individuais ON/OFF em v1.19) ──
    y += PANEL_GAP_SECTION;
@@ -583,6 +613,21 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateHdr(m_co_hdr1, "co_h1", "OUTROS", y)) return false;
    y += PANEL_GAP_Y + 2;
 
+   if(!CreateLI(m_co_lMagic, m_co_iMagic, "co_lMg", "co_iMg", "Magic Number:", y)) return false;
+   y += PANEL_GAP_Y;
+// Aviso Magic Number (label pequeno, cor warning)
+   if(!m_co_lMagicW.Create(m_chart_id, PFX + "co_lMgW", m_subwin,
+                            COL_LABEL_X, y, COL_LABEL_X + PANEL_WIDTH - 20, y + PANEL_GAP_Y))
+      return false;
+   m_co_lMagicW.Text("Nao usar o mesmo nro de outro EA (causa sobreposicao)");
+   m_co_lMagicW.Color(CLR_WARNING);
+   m_co_lMagicW.FontSize(7);
+   if(!Add(m_co_lMagicW)) return false;
+   y += PANEL_GAP_Y;
+
+   if(!CreateLI(m_co_lComm, m_co_iComm, "co_lCm", "co_iCm", "Comentario Ordens:", y)) return false;
+   y += PANEL_GAP_Y + 2;
+
    if(!CreateLI(m_co_lSlip, m_co_iSlip, "co_lSl", "co_iSl", "Slippage (pts):", y)) return false;
    y += PANEL_GAP_Y;
    if(!CreateLB(m_co_lConfl, m_co_bConfl, "co_lCf", "co_bCf", "Conflito Sinais:", y)) return false;
@@ -641,19 +686,8 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateLI(m_cb2_lN3EM, m_cb2_iN3EM, "cb2_lN3EM","cb2_iN3EM","Fim M:", y)) return false;
 
 // ════════════════════════════════════════════════════════════
-// APLICAR + STATUS (fixos, visíveis em todas sub-páginas)
+// STATUS (fixo, visível em todas sub-páginas)
 // ════════════════════════════════════════════════════════════
-   if(!m_cfg_btnApply.Create(m_chart_id, PFX + "cfg_apply", m_subwin,
-                             COL_LABEL_X, CFG_APPLY_Y,
-                             COL_VALUE_X + COL_VALUE_W, CFG_APPLY_Y + 24))
-      return false;
-   m_cfg_btnApply.Text("APLICAR");
-   m_cfg_btnApply.FontSize(9);
-   m_cfg_btnApply.ColorBackground(C'30,120,70');
-   m_cfg_btnApply.Color(clrWhite);
-   if(!Add(m_cfg_btnApply))
-      return false;
-
    if(!m_cfg_status.Create(m_chart_id, PFX + "cfg_st", m_subwin,
                            COL_LABEL_X, CFG_APPLY_Y + 28,
                            COL_VALUE_X + COL_VALUE_W, CFG_APPLY_Y + 28 + PANEL_GAP_Y))
@@ -673,17 +707,19 @@ bool CEPBotPanel::CreateTabConfig(void)
 void CEPBotPanel::PopulateConfig(void)
   {
 // ── Estado dos toggles/cycles ──
-   m_cur_direction = inp_TradeDirection;
-   m_cur_conflict  = inp_ConflictMode;
-   m_cur_slType    = inp_SLType;
-   m_cur_tpType    = inp_TPType;
-   m_cur_debug     = inp_ShowDebugLogs;
-   m_cur_partialTP = inp_UsePartialTP;
+   m_cur_direction     = inp_TradeDirection;
+   m_cur_conflict      = inp_ConflictMode;
+   m_cur_slType        = inp_SLType;
+   m_cur_tpType        = inp_TPType;
+   m_cur_debug         = inp_ShowDebugLogs;
+   m_cur_partialTP     = inp_UsePartialTP;
+   m_cur_trailingType  = inp_TrailingType;
+   m_cur_beType        = inp_BEType;
 
 // ── Recalcular flags dinâmicos ──
    m_cfg_hasTP    = (m_cur_tpType != TP_NONE);
    m_cfg_hasATR   = (m_cur_slType == SL_ATR || m_cur_tpType == TP_ATR ||
-                     inp_TrailingType == TRAILING_ATR || inp_BEType == BE_ATR);
+                     m_cur_trailingType == TRAILING_ATR || m_cur_beType == BE_ATR);
    m_cfg_hasRange = (m_cur_slType == SL_RANGE);
 
 // ── Risco (radio groups) ──
@@ -738,7 +774,7 @@ void CEPBotPanel::PopulateConfig(void)
    m_c2_bTrlAct.ColorBackground(m_cur_trailOn ? C'30,120,70' : C'120,50,50');
    m_c2_bTrlAct.Color(clrWhite);
 
-   if(inp_TrailingType == TRAILING_FIXED)
+   if(m_cur_trailingType == TRAILING_FIXED)
      {
       m_c2_iTrlSt.Text(IntegerToString(inp_TrailingStart));
       m_c2_iTrlSp.Text(IntegerToString(inp_TrailingStep));
@@ -759,7 +795,7 @@ void CEPBotPanel::PopulateConfig(void)
    m_c2_bBEAct.ColorBackground(m_cur_beOn ? C'30,120,70' : C'120,50,50');
    m_c2_bBEAct.Color(clrWhite);
 
-   if(inp_BEType == BE_FIXED)
+   if(m_cur_beType == BE_FIXED)
      {
       m_c2_iBEVal.Text(IntegerToString(inp_BEActivation));
       m_c2_iBEOff.Text(IntegerToString(inp_BEOffset));
@@ -784,15 +820,16 @@ void CEPBotPanel::PopulateConfig(void)
 // Direction radio group
    SetRadioSelection(m_cb_bDir, 3, (int)m_cur_direction);
 
-   if(m_cfg_hasDailyLimits)
-     {
-      m_cb_iTrd.Text(IntegerToString(inp_MaxDailyTrades));
-      m_cb_iLoss.Text(DoubleToString(inp_MaxDailyLoss, 2));
-      m_cb_iGain.Text(DoubleToString(inp_MaxDailyGain, 2));
-      // Profit Target Action
-      m_cur_profitTargetAction = inp_ProfitTargetAction;
-      SetRadioSelection(m_cb_bPTA, 2, (int)m_cur_profitTargetAction);
-     }
+// Daily Limits (movido para RISCO 2 — Parte 027, toggle dinâmico)
+   m_cur_dailyLimitsOn = inp_EnableDailyLimits;
+   m_c2_bDLAct.Text(m_cur_dailyLimitsOn ? "ON" : "OFF");
+   m_c2_bDLAct.ColorBackground(m_cur_dailyLimitsOn ? C'30,120,70' : C'120,50,50');
+   m_c2_bDLAct.Color(clrWhite);
+   m_c2_iDLTrd.Text(IntegerToString(inp_MaxDailyTrades));
+   m_c2_iDLLoss.Text(DoubleToString(inp_MaxDailyLoss, 2));
+   m_c2_iDLGain.Text(DoubleToString(inp_MaxDailyGain, 2));
+   m_cur_profitTargetAction = inp_ProfitTargetAction;
+   SetRadioSelection(m_c2_bDLPTA, 2, (int)m_cur_profitTargetAction);
 
 // Streak — toggles (v1.19: m_cur_lossStreakOn/winStreakOn inicializados do input)
    m_cur_lossStreakOn = m_cfg_hasStreak;
@@ -813,10 +850,17 @@ void CEPBotPanel::PopulateConfig(void)
    SetRadioSelection(m_cb_bWStrA, 2, (int)m_cur_winStreakAction);
    m_cb_iWStrP.Text(IntegerToString(inp_WinPauseMinutes));
 
-// DrawDown — toggle (v1.19: m_cur_ddOn inicializado do input)
+// DrawDown — toggle (v1.19/v1.53: aviso se dependência não satisfeita)
    m_cur_ddOn = m_cfg_hasDrawdown;
-   m_c2_bDDAct.Text(m_cur_ddOn ? "ON" : "OFF");
-   m_c2_bDDAct.ColorBackground(m_cur_ddOn ? C'30,120,70' : C'120,50,50');
+   {
+    bool ddAllowed = m_cur_dailyLimitsOn && m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN;
+    if(m_cur_ddOn && ddAllowed)
+      { m_c2_bDDAct.Text("ON"); m_c2_bDDAct.ColorBackground(C'30,120,70'); }
+    else if(m_cur_ddOn && !ddAllowed)
+      { m_c2_bDDAct.Text("REQUER META"); m_c2_bDDAct.ColorBackground(C'180,120,0'); }
+    else
+      { m_c2_bDDAct.Text("OFF"); m_c2_bDDAct.ColorBackground(C'120,50,50'); }
+   }
    m_c2_bDDAct.Color(clrWhite);
    m_c2_iDD.Text(DoubleToString(inp_DrawdownValue, 2));
    m_cur_ddType = inp_DrawdownType;
@@ -875,6 +919,8 @@ void CEPBotPanel::PopulateConfig(void)
    m_cb2_iN3EM.Text(IntegerToString(inp_News3EndM));
 
 // ── Outros ──
+   m_co_iMagic.Text(IntegerToString(inp_MagicNumber));
+   m_co_iComm.Text(inp_TradeComment);
    m_co_iSlip.Text(IntegerToString(inp_Slippage));
 
    string conflTxt = (m_cur_conflict == CONFLICT_PRIORITY) ? "PRIORIDADE" : "CANCELAR";
@@ -973,9 +1019,12 @@ void CEPBotPanel::RefreshRisco2State(void)
    SetEditEnabled(m_c2_lBEVal, m_c2_iBEVal, m_cur_beOn);
    SetEditEnabled(m_c2_lBEOff, m_c2_iBEOff, m_cur_beOn);
 
-// DD fields: habilitado se toggle ON (v1.19)
-   SetEditEnabled(m_c2_lDD, m_c2_iDD, m_cur_ddOn);
-   if(m_cur_ddOn)
+// DD fields: habilitado se toggle ON E dependência satisfeita (v1.19/v1.53)
+// DD só funciona se Limites Diarios ON + Profit Acao = ATIVAR DD
+   bool ddAllowed = m_cur_dailyLimitsOn && m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN;
+   bool ddEffective = m_cur_ddOn && ddAllowed;
+   SetEditEnabled(m_c2_lDD, m_c2_iDD, ddEffective);
+   if(ddEffective)
      {
       m_c2_lDDT.Color(CLR_LABEL);
       m_c2_lDDPk.Color(CLR_LABEL);
@@ -989,8 +1038,78 @@ void CEPBotPanel::RefreshRisco2State(void)
       for(int i=0;i<2;i++) { m_c2_bDDT[i].ColorBackground(C'160,160,160'); m_c2_bDDT[i].Color(C'200,200,200'); }
       for(int i=0;i<2;i++) { m_c2_bDDPk[i].ColorBackground(C'160,160,160'); m_c2_bDDPk[i].Color(C'200,200,200'); }
      }
+// Aviso dinâmico: se DD ON mas dependência não satisfeita
+   if(m_cur_ddOn && !ddAllowed)
+     {
+      m_c2_bDDAct.Text("REQUER META");
+      m_c2_bDDAct.ColorBackground(C'180,120,0');
+     }
 
    ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
+//| RefreshDailyLimitsState — enable/disable por toggle ON/OFF (027) |
+//+------------------------------------------------------------------+
+void CEPBotPanel::RefreshDailyLimitsState(void)
+  {
+   SetEditEnabled(m_c2_lDLTrd, m_c2_iDLTrd, m_cur_dailyLimitsOn);
+   SetEditEnabled(m_c2_lDLLoss, m_c2_iDLLoss, m_cur_dailyLimitsOn);
+   SetEditEnabled(m_c2_lDLGain, m_c2_iDLGain, m_cur_dailyLimitsOn);
+   if(m_cur_dailyLimitsOn)
+     {
+      m_c2_lDLPTA.Color(CLR_LABEL);
+      SetRadioSelection(m_c2_bDLPTA, 2, (int)m_cur_profitTargetAction);
+     }
+   else
+     {
+      m_c2_lDLPTA.Color(C'180,180,180');
+      for(int i=0;i<2;i++) { m_c2_bDLPTA[i].ColorBackground(C'160,160,160'); m_c2_bDLPTA[i].Color(C'200,200,200'); }
+     }
+
+// Atualizar estado do DD (depende de Limites Diários + Profit Acao)
+   bool ddAllowed = m_cur_dailyLimitsOn && m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN;
+   if(m_cur_ddOn)
+     {
+      if(ddAllowed)
+        { m_c2_bDDAct.Text("ON"); m_c2_bDDAct.ColorBackground(C'30,120,70'); }
+      else
+        { m_c2_bDDAct.Text("REQUER META"); m_c2_bDDAct.ColorBackground(C'180,120,0'); }
+     }
+   RefreshRisco2State();
+  }
+
+//+------------------------------------------------------------------+
+//| OnClickDailyLimitsToggle — toggle ON/OFF (Parte 027)             |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickDailyLimitsToggle(void)
+  {
+   m_cur_dailyLimitsOn = !m_cur_dailyLimitsOn;
+   m_c2_bDLAct.Pressed(false);
+   m_c2_bDLAct.Text(m_cur_dailyLimitsOn ? "ON" : "OFF");
+   m_c2_bDLAct.ColorBackground(m_cur_dailyLimitsOn ? C'30,120,70' : C'120,50,50');
+   RefreshDailyLimitsState();
+  }
+
+//+------------------------------------------------------------------+
+//| OnClickDLProfitTargetAction — radio PARAR / ATIVAR DD (027)      |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickDLProfitTargetAction(int selected)
+  {
+   if(!m_cur_dailyLimitsOn) return;
+   m_cur_profitTargetAction = (ENUM_PROFIT_TARGET_ACTION)selected;
+   SetRadioSelection(m_c2_bDLPTA, 2, selected);
+
+// Atualizar estado do DD (depende de Profit Acao)
+   bool ddAllowed = m_cur_dailyLimitsOn && m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN;
+   if(m_cur_ddOn)
+     {
+      if(ddAllowed)
+        { m_c2_bDDAct.Text("ON"); m_c2_bDDAct.ColorBackground(C'30,120,70'); }
+      else
+        { m_c2_bDDAct.Text("REQUER META"); m_c2_bDDAct.ColorBackground(C'180,120,0'); }
+     }
+   RefreshRisco2State();
   }
 
 //+------------------------------------------------------------------+
@@ -1062,6 +1181,13 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
         {
          if(vis)
            {
+            // Daily Limits toggle + sub-campos (Parte 027)
+            m_c2_hdr4.Show(); m_c2_lDLAct.Show(); m_c2_bDLAct.Show();
+            m_c2_lDLTrd.Show(); m_c2_iDLTrd.Show();
+            m_c2_lDLLoss.Show(); m_c2_iDLLoss.Show();
+            m_c2_lDLGain.Show(); m_c2_iDLGain.Show();
+            m_c2_lDLPTA.Show(); for(int i=0;i<2;i++) m_c2_bDLPTA[i].Show();
+            // Trailing
             m_c2_hdr1.Show(); m_c2_lTrlAct.Show(); m_c2_bTrlAct.Show();
             m_c2_lTrlSt.Show(); m_c2_iTrlSt.Show();
             m_c2_lTrlSp.Show(); m_c2_iTrlSp.Show();
@@ -1074,10 +1200,18 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_c2_lDD.Show(); m_c2_iDD.Show();
             m_c2_lDDT.Show(); for(int i=0;i<2;i++) m_c2_bDDT[i].Show();
             m_c2_lDDPk.Show(); for(int i=0;i<2;i++) m_c2_bDDPk[i].Show();
+            RefreshDailyLimitsState();
             RefreshRisco2State();
            }
          else
            {
+            // Daily Limits
+            m_c2_hdr4.Hide(); m_c2_lDLAct.Hide(); m_c2_bDLAct.Hide();
+            m_c2_lDLTrd.Hide(); m_c2_iDLTrd.Hide();
+            m_c2_lDLLoss.Hide(); m_c2_iDLLoss.Hide();
+            m_c2_lDLGain.Hide(); m_c2_iDLGain.Hide();
+            m_c2_lDLPTA.Hide(); for(int i=0;i<2;i++) m_c2_bDLPTA[i].Hide();
+            // Trailing
             m_c2_hdr1.Hide(); m_c2_lTrlAct.Hide(); m_c2_bTrlAct.Hide();
             m_c2_lTrlSt.Hide(); m_c2_iTrlSt.Hide();
             m_c2_lTrlSp.Hide(); m_c2_iTrlSp.Hide();
@@ -1100,13 +1234,7 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
            {
             m_cb_hdr1.Show(); m_cb_lSpr.Show(); m_cb_iSpr.Show();
             m_cb_lDir.Show(); for(int i=0;i<3;i++) m_cb_bDir[i].Show();
-            if(m_cfg_hasDailyLimits)
-              {
-               m_cb_hdr2.Show(); m_cb_lTrd.Show(); m_cb_iTrd.Show();
-               m_cb_lLoss.Show(); m_cb_iLoss.Show();
-               m_cb_lGain.Show(); m_cb_iGain.Show();
-               m_cb_lPTA.Show(); for(int i=0;i<2;i++) m_cb_bPTA[i].Show();
-              }
+            // (Daily Limits movido para RISCO 2 — Parte 027)
             // Streak — toggles + sub-campos (v1.19)
             m_cb_hdr3.Show();
             m_cb_lLStrOn.Show(); m_cb_bLStrOn.Show();
@@ -1135,13 +1263,7 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
            {
             m_cb_hdr1.Hide(); m_cb_lSpr.Hide(); m_cb_iSpr.Hide();
             m_cb_lDir.Hide(); for(int i=0;i<3;i++) m_cb_bDir[i].Hide();
-            if(m_cfg_hasDailyLimits)
-              {
-               m_cb_hdr2.Hide(); m_cb_lTrd.Hide(); m_cb_iTrd.Hide();
-               m_cb_lLoss.Hide(); m_cb_iLoss.Hide();
-               m_cb_lGain.Hide(); m_cb_iGain.Hide();
-               m_cb_lPTA.Hide(); for(int i=0;i<2;i++) m_cb_bPTA[i].Hide();
-              }
+            // (Daily Limits movido para RISCO 2 — Parte 027)
             // Streak — toggles + sub-campos (v1.19)
             m_cb_hdr3.Hide();
             m_cb_lLStrOn.Hide(); m_cb_bLStrOn.Hide();
@@ -1172,14 +1294,22 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
         {
          if(vis)
            {
-            m_co_hdr1.Show(); m_co_lSlip.Show(); m_co_iSlip.Show();
+            m_co_hdr1.Show();
+            m_co_lMagic.Show(); m_co_iMagic.Show();
+            m_co_lMagicW.Show();
+            m_co_lComm.Show(); m_co_iComm.Show();
+            m_co_lSlip.Show(); m_co_iSlip.Show();
             m_co_lConfl.Show(); m_co_bConfl.Show();
             m_co_lDbg.Show(); m_co_bDbg.Show();
             m_co_lDbgCd.Show(); m_co_iDbgCd.Show();
            }
          else
            {
-            m_co_hdr1.Hide(); m_co_lSlip.Hide(); m_co_iSlip.Hide();
+            m_co_hdr1.Hide();
+            m_co_lMagic.Hide(); m_co_iMagic.Hide();
+            m_co_lMagicW.Hide();
+            m_co_lComm.Hide(); m_co_iComm.Hide();
+            m_co_lSlip.Hide(); m_co_iSlip.Hide();
             m_co_lConfl.Hide(); m_co_bConfl.Hide();
             m_co_lDbg.Hide(); m_co_bDbg.Hide();
             m_co_lDbgCd.Hide(); m_co_iDbgCd.Hide();
@@ -1357,7 +1487,7 @@ void CEPBotPanel::OnClickSLType(int selected)
 
 // Recalcular flags e atualizar estado visual
    m_cfg_hasATR   = (m_cur_slType == SL_ATR || m_cur_tpType == TP_ATR ||
-                     inp_TrailingType == TRAILING_ATR || inp_BEType == BE_ATR);
+                     m_cur_trailingType == TRAILING_ATR || m_cur_beType == BE_ATR);
    m_cfg_hasRange = (m_cur_slType == SL_RANGE);
 
    RefreshRiscoState();
@@ -1376,7 +1506,7 @@ void CEPBotPanel::OnClickTPType(int selected)
 // Recalcular flags
    m_cfg_hasTP  = (m_cur_tpType != TP_NONE);
    m_cfg_hasATR = (m_cur_slType == SL_ATR || m_cur_tpType == TP_ATR ||
-                   inp_TrailingType == TRAILING_ATR || inp_BEType == BE_ATR);
+                   m_cur_trailingType == TRAILING_ATR || m_cur_beType == BE_ATR);
 
 // TP value + label
    if(m_cfg_hasTP)
@@ -1401,19 +1531,49 @@ void CEPBotPanel::OnClickTPType(int selected)
   }
 
 //+------------------------------------------------------------------+
-//| OnClickApply — valida campos e chama setters hot-reload            |
-//+------------------------------------------------------------------+
-void CEPBotPanel::OnClickApply(void)
-  {
-   m_cfg_btnApply.Pressed(false);
-   ApplyConfig();
-  }
-
-//+------------------------------------------------------------------+
 //| ApplyConfig — lê CEdit, valida e chama setters nos módulos         |
 //+------------------------------------------------------------------+
 void CEPBotPanel::ApplyConfig(void)
   {
+// ═══════════════════════════════════════════════
+// PRÉ-VALIDAÇÃO CRUZADA (bloqueante — antes de aplicar)
+// ═══════════════════════════════════════════════
+   int crossErrors = 0;
+   string crossMsg = "";
+
+   // ERRO: Ação de lucro = ATIVAR DD mas DD está desativado
+   if(m_cur_dailyLimitsOn &&
+      m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN &&
+      !m_cur_ddOn)
+     {
+      crossErrors++;
+      crossMsg = "Acao Meta = ATIVAR DD requer Drawdown ON";
+     }
+
+   // ERRO: Ação de lucro = ATIVAR DD mas Max Gain = 0
+   if(m_cur_dailyLimitsOn &&
+      m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN)
+     {
+      double preMaxGn = StringToDouble(m_c2_iDLGain.Text());
+      if(preMaxGn <= 0)
+        {
+         crossErrors++;
+         if(crossMsg == "")
+            crossMsg = "Max Gain deve ser > 0 para ATIVAR DD";
+         else
+            crossMsg = IntegerToString(crossErrors) + " erros de validacao cruzada";
+        }
+     }
+
+   if(crossErrors > 0)
+     {
+      m_cfg_status.Text(crossMsg);
+      m_cfg_status.Color(CLR_NEGATIVE);
+      m_cfgStatusExpiry = GetTickCount() + 15000;
+      ChartRedraw();
+      return;  // BLOQUEIA — não aplica nenhum setter
+     }
+
    int errors = 0;
 
 // ═══════════════════════════════════════════════
@@ -1472,7 +1632,7 @@ void CEPBotPanel::ApplyConfig(void)
       // Trailing params (só se toggle ON)
       if(m_cur_trailOn)
         {
-         if(inp_TrailingType == TRAILING_FIXED)
+         if(m_cur_trailingType == TRAILING_FIXED)
            {
             int start = (int)StringToInteger(m_c2_iTrlSt.Text());
             int step  = (int)StringToInteger(m_c2_iTrlSp.Text());
@@ -1498,7 +1658,7 @@ void CEPBotPanel::ApplyConfig(void)
       // BE params (só se toggle ON)
       if(m_cur_beOn)
         {
-         if(inp_BEType == BE_FIXED)
+         if(m_cur_beType == BE_FIXED)
            {
             int act = (int)StringToInteger(m_c2_iBEVal.Text());
             int off = (int)StringToInteger(m_c2_iBEOff.Text());
@@ -1570,15 +1730,20 @@ void CEPBotPanel::ApplyConfig(void)
 
       m_blockers.SetTradeDirection(m_cur_direction);
 
-      if(m_cfg_hasDailyLimits)
+      // Daily Limits (movido para RISCO 2 — Parte 027, toggle dinâmico)
+      if(m_cur_dailyLimitsOn)
         {
-         int maxTrd   = (int)StringToInteger(m_cb_iTrd.Text());
-         double maxLs = StringToDouble(m_cb_iLoss.Text());
-         double maxGn = StringToDouble(m_cb_iGain.Text());
+         int maxTrd   = (int)StringToInteger(m_c2_iDLTrd.Text());
+         double maxLs = StringToDouble(m_c2_iDLLoss.Text());
+         double maxGn = StringToDouble(m_c2_iDLGain.Text());
          if(maxTrd >= 0 && maxLs >= 0 && maxGn >= 0)
             m_blockers.SetDailyLimits(maxTrd, maxLs, maxGn, m_cur_profitTargetAction);
          else
             errors++;
+        }
+      else
+        {
+         m_blockers.SetDailyLimits(0, 0, 0, PROFIT_ACTION_STOP);
         }
 
       // Streak — aplica só se toggle ON (v1.19), passa 0 se OFF
@@ -1596,8 +1761,9 @@ void CEPBotPanel::ApplyConfig(void)
           errors++;
       }
 
-      // DrawDown — aplica só se toggle ON (v1.19), passa 0 se OFF
-      if(m_cur_ddOn)
+      // DrawDown — aplica só se toggle ON E dependência satisfeita (v1.19/v1.53)
+      bool ddAllowed = m_cur_dailyLimitsOn && m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN;
+      if(m_cur_ddOn && ddAllowed)
         {
          double dd = StringToDouble(m_c2_iDD.Text());
          if(dd > 0)
@@ -1605,9 +1771,12 @@ void CEPBotPanel::ApplyConfig(void)
             m_blockers.SetDrawdownValue(dd);
             m_blockers.SetDrawdownType(m_cur_ddType);
             m_blockers.SetDrawdownPeakMode(m_cur_ddPeakMode);
-            // Ativa proteção imediatamente se DD foi ligado via painel sem meta de lucro
+            // Só ativa DD imediatamente se lucro atual já ultrapassou Max Gain
+            // Caso contrário, CanTrade() ativa quando meta for atingida
             double curDailyProfit = (m_logger != NULL) ? m_logger.GetDailyProfit() : 0.0;
-            m_blockers.TryActivateDrawdownNow(curDailyProfit);
+            double maxGn = StringToDouble(m_c2_iDLGain.Text());
+            if(maxGn > 0 && curDailyProfit >= maxGn)
+               m_blockers.TryActivateDrawdownNow(curDailyProfit);
            }
          else
             errors++;
@@ -1671,9 +1840,26 @@ void CEPBotPanel::ApplyConfig(void)
 // ═══════════════════════════════════════════════
    if(m_tradeManager != NULL)
      {
+      // Slippage
       int slip = (int)StringToInteger(m_co_iSlip.Text());
-      if(slip >= 0 && slip <= 10000) m_tradeManager.SetSlippage(slip); else errors++;
+      if(slip >= 0 && slip <= 10000)
+        {
+         m_tradeManager.SetSlippage(slip);
+         g_slippage = slip;
+        }
+      else
+         errors++;
+
+      // Magic Number
+      int magic = (int)StringToInteger(m_co_iMagic.Text());
+      if(magic > 0)
+         ApplyMagicNumberChange(magic);
+      else
+         errors++;
      }
+
+   // Trade Comment
+   g_tradeComment = m_co_iComm.Text();
 
    if(m_signalManager != NULL)
       m_signalManager.SetConflictResolution(m_cur_conflict);
@@ -1686,22 +1872,84 @@ void CEPBotPanel::ApplyConfig(void)
      }
 
 // ═══════════════════════════════════════════════
+// PÓS-VALIDAÇÃO: Avisos (não bloqueiam)
+// (Erros bloqueantes já foram verificados no topo)
+// ═══════════════════════════════════════════════
+   int warnings = 0;
+   string warnMsg = "";
+
+   // AVISO: DD ativado mas Daily Limits OFF
+   if(m_cur_ddOn && !m_cur_dailyLimitsOn)
+     {
+      warnings++;
+      warnMsg = "Aviso: DD ativo sem Daily Limits";
+     }
+
+   // AVISO: Daily Limits ON mas todos os valores = 0
+   if(m_cur_dailyLimitsOn)
+     {
+      int maxTrd2   = (int)StringToInteger(m_c2_iDLTrd.Text());
+      double maxLs2 = StringToDouble(m_c2_iDLLoss.Text());
+      double maxGn2 = StringToDouble(m_c2_iDLGain.Text());
+      if(maxTrd2 == 0 && maxLs2 == 0.0 && maxGn2 == 0.0)
+        {
+         warnings++;
+         if(warnMsg == "")
+            warnMsg = "Aviso: Daily Limits ON mas sem valores";
+        }
+     }
+
 // ═══════════════════════════════════════════════
 // FEEDBACK
 // ═══════════════════════════════════════════════
-   if(errors == 0)
+   if(errors == 0 && warnings == 0)
      {
       m_cfg_status.Text("Aplicado com sucesso!");
       m_cfg_status.Color(CLR_POSITIVE);
-      m_cfgStatusExpiry = GetTickCount() + 10000;   // auto-clear em 10s
+      m_cfgStatusExpiry = GetTickCount() + 10000;
+      SaveCurrentConfig();
+     }
+   else if(errors == 0 && warnings > 0)
+     {
+      m_cfg_status.Text(warnMsg);
+      m_cfg_status.Color(CLR_WARNING);
+      m_cfgStatusExpiry = GetTickCount() + 15000;
+      SaveCurrentConfig();
      }
    else
      {
       m_cfg_status.Text(IntegerToString(errors) + " campo(s) invalido(s)");
       m_cfg_status.Color(CLR_NEGATIVE);
-      m_cfgStatusExpiry = GetTickCount() + 10000;   // auto-clear em 10s
+      m_cfgStatusExpiry = GetTickCount() + 15000;
      }
    ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
+//| Hot Reload — Magic Number centralizado                            |
+//| Atualiza TODOS os módulos na ordem correta                        |
+//+------------------------------------------------------------------+
+void CEPBotPanel::ApplyMagicNumberChange(int newMagic)
+  {
+   int oldMagic = m_magicNumber;
+   if(newMagic == oldMagic) return;
+
+   // 1. Atualizar painel
+   m_magicNumber = newMagic;
+
+   // 2. Atualizar global
+   g_magicNumber = newMagic;
+
+   // 3. Logger PRIMEIRO (precisa estar pronto antes dos blockers reconstruírem streaks)
+   if(m_logger != NULL)
+      m_logger.ReloadForMagic(newMagic);
+
+   // 4. TradeManager: atualizar magic + limpar positions + resync
+   m_tradeManager.SetMagicNumber(newMagic);
+
+   // 5. Blockers: TODOS os submódulos (filters + drawdown + reconstruct streaks)
+   if(m_blockers != NULL)
+      m_blockers.SetMagicNumber(newMagic);
   }
 
 //+------------------------------------------------------------------+
@@ -1791,8 +2039,22 @@ void CEPBotPanel::OnClickDDToggle(void)
   {
    m_cur_ddOn = !m_cur_ddOn;
    m_c2_bDDAct.Pressed(false);
-   m_c2_bDDAct.Text(m_cur_ddOn ? "ON" : "OFF");
-   m_c2_bDDAct.ColorBackground(m_cur_ddOn ? C'30,120,70' : C'120,50,50');
+   bool ddAllowed = m_cur_dailyLimitsOn && m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN;
+   if(m_cur_ddOn && ddAllowed)
+     {
+      m_c2_bDDAct.Text("ON");
+      m_c2_bDDAct.ColorBackground(C'30,120,70');
+     }
+   else if(m_cur_ddOn && !ddAllowed)
+     {
+      m_c2_bDDAct.Text("REQUER META");
+      m_c2_bDDAct.ColorBackground(C'180,120,0');
+     }
+   else
+     {
+      m_c2_bDDAct.Text("OFF");
+      m_c2_bDDAct.ColorBackground(C'120,50,50');
+     }
    RefreshRisco2State();
   }
 
@@ -1923,12 +2185,7 @@ void CEPBotPanel::OnClickDDPeakMode(int selected)
    ChartRedraw();
   }
 
-void CEPBotPanel::OnClickProfitTargetAction(int selected)
-  {
-   m_cur_profitTargetAction = (ENUM_PROFIT_TARGET_ACTION)selected;
-   SetRadioSelection(m_cb_bPTA, 2, selected);
-   ChartRedraw();
-  }
+// OnClickProfitTargetAction removido (Parte 027): substituído por OnClickDLProfitTargetAction
 
 //+------------------------------------------------------------------+
 //| RefreshNewsState — enable/disable campos por toggle da janela     |

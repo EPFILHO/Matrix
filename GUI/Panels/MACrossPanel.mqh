@@ -2,10 +2,18 @@
 //|                                                 MACrossPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — MA Cross Strategy                        |
-//|                     Versão 1.03 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.05 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.05 (Parte 027) — Fase 2: Controle de Estado:
+// * Removido botão APLICAR (m_btnApply) — aplicação centralizada
+// * _OnApply convertido para Apply() público; adicionado SetEnabled()
+//
+// CHANGELOG v1.04 (Parte 027):
+// + SetStrategy(): setter tipado para re-injeção de ponteiro
+//   (usado por ReconnectModules e config persistence)
 //+------------------------------------------------------------------+
 
 class CMACrossPanel : public CStrategyPanelBase
@@ -50,7 +58,6 @@ private:
    CLabel   m_lEntryDesc;
    CLabel   m_lExit;     CButton m_bExit[3];
    CLabel   m_lExitDesc;
-   CButton  m_btnApply;
    CLabel   m_lblStatus;
 
 public:
@@ -175,17 +182,6 @@ public:
       m_lExitDesc.Text(_ExitDesc(m_cur_exit));
       if(!parent.AddControl(m_lExitDesc)) return false;
 
-      // Botão APLICAR
-      if(!m_btnApply.Create(chart_id, PFX + "e_applyMA", subwin,
-                             COL_LABEL_X, CFG_APPLY_Y,
-                             COL_VALUE_X + COL_VALUE_W, CFG_APPLY_Y + 24))
-         return false;
-      m_btnApply.Text("APLICAR MA CROSS");
-      m_btnApply.FontSize(9);
-      m_btnApply.ColorBackground(C'30,120,70');
-      m_btnApply.Color(clrWhite);
-      if(!parent.AddControl(m_btnApply)) return false;
-
       // Label de status
       if(!m_lblStatus.Create(chart_id, PFX + "e_stMA", subwin,
                               COL_LABEL_X, CFG_APPLY_Y + 28,
@@ -223,7 +219,7 @@ public:
       m_lEntryDesc.Show();
       m_lExit.Show();  for(int i = 0; i < 3; i++) m_bExit[i].Show();
       m_lExitDesc.Show();
-      m_btnApply.Show(); m_lblStatus.Show();
+      m_lblStatus.Show();
      }
 
    virtual void Hide(void)
@@ -249,7 +245,7 @@ public:
       m_lEntryDesc.Hide();
       m_lExit.Hide();  for(int i = 0; i < 3; i++) m_bExit[i].Hide();
       m_lExitDesc.Hide();
-      m_btnApply.Hide(); m_lblStatus.Hide();
+      m_lblStatus.Hide();
      }
 
    virtual void Update(void)
@@ -295,9 +291,6 @@ public:
          ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
          return true;
         }
-      // Apply
-      if(name == m_btnApply.Name())
-        { m_btnApply.Pressed(false); _OnApply(); return true; }
       // Fast Method radio
       for(int i = 0; i < 4; i++)
          if(name == m_bFastM[i].Name())
@@ -403,15 +396,10 @@ private:
       SetRadioSel(m_bExit,  3, (ex == EXIT_FCO) ? 0 : (ex == EXIT_VM) ? 1 : 2);
      }
 
-   void _OnApply(void)
+public:
+   bool Apply(void)
      {
-      if(m_strategy == NULL)
-        {
-         m_lblStatus.Text("Estrategia nao disponivel");
-         m_lblStatus.Color(CLR_NEGATIVE);
-         m_statusExpiry = GetTickCount() + 10000;
-         return;
-        }
+      if(m_strategy == NULL) return false;
       int errors = 0;
       int fastP = (int)StringToInteger(m_iFastP.Text());
       int slowP = (int)StringToInteger(m_iSlowP.Text());
@@ -432,17 +420,11 @@ private:
 
       if(errors > 0)
         {
-         string errorMsg = "";
-         if(fastP <= 0 || fastP > 1000) errorMsg = "Periodo rapida invalido (1-1000)";
-         else if(slowP <= 0 || slowP > 1000) errorMsg = "Periodo lenta invalido (1-1000)";
-         else if(fastP >= slowP) errorMsg = "Periodo rapida deve ser < lenta";
-         else if(prio <= 0) errorMsg = "Prioridade deve ser > 0";
-         else errorMsg = "Valores invalidos";
-         m_lblStatus.Text(errorMsg);
+         m_lblStatus.Text("Valores invalidos");
          m_lblStatus.Color(CLR_NEGATIVE);
          m_statusExpiry = GetTickCount() + 10000;
          ChartRedraw();
-         return;
+         return false;
         }
 
       // Auto-ajuste de prioridade
@@ -460,12 +442,18 @@ private:
       m_strategy.SetEntryMode(m_cur_entry);
       m_strategy.SetExitMode(m_cur_exit);
       m_strategy.SetEnabled(m_pendingEnabled);
+      return true;
+     }
 
-      string msg = "Aplicado! Prioridade: " + IntegerToString(prio);
-      m_lblStatus.Text(msg);
-      m_lblStatus.Color(CLR_POSITIVE);
-      m_statusExpiry = GetTickCount() + 10000;
-      ChartRedraw();
+   void SetEnabled(bool enable)
+     {
+      m_iFastP.ReadOnly(!enable);
+      m_iSlowP.ReadOnly(!enable);
+      m_iPriority.ReadOnly(!enable);
+      color bg = enable ? C'25,25,25' : C'50,50,50';
+      m_iFastP.ColorBackground(bg);
+      m_iSlowP.ColorBackground(bg);
+      m_iPriority.ColorBackground(bg);
      }
   };
 //+------------------------------------------------------------------+

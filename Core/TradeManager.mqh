@@ -2,10 +2,21 @@
 //|                                                 TradeManager.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|             Gerenciamento de Posições Individuais - EPBot Matrix |
-//|                     Versão 1.22 - Claude Parte 021 (Claude Code) |
+//|                     Versão 1.24 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.22"
+#property version   "1.24"
+
+// CHANGELOG v1.24 (Parte 027):
+// + SaveState() / LoadState() / DeleteState() — persistência do estado
+//   das posições (BE, Trailing, TP1/TP2 executed) em arquivo .state
+// + Arquivo: MQL5/Files/Matrix_{symbol}_{magic}.state
+// + Auto-save em: RegisterPosition, UnregisterPosition, Set*() mutators
+// + Auto-load em: ResyncExistingPositions (restaura flags após restart)
+// + Guard de backtest (MQL_TESTER) — não grava em otimização
+//
+// CHANGELOG v1.23 (Parte 027):
+// + SetMagicNumber() / GetMagicNumber() — hot reload do Magic Number
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
@@ -96,6 +107,11 @@ private:
 
    bool              ExecutePartialClose(ulong ticket, double lot, string comment, ulong &outDealTicket);
    ENUM_ORDER_TYPE_FILLING GetTypeFilling();
+   bool              m_isResyncing;
+   string            GetStateFileName();
+   void              WriteKV(int handle, string key, string value);
+   string            ReadKey(string line);
+   string            ReadValue(string line);
 
 public:
                      CTradeManager();
@@ -128,10 +144,16 @@ public:
    void              Clear();
 
    void              SetSlippage(int newSlippage);
+   void              SetMagicNumber(int newMagic);
    int               GetInputSlippage() const { return m_inputSlippage; }
    int               GetSlippage() const { return m_slippage; }
+   int               GetMagicNumber() const { return m_magicNumber; }
 
    void              PrintAllPositions();
+
+   bool              SaveState();
+   bool              LoadState();
+   void              DeleteState();
   };
 
 //+------------------------------------------------------------------+
@@ -147,6 +169,7 @@ CTradeManager::CTradeManager()
    m_symbol = _Symbol;
    m_magicNumber = 0;
    m_slippage = 10;
+   m_isResyncing = false;
    ArrayResize(m_positions, 0);
   }
 
@@ -189,6 +212,7 @@ bool CTradeManager::Init(CLogger* logger, CRiskManager* riskManager, string symb
 int CTradeManager::ResyncExistingPositions()
   {
    int synced = 0;
+   m_isResyncing = true;
 
    for(int i = PositionsTotal() - 1; i >= 0; i--)
      {
@@ -221,6 +245,15 @@ int CTradeManager::ResyncExistingPositions()
       if(m_logger != NULL)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "RESYNC", 
             "🔄 Posição ressincronizada: #" + IntegerToString(ticket));
+     }
+
+   m_isResyncing = false;
+
+   // Após resync, restaurar estado salvo (TP1/TP2/BE/Trailing)
+   if(synced > 0)
+     {
+      LoadState();
+      SaveState();  // Salvar estado restaurado
      }
 
    return synced;
@@ -289,14 +322,15 @@ bool CTradeManager::RegisterPosition(ulong ticket, ENUM_POSITION_TYPE posType, d
         {
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   🎯 Partial TP ATIVO:");
          if(newPos.tp1_enabled)
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
                "      TP1: " + DoubleToString(newPos.tp1_lot, 2) + " @ " + DoubleToString(newPos.tp1_price, _Digits));
          if(newPos.tp2_enabled)
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
                "      TP2: " + DoubleToString(newPos.tp2_lot, 2) + " @ " + DoubleToString(newPos.tp2_price, _Digits));
         }
      }
 
+   SaveState();
    return true;
   }
 
@@ -320,9 +354,10 @@ bool CTradeManager::UnregisterPosition(ulong ticket)
    ArrayResize(m_positions, size - 1);
 
    if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
          "🗑️ Posição #" + IntegerToString(ticket) + " removida do TradeManager");
 
+   SaveState();
    return true;
   }
 
@@ -370,12 +405,14 @@ void CTradeManager::SetBreakevenActivated(ulong ticket, bool state)
    if(m_logger != NULL && oldState != state)
      {
       if(state)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
             "🔒 Breakeven ativado para posição #" + IntegerToString(ticket));
       else
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
             "🔓 Breakeven desativado para posição #" + IntegerToString(ticket));
      }
+
+   if(oldState != state) SaveState();
   }
 
 //+------------------------------------------------------------------+
@@ -402,12 +439,14 @@ void CTradeManager::SetTrailingActive(ulong ticket, bool state)
    if(m_logger != NULL && oldState != state)
      {
       if(state)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
             "📈 Trailing ativado para posição #" + IntegerToString(ticket));
       else
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
             "📉 Trailing desativado para posição #" + IntegerToString(ticket));
      }
+
+   if(oldState != state) SaveState();
   }
 
 //+------------------------------------------------------------------+
@@ -433,13 +472,15 @@ void CTradeManager::SetTP1Executed(ulong ticket, bool state)
 
    if(m_logger != NULL && oldState != state && state)
      {
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
          "🎯 TP1 executado para posição #" + IntegerToString(ticket));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
          "   Lote fechado: " + DoubleToString(m_positions[index].tp1_lot, 2));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
          "   Preço: " + DoubleToString(m_positions[index].tp1_price, _Digits));
      }
+
+   if(oldState != state) SaveState();
   }
 
 //+------------------------------------------------------------------+
@@ -465,13 +506,15 @@ void CTradeManager::SetTP2Executed(ulong ticket, bool state)
 
    if(m_logger != NULL && oldState != state && state)
      {
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
          "🎯 TP2 executado para posição #" + IntegerToString(ticket));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
          "   Lote fechado: " + DoubleToString(m_positions[index].tp2_lot, 2));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
          "   Preço: " + DoubleToString(m_positions[index].tp2_price, _Digits));
      }
+
+   if(oldState != state) SaveState();
   }
 
 //+------------------------------------------------------------------+
@@ -834,9 +877,13 @@ void CTradeManager::CleanClosedPositions()
         }
      }
 
-   if(removedCount > 0 && m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "CLEANUP", 
-         "🧹 Limpeza: " + IntegerToString(removedCount) + " posição(ões) removida(s)");
+   if(removedCount > 0)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "CLEANUP",
+            "🧹 Limpeza: " + IntegerToString(removedCount) + " posição(ões) removida(s)");
+      SaveState();
+     }
   }
 
 //+------------------------------------------------------------------+
@@ -861,6 +908,31 @@ void CTradeManager::SetSlippage(int newSlippage)
    if(m_logger != NULL)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", 
          "🔄 Slippage: " + IntegerToString(oldValue) + " → " + IntegerToString(newSlippage) + " pts");
+  }
+
+//+------------------------------------------------------------------+
+//| Hot Reload — Magic Number                                        |
+//+------------------------------------------------------------------+
+void CTradeManager::SetMagicNumber(int newMagic)
+  {
+   int oldValue = m_magicNumber;
+   if(oldValue == newMagic) return;
+
+   m_magicNumber = newMagic;
+
+   // Limpar posições registradas (pertencem ao magic antigo)
+   ArrayResize(m_positions, 0);
+
+   // Deletar state file do magic antigo
+   DeleteState();
+
+   // Re-sincronizar posições abertas do novo magic (se houver)
+   ResyncExistingPositions();
+
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "Magic Number: " + IntegerToString(oldValue) + " -> " + IntegerToString(newMagic)
+         + " | Posicoes resincronizadas");
   }
 
 //+------------------------------------------------------------------+
@@ -924,6 +996,228 @@ ENUM_ORDER_TYPE_FILLING CTradeManager::GetTypeFilling()
          return ORDER_FILLING_IOC;
 
    return ORDER_FILLING_RETURN;
+  }
+
+//+------------------------------------------------------------------+
+//| GetStateFileName — arquivo de persistência de estado              |
+//+------------------------------------------------------------------+
+string CTradeManager::GetStateFileName()
+  {
+   return "Matrix_" + m_symbol + "_" + IntegerToString(m_magicNumber) + ".state";
+  }
+
+//+------------------------------------------------------------------+
+//| WriteKV — escreve key=value                                       |
+//+------------------------------------------------------------------+
+void CTradeManager::WriteKV(int handle, string key, string value)
+  {
+   FileWriteString(handle, key + "=" + value + "\n");
+  }
+
+//+------------------------------------------------------------------+
+//| ReadKey — extrai chave de "key=value"                              |
+//+------------------------------------------------------------------+
+string CTradeManager::ReadKey(string line)
+  {
+   int pos = StringFind(line, "=");
+   if(pos <= 0) return "";
+   return StringSubstr(line, 0, pos);
+  }
+
+//+------------------------------------------------------------------+
+//| ReadValue — extrai valor de "key=value"                            |
+//+------------------------------------------------------------------+
+string CTradeManager::ReadValue(string line)
+  {
+   int pos = StringFind(line, "=");
+   if(pos < 0) return "";
+   return StringSubstr(line, pos + 1);
+  }
+
+//+------------------------------------------------------------------+
+//| SaveState — persiste estado de todas as posições (v1.24)          |
+//+------------------------------------------------------------------+
+bool CTradeManager::SaveState()
+  {
+   if(MQLInfoInteger(MQL_TESTER)) return false;
+   if(m_isResyncing) return true;  // Suprimir durante resync (LoadState vem depois)
+
+   int count = ArraySize(m_positions);
+
+   // Se não há posições, apagar o arquivo
+   if(count == 0)
+     {
+      DeleteState();
+      return true;
+     }
+
+   string fn = GetStateFileName();
+   string fnTmp = fn + ".tmp";
+
+   int h = FileOpen(fnTmp, FILE_WRITE | FILE_TXT | FILE_ANSI);
+   if(h == INVALID_HANDLE)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "STATE", "❌ Falha ao abrir " + fnTmp);
+      return false;
+     }
+
+   FileWriteString(h, "# TradeManager State - NAO EDITAR MANUALMENTE\n");
+   WriteKV(h, "StateVersion", "1");
+   WriteKV(h, "PositionCount", IntegerToString(count));
+   WriteKV(h, "Timestamp", TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS));
+
+   for(int i = 0; i < count; i++)
+     {
+      string prefix = "P" + IntegerToString(i) + "_";
+      WriteKV(h, prefix + "Ticket",         IntegerToString(m_positions[i].ticket));
+      WriteKV(h, prefix + "OpenTime",       TimeToString(m_positions[i].openTime, TIME_DATE | TIME_SECONDS));
+      WriteKV(h, prefix + "OpenPrice",      DoubleToString(m_positions[i].openPrice, _Digits));
+      WriteKV(h, prefix + "OriginalLot",    DoubleToString(m_positions[i].originalLot, 2));
+      WriteKV(h, prefix + "PosType",        IntegerToString((int)m_positions[i].posType));
+      WriteKV(h, prefix + "BEActivated",    IntegerToString(m_positions[i].beActivated));
+      WriteKV(h, prefix + "TrailingActive", IntegerToString(m_positions[i].trailingActive));
+      WriteKV(h, prefix + "HasPartialTP",   IntegerToString(m_positions[i].hasPartialTP));
+      WriteKV(h, prefix + "TP1Enabled",     IntegerToString(m_positions[i].tp1_enabled));
+      WriteKV(h, prefix + "TP1Price",       DoubleToString(m_positions[i].tp1_price, _Digits));
+      WriteKV(h, prefix + "TP1Lot",         DoubleToString(m_positions[i].tp1_lot, 2));
+      WriteKV(h, prefix + "TP1Executed",    IntegerToString(m_positions[i].tp1_executed));
+      WriteKV(h, prefix + "TP2Enabled",     IntegerToString(m_positions[i].tp2_enabled));
+      WriteKV(h, prefix + "TP2Price",       DoubleToString(m_positions[i].tp2_price, _Digits));
+      WriteKV(h, prefix + "TP2Lot",         DoubleToString(m_positions[i].tp2_lot, 2));
+      WriteKV(h, prefix + "TP2Executed",    IntegerToString(m_positions[i].tp2_executed));
+     }
+
+   FileClose(h);
+
+   // Escrita atômica
+   FileDelete(fn);
+   if(!FileMove(fnTmp, 0, fn, 0))
+     {
+      int src = FileOpen(fnTmp, FILE_READ | FILE_TXT | FILE_ANSI);
+      if(src != INVALID_HANDLE)
+        {
+         int dst = FileOpen(fn, FILE_WRITE | FILE_TXT | FILE_ANSI);
+         if(dst != INVALID_HANDLE)
+           {
+            while(!FileIsEnding(src))
+               FileWriteString(dst, FileReadString(src) + "\n");
+            FileClose(dst);
+           }
+         FileClose(src);
+         FileDelete(fnTmp);
+        }
+     }
+
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| LoadState — restaura estado das posições após restart (v1.24)     |
+//+------------------------------------------------------------------+
+bool CTradeManager::LoadState()
+  {
+   if(MQLInfoInteger(MQL_TESTER)) return false;
+
+   string fn = GetStateFileName();
+   int h = FileOpen(fn, FILE_READ | FILE_TXT | FILE_ANSI);
+   if(h == INVALID_HANDLE) return false;
+
+   // Parse em duas passagens: primeiro conta, depois preenche
+   int posCount = 0;
+
+   // Ler todas as KVs em arrays temporários
+   string keys[];
+   string vals[];
+   int kvCount = 0;
+
+   while(!FileIsEnding(h))
+     {
+      string line = FileReadString(h);
+      if(StringLen(line) == 0) continue;
+      if(StringGetCharacter(line, 0) == '#') continue;
+
+      string key = ReadKey(line);
+      string val = ReadValue(line);
+      if(StringLen(key) == 0) continue;
+
+      ArrayResize(keys, kvCount + 1);
+      ArrayResize(vals, kvCount + 1);
+      keys[kvCount] = key;
+      vals[kvCount] = val;
+      kvCount++;
+
+      if(key == "PositionCount")
+         posCount = (int)StringToInteger(val);
+     }
+   FileClose(h);
+
+   if(posCount == 0) return true;
+
+   // Para cada posição salva, tentar encontrar na lista m_positions e restaurar flags
+   int restored = 0;
+   for(int i = 0; i < posCount; i++)
+     {
+      string prefix = "P" + IntegerToString(i) + "_";
+      ulong savedTicket = 0;
+
+      // Encontrar o ticket dessa posição salva
+      for(int k = 0; k < kvCount; k++)
+        {
+         if(keys[k] == prefix + "Ticket")
+           {
+            savedTicket = (ulong)StringToInteger(vals[k]);
+            break;
+           }
+        }
+
+      if(savedTicket == 0) continue;
+
+      // Procurar essa posição no array m_positions (já registrada por ResyncExistingPositions)
+      int idx = GetPositionIndex(savedTicket);
+      if(idx < 0) continue;  // Posição não existe mais no broker
+
+      // Restaurar TODOS os campos do estado salvo
+      for(int k = 0; k < kvCount; k++)
+        {
+         if(StringFind(keys[k], prefix) != 0) continue;
+
+         string field = StringSubstr(keys[k], StringLen(prefix));
+
+         if(field == "OpenTime")        m_positions[idx].openTime       = StringToTime(vals[k]);
+         else if(field == "OpenPrice")  m_positions[idx].openPrice      = StringToDouble(vals[k]);
+         else if(field == "OriginalLot")m_positions[idx].originalLot    = StringToDouble(vals[k]);
+         else if(field == "PosType")    m_positions[idx].posType        = (ENUM_POSITION_TYPE)StringToInteger(vals[k]);
+         else if(field == "BEActivated")    m_positions[idx].beActivated    = (bool)StringToInteger(vals[k]);
+         else if(field == "TrailingActive") m_positions[idx].trailingActive = (bool)StringToInteger(vals[k]);
+         else if(field == "HasPartialTP")   m_positions[idx].hasPartialTP   = (bool)StringToInteger(vals[k]);
+         else if(field == "TP1Enabled")     m_positions[idx].tp1_enabled    = (bool)StringToInteger(vals[k]);
+         else if(field == "TP1Price")       m_positions[idx].tp1_price      = StringToDouble(vals[k]);
+         else if(field == "TP1Lot")         m_positions[idx].tp1_lot        = StringToDouble(vals[k]);
+         else if(field == "TP1Executed")    m_positions[idx].tp1_executed   = (bool)StringToInteger(vals[k]);
+         else if(field == "TP2Enabled")     m_positions[idx].tp2_enabled    = (bool)StringToInteger(vals[k]);
+         else if(field == "TP2Price")       m_positions[idx].tp2_price      = StringToDouble(vals[k]);
+         else if(field == "TP2Lot")         m_positions[idx].tp2_lot        = StringToDouble(vals[k]);
+         else if(field == "TP2Executed")    m_positions[idx].tp2_executed   = (bool)StringToInteger(vals[k]);
+        }
+
+      restored++;
+     }
+
+   if(m_logger != NULL && restored > 0)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STATE",
+         "🔄 Estado restaurado para " + IntegerToString(restored) + " posição(ões)");
+
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//| DeleteState — remove arquivo de estado (v1.24)                    |
+//+------------------------------------------------------------------+
+void CTradeManager::DeleteState()
+  {
+   if(MQLInfoInteger(MQL_TESTER)) return;
+   FileDelete(GetStateFileName());
   }
 
 //+------------------------------------------------------------------+

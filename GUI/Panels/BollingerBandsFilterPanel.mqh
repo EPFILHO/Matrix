@@ -2,10 +2,18 @@
 //|                                     BollingerBandsFilterPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Bollinger Bands Filter (Anti-Squeeze)   |
-//|                     Versão 1.03 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.05 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.05 (Parte 027) — Fase 2: Controle de Estado:
+// * Removido botão APLICAR (m_btnApply) — aplicação centralizada
+// * _OnApply convertido para Apply() público; adicionado SetEnabled()
+//
+// CHANGELOG v1.04 (Parte 027):
+// + SetFilter(): setter tipado para re-injeção de ponteiro
+//   (usado por ReconnectModules e config persistence)
 //+------------------------------------------------------------------+
 
 class CBollingerBandsFilterPanel : public CFilterPanelBase
@@ -17,7 +25,6 @@ private:
    bool               m_pendingEnabled;
    ENUM_TIMEFRAMES    m_cur_TF;
    ENUM_BB_SQUEEZE_METRIC m_cur_metric;
-   uint               m_statusExpiry;
 
    // Controles — display
    CLabel   m_hdr;
@@ -38,16 +45,13 @@ private:
    CLabel   m_lThreshHint; // Legenda do threshold
    CLabel   m_lPercPeriod; CEdit m_iPercPeriod;
    CLabel   m_lPercHint;   // Legenda do período percentil
-   CButton  m_btnApply;
-   CLabel   m_lblStatus;
 
 public:
    CBollingerBandsFilterPanel(CBollingerBandsFilter *filter)
       : m_filter(filter),
         m_pendingEnabled(false),
         m_cur_TF(PERIOD_CURRENT),
-        m_cur_metric(BB_SQUEEZE_RELATIVE),
-        m_statusExpiry(0)
+        m_cur_metric(BB_SQUEEZE_RELATIVE)
      {}
 
    virtual string GetName(void) const { return "BB FILT"; }
@@ -55,6 +59,7 @@ public:
 
    virtual bool Create(CEPBotPanel *parent, long chart_id, int subwin)
      {
+      m_parent   = parent;
       m_chart_id = chart_id;
       m_subwin   = subwin;
       int y = FILTROS_CONTENT_Y;
@@ -172,24 +177,6 @@ public:
       if(!parent.AddControl(m_lPercHint)) return false;
       y += 15;
 
-      // Botão APLICAR
-      if(!m_btnApply.Create(chart_id, PFX + "f_applyBF", subwin,
-                             COL_LABEL_X, CFG_APPLY_Y,
-                             COL_VALUE_X + COL_VALUE_W, CFG_APPLY_Y + 24))
-         return false;
-      m_btnApply.Text("APLICAR BB FILTER");
-      m_btnApply.FontSize(9);
-      m_btnApply.ColorBackground(C'30,120,70');
-      m_btnApply.Color(clrWhite);
-      if(!parent.AddControl(m_btnApply)) return false;
-
-      if(!m_lblStatus.Create(chart_id, PFX + "f_stBF", subwin,
-                              COL_LABEL_X, CFG_APPLY_Y + 28,
-                              COL_VALUE_X + COL_VALUE_W, CFG_APPLY_Y + 28 + PANEL_GAP_Y))
-         return false;
-      m_lblStatus.Text(""); m_lblStatus.FontSize(8); m_lblStatus.Color(CLR_NEUTRAL);
-      if(!parent.AddControl(m_lblStatus)) return false;
-      m_statusExpiry = 0;
       return true;
      }
 
@@ -207,7 +194,6 @@ public:
       m_lModeDesc.Show();
       m_lThreshold.Show(); m_iThreshold.Show(); m_lThreshHint.Show();
       m_lPercPeriod.Show(); m_iPercPeriod.Show(); m_lPercHint.Show();
-      m_btnApply.Show(); m_lblStatus.Show();
      }
 
    virtual void Hide(void)
@@ -224,7 +210,6 @@ public:
       m_lModeDesc.Hide();
       m_lThreshold.Hide(); m_iThreshold.Hide(); m_lThreshHint.Hide();
       m_lPercPeriod.Hide(); m_iPercPeriod.Hide(); m_lPercHint.Hide();
-      m_btnApply.Hide(); m_lblStatus.Hide();
      }
 
    virtual void Update(void)
@@ -251,8 +236,6 @@ public:
          m_eMode.Text("--");             m_eMode.Color(CLR_NEUTRAL);
         }
       _RefreshFieldState();
-      if(m_statusExpiry > 0 && GetTickCount() >= m_statusExpiry)
-        { m_lblStatus.Text(""); m_statusExpiry = 0; ChartRedraw(); }
      }
 
    virtual bool OnClick(string name)
@@ -264,8 +247,6 @@ public:
          ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
          return true;
         }
-      if(name == m_btnApply.Name())
-        { m_btnApply.Pressed(false); _OnApply(); return true; }
       if(name == m_bTF.Name())
         {
          m_bTF.Pressed(false);
@@ -284,6 +265,43 @@ public:
             return true;
            }
       return false;
+     }
+
+public:
+   bool Apply(void)
+     {
+      if(m_filter == NULL)
+         return false;
+      int    period     = (int)StringToInteger(m_iPeriod.Text());
+      double deviation  = StringToDouble(m_iDev.Text());
+      double threshold  = StringToDouble(m_iThreshold.Text());
+      int    percPeriod = (int)StringToInteger(m_iPercPeriod.Text());
+      if(period <= 0 || period > 500)
+         return false;
+      if(deviation <= 0 || deviation > 10.0)
+         return false;
+      if(threshold <= 0)
+         return false;
+      if(m_cur_metric == BB_SQUEEZE_PERCENTILE && (percPeriod <= 0 || percPeriod > 500))
+         return false;
+
+      m_filter.SetEnabled(m_pendingEnabled);
+      m_filter.SetSqueezeMetric(m_cur_metric);
+      m_filter.SetSqueezeThreshold(threshold);
+      m_filter.SetPercentilePeriod(percPeriod);
+      m_filter.SetPeriod(period);
+      m_filter.SetDeviation(deviation);
+      m_filter.SetTimeframe(m_cur_TF);
+      return true;
+     }
+
+   void SetEnabled(bool enable)
+     {
+      color bg = enable ? clrWhite : C'220,220,220';
+      m_iPeriod.ReadOnly(!enable);     m_iPeriod.ColorBackground(bg);
+      m_iDev.ReadOnly(!enable);        m_iDev.ColorBackground(bg);
+      m_iThreshold.ReadOnly(!enable);  m_iThreshold.ColorBackground(bg);
+      m_iPercPeriod.ReadOnly(!enable);  m_iPercPeriod.ColorBackground(bg);
      }
 
 private:
@@ -319,49 +337,5 @@ private:
         { m_lPercHint.Color(CLR_NEUTRAL); }
      }
 
-   void _OnApply(void)
-     {
-      if(m_filter == NULL)
-        {
-         m_lblStatus.Text("Filtro não disponível");
-         m_lblStatus.Color(CLR_NEGATIVE);
-         m_statusExpiry = GetTickCount() + 10000;
-         return;
-        }
-      int    period     = (int)StringToInteger(m_iPeriod.Text());
-      double deviation  = StringToDouble(m_iDev.Text());
-      double threshold  = StringToDouble(m_iThreshold.Text());
-      int    percPeriod = (int)StringToInteger(m_iPercPeriod.Text());
-      string errorMsg = "";
-      if(period <= 0 || period > 500)
-         errorMsg = "Periodo BB invalido (1-500)";
-      else if(deviation <= 0 || deviation > 10.0)
-         errorMsg = "Desvio invalido (0.1 - 10.0)";
-      else if(threshold <= 0)
-         errorMsg = "Limite deve ser > 0";
-      else if(m_cur_metric == BB_SQUEEZE_PERCENTILE && (percPeriod <= 0 || percPeriod > 500))
-         errorMsg = "Periodo percentil invalido (1-500)";
-
-      if(errorMsg != "")
-        {
-         m_lblStatus.Text(errorMsg);
-         m_lblStatus.Color(CLR_NEGATIVE);
-         m_statusExpiry = GetTickCount() + 10000;
-         return;
-        }
-
-      m_filter.SetEnabled(m_pendingEnabled);
-      m_filter.SetSqueezeMetric(m_cur_metric);
-      m_filter.SetSqueezeThreshold(threshold);
-      m_filter.SetPercentilePeriod(percPeriod);
-      m_filter.SetPeriod(period);
-      m_filter.SetDeviation(deviation);
-      m_filter.SetTimeframe(m_cur_TF);
-
-      string msg = "Aplicado" + (m_pendingEnabled ? " [ON]" : " [OFF]");
-      m_lblStatus.Text(msg);
-      m_lblStatus.Color(CLR_POSITIVE);
-      m_statusExpiry = GetTickCount() + 10000;
-     }
   };
 //+------------------------------------------------------------------+

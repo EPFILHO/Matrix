@@ -2,13 +2,18 @@
 //|                                                       Logger.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                                Sistema de Logging - EPBot Matrix |
-//|                     Versão 3.26 - Claude Parte 023 (Claude Code) |
+//|                     Versão 3.27 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "3.26"
+#property version   "3.27"
 
 // ═══════════════════════════════════════════════════════════════════
+// CHANGELOG v3.27 (Parte 027):
+// + ReloadForMagic(int newMagic): hot reload do Magic Number
+//   Salva relatório do magic atual, atualiza filenames CSV/TXT,
+//   reconstrói stats via LoadDailyStats()
+//
 // CHANGELOG v3.26 (Parte 023):
 // ✅ Novo: m_dailyTradeResults[] armazena sequência ordenada win/loss
 // ✅ Novo: GetDailyTradeResults() expõe sequência para Blockers
@@ -237,6 +242,11 @@ public:
    bool              GetShowDebug() { return m_showDebug; }
    bool              GetInputShowDebug() { return m_inputShowDebug; }
    
+   // ═══════════════════════════════════════════════════════════
+   // HOT RELOAD — MAGIC NUMBER
+   // ═══════════════════════════════════════════════════════════
+   void              ReloadForMagic(int newMagic);
+
    // ═══════════════════════════════════════════════════════════
    // RESET
    // ═══════════════════════════════════════════════════════════
@@ -1078,6 +1088,34 @@ void CLogger::AddPartialTPProfit(double profit)
    Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
        StringFormat("🎯 Lucro parcial registrado: $%.2f | Acumulado TPs: $%.2f | Total dia: $%.2f",
                     profit, m_partialTPProfit, GetDailyProfit()));
+  }
+
+//+------------------------------------------------------------------+
+//| Hot Reload — Recarrega para novo Magic Number                    |
+//+------------------------------------------------------------------+
+void CLogger::ReloadForMagic(int newMagic)
+  {
+   // 1. Salvar relatório do magic atual (se teve trades)
+   if(m_dailyTrades > 0)
+      SaveDailyReport();
+
+   // 2. Atualizar magic
+   int oldMagic = m_magicNumber;
+   m_magicNumber = newMagic;
+
+   // 3. Recalcular nomes dos arquivos CSV/TXT
+   MqlDateTime dt;
+   TimeToStruct(GetReliableDate(), dt);
+   m_csvFileName = StringFormat("EPBot_Matrix_TradeLog_%s_M%d_%d.csv",
+                                 m_symbol, m_magicNumber, dt.year);
+   m_txtFileName = StringFormat("EPBot_Matrix_DailySummary_%s_M%d_%02d%02d%04d.txt",
+                                 m_symbol, m_magicNumber, dt.day, dt.mon, dt.year);
+
+   // 4. Reconstruir stats do novo magic (LoadDailyStats faz reset + leitura)
+   LoadDailyStats();
+
+   LogInfo(StringFormat("Magic reload: %d -> %d | Stats: %d trades, $%.2f",
+           oldMagic, newMagic, m_dailyTrades, GetDailyProfit()));
   }
 
 //+------------------------------------------------------------------+
