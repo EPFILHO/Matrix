@@ -2,15 +2,20 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.55 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.56 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.55"
+#property version   "1.56"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.56 (Parte 027) — Fix minimize aleatório:
+// * Override CreateButtonMinMax() → suprime botão MinMax no caption
+// * Guard anti-minimize em ChartEvent() e Update():
+//   se m_minimized ficar true inesperadamente, Show()+revert imediato
+//
 // v1.55 (Parte 027) — Bugfix:
 // * Fix: NULL guards em ValidateAndApplyAll() e SetAllControlsEnabled()
 //   para evitar crash quando sub-painéis são NULL
@@ -913,7 +918,8 @@ private:
    void              OnClickIgnoreBanner(void);
 
 protected:
-   virtual bool      CreateButtonClose(void) { return true; }
+   virtual bool      CreateButtonClose(void)  { return true; }
+   virtual bool      CreateButtonMinMax(void) { return true; }  // Suprime botão MinMax → previne minimize aleatório
 
 public:
                      CEPBotPanel(void);
@@ -1577,12 +1583,22 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
                               const double &dparam, const string &sparam)
   {
 // ══════════════════════════════════════════════════════════════════
-// Minimizado: passar tudo direto para CAppDialog (só o botão
-// minimize/maximize precisa responder — nossos controles estão ocultos)
+// Guard anti-minimize: botão MinMax suprimido (CreateButtonMinMax),
+// mas CAppDialog ainda pode setar m_minimized via eventos internos.
+// Se detectar minimize inesperado, reverter imediatamente.
 // ══════════════════════════════════════════════════════════════════
    if(m_minimized)
      {
+      // Forçar maximize — painel NUNCA deve estar minimizado
       CAppDialog::ChartEvent(id, lparam, dparam, sparam);
+      if(m_minimized)
+        {
+         // CAppDialog não reverteu: forçar via Show() do client area
+         Show();
+         m_minimized = false;
+         ShowTab(m_activeTab);
+         ChartRedraw();
+        }
       return;
      }
 
@@ -1952,9 +1968,15 @@ void CEPBotPanel::UpdateTabStyles(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::Update(void)
   {
-   // Não atualiza se minimizado — evita labels "soltos" no gráfico
+   // Guard anti-minimize: se CAppDialog minimizou por conta própria, reverter
    if(m_minimized)
-      return;
+     {
+      Show();
+      m_minimized = false;
+      ShowTab(m_activeTab);
+      ChartRedraw();
+      return;   // Este ciclo apenas restaura; próximo Update() atualiza dados
+     }
 
    // Auto-clear header status (visível em todas as abas)
    if(m_headerStatusExpiry > 0 && GetTickCount() >= m_headerStatusExpiry)
