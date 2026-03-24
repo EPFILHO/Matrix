@@ -61,6 +61,29 @@ bool CEPBotPanel::CreateTabStatus(void)
    y += PANEL_GAP_Y;
    if(!CreateLV(m_s_lConflict, m_s_eConflict, "s_lCf", "s_eCf", "Modo Conflito:", y)) return false;
 
+// ── Registrar controles para Show/Hide genérico em SetTabVis ──
+   m_statusCtrlCount = 0;
+   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_hdr1);
+   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_lTrading);  TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_eTrading);
+   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_lBlocker);  TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_eBlocker);
+   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_lSpread);   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_eSpread);
+   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_lTime);     TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_eTime);
+   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_hdr2);
+   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_lHasPos);   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_eHasPos);
+   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_lTicket);   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_eTicket);
+   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_lPosType);  TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_ePosType);
+   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_lPosProfit); TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_ePosProfit);
+   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_lBE);       TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_eBE);
+   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_lTrail);    TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_eTrail);
+   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_lPartial);  TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_ePartial);
+   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_hdr3);
+   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_lSignal);   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_eSignal);
+   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_lBlocked);  TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_eBlocked);
+   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_hdrSM);
+   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_lStrats);   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_eStrats);
+   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_lFilts);    TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_eFilts);
+   TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_lConflict); TrackCtrl(m_statusCtrls, m_statusCtrlCount, m_s_eConflict);
+
    return true;
   }
 

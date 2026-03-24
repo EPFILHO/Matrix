@@ -66,6 +66,30 @@ bool CEPBotPanel::CreateTabResultados(void)
    y += PANEL_GAP_Y;
    if(!CreateLV(m_r_lWinStrk, m_r_eWinStrk, "r_lWS", "r_eWS", "Seq. Ganhos:", y)) return false;
 
+// ── Registrar controles para Show/Hide genérico em SetTabVis ──
+   m_resultCtrlCount = 0;
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_hdr1);
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_lGains);     TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_eGains);
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_lTotalLoss); TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_eTotalLoss);
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_lProfit);    TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_eProfit);
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_hdr2);
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_lTrades);    TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_eTrades);
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_lWins);      TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_eWins);
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_lLosses);    TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_eLosses);
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_lDraws);     TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_eDraws);
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_hdr3);
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_lWinRate);   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_eWinRate);
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_lPayoff);    TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_ePayoff);
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_lPF);        TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_ePF);
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_hdr4);
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_lDDLim);     TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_eDDLim);
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_lDDMode);    TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_eDDMode);
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_lDD);        TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_eDD);
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_lPeak);      TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_ePeak);
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_lStreak);    TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_eStreak);
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_lLossStrk);  TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_eLossStrk);
+   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_lWinStrk);   TrackCtrl(m_resultCtrls, m_resultCtrlCount, m_r_eWinStrk);
+
    return true;
   }
 

@@ -2,15 +2,26 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.48 - Claude Parte 026 (Claude Code) |
+//|                     Versão 1.50 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.48"
+#property version   "1.50"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.50 (Parte 027):
+// REFATORAÇÃO GUI:
+// + IsMinimized() getter público (para persistir estado na troca de TF)
+// + m_btnTabs[TAB_COUNT] substitui m_btnTab0..4 individuais
+// + CreateTabButtons/UpdateTabStyles/ChartEvent agora usam loop
+// + m_statusCtrls[]/m_resultCtrls[]: arrays de ponteiros CWnd* para
+//   Show/Hide genérico — SetTabVis STATUS/RESULTADOS usa loop
+// + TrackCtrl() helper para registrar controles nos arrays
+// + Persistência de estado minimizado: EPBot_Matrix salva/restaura
+//   via GlobalVariable na troca de TF
+//
 // v1.48 (Parte 026):
 // + ReconnectModules(): re-injeta ponteiros após troca de TF sem
 //   recriar objetos gráficos. Usa dynamic_cast + SetStrategy/SetFilter
@@ -448,12 +459,14 @@ private:
    bool               m_origMouseScroll;
    bool               m_mouseOverPanel;
 
-   // ── Botões de aba ──
-   CButton            m_btnTab0;
-   CButton            m_btnTab1;
-   CButton            m_btnTab2;
-   CButton            m_btnTab3;
-   CButton            m_btnTab4;
+   // ── Botões de aba (array — loop em CreateTabButtons/UpdateTabStyles) ──
+   CButton            m_btnTabs[TAB_COUNT];
+
+   // ── Arrays de controles por aba (para Show/Hide genérico) ──
+   CWnd              *m_statusCtrls[];
+   int                m_statusCtrlCount;
+   CWnd              *m_resultCtrls[];
+   int                m_resultCtrlCount;
 
    // ════════════════════════════════════════
    // ABA 0: STATUS
@@ -688,9 +701,12 @@ private:
    // ── Prioridade: resolução de conflitos entre estratégias ──
 public:
    int               ResolveStrategyPriority(int desired, string excludeName);
+   bool              IsMinimized(void) const { return m_minimized; }
 
    // ── Helpers públicos (usados pelos painéis GUI/Panels/*.mqh) ──
 public:
+   void              TrackCtrl(CWnd *&arr[], int &count, CWnd &ctrl)
+                       { ArrayResize(arr, count + 1); arr[count++] = GetPointer(ctrl); }
    bool              CreateLV(CLabel &lbl, CLabel &val, string ln, string en, string lt, int y);
    bool              CreateLI(CLabel &lbl, CEdit &inp, string ln, string en, string lt, int y);
    bool              CreateLB(CLabel &lbl, CButton &btn, string ln, string bn, string lt, int y);
@@ -758,12 +774,7 @@ private:
    void              SetEditEnabled(CLabel &lbl, CEdit &inp, bool enable);
    void              SetButtonEnabled(CLabel &lbl, CButton &btn, bool enable);
 
-   // Handlers de clique
-   void              OnClickTab0(void);
-   void              OnClickTab1(void);
-   void              OnClickTab2(void);
-   void              OnClickTab3(void);
-   void              OnClickTab4(void);
+   // Handlers de clique (tab clicks agora direto no ChartEvent loop)
    void              OnClickCfgRisco(void);
    void              OnClickCfgRisco2(void);
    void              OnClickCfgBloq(void);
@@ -848,6 +859,7 @@ CEPBotPanel::CEPBotPanel(void)
      m_trendFilter(NULL), m_rsiFilter(NULL),
      m_stratPanelCount(0), m_filtPanelCount(0),
      m_stratBtnCount(0), m_filtBtnCount(0),
+     m_statusCtrlCount(0), m_resultCtrlCount(0),
      m_magicNumber(0), m_symbol(""),
      m_origDragTrade(true), m_origMouseScroll(true), m_mouseOverPanel(false),
      m_cfg_hasTP(false), m_cfg_hasTrailing(false), m_cfg_hasBE(false),
@@ -1033,44 +1045,21 @@ void CEPBotPanel::SetEV(CLabel &val, string value, color clr)
 //+------------------------------------------------------------------+
 bool CEPBotPanel::CreateTabButtons(void)
   {
+   string tabNames[TAB_COUNT] = {"STATUS", "RESULT.", "ESTRAT.", "FILTROS", "CONFIG"};
    int w = (PANEL_WIDTH - 30) / TAB_COUNT;
    int y1 = 3, y2 = 3 + TAB_BTN_H;
 
-   if(!m_btnTab0.Create(m_chart_id, PFX + "tab0", m_subwin, 5, y1, 5 + w, y2))
-      return false;
-   m_btnTab0.Text("STATUS");
-   m_btnTab0.FontSize(7);
-   if(!Add(m_btnTab0))
-      return false;
-
-   if(!m_btnTab1.Create(m_chart_id, PFX + "tab1", m_subwin, 5 + (w + 2), y1, 5 + w * 2 + 2, y2))
-      return false;
-   m_btnTab1.Text("RESULT.");
-   m_btnTab1.FontSize(7);
-   if(!Add(m_btnTab1))
-      return false;
-
-   if(!m_btnTab2.Create(m_chart_id, PFX + "tab2", m_subwin, 5 + (w + 2) * 2, y1, 5 + w * 3 + 4, y2))
-      return false;
-   m_btnTab2.Text("ESTRAT.");
-   m_btnTab2.FontSize(7);
-   if(!Add(m_btnTab2))
-      return false;
-
-   if(!m_btnTab3.Create(m_chart_id, PFX + "tab3", m_subwin, 5 + (w + 2) * 3, y1, 5 + w * 4 + 6, y2))
-      return false;
-   m_btnTab3.Text("FILTROS");
-   m_btnTab3.FontSize(7);
-   if(!Add(m_btnTab3))
-      return false;
-
-   if(!m_btnTab4.Create(m_chart_id, PFX + "tab4", m_subwin, 5 + (w + 2) * 4, y1, 5 + w * 5 + 8, y2))
-      return false;
-   m_btnTab4.Text("CONFIG");
-   m_btnTab4.FontSize(7);
-   if(!Add(m_btnTab4))
-      return false;
-
+   for(int i = 0; i < TAB_COUNT; i++)
+     {
+      int x1 = 5 + i * (w + 2);
+      int x2 = x1 + w;
+      if(!m_btnTabs[i].Create(m_chart_id, PFX + "tab" + IntegerToString(i), m_subwin, x1, y1, x2, y2))
+         return false;
+      m_btnTabs[i].Text(tabNames[i]);
+      m_btnTabs[i].FontSize(7);
+      if(!Add(m_btnTabs[i]))
+         return false;
+     }
    return true;
   }
 
@@ -1099,12 +1088,12 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
 // ══════════════════════════════════════════════════════════════════
    if(id == CHARTEVENT_OBJECT_CLICK)
      {
-      // Abas principais
-      if(sparam == m_btnTab0.Name()) { m_btnTab0.Pressed(false); OnClickTab0(); ChartRedraw(); return; }
-      if(sparam == m_btnTab1.Name()) { m_btnTab1.Pressed(false); OnClickTab1(); ChartRedraw(); return; }
-      if(sparam == m_btnTab2.Name()) { m_btnTab2.Pressed(false); OnClickTab2(); ChartRedraw(); return; }
-      if(sparam == m_btnTab3.Name()) { m_btnTab3.Pressed(false); OnClickTab3(); ChartRedraw(); return; }
-      if(sparam == m_btnTab4.Name()) { m_btnTab4.Pressed(false); OnClickTab4(); ChartRedraw(); return; }
+      // Abas principais (loop genérico)
+      for(int t = 0; t < TAB_COUNT; t++)
+        {
+         if(sparam == m_btnTabs[t].Name())
+           { m_btnTabs[t].Pressed(false); ShowTab((ENUM_PANEL_TAB)t); ChartRedraw(); return; }
+        }
 
       // ESTRAT.: botões de navegação (genérico)
       for(int i = 0; i < m_stratBtnCount; i++)
@@ -1249,12 +1238,7 @@ void CEPBotPanel::ReapplyTabVisibility(void)
      }
   }
 
-// Handlers de clique das abas
-void CEPBotPanel::OnClickTab0(void) { ShowTab(TAB_STATUS); }
-void CEPBotPanel::OnClickTab1(void) { ShowTab(TAB_RESULTADOS); }
-void CEPBotPanel::OnClickTab2(void) { ShowTab(TAB_ESTRATEGIAS); }
-void CEPBotPanel::OnClickTab3(void) { ShowTab(TAB_FILTROS); }
-void CEPBotPanel::OnClickTab4(void) { ShowTab(TAB_CONFIG); }
+// (OnClickTab0..4 removidos em v1.50 — ChartEvent usa loop direto)
 
 //+------------------------------------------------------------------+
 //| ShowTab — alterna a visibilidade das abas                         |
@@ -1286,62 +1270,14 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
      {
       case TAB_STATUS:
         {
-         if(vis) { m_s_hdr1.Show(); m_s_lTrading.Show(); m_s_eTrading.Show();
-                    m_s_lBlocker.Show(); m_s_eBlocker.Show(); m_s_lSpread.Show(); m_s_eSpread.Show();
-                    m_s_lTime.Show(); m_s_eTime.Show();
-                    m_s_hdr2.Show(); m_s_lHasPos.Show(); m_s_eHasPos.Show();
-                    m_s_lTicket.Show(); m_s_eTicket.Show(); m_s_lPosType.Show(); m_s_ePosType.Show();
-                    m_s_lPosProfit.Show(); m_s_ePosProfit.Show(); m_s_lBE.Show(); m_s_eBE.Show();
-                    m_s_lTrail.Show(); m_s_eTrail.Show(); m_s_lPartial.Show(); m_s_ePartial.Show();
-                    m_s_hdr3.Show(); m_s_lSignal.Show(); m_s_eSignal.Show();
-                    m_s_lBlocked.Show(); m_s_eBlocked.Show();
-                    m_s_hdrSM.Show(); m_s_lStrats.Show(); m_s_eStrats.Show();
-                    m_s_lFilts.Show(); m_s_eFilts.Show(); m_s_lConflict.Show(); m_s_eConflict.Show(); }
-         else    { m_s_hdr1.Hide(); m_s_lTrading.Hide(); m_s_eTrading.Hide();
-                    m_s_lBlocker.Hide(); m_s_eBlocker.Hide(); m_s_lSpread.Hide(); m_s_eSpread.Hide();
-                    m_s_lTime.Hide(); m_s_eTime.Hide();
-                    m_s_hdr2.Hide(); m_s_lHasPos.Hide(); m_s_eHasPos.Hide();
-                    m_s_lTicket.Hide(); m_s_eTicket.Hide(); m_s_lPosType.Hide(); m_s_ePosType.Hide();
-                    m_s_lPosProfit.Hide(); m_s_ePosProfit.Hide(); m_s_lBE.Hide(); m_s_eBE.Hide();
-                    m_s_lTrail.Hide(); m_s_eTrail.Hide(); m_s_lPartial.Hide(); m_s_ePartial.Hide();
-                    m_s_hdr3.Hide(); m_s_lSignal.Hide(); m_s_eSignal.Hide();
-                    m_s_lBlocked.Hide(); m_s_eBlocked.Hide();
-                    m_s_hdrSM.Hide(); m_s_lStrats.Hide(); m_s_eStrats.Hide();
-                    m_s_lFilts.Hide(); m_s_eFilts.Hide(); m_s_lConflict.Hide(); m_s_eConflict.Hide(); }
+         for(int i = 0; i < m_statusCtrlCount; i++)
+           { if(vis) m_statusCtrls[i].Show(); else m_statusCtrls[i].Hide(); }
          break;
         }
       case TAB_RESULTADOS:
         {
-         if(vis) { m_r_hdr1.Show(); m_r_lProfit.Show(); m_r_eProfit.Show();
-                    m_r_lGains.Show(); m_r_eGains.Show(); m_r_lTotalLoss.Show(); m_r_eTotalLoss.Show();
-                    m_r_hdr2.Show(); m_r_lTrades.Show(); m_r_eTrades.Show();
-                    m_r_lWins.Show(); m_r_eWins.Show(); m_r_lLosses.Show(); m_r_eLosses.Show();
-                    m_r_lDraws.Show(); m_r_eDraws.Show();
-                    m_r_hdr3.Show(); m_r_lWinRate.Show(); m_r_eWinRate.Show();
-                    m_r_lPayoff.Show(); m_r_ePayoff.Show(); m_r_lPF.Show(); m_r_ePF.Show();
-                    m_r_hdr4.Show();
-                    m_r_lDDLim.Show(); m_r_eDDLim.Show();
-                    m_r_lDDMode.Show(); m_r_eDDMode.Show();
-                    m_r_lDD.Show(); m_r_eDD.Show();
-                    m_r_lPeak.Show(); m_r_ePeak.Show();
-                    m_r_lStreak.Show(); m_r_eStreak.Show();
-                    m_r_lLossStrk.Show(); m_r_eLossStrk.Show();
-                    m_r_lWinStrk.Show(); m_r_eWinStrk.Show(); }
-         else    { m_r_hdr1.Hide(); m_r_lProfit.Hide(); m_r_eProfit.Hide();
-                    m_r_lGains.Hide(); m_r_eGains.Hide(); m_r_lTotalLoss.Hide(); m_r_eTotalLoss.Hide();
-                    m_r_hdr2.Hide(); m_r_lTrades.Hide(); m_r_eTrades.Hide();
-                    m_r_lWins.Hide(); m_r_eWins.Hide(); m_r_lLosses.Hide(); m_r_eLosses.Hide();
-                    m_r_lDraws.Hide(); m_r_eDraws.Hide();
-                    m_r_hdr3.Hide(); m_r_lWinRate.Hide(); m_r_eWinRate.Hide();
-                    m_r_lPayoff.Hide(); m_r_ePayoff.Hide(); m_r_lPF.Hide(); m_r_ePF.Hide();
-                    m_r_hdr4.Hide();
-                    m_r_lDDLim.Hide(); m_r_eDDLim.Hide();
-                    m_r_lDDMode.Hide(); m_r_eDDMode.Hide();
-                    m_r_lDD.Hide(); m_r_eDD.Hide();
-                    m_r_lPeak.Hide(); m_r_ePeak.Hide();
-                    m_r_lStreak.Hide(); m_r_eStreak.Hide();
-                    m_r_lLossStrk.Hide(); m_r_eLossStrk.Hide();
-                    m_r_lWinStrk.Hide(); m_r_eWinStrk.Hide(); }
+         for(int i = 0; i < m_resultCtrlCount; i++)
+           { if(vis) m_resultCtrls[i].Show(); else m_resultCtrls[i].Hide(); }
          break;
         }
       case TAB_ESTRATEGIAS:
@@ -1408,20 +1344,13 @@ void CEPBotPanel::SetTabVis(ENUM_PANEL_TAB tab, bool vis)
 //+------------------------------------------------------------------+
 void CEPBotPanel::UpdateTabStyles(void)
   {
-   m_btnTab0.Pressed(false); m_btnTab1.Pressed(false); m_btnTab2.Pressed(false);
-   m_btnTab3.Pressed(false); m_btnTab4.Pressed(false);
-
-   m_btnTab0.ColorBackground((m_activeTab == TAB_STATUS)      ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
-   m_btnTab1.ColorBackground((m_activeTab == TAB_RESULTADOS)  ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
-   m_btnTab2.ColorBackground((m_activeTab == TAB_ESTRATEGIAS) ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
-   m_btnTab3.ColorBackground((m_activeTab == TAB_FILTROS)     ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
-   m_btnTab4.ColorBackground((m_activeTab == TAB_CONFIG)      ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
-
-   m_btnTab0.Color((m_activeTab == TAB_STATUS)      ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
-   m_btnTab1.Color((m_activeTab == TAB_RESULTADOS)  ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
-   m_btnTab2.Color((m_activeTab == TAB_ESTRATEGIAS) ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
-   m_btnTab3.Color((m_activeTab == TAB_FILTROS)     ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
-   m_btnTab4.Color((m_activeTab == TAB_CONFIG)      ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
+   for(int i = 0; i < TAB_COUNT; i++)
+     {
+      bool active = (i == (int)m_activeTab);
+      m_btnTabs[i].Pressed(false);
+      m_btnTabs[i].ColorBackground(active ? CLR_TAB_ACTIVE : CLR_TAB_INACTIVE);
+      m_btnTabs[i].Color(active ? CLR_TAB_TXT_ACT : CLR_TAB_TXT_INACT);
+     }
   }
 
 //+------------------------------------------------------------------+
