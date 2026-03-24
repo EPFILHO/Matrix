@@ -726,8 +726,8 @@ bool CConfigPersistence::Load(string symbol, int magic, SConfigData &data)
       data.trailingType = TRAILING_FIXED;
    if(data.beType < BE_FIXED || data.beType > BE_ATR)
       data.beType = BE_FIXED;
-   if(data.tradeDirection < TRADE_BUY || data.tradeDirection > TRADE_BOTH)
-      data.tradeDirection = TRADE_BOTH;
+   if(data.tradeDirection < DIRECTION_BOTH || data.tradeDirection > DIRECTION_SELL_ONLY)
+      data.tradeDirection = DIRECTION_BOTH;
 
    return true;
   }

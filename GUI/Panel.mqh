@@ -953,7 +953,7 @@ public:
 
    // ── Controle INICIAR/PAUSAR (Parte 027) ──
    bool              IsStarted(void) const { return m_eaStarted; }
-   void              SetStarted(bool started);
+   // SetStarted() já declarado na seção privada (linha 817)
 
 public:
    virtual void      ChartEvent(const int id, const long &lparam,
@@ -1432,7 +1432,7 @@ int CEPBotPanel::CountOpenPositions(int magic)
    int count = 0;
    for(int i = PositionsTotal() - 1; i >= 0; i--)
      {
-      if(PositionSelectByIndex(i))
+      if(PositionGetTicket(i) > 0)
          if(PositionGetString(POSITION_SYMBOL) == m_symbol &&
             PositionGetInteger(POSITION_MAGIC) == magic)
             count++;

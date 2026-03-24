@@ -76,9 +76,9 @@ private:
    // MÉTODOS PRIVADOS
    // ═══════════════════════════════════════════════════════════════
    bool              CheckStreakLimit(ENUM_BLOCKER_REASON &blocker, string &blockReason);
-   void              ReconstructStreakFromHistory();
 
 public:
+   void              ReconstructStreakFromHistory();
                      CBlockerLimits();
                     ~CBlockerLimits();
 
