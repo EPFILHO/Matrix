@@ -2,10 +2,10 @@
 //|                                                  TrendFilter.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                      Filtro de Tendência por MA - EPBot Matrix   |
-//|                     Versão 2.20 - Claude Parte 027 (Claude Code) |
+//|                     Versão 2.21 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.20"
+#property version   "2.21"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,12 @@
 #include "../Base/FilterBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.21 (Parte 027):
+// * Fix: GetDistanceFromMA() — guard !m_maReady em vez de !UpdateIndicators()
+//   Evita chamar UpdateIndicators() fora do fluxo OnTick (timer do painel GUI)
+//   + validação m_ma[0] <= 0 antes de usar
+// * Fix: GetMA() — adicionado guard !m_maReady
+//
 // NOVIDADES v2.20 (Parte 027):
 // * Fix: UpdateIndicators() retorna false quando handle é inválido
 //   (antes retornava true, mascarando ausência de dados)
@@ -800,7 +806,7 @@ bool CTrendFilter::SetMACold(int period, ENUM_MA_METHOD method,
 //+------------------------------------------------------------------+
 double CTrendFilter::GetMA(int shift = 0)
   {
-   if(!m_isInitialized || shift >= ArraySize(m_ma))
+   if(!m_isInitialized || !m_maReady || shift >= ArraySize(m_ma))
       return 0.0;
 
    return m_ma[shift];
@@ -808,7 +814,10 @@ double CTrendFilter::GetMA(int shift = 0)
 
 double CTrendFilter::GetDistanceFromMA()
   {
-   if(!m_isInitialized || !UpdateIndicators() || ArraySize(m_ma) == 0)
+   if(!m_isInitialized || !m_maReady || ArraySize(m_ma) < 1)
+      return 0.0;
+
+   if(m_ma[0] <= 0)
       return 0.0;
 
    double currentPrice = iClose(_Symbol, PERIOD_CURRENT, 0);
