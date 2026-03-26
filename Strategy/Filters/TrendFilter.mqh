@@ -2,10 +2,10 @@
 //|                                                  TrendFilter.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                      Filtro de Tendência por MA - EPBot Matrix   |
-//|                     Versão 2.22 - Claude Parte 027 (Claude Code) |
+//|                     Versão 2.23 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.22"
+#property version   "2.23"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,11 @@
 #include "../Base/FilterBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.23 (Parte 027):
+// + Override GetStatusSummary(): retorna "Ativo"/"Inativo" baseado em
+//   m_useTrendFilter/m_neutralDistance (não em m_isEnabled que é sempre true)
+// * Fix: tela GERAL e sub-página TREND agora mostram status correto
+//
 // NOVIDADES v2.22 (Parte 027):
 // * Fix: ValidateSignal() — early return true quando filtro desabilitado
 //   (!m_useTrendFilter && m_neutralDistance==0). Evita deadlock permanente
@@ -188,6 +193,13 @@ public:
    
    bool              IsTrendFilterActive() const { return m_useTrendFilter; }
    bool              IsNeutralZoneActive() const { return m_neutralDistance > 0; }
+
+   // Override: status real depende de m_useTrendFilter, não de m_isEnabled
+   virtual string    GetStatusSummary() const override
+     {
+      if(!m_isInitialized) return "Nao iniciado";
+      return (m_useTrendFilter || m_neutralDistance > 0) ? "Ativo" : "Inativo";
+     }
    int               GetMAPeriod() const { return m_maPeriod; }
    ENUM_MA_METHOD    GetMAMethod() const { return m_maMethod; }
    ENUM_APPLIED_PRICE GetMAApplied() const { return m_maApplied; }

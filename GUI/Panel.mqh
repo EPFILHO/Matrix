@@ -2,16 +2,23 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.56 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.57 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.56"
+#property version   "1.57"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.56 (Parte 027) — Fix minimize aleatório:
+// v1.57 (Parte 027) — Fix minimize + revert v1.56:
+// * REVERT: removido CreateButtonMinMax() override (quebrava layout do CAppDialog)
+// * REVERT: removidos guards anti-minimize em ChartEvent/Update (causavam
+//   painel transparente/controles soltos)
+// * Novo: m_button_minmax.Hide() em CreatePanel (oculta sem quebrar layout)
+// * Novo: OnEvent() bloqueia eventos do botão MinMax (defesa em profundidade)
+//
+// v1.56 (Parte 027) — [REVERTIDO] Fix minimize aleatório:
 // * Override CreateButtonMinMax() → suprime botão MinMax no caption
 // * Guard anti-minimize em ChartEvent() e Update():
 //   se m_minimized ficar true inesperadamente, Show()+revert imediato
@@ -919,7 +926,6 @@ private:
 
 protected:
    virtual bool      CreateButtonClose(void)  { return true; }
-   virtual bool      CreateButtonMinMax(void) { return true; }  // Suprime botão MinMax → previne minimize aleatório
 
 public:
                      CEPBotPanel(void);
@@ -1101,6 +1107,10 @@ bool CEPBotPanel::CreatePanel(long chart, string name, int subwin,
   {
    if(!Create(chart, name, subwin, x1, y1, x2, y2))
       return false;
+
+   // Esconder botão MinMax do caption — previne minimize aleatório
+   // (botão é criado normalmente pelo CAppDialog, apenas ocultado)
+   m_button_minmax.Hide();
 
    if(!CreateTabButtons())    return false;
    if(!CreateStartButton())   return false;
@@ -1583,22 +1593,12 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
                               const double &dparam, const string &sparam)
   {
 // ══════════════════════════════════════════════════════════════════
-// Guard anti-minimize: botão MinMax suprimido (CreateButtonMinMax),
-// mas CAppDialog ainda pode setar m_minimized via eventos internos.
-// Se detectar minimize inesperado, reverter imediatamente.
+// Minimizado: passar tudo direto para CAppDialog (só o botão
+// minimize/maximize precisa responder — nossos controles estão ocultos)
 // ══════════════════════════════════════════════════════════════════
    if(m_minimized)
      {
-      // Forçar maximize — painel NUNCA deve estar minimizado
       CAppDialog::ChartEvent(id, lparam, dparam, sparam);
-      if(m_minimized)
-        {
-         // CAppDialog não reverteu: forçar via Show() do client area
-         Show();
-         m_minimized = false;
-         ShowTab(m_activeTab);
-         ChartRedraw();
-        }
       return;
      }
 
@@ -1741,6 +1741,10 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
 bool CEPBotPanel::OnEvent(const int id, const long &lparam,
                            const double &dparam, const string &sparam)
   {
+   // Bloquear ON_CLICK do botão MinMax (previne minimize aleatório)
+   if(lparam == m_button_minmax.Id())
+      return true;
+
    bool result = CAppDialog::OnEvent(id, lparam, dparam, sparam);
 
    if(result)
@@ -1968,15 +1972,9 @@ void CEPBotPanel::UpdateTabStyles(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::Update(void)
   {
-   // Guard anti-minimize: se CAppDialog minimizou por conta própria, reverter
+   // Não atualiza se minimizado — evita labels "soltos" no gráfico
    if(m_minimized)
-     {
-      Show();
-      m_minimized = false;
-      ShowTab(m_activeTab);
-      ChartRedraw();
-      return;   // Este ciclo apenas restaura; próximo Update() atualiza dados
-     }
+      return;
 
    // Auto-clear header status (visível em todas as abas)
    if(m_headerStatusExpiry > 0 && GetTickCount() >= m_headerStatusExpiry)

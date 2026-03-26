@@ -168,7 +168,7 @@ public:
       ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
       if(m_filter != NULL && m_filter.IsInitialized())
         {
-         bool active = m_filter.IsEnabled();
+         bool active = m_filter.IsTrendFilterActive() || m_filter.IsNeutralZoneActive();
          m_eStatus.Text(active ? "Ativo" : "Inativo");
          m_eStatus.Color(active ? CLR_POSITIVE : CLR_NEUTRAL);
          m_eMA.Text(DoubleToString(m_filter.GetMA(), _Digits));
