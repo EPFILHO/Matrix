@@ -1108,10 +1108,6 @@ bool CEPBotPanel::CreatePanel(long chart, string name, int subwin,
    if(!Create(chart, name, subwin, x1, y1, x2, y2))
       return false;
 
-   // Esconder botão MinMax do caption — previne minimize aleatório
-   // (botão é criado normalmente pelo CAppDialog, apenas ocultado)
-   m_button_minmax.Hide();
-
    if(!CreateTabButtons())    return false;
    if(!CreateStartButton())   return false;
    if(!CreateTabStatus())     return false;
@@ -1741,10 +1737,6 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
 bool CEPBotPanel::OnEvent(const int id, const long &lparam,
                            const double &dparam, const string &sparam)
   {
-   // Bloquear ON_CLICK do botão MinMax (previne minimize aleatório)
-   if(lparam == m_button_minmax.Id())
-      return true;
-
    bool result = CAppDialog::OnEvent(id, lparam, dparam, sparam);
 
    if(result)
