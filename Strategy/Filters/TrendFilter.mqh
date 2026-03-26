@@ -2,10 +2,10 @@
 //|                                                  TrendFilter.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                      Filtro de Tendência por MA - EPBot Matrix   |
-//|                     Versão 2.21 - Claude Parte 027 (Claude Code) |
+//|                     Versão 2.22 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.21"
+#property version   "2.22"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,13 @@
 #include "../Base/FilterBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.22 (Parte 027):
+// * Fix: ValidateSignal() — early return true quando filtro desabilitado
+//   (!m_useTrendFilter && m_neutralDistance==0). Evita deadlock permanente
+// * Fix: UpdateIndicators() — revertido INVALID_HANDLE para return true
+//   (v2.19 behavior). Quando filtro desabilitado, Initialize() não cria
+//   handle → INVALID_HANDLE é estado válido, não erro
+//
 // NOVIDADES v2.21 (Parte 027):
 // * Fix: GetDistanceFromMA() — guard !m_maReady em vez de !UpdateIndicators()
 //   Evita chamar UpdateIndicators() fora do fluxo OnTick (timer do painel GUI)
@@ -400,7 +407,7 @@ void CTrendFilter::Deinitialize()
 bool CTrendFilter::UpdateIndicators()
   {
    if(m_handleMA == INVALID_HANDLE)
-      return false;   // Sem handle = dados não disponíveis
+      return true;   // Sem handle = filtro desabilitado, não bloqueia sinal
 
    int calculated = BarsCalculated(m_handleMA);
    if(calculated <= 0)
@@ -545,6 +552,13 @@ bool CTrendFilter::ValidateSignal(ENUM_SIGNAL_TYPE signal)
          Print(msg);
       return false;
      }
+
+   // ═══════════════════════════════════════════════════════════════
+   // Filtro desabilitado (ambos modos off) — não bloqueia nenhum sinal
+   // Initialize() setou m_maReady=true sem criar handle de MA
+   // ═══════════════════════════════════════════════════════════════
+   if(!m_useTrendFilter && m_neutralDistance == 0)
+      return true;
 
    // ═══════════════════════════════════════════════════════════════
    // 🆕 v2.15: PADRÃO SMARTCROSS - SEMPRE tenta UpdateIndicators() PRIMEIRO!
