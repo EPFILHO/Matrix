@@ -11,17 +11,11 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.57 (Parte 027) — Fix minimize + revert v1.56:
-// * REVERT: removido CreateButtonMinMax() override (quebrava layout do CAppDialog)
-// * REVERT: removidos guards anti-minimize em ChartEvent/Update (causavam
-//   painel transparente/controles soltos)
-// * Novo: m_button_minmax.Hide() em CreatePanel (oculta sem quebrar layout)
-// * Novo: OnEvent() bloqueia eventos do botão MinMax (defesa em profundidade)
-//
-// v1.56 (Parte 027) — [REVERTIDO] Fix minimize aleatório:
-// * Override CreateButtonMinMax() → suprime botão MinMax no caption
-// * Guard anti-minimize em ChartEvent() e Update():
-//   se m_minimized ficar true inesperadamente, Show()+revert imediato
+// v1.57 (Parte 027) — Revert v1.56 (minimize fix quebrado):
+// * REVERT: removido CreateButtonMinMax() override (quebrava layout do CAppDialog:
+//   fundo transparente, título truncado, labels soltos)
+// * REVERT: removidos guards anti-minimize forçados em ChartEvent/Update
+// * Comportamento minimize restaurado ao original (v1.55)
 //
 // v1.55 (Parte 027) — Bugfix:
 // * Fix: NULL guards em ValidateAndApplyAll() e SetAllControlsEnabled()
