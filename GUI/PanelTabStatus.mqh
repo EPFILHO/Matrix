@@ -2,10 +2,14 @@
 //|                                              PanelTabStatus.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|          Panel Tab: STATUS — Create + Update                      |
-//|                     Versão 1.13 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.14 - Claude Parte 028 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba STATUS.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
+//
+// v1.14 (Parte 028):
+// + SIGNAL MANAGER exibe apenas estratégias/filtros ATIVOS (GetEnabled()==true)
+//   antes mostrava total (GetStrategyCount/GetFilterCount)
 //
 // v1.13 (Parte 027):
 // + Trading status mostra "PAUSADO" (amarelo) quando m_eaStarted==false
@@ -172,8 +176,8 @@ void CEPBotPanel::UpdateStatus(void)
       SetEV(m_s_eBlocked, (blk != "") ? blk : "Nenhum", (blk != "") ? CLR_WARNING : CLR_NEUTRAL);
 
 // ── Signal Manager ──
-      SetEV(m_s_eStrats, IntegerToString(m_signalManager.GetStrategyCount()), CLR_VALUE);
-      SetEV(m_s_eFilts,  IntegerToString(m_signalManager.GetFilterCount()),   CLR_VALUE);
+      SetEV(m_s_eStrats, IntegerToString(m_signalManager.GetActiveStrategyCount()), CLR_VALUE);
+      SetEV(m_s_eFilts,  IntegerToString(m_signalManager.GetActiveFilterCount()),   CLR_VALUE);
       string cm = (m_signalManager.GetConflictMode() == CONFLICT_PRIORITY) ? "Prioridade" : "Cancelar";
       SetEV(m_s_eConflict, cm, CLR_VALUE);
      }
