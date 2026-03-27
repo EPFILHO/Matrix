@@ -2,10 +2,10 @@
 //|                                                  TrendFilter.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                      Filtro de Tendência por MA - EPBot Matrix   |
-//|                     Versão 2.20 - Claude Parte 027 (Claude Code) |
+//|                     Versão 2.23 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.20"
+#property version   "2.23"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,24 @@
 #include "../Base/FilterBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.23 (Parte 027):
+// + Override GetStatusSummary(): retorna "Ativo"/"Inativo" baseado em
+//   m_useTrendFilter/m_neutralDistance (não em m_isEnabled que é sempre true)
+// * Fix: tela GERAL e sub-página TREND agora mostram status correto
+//
+// NOVIDADES v2.22 (Parte 027):
+// * Fix: ValidateSignal() — early return true quando filtro desabilitado
+//   (!m_useTrendFilter && m_neutralDistance==0). Evita deadlock permanente
+// * Fix: UpdateIndicators() — revertido INVALID_HANDLE para return true
+//   (v2.19 behavior). Quando filtro desabilitado, Initialize() não cria
+//   handle → INVALID_HANDLE é estado válido, não erro
+//
+// NOVIDADES v2.21 (Parte 027):
+// * Fix: GetDistanceFromMA() — guard !m_maReady em vez de !UpdateIndicators()
+//   Evita chamar UpdateIndicators() fora do fluxo OnTick (timer do painel GUI)
+//   + validação m_ma[0] <= 0 antes de usar
+// * Fix: GetMA() — adicionado guard !m_maReady
+//
 // NOVIDADES v2.20 (Parte 027):
 // * Fix: UpdateIndicators() retorna false quando handle é inválido
 //   (antes retornava true, mascarando ausência de dados)
@@ -175,6 +193,13 @@ public:
    
    bool              IsTrendFilterActive() const { return m_useTrendFilter; }
    bool              IsNeutralZoneActive() const { return m_neutralDistance > 0; }
+
+   // Override: status real depende de m_useTrendFilter, não de m_isEnabled
+   virtual string    GetStatusSummary() const override
+     {
+      if(!m_isInitialized) return "Nao iniciado";
+      return (m_useTrendFilter || m_neutralDistance > 0) ? "Ativo" : "Inativo";
+     }
    int               GetMAPeriod() const { return m_maPeriod; }
    ENUM_MA_METHOD    GetMAMethod() const { return m_maMethod; }
    ENUM_APPLIED_PRICE GetMAApplied() const { return m_maApplied; }
@@ -394,7 +419,7 @@ void CTrendFilter::Deinitialize()
 bool CTrendFilter::UpdateIndicators()
   {
    if(m_handleMA == INVALID_HANDLE)
-      return false;   // Sem handle = dados não disponíveis
+      return true;   // Sem handle = filtro desabilitado, não bloqueia sinal
 
    int calculated = BarsCalculated(m_handleMA);
    if(calculated <= 0)
@@ -539,6 +564,13 @@ bool CTrendFilter::ValidateSignal(ENUM_SIGNAL_TYPE signal)
          Print(msg);
       return false;
      }
+
+   // ═══════════════════════════════════════════════════════════════
+   // Filtro desabilitado (ambos modos off) — não bloqueia nenhum sinal
+   // Initialize() setou m_maReady=true sem criar handle de MA
+   // ═══════════════════════════════════════════════════════════════
+   if(!m_useTrendFilter && m_neutralDistance == 0)
+      return true;
 
    // ═══════════════════════════════════════════════════════════════
    // 🆕 v2.15: PADRÃO SMARTCROSS - SEMPRE tenta UpdateIndicators() PRIMEIRO!
@@ -800,7 +832,7 @@ bool CTrendFilter::SetMACold(int period, ENUM_MA_METHOD method,
 //+------------------------------------------------------------------+
 double CTrendFilter::GetMA(int shift = 0)
   {
-   if(!m_isInitialized || shift >= ArraySize(m_ma))
+   if(!m_isInitialized || !m_maReady || shift >= ArraySize(m_ma))
       return 0.0;
 
    return m_ma[shift];
@@ -808,7 +840,10 @@ double CTrendFilter::GetMA(int shift = 0)
 
 double CTrendFilter::GetDistanceFromMA()
   {
-   if(!m_isInitialized || !UpdateIndicators() || ArraySize(m_ma) == 0)
+   if(!m_isInitialized || !m_maReady || ArraySize(m_ma) < 1)
+      return 0.0;
+
+   if(m_ma[0] <= 0)
       return 0.0;
 
    double currentPrice = iClose(_Symbol, PERIOD_CURRENT, 0);
