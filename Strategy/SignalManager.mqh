@@ -200,7 +200,7 @@ public:
      {
       int count = 0;
       for(int i = 0; i < m_filterCount; i++)
-         if(m_filters[i] != NULL && m_filters[i].GetEnabled())
+         if(m_filters[i] != NULL && m_filters[i].IsEnabled())
             count++;
       return count;
      }
