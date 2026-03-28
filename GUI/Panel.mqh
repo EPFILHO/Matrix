@@ -2,16 +2,22 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.57 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.58 - Claude Parte 028 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.57"
+#property version   "1.58"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.57 (Parte 027) — Revert v1.56 (minimize fix quebrado):
+/// v1.58 (Parte 028):
+// * SetAllControlsEnabled: adiciona SetButtonEnabled para m_co_bConfl e m_co_bDbg
+//   (Conflito Sinais e Debug Logs não eram travados com EA rodando)
+// * ApplyConfig() declaração alterada void → bool
+// * ValidateAndApplyAll(): verifica retorno de ApplyConfig()
+//
+/ v1.57 (Parte 027) — Revert v1.56 (minimize fix quebrado):
 // * REVERT: removido CreateButtonMinMax() override (quebrava layout do CAppDialog:
 //   fundo transparente, título truncado, labels soltos)
 // * REVERT: removidos guards anti-minimize forçados em ChartEvent/Update
@@ -858,7 +864,7 @@ private:
 
    // Panel factory
    void              RegisterPanels(void);
-   void              ApplyConfig(void);
+   bool              ApplyConfig(void);
    void              ApplyMagicNumberChange(int newMagic);
 
    // Estado visual RISCO (enable/disable campos por tipo SL/TP)
@@ -1409,7 +1415,8 @@ void CEPBotPanel::OnClickCancel(void)
 //+------------------------------------------------------------------+
 bool CEPBotPanel::ValidateAndApplyAll(void)
   {
-   ApplyConfig();
+   if(!ApplyConfig())
+      return false;
 
    // Verificar sub-painéis de estratégias
    bool hasErrors = false;
@@ -1518,6 +1525,21 @@ void CEPBotPanel::SetAllControlsEnabled(bool enable)
    SetEditEnabled(m_co_lMagic, m_co_iMagic, enable);
    SetEditEnabled(m_co_lComm, m_co_iComm, enable);
    SetEditEnabled(m_co_lSlip, m_co_iSlip, enable);
+   SetButtonEnabled(m_co_lConfl, m_co_bConfl, enable);
+   if(enable) // restaura cor original do botão Conflito ao habilitar
+     {
+      string conflTxt = (m_cur_conflict == CONFLICT_PRIORITY) ? "PRIORIDADE" : "CANCELAR";
+      m_co_bConfl.Text(conflTxt);
+      m_co_bConfl.ColorBackground(C'50,80,140');
+      m_co_bConfl.Color(clrWhite);
+     }
+   SetButtonEnabled(m_co_lDbg, m_co_bDbg, enable);
+   if(enable) // restaura cor original do botão Debug ao habilitar
+     {
+      m_co_bDbg.Text(m_cur_debug ? "ON" : "OFF");
+      m_co_bDbg.ColorBackground(m_cur_debug ? C'30,120,70' : C'120,50,50');
+      m_co_bDbg.Color(clrWhite);
+     }
    SetEditEnabled(m_co_lDbgCd, m_co_iDbgCd, enable);
 
 // ── SUB-PAINÉIS: Estratégias + Filtros ──
