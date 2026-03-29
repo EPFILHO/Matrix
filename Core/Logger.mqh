@@ -2,13 +2,17 @@
 //|                                                       Logger.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                                Sistema de Logging - EPBot Matrix |
-//|                     Versão 3.27 - Claude Parte 027 (Claude Code) |
+//|                     Versão 3.28 - Claude Parte 028 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "3.27"
+#property version   "3.28"
 
 // ═══════════════════════════════════════════════════════════════════
+// CHANGELOG v3.28 (Parte 028):
+// * SetShowDebug(): só loga/aplica quando valor realmente muda
+// * SetDebugCooldown(): só loga/aplica quando valor realmente muda
+//
 // CHANGELOG v3.27 (Parte 027):
 // + ReloadForMagic(int newMagic): hot reload do Magic Number
 //   Salva relatório do magic atual, atualiza filenames CSV/TXT,
@@ -491,8 +495,9 @@ datetime CLogger::GetReliableDate()
 void CLogger::SetShowDebug(bool show)
   {
    bool oldValue = m_showDebug;
+   if(show == oldValue) return;
    m_showDebug = show;
-   
+
    Print("🔄 Logger: DEBUG ", show ? "ATIVADO" : "DESATIVADO");
   }
 
@@ -502,8 +507,9 @@ void CLogger::SetShowDebug(bool show)
 void CLogger::SetDebugCooldown(int seconds)
   {
    int oldValue = m_debugCooldown;
+   if(seconds == oldValue) return;
    m_debugCooldown = seconds;
-   
+
    Print("🔄 Logger: Cooldown DEBUG: ", oldValue, " → ", seconds, " segundos");
   }
 

@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.32 - Claude Parte 028 (Claude Code) |
+//|                     Versão 1.33 - Claude Parte 028 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -13,6 +13,9 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.33 (Parte 028):
+// * Trade Comment: log HOT_RELOAD adicionado (só quando valor muda)
+//
 // v1.32 (Parte 028):
 // * ApplyConfig() retorna bool (errors → false); ValidateAndApplyAll() verifica retorno
 // * Removido SaveCurrentConfig() de dentro de ApplyConfig() (double-save eliminado)
@@ -1865,7 +1868,14 @@ bool CEPBotPanel::ApplyConfig(void)
      }
 
    // Trade Comment
-   g_tradeComment = m_co_iComm.Text();
+   string newComment = m_co_iComm.Text();
+   if(newComment != g_tradeComment)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            "🔄 Trade Comment: \"" + g_tradeComment + "\" → \"" + newComment + "\"");
+      g_tradeComment = newComment;
+     }
 
    if(m_signalManager != NULL)
       m_signalManager.SetConflictResolution(m_cur_conflict);
