@@ -10,8 +10,8 @@
 
 // ═══════════════════════════════════════════════════════════════════
 // CHANGELOG v3.28 (Parte 028):
-// * SetShowDebug(): revertido — loga sempre (comportamento intencional)
-// * SetDebugCooldown(): revertido — loga sempre (comportamento intencional)
+// * SetShowDebug(): Print() → Log(LOG_EVENT) — mesmo formato dos outros HOT_RELOAD
+// * SetDebugCooldown(): Print() → Log(LOG_EVENT) — mesmo formato dos outros HOT_RELOAD
 //
 // CHANGELOG v3.27 (Parte 027):
 // + ReloadForMagic(int newMagic): hot reload do Magic Number
@@ -495,7 +495,8 @@ datetime CLogger::GetReliableDate()
 void CLogger::SetShowDebug(bool show)
   {
    m_showDebug = show;
-   Print("🔄 Logger: DEBUG ", show ? "ATIVADO" : "DESATIVADO");
+   Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+       "🔄 Debug Logs: " + string(show ? "ATIVADO" : "DESATIVADO"));
   }
 
 //+------------------------------------------------------------------+
@@ -505,7 +506,8 @@ void CLogger::SetDebugCooldown(int seconds)
   {
    int oldValue = m_debugCooldown;
    m_debugCooldown = seconds;
-   Print("🔄 Logger: Cooldown DEBUG: ", oldValue, " → ", seconds, " segundos");
+   Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+       "🔄 Debug Cooldown: " + IntegerToString(oldValue) + " → " + IntegerToString(seconds) + "s");
   }
 
 //+------------------------------------------------------------------+
