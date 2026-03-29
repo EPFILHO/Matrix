@@ -1575,11 +1575,9 @@ bool CEPBotPanel::ApplyConfig(void)
 
    if(crossErrors > 0)
      {
-      m_cfg_status.Text(crossMsg);
-      m_cfg_status.Color(CLR_NEGATIVE);
-      m_cfgStatusExpiry = GetTickCount() + 15000;
+      ShowHeaderStatus(crossMsg, CLR_NEGATIVE);
       ChartRedraw();
-      return;  // BLOQUEIA — não aplica nenhum setter
+      return false;  // BLOQUEIA — não aplica nenhum setter
      }
 
    int errors = 0;

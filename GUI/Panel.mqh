@@ -11,13 +11,13 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-/// v1.58 (Parte 028):
+// v1.58 (Parte 028):
 // * SetAllControlsEnabled: adiciona SetButtonEnabled para m_co_bConfl e m_co_bDbg
 //   (Conflito Sinais e Debug Logs não eram travados com EA rodando)
 // * ApplyConfig() declaração alterada void → bool
 // * ValidateAndApplyAll(): verifica retorno de ApplyConfig()
 //
-/ v1.57 (Parte 027) — Revert v1.56 (minimize fix quebrado):
+// v1.57 (Parte 027) — Revert v1.56 (minimize fix quebrado):
 // * REVERT: removido CreateButtonMinMax() override (quebrava layout do CAppDialog:
 //   fundo transparente, título truncado, labels soltos)
 // * REVERT: removidos guards anti-minimize forçados em ChartEvent/Update
