@@ -10,8 +10,8 @@
 
 // ═══════════════════════════════════════════════════════════════════
 // CHANGELOG v3.28 (Parte 028):
-// * SetShowDebug(): Print() → Log(LOG_EVENT) — mesmo formato dos outros HOT_RELOAD
-// * SetDebugCooldown(): Print() → Log(LOG_EVENT) — mesmo formato dos outros HOT_RELOAD
+// * SetShowDebug(): log removido — alterações de debug não são logadas
+// * SetDebugCooldown(): log removido — alterações de debug não são logadas
 //
 // CHANGELOG v3.27 (Parte 027):
 // + ReloadForMagic(int newMagic): hot reload do Magic Number
@@ -495,8 +495,6 @@ datetime CLogger::GetReliableDate()
 void CLogger::SetShowDebug(bool show)
   {
    m_showDebug = show;
-   Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-       "🔄 Debug Logs: " + string(show ? "ATIVADO" : "DESATIVADO"));
   }
 
 //+------------------------------------------------------------------+
@@ -504,10 +502,7 @@ void CLogger::SetShowDebug(bool show)
 //+------------------------------------------------------------------+
 void CLogger::SetDebugCooldown(int seconds)
   {
-   int oldValue = m_debugCooldown;
    m_debugCooldown = seconds;
-   Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-       "🔄 Debug Cooldown: " + IntegerToString(oldValue) + " → " + IntegerToString(seconds) + "s");
   }
 
 //+------------------------------------------------------------------+
