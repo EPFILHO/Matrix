@@ -2,10 +2,10 @@
 //|                                               SignalManager.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                   Gerenciador de Sinais e Filtros - EPBot Matrix |
-//|                                   Versão 2.14 - Claude Parte 025 |
+//|                                   Versão 2.15 - Claude Parte 028 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.14"
+#property version   "2.15"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,10 @@
 #include "Base/StrategyBase.mqh"
 #include "Base/FilterBase.mqh"
 
+// ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.15 (Parte 028):
+// + GetActiveStrategyCount(): conta apenas estratégias com GetEnabled()==true
+// + GetActiveFilterCount(): conta apenas filtros com GetEnabled()==true
 // ═══════════════════════════════════════════════════════════════
 // NOVIDADES v2.14 (Parte 025):
 // + GetStrategy(int index): acesso indexado a estratégias registradas
@@ -184,6 +188,22 @@ public:
    string            GetLastBlockedBy() const { return m_lastBlockedBy; }
    int               GetStrategyCount() const { return m_strategyCount; }
    int               GetFilterCount() const { return m_filterCount; }
+   int               GetActiveStrategyCount() const
+     {
+      int count = 0;
+      for(int i = 0; i < m_strategyCount; i++)
+         if(m_strategies[i].strategy != NULL && m_strategies[i].strategy.GetEnabled())
+            count++;
+      return count;
+     }
+   int               GetActiveFilterCount() const
+     {
+      int count = 0;
+      for(int i = 0; i < m_filterCount; i++)
+         if(m_filters[i] != NULL && m_filters[i].IsEnabled())
+            count++;
+      return count;
+     }
    ENUM_CONFLICT_RESOLUTION GetConflictMode() const { return m_conflictMode; }
 
    // Acesso indexado (para GUI genérica)

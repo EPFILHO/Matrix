@@ -2,11 +2,14 @@
 //|                                                 TradeManager.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|             Gerenciamento de Posições Individuais - EPBot Matrix |
-//|                     Versão 1.24 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.25 - Claude Parte 028 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.24"
+#property version   "1.25"
 
+// CHANGELOG v1.25 (Parte 028):
+// * SetSlippage(): só loga/aplica quando valor realmente muda
+//
 // CHANGELOG v1.24 (Parte 027):
 // + SaveState() / LoadState() / DeleteState() — persistência do estado
 //   das posições (BE, Trailing, TP1/TP2 executed) em arquivo .state
@@ -903,10 +906,11 @@ void CTradeManager::Clear()
 void CTradeManager::SetSlippage(int newSlippage)
   {
    int oldValue = m_slippage;
+   if(newSlippage == oldValue) return;
    m_slippage = newSlippage;
 
    if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", 
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
          "🔄 Slippage: " + IntegerToString(oldValue) + " → " + IntegerToString(newSlippage) + " pts");
   }
 

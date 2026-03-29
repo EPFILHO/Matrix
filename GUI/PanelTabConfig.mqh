@@ -2,18 +2,27 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.31 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.33 - Claude Parte 028 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
 //
 // Sub-páginas: RISCO | RISCO 2 | BLOQUEIOS | OUTROS | BLOQUEIO 2
 // Campos CEdit editáveis + botões de toggle/cycle
-// Botão APLICAR chama setters hot-reload nos módulos
 //
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.33 (Parte 028):
+// * Trade Comment: log HOT_RELOAD adicionado (só quando valor muda)
+//
+// v1.32 (Parte 028):
+// * ApplyConfig() retorna bool (errors → false); ValidateAndApplyAll() verifica retorno
+// * Removido SaveCurrentConfig() de dentro de ApplyConfig() (double-save eliminado)
+// * Feedback de ApplyConfig() redirecionado para ShowHeaderStatus() — m_cfg_status
+//   não é mais escrito por ApplyConfig (era duplicado com m_headerStatus)
+// * OnClickConflict/OnClickDebug: guard m_eaStarted (impede mudança com EA rodando)
+//
 // v1.31 (Parte 027) — Fase 2: Controle de Estado:
 // * inp_TrailingType/inp_BEType substituídos por m_cur_trailingType/m_cur_beType
 // * PopulateConfig inicializa runtime vars; magic reload via ApplyMagicNumberChange
@@ -1412,6 +1421,7 @@ void CEPBotPanel::OnClickDirection(int selected)
 
 void CEPBotPanel::OnClickConflict(void)
   {
+   if(m_eaStarted) return;
    m_cur_conflict = (m_cur_conflict == CONFLICT_PRIORITY) ? CONFLICT_CANCEL : CONFLICT_PRIORITY;
    m_co_bConfl.Pressed(false);
    m_co_bConfl.Text((m_cur_conflict == CONFLICT_PRIORITY) ? "PRIORIDADE" : "CANCELAR");
@@ -1420,6 +1430,7 @@ void CEPBotPanel::OnClickConflict(void)
 
 void CEPBotPanel::OnClickDebug(void)
   {
+   if(m_eaStarted) return;
    m_cur_debug = !m_cur_debug;
    m_co_bDbg.Pressed(false);
    m_co_bDbg.Text(m_cur_debug ? "ON" : "OFF");
@@ -1533,7 +1544,7 @@ void CEPBotPanel::OnClickTPType(int selected)
 //+------------------------------------------------------------------+
 //| ApplyConfig — lê CEdit, valida e chama setters nos módulos         |
 //+------------------------------------------------------------------+
-void CEPBotPanel::ApplyConfig(void)
+bool CEPBotPanel::ApplyConfig(void)
   {
 // ═══════════════════════════════════════════════
 // PRÉ-VALIDAÇÃO CRUZADA (bloqueante — antes de aplicar)
@@ -1567,11 +1578,9 @@ void CEPBotPanel::ApplyConfig(void)
 
    if(crossErrors > 0)
      {
-      m_cfg_status.Text(crossMsg);
-      m_cfg_status.Color(CLR_NEGATIVE);
-      m_cfgStatusExpiry = GetTickCount() + 15000;
+      ShowHeaderStatus(crossMsg, CLR_NEGATIVE);
       ChartRedraw();
-      return;  // BLOQUEIA — não aplica nenhum setter
+      return false;  // BLOQUEIA — não aplica nenhum setter
      }
 
    int errors = 0;
@@ -1859,7 +1868,14 @@ void CEPBotPanel::ApplyConfig(void)
      }
 
    // Trade Comment
-   g_tradeComment = m_co_iComm.Text();
+   string newComment = m_co_iComm.Text();
+   if(newComment != g_tradeComment)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            "🔄 Trade Comment: \"" + g_tradeComment + "\" → \"" + newComment + "\"");
+      g_tradeComment = newComment;
+     }
 
    if(m_signalManager != NULL)
       m_signalManager.SetConflictResolution(m_cur_conflict);
@@ -1902,27 +1918,16 @@ void CEPBotPanel::ApplyConfig(void)
 // ═══════════════════════════════════════════════
 // FEEDBACK
 // ═══════════════════════════════════════════════
-   if(errors == 0 && warnings == 0)
+   if(errors == 0 && warnings > 0)
+      ShowHeaderStatus(warnMsg, CLR_WARNING);
+   else if(errors > 0)
      {
-      m_cfg_status.Text("Aplicado com sucesso!");
-      m_cfg_status.Color(CLR_POSITIVE);
-      m_cfgStatusExpiry = GetTickCount() + 10000;
-      SaveCurrentConfig();
-     }
-   else if(errors == 0 && warnings > 0)
-     {
-      m_cfg_status.Text(warnMsg);
-      m_cfg_status.Color(CLR_WARNING);
-      m_cfgStatusExpiry = GetTickCount() + 15000;
-      SaveCurrentConfig();
-     }
-   else
-     {
-      m_cfg_status.Text(IntegerToString(errors) + " campo(s) invalido(s)");
-      m_cfg_status.Color(CLR_NEGATIVE);
-      m_cfgStatusExpiry = GetTickCount() + 15000;
+      ShowHeaderStatus(IntegerToString(errors) + " campo(s) invalido(s)", CLR_NEGATIVE);
+      ChartRedraw();
+      return false;
      }
    ChartRedraw();
+   return true;
   }
 
 //+------------------------------------------------------------------+
