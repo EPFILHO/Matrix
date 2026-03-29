@@ -10,8 +10,8 @@
 
 // ═══════════════════════════════════════════════════════════════════
 // CHANGELOG v3.28 (Parte 028):
-// * SetShowDebug(): só loga/aplica quando valor realmente muda
-// * SetDebugCooldown(): só loga/aplica quando valor realmente muda
+// * SetShowDebug(): revertido — loga sempre (comportamento intencional)
+// * SetDebugCooldown(): revertido — loga sempre (comportamento intencional)
 //
 // CHANGELOG v3.27 (Parte 027):
 // + ReloadForMagic(int newMagic): hot reload do Magic Number
@@ -494,10 +494,7 @@ datetime CLogger::GetReliableDate()
 //+------------------------------------------------------------------+
 void CLogger::SetShowDebug(bool show)
   {
-   bool oldValue = m_showDebug;
-   if(show == oldValue) return;
    m_showDebug = show;
-
    Print("🔄 Logger: DEBUG ", show ? "ATIVADO" : "DESATIVADO");
   }
 
@@ -507,9 +504,7 @@ void CLogger::SetShowDebug(bool show)
 void CLogger::SetDebugCooldown(int seconds)
   {
    int oldValue = m_debugCooldown;
-   if(seconds == oldValue) return;
    m_debugCooldown = seconds;
-
    Print("🔄 Logger: Cooldown DEBUG: ", oldValue, " → ", seconds, " segundos");
   }
 
