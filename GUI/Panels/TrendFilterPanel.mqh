@@ -238,11 +238,19 @@ public:
 
    void SetEnabled(bool enable)
      {
-      color bg = enable ? clrWhite : C'60,60,60';
-      m_iPeriod.ReadOnly(!enable);
-      m_iPeriod.ColorBackground(bg);
-      m_iNeutDist.ReadOnly(!enable);
-      m_iNeutDist.ColorBackground(bg);
+      color bg = enable ? clrWhite : C'220,220,220';
+      color fg = enable ? clrBlack : C'160,160,160';
+      m_iPeriod.ReadOnly(!enable);   m_iPeriod.ColorBackground(bg);   m_iPeriod.Color(fg);
+      m_iNeutDist.ReadOnly(!enable); m_iNeutDist.ColorBackground(bg); m_iNeutDist.Color(fg);
+      // Labels
+      color lc = enable ? CLR_LABEL : C'180,180,180';
+      m_lPeriod.Color(lc); m_lNeutDist.Color(lc);
+      // Toggle ON/OFF
+      if(!enable)
+        { m_btnToggle.ColorBackground(C'160,160,160'); m_btnToggle.Color(C'200,200,200'); }
+      else
+         ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      // Radio groups + buttons
       SetRadioGroupEnabled(m_lMethod, m_bMethod, 4, enable);
       SetButtonEnabled(m_lTF, m_bTF, enable);
       SetButtonEnabled(m_lPrice, m_bPrice, enable);

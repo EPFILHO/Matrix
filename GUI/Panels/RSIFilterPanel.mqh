@@ -254,10 +254,20 @@ public:
 
    void SetEnabled(bool enable)
      {
-      color bg = enable ? clrWhite : C'60,60,60';
-      m_iPeriod.ReadOnly(!enable);     m_iPeriod.ColorBackground(bg);
-      m_iOversold.ReadOnly(!enable);   m_iOversold.ColorBackground(bg);
-      m_iOverbought.ReadOnly(!enable); m_iOverbought.ColorBackground(bg);
+      color bg = enable ? clrWhite : C'220,220,220';
+      color fg = enable ? clrBlack : C'160,160,160';
+      m_iPeriod.ReadOnly(!enable);     m_iPeriod.ColorBackground(bg);     m_iPeriod.Color(fg);
+      m_iOversold.ReadOnly(!enable);   m_iOversold.ColorBackground(bg);   m_iOversold.Color(fg);
+      m_iOverbought.ReadOnly(!enable); m_iOverbought.ColorBackground(bg); m_iOverbought.Color(fg);
+      // Labels
+      color lc = enable ? CLR_LABEL : C'180,180,180';
+      m_lPeriod.Color(lc); m_lOversold.Color(lc); m_lOverbought.Color(lc);
+      // Toggle ON/OFF
+      if(!enable)
+        { m_btnToggle.ColorBackground(C'160,160,160'); m_btnToggle.Color(C'200,200,200'); }
+      else
+         ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      // Buttons + radios
       SetButtonEnabled(m_lTF, m_bTF, enable);
       SetRadioGroupEnabled(m_lMode2, m_bMode, 3, enable);
       if(enable)

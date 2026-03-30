@@ -113,13 +113,20 @@ public:
 
    void SetEnabled(bool enable)
      {
-      color bg = enable ? clrWhite : C'200,200,200';
-      m_iPeriod.ReadOnly(!enable);
-      m_iPeriod.ColorBackground(bg);
-      m_iDev.ReadOnly(!enable);
-      m_iDev.ColorBackground(bg);
-      m_iPriority.ReadOnly(!enable);
-      m_iPriority.ColorBackground(bg);
+      color bg = enable ? clrWhite : C'220,220,220';
+      color fg = enable ? clrBlack : C'160,160,160';
+      m_iPeriod.ReadOnly(!enable);   m_iPeriod.ColorBackground(bg);   m_iPeriod.Color(fg);
+      m_iDev.ReadOnly(!enable);      m_iDev.ColorBackground(bg);      m_iDev.Color(fg);
+      m_iPriority.ReadOnly(!enable); m_iPriority.ColorBackground(bg); m_iPriority.Color(fg);
+      // Labels
+      color lc = enable ? CLR_LABEL : C'180,180,180';
+      m_lPriority.Color(lc); m_lPeriod.Color(lc); m_lDev.Color(lc);
+      // Toggle ON/OFF
+      if(!enable)
+        { m_btnToggle.ColorBackground(C'160,160,160'); m_btnToggle.Color(C'200,200,200'); }
+      else
+         ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      // Buttons + radios
       SetButtonEnabled(m_lTF, m_bTF, enable);
       SetRadioGroupEnabled(m_lMode, m_bMode, 3, enable);
       SetRadioGroupEnabled(m_lEntry, m_bEntry, 2, enable);

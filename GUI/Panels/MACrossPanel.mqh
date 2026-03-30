@@ -450,10 +450,20 @@ public:
       m_iFastP.ReadOnly(!enable);
       m_iSlowP.ReadOnly(!enable);
       m_iPriority.ReadOnly(!enable);
-      color bg = enable ? C'25,25,25' : C'50,50,50';
-      m_iFastP.ColorBackground(bg);
-      m_iSlowP.ColorBackground(bg);
-      m_iPriority.ColorBackground(bg);
+      color bg = enable ? clrWhite : C'220,220,220';
+      color fg = enable ? clrBlack : C'160,160,160';
+      m_iFastP.ColorBackground(bg);   m_iFastP.Color(fg);
+      m_iSlowP.ColorBackground(bg);   m_iSlowP.Color(fg);
+      m_iPriority.ColorBackground(bg); m_iPriority.Color(fg);
+      // Labels
+      color lc = enable ? CLR_LABEL : C'180,180,180';
+      m_lPriority.Color(lc); m_lFastP.Color(lc); m_lSlowP.Color(lc);
+      // Toggle ON/OFF
+      if(!enable)
+        { m_btnToggle.ColorBackground(C'160,160,160'); m_btnToggle.Color(C'200,200,200'); }
+      else
+         ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      // Radio groups + buttons
       SetRadioGroupEnabled(m_lFastM, m_bFastM, 4, enable);
       SetButtonEnabled(m_lFastTF, m_bFastTF, enable);
       SetButtonEnabled(m_lFastPr, m_bFastPr, enable);
