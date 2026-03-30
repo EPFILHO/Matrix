@@ -2,10 +2,14 @@
 //|                                              RSIFilterPanel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — RSI Filter                               |
-//|                     Versão 1.05 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.06 - Claude Parte 029 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.06 (Parte 029):
+// * SetEnabled(): toggle ON/OFF cinza, campos fundo branco/cinza,
+//   labels dim, TF + Mode radios cobertos
 //
 // CHANGELOG v1.05 (Parte 027) — Bugfix:
 // * Fix: trailing comma na lista de inicialização do construtor

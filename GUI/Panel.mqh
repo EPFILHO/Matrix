@@ -2,15 +2,21 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.58 - Claude Parte 028 (Claude Code) |
+//|                     Versão 1.59 - Claude Parte 029 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.58"
+#property version   "1.59"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.59 (Parte 029):
+// * SetAllControlsEnabled: expandido com radio groups, toggles e edits
+//   de RISCO, RISCO 2, BLOQUEIOS, BLOQ2 (News) — tudo travado com EA rodando
+// * Guard m_eaStarted no dispatch de OnClick dos sub-painéis (estratégias + filtros)
+// * Sub-painéis SetEnabled(): cobertura de CButtons (toggle, TF, radios)
+//
 // v1.58 (Parte 028):
 // * SetAllControlsEnabled: adiciona SetButtonEnabled para m_co_bConfl e m_co_bDbg
 //   (Conflito Sinais e Debug Logs não eram travados com EA rodando)

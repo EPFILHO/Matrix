@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.33 - Claude Parte 028 (Claude Code) |
+//|                     Versão 1.34 - Claude Parte 029 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -13,6 +13,12 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.34 (Parte 029):
+// * Guard m_eaStarted em 25 handlers OnClick (RISCO, RISCO2, BLOQUEIOS, BLOQ2)
+// * Refresh*State: guard m_eaStarted para não sobrescrever estado travado
+//   (RefreshRiscoState, RefreshRisco2State, RefreshDailyLimitsState,
+//    RefreshStreakState, RefreshBloqTimeFilter, RefreshBloqSessionEnd, RefreshNewsState)
+//
 // v1.33 (Parte 028):
 // * Trade Comment: log HOT_RELOAD adicionado (só quando valor muda)
 //
