@@ -952,6 +952,7 @@ void CEPBotPanel::PopulateConfig(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::RefreshRiscoState(void)
   {
+   if(m_eaStarted) return;
 // ATR Period: habilitado quando qualquer feature usa ATR
    SetEditEnabled(m_cr_lATRp, m_cr_iATRp, m_cfg_hasATR);
 
@@ -1014,6 +1015,7 @@ void CEPBotPanel::RefreshRiscoState(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::RefreshRisco2State(void)
   {
+   if(m_eaStarted) return;
 // Trailing fields: habilitado se toggle ON
    SetEditEnabled(m_c2_lTrlSt, m_c2_iTrlSt, m_cur_trailOn);
    SetEditEnabled(m_c2_lTrlSp, m_c2_iTrlSp, m_cur_trailOn);
@@ -1062,6 +1064,7 @@ void CEPBotPanel::RefreshRisco2State(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::RefreshDailyLimitsState(void)
   {
+   if(m_eaStarted) return;
    SetEditEnabled(m_c2_lDLTrd, m_c2_iDLTrd, m_cur_dailyLimitsOn);
    SetEditEnabled(m_c2_lDLLoss, m_c2_iDLLoss, m_cur_dailyLimitsOn);
    SetEditEnabled(m_c2_lDLGain, m_c2_iDLGain, m_cur_dailyLimitsOn);
@@ -2006,6 +2009,7 @@ void CEPBotPanel::OnClickCompTrail(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::RefreshStreakState(void)
   {
+   if(m_eaStarted) return;
 // ── Loss Streak ──
    SetEditEnabled(m_cb_lLStr, m_cb_iLStr, m_cur_lossStreakOn);
    if(m_cur_lossStreakOn)
@@ -2101,6 +2105,7 @@ void CEPBotPanel::OnClickWinStreakToggle(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::RefreshBloqTimeFilter(void)
   {
+   if(m_eaStarted) return;
    SetEditEnabled(m_cb_lTFSH, m_cb_iTFSH, m_cur_tfOn);
    SetEditEnabled(m_cb_lTFSM, m_cb_iTFSM, m_cur_tfOn);
    SetEditEnabled(m_cb_lTFEH, m_cb_iTFEH, m_cur_tfOn);
@@ -2149,6 +2154,7 @@ void CEPBotPanel::OnClickTFClose(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::RefreshBloqSessionEnd(void)
   {
+   if(m_eaStarted) return;
    SetEditEnabled(m_cb_lCBSMin, m_cb_iCBSMin, m_cur_cbsOn);
   }
 
@@ -2217,6 +2223,7 @@ void CEPBotPanel::OnClickDDPeakMode(int selected)
 //+------------------------------------------------------------------+
 void CEPBotPanel::RefreshNewsState(int w)
   {
+   if(m_eaStarted) return;
    bool on = (w == 1) ? m_cur_newsOn1 : (w == 2) ? m_cur_newsOn2 : m_cur_newsOn3;
    if(w == 1)
      {
