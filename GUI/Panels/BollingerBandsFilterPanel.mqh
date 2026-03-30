@@ -2,10 +2,13 @@
 //|                                     BollingerBandsFilterPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Bollinger Bands Filter (Anti-Squeeze)   |
-//|                     Versão 1.06 - Claude Parte 029 (Claude Code) |
+//|                     Versão 1.07 - Claude Parte 029 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.07 (Parte 029):
+// * m_locked: Update() não sobrescreve visual quando EA rodando
 //
 // CHANGELOG v1.06 (Parte 029):
 // * SetEnabled(): toggle ON/OFF cinza, campos fundo branco/cinza,
@@ -218,7 +221,11 @@ public:
 
    virtual void Update(void)
      {
-      ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      if(!m_locked)
+        {
+         ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+         _RefreshFieldState();
+        }
       m_lModeDesc.Text(_ModeDesc(m_cur_metric));
       m_lThreshHint.Text(_ThreshHint(m_cur_metric));
       if(m_filter != NULL && m_filter.IsInitialized())
@@ -239,7 +246,6 @@ public:
          m_eWidth.Text("--");            m_eWidth.Color(CLR_NEUTRAL);
          m_eMode.Text("--");             m_eMode.Color(CLR_NEUTRAL);
         }
-      _RefreshFieldState();
      }
 
    virtual bool OnClick(string name)
@@ -301,6 +307,7 @@ public:
 
    void SetEnabled(bool enable)
      {
+      m_locked = !enable;
       color bg = enable ? clrWhite : C'220,220,220';
       color fg = enable ? clrBlack : C'160,160,160';
       m_iPeriod.ReadOnly(!enable);     m_iPeriod.ColorBackground(bg);     m_iPeriod.Color(fg);

@@ -2,10 +2,13 @@
 //|                                            RSIStrategyPanel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — RSI Strategy                             |
-//|                     Versão 1.06 - Claude Parte 029 (Claude Code) |
+//|                     Versão 1.07 - Claude Parte 029 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.07 (Parte 029):
+// * m_locked: Update() não sobrescreve visual quando EA rodando
 //
 // CHANGELOG v1.06 (Parte 029):
 // * SetEnabled(): toggle ON/OFF cinza, campos fundo branco/cinza,
@@ -190,7 +193,11 @@ public:
 
    virtual void Update(void)
      {
-      ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      if(!m_locked)
+        {
+         ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+         _RefreshFieldState();
+        }
       m_lModeDesc.Text(RSIModeDesc(m_cur_rsiMode));
       if(m_strategy != NULL && m_strategy.IsInitialized() && m_strategy.GetEnabled())
         {
@@ -211,7 +218,6 @@ public:
          m_eMode.Text("--");         m_eMode.Color(CLR_NEUTRAL);
          m_eLevels.Text("--");       m_eLevels.Color(CLR_NEUTRAL);
         }
-      _RefreshFieldState();
       if(m_statusExpiry > 0 && GetTickCount() >= m_statusExpiry)
         { m_lblStatus.Text(""); m_statusExpiry = 0; ChartRedraw(); }
      }
@@ -315,6 +321,7 @@ public:
 
    void SetEnabled(bool enable)
      {
+      m_locked = !enable;
       m_iPeriod.ReadOnly(!enable); m_iOversold.ReadOnly(!enable);
       m_iOverbought.ReadOnly(!enable); m_iMiddle.ReadOnly(!enable);
       m_iPriority.ReadOnly(!enable);

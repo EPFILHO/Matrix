@@ -2,10 +2,14 @@
 //|                                             TrendFilterPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Trend Filter                             |
-//|                     Versão 1.05 - Claude Parte 029 (Claude Code) |
+//|                     Versão 1.06 - Claude Parte 029 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.06 (Parte 029):
+// * m_locked: Update() não sobrescreve visual quando EA rodando
+// * SetEnabled() seta m_locked; Update() respeita o flag
 //
 // CHANGELOG v1.05 (Parte 029):
 // * SetEnabled(): toggle ON/OFF cinza, campos fundo branco/cinza,
@@ -169,7 +173,11 @@ public:
 
    virtual void Update(void)
      {
-      ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      if(!m_locked)
+        {
+         ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+         _RefreshFieldState();
+        }
       if(m_filter != NULL && m_filter.IsInitialized())
         {
          bool active = m_filter.IsTrendFilterActive() || m_filter.IsNeutralZoneActive();
@@ -186,7 +194,6 @@ public:
          m_eMA.Text("--");               m_eMA.Color(CLR_NEUTRAL);
          m_eDist.Text("--");             m_eDist.Color(CLR_NEUTRAL);
         }
-      _RefreshFieldState();
      }
 
    virtual bool OnClick(string name)
@@ -242,6 +249,7 @@ public:
 
    void SetEnabled(bool enable)
      {
+      m_locked = !enable;
       color bg = enable ? clrWhite : C'220,220,220';
       color fg = enable ? clrBlack : C'160,160,160';
       m_iPeriod.ReadOnly(!enable);   m_iPeriod.ColorBackground(bg);   m_iPeriod.Color(fg);
