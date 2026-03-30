@@ -243,6 +243,15 @@ public:
       m_iPeriod.ColorBackground(bg);
       m_iNeutDist.ReadOnly(!enable);
       m_iNeutDist.ColorBackground(bg);
+      SetRadioGroupEnabled(m_lMethod, m_bMethod, 4, enable);
+      SetButtonEnabled(m_lTF, m_bTF, enable);
+      SetButtonEnabled(m_lPrice, m_bPrice, enable);
+      if(enable)
+        {
+         m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+         m_bPrice.ColorBackground(C'50,80,140'); m_bPrice.Color(clrWhite);
+         SetRadioSel(m_bMethod, 4, MAMethodToIndex(m_cur_method));
+        }
      }
 
 private:

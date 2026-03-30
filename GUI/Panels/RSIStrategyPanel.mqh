@@ -318,6 +318,13 @@ public:
       m_iPeriod.ColorBackground(bg); m_iOversold.ColorBackground(bg);
       m_iOverbought.ColorBackground(bg); m_iMiddle.ColorBackground(bg);
       m_iPriority.ColorBackground(bg);
+      SetButtonEnabled(m_lTF, m_bTF, enable);
+      SetRadioGroupEnabled(m_lMode2, m_bMode, 3, enable);
+      if(enable)
+        {
+         m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+         SetRadioSel(m_bMode, 3, (int)m_cur_rsiMode);
+        }
      }
   };
 //+------------------------------------------------------------------+

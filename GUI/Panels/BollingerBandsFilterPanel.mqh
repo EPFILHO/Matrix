@@ -302,6 +302,13 @@ public:
       m_iDev.ReadOnly(!enable);        m_iDev.ColorBackground(bg);
       m_iThreshold.ReadOnly(!enable);  m_iThreshold.ColorBackground(bg);
       m_iPercPeriod.ReadOnly(!enable);  m_iPercPeriod.ColorBackground(bg);
+      SetButtonEnabled(m_lTF, m_bTF, enable);
+      SetRadioGroupEnabled(m_lMode2, m_bMode, 3, enable);
+      if(enable)
+        {
+         m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+         SetRadioSel(m_bMode, 3, (int)m_cur_metric);
+        }
      }
 
 private:

@@ -454,6 +454,25 @@ public:
       m_iFastP.ColorBackground(bg);
       m_iSlowP.ColorBackground(bg);
       m_iPriority.ColorBackground(bg);
+      SetRadioGroupEnabled(m_lFastM, m_bFastM, 4, enable);
+      SetButtonEnabled(m_lFastTF, m_bFastTF, enable);
+      SetButtonEnabled(m_lFastPr, m_bFastPr, enable);
+      SetRadioGroupEnabled(m_lSlowM, m_bSlowM, 4, enable);
+      SetButtonEnabled(m_lSlowTF, m_bSlowTF, enable);
+      SetButtonEnabled(m_lSlowPr, m_bSlowPr, enable);
+      SetRadioGroupEnabled(m_lEntry, m_bEntry, 2, enable);
+      SetRadioGroupEnabled(m_lExit, m_bExit, 3, enable);
+      if(enable)
+        {
+         SetRadioSel(m_bFastM, 4, MAMethodToIndex(m_cur_fastMethod));
+         m_bFastTF.ColorBackground(C'50,80,140'); m_bFastTF.Color(clrWhite);
+         m_bFastPr.ColorBackground(C'50,80,140'); m_bFastPr.Color(clrWhite);
+         SetRadioSel(m_bSlowM, 4, MAMethodToIndex(m_cur_slowMethod));
+         m_bSlowTF.ColorBackground(C'50,80,140'); m_bSlowTF.Color(clrWhite);
+         m_bSlowPr.ColorBackground(C'50,80,140'); m_bSlowPr.Color(clrWhite);
+         SetRadioSel(m_bEntry, 2, (int)m_cur_entry);
+         SetRadioSel(m_bExit, 3, (int)m_cur_exit);
+        }
      }
   };
 //+------------------------------------------------------------------+

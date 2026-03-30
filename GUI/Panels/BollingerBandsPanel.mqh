@@ -120,6 +120,17 @@ public:
       m_iDev.ColorBackground(bg);
       m_iPriority.ReadOnly(!enable);
       m_iPriority.ColorBackground(bg);
+      SetButtonEnabled(m_lTF, m_bTF, enable);
+      SetRadioGroupEnabled(m_lMode, m_bMode, 3, enable);
+      SetRadioGroupEnabled(m_lEntry, m_bEntry, 2, enable);
+      SetRadioGroupEnabled(m_lExit, m_bExit, 3, enable);
+      if(enable)
+        {
+         m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+         SetRadioSel(m_bMode, 3, (int)m_cur_mode);
+         SetRadioSel(m_bEntry, 2, (int)m_cur_entry);
+         SetRadioSel(m_bExit, 3, (int)m_cur_exit);
+        }
      }
 
    virtual bool Create(CEPBotPanel *parent, long chart_id, int subwin)

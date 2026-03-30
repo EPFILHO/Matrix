@@ -1093,6 +1093,7 @@ void CEPBotPanel::RefreshDailyLimitsState(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickDailyLimitsToggle(void)
   {
+   if(m_eaStarted) return;
    m_cur_dailyLimitsOn = !m_cur_dailyLimitsOn;
    m_c2_bDLAct.Pressed(false);
    m_c2_bDLAct.Text(m_cur_dailyLimitsOn ? "ON" : "OFF");
@@ -1105,6 +1106,7 @@ void CEPBotPanel::OnClickDailyLimitsToggle(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickDLProfitTargetAction(int selected)
   {
+   if(m_eaStarted) return;
    if(!m_cur_dailyLimitsOn) return;
    m_cur_profitTargetAction = (ENUM_PROFIT_TARGET_ACTION)selected;
    SetRadioSelection(m_c2_bDLPTA, 2, selected);
@@ -1414,6 +1416,7 @@ void CEPBotPanel::OnClickCfgBloq2(void)   { ShowCfgPage(CFG_BLOQ2);     }
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickDirection(int selected)
   {
+   if(m_eaStarted) return;
    m_cur_direction = (ENUM_TRADE_DIRECTION)selected;
    SetRadioSelection(m_cb_bDir, 3, selected);
    ChartRedraw();
@@ -1440,6 +1443,7 @@ void CEPBotPanel::OnClickDebug(void)
 
 void CEPBotPanel::OnClickPartialTP(void)
   {
+   if(m_eaStarted) return;
 // Bloqueado se TP = ATR (conflito conceitual)
    if(m_cur_tpType == TP_ATR)
       return;
@@ -1457,6 +1461,7 @@ void CEPBotPanel::OnClickPartialTP(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickTrailToggle(void)
   {
+   if(m_eaStarted) return;
    m_cur_trailOn = !m_cur_trailOn;
    m_c2_bTrlAct.Pressed(false);
    m_c2_bTrlAct.Text(m_cur_trailOn ? "ON" : "OFF");
@@ -1469,6 +1474,7 @@ void CEPBotPanel::OnClickTrailToggle(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickBEToggle(void)
   {
+   if(m_eaStarted) return;
    m_cur_beOn = !m_cur_beOn;
    m_c2_bBEAct.Pressed(false);
    m_c2_bBEAct.Text(m_cur_beOn ? "ON" : "OFF");
@@ -1481,6 +1487,7 @@ void CEPBotPanel::OnClickBEToggle(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickSLType(int selected)
   {
+   if(m_eaStarted) return;
    m_cur_slType = IndexToSLType(selected);
    SetRadioSelection(m_cr_bSLT, 3, selected);
 
@@ -1510,7 +1517,7 @@ void CEPBotPanel::OnClickSLType(int selected)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickTPType(int selected)
   {
-
+   if(m_eaStarted) return;
    m_cur_tpType = IndexToTPType(selected);
    SetRadioSelection(m_cr_bTPT, 3, selected);
 
@@ -1962,6 +1969,7 @@ void CEPBotPanel::ApplyMagicNumberChange(int newMagic)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickCompSL(void)
   {
+   if(m_eaStarted) return;
    m_cur_compSL = !m_cur_compSL;
    m_cr_bCSL.Pressed(false);
    m_cr_bCSL.Text(m_cur_compSL ? "ON" : "OFF");
@@ -1971,6 +1979,7 @@ void CEPBotPanel::OnClickCompSL(void)
 
 void CEPBotPanel::OnClickCompTP(void)
   {
+   if(m_eaStarted) return;
 // Bloqueado se TP = NENHUM
    if(!m_cfg_hasTP) return;
    m_cur_compTP = !m_cur_compTP;
@@ -1982,6 +1991,7 @@ void CEPBotPanel::OnClickCompTP(void)
 
 void CEPBotPanel::OnClickCompTrail(void)
   {
+   if(m_eaStarted) return;
 // Bloqueado se Trailing desligado
    if(!m_cur_trailOn) return;
    m_cur_compTrail = !m_cur_compTrail;
@@ -2042,6 +2052,7 @@ void CEPBotPanel::RefreshStreakState(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickDDToggle(void)
   {
+   if(m_eaStarted) return;
    m_cur_ddOn = !m_cur_ddOn;
    m_c2_bDDAct.Pressed(false);
    bool ddAllowed = m_cur_dailyLimitsOn && m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN;
@@ -2065,6 +2076,7 @@ void CEPBotPanel::OnClickDDToggle(void)
 
 void CEPBotPanel::OnClickLossStreakToggle(void)
   {
+   if(m_eaStarted) return;
    m_cur_lossStreakOn = !m_cur_lossStreakOn;
    m_cb_bLStrOn.Pressed(false);
    m_cb_bLStrOn.Text(m_cur_lossStreakOn ? "ON" : "OFF");
@@ -2075,6 +2087,7 @@ void CEPBotPanel::OnClickLossStreakToggle(void)
 
 void CEPBotPanel::OnClickWinStreakToggle(void)
   {
+   if(m_eaStarted) return;
    m_cur_winStreakOn = !m_cur_winStreakOn;
    m_cb_bWStrOn.Pressed(false);
    m_cb_bWStrOn.Text(m_cur_winStreakOn ? "ON" : "OFF");
@@ -2111,6 +2124,7 @@ void CEPBotPanel::RefreshBloqTimeFilter(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickTFToggle(void)
   {
+   if(m_eaStarted) return;
    m_cur_tfOn = !m_cur_tfOn;
    m_cb_bTFOn.Pressed(false);
    m_cb_bTFOn.Text(m_cur_tfOn ? "ON" : "OFF");
@@ -2121,6 +2135,7 @@ void CEPBotPanel::OnClickTFToggle(void)
 
 void CEPBotPanel::OnClickTFClose(void)
   {
+   if(m_eaStarted) return;
    if(!m_cur_tfOn) return;
    m_cur_tfClose = !m_cur_tfClose;
    m_cb_bTFCl.Pressed(false);
@@ -2142,6 +2157,7 @@ void CEPBotPanel::RefreshBloqSessionEnd(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickCBSToggle(void)
   {
+   if(m_eaStarted) return;
    m_cur_cbsOn = !m_cur_cbsOn;
    m_cb_bCBSOn.Pressed(false);
    m_cb_bCBSOn.Text(m_cur_cbsOn ? "ON" : "OFF");
@@ -2155,6 +2171,7 @@ void CEPBotPanel::OnClickCBSToggle(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickLossStreakAction(int selected)
   {
+   if(m_eaStarted) return;
    if(!m_cur_lossStreakOn) return;
    m_cur_lossStreakAction = (ENUM_STREAK_ACTION)selected;
    SetRadioSelection(m_cb_bLStrA, 2, selected);
@@ -2164,6 +2181,7 @@ void CEPBotPanel::OnClickLossStreakAction(int selected)
 
 void CEPBotPanel::OnClickWinStreakAction(int selected)
   {
+   if(m_eaStarted) return;
    if(!m_cur_winStreakOn) return;
    m_cur_winStreakAction = (ENUM_STREAK_ACTION)selected;
    SetRadioSelection(m_cb_bWStrA, 2, selected);
@@ -2173,6 +2191,7 @@ void CEPBotPanel::OnClickWinStreakAction(int selected)
 
 void CEPBotPanel::OnClickDDType(int selected)
   {
+   if(m_eaStarted) return;
    if(!m_cur_ddOn) return;
    m_cur_ddType = (ENUM_DRAWDOWN_TYPE)selected;
    SetRadioSelection(m_c2_bDDT, 2, selected);
@@ -2184,6 +2203,7 @@ void CEPBotPanel::OnClickDDType(int selected)
 
 void CEPBotPanel::OnClickDDPeakMode(int selected)
   {
+   if(m_eaStarted) return;
    if(!m_cur_ddOn) return;
    m_cur_ddPeakMode = (ENUM_DRAWDOWN_PEAK_MODE)selected;
    SetRadioSelection(m_c2_bDDPk, 2, selected);
@@ -2226,6 +2246,7 @@ void CEPBotPanel::RefreshNewsState(int w)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickNewsOn1(void)
   {
+   if(m_eaStarted) return;
    m_cur_newsOn1 = !m_cur_newsOn1;
    m_cb2_bN1On.Text(m_cur_newsOn1 ? "ON" : "OFF");
    m_cb2_bN1On.ColorBackground(m_cur_newsOn1 ? C'30,120,70' : C'120,50,50');
@@ -2234,6 +2255,7 @@ void CEPBotPanel::OnClickNewsOn1(void)
 
 void CEPBotPanel::OnClickNewsOn2(void)
   {
+   if(m_eaStarted) return;
    m_cur_newsOn2 = !m_cur_newsOn2;
    m_cb2_bN2On.Text(m_cur_newsOn2 ? "ON" : "OFF");
    m_cb2_bN2On.ColorBackground(m_cur_newsOn2 ? C'30,120,70' : C'120,50,50');
@@ -2242,6 +2264,7 @@ void CEPBotPanel::OnClickNewsOn2(void)
 
 void CEPBotPanel::OnClickNewsOn3(void)
   {
+   if(m_eaStarted) return;
    m_cur_newsOn3 = !m_cur_newsOn3;
    m_cb2_bN3On.Text(m_cur_newsOn3 ? "ON" : "OFF");
    m_cb2_bN3On.ColorBackground(m_cur_newsOn3 ? C'30,120,70' : C'120,50,50');

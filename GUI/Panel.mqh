@@ -1507,6 +1507,19 @@ void CEPBotPanel::SetAllControlsEnabled(bool enable)
    SetEditEnabled(m_cr_lTP1d, m_cr_iTP1d, enable);
    SetEditEnabled(m_cr_lTP2p, m_cr_iTP2p, enable);
    SetEditEnabled(m_cr_lTP2d, m_cr_iTP2d, enable);
+   SetRadioGroupEnabled(m_cr_lSLT, m_cr_bSLT, 3, enable);
+   SetRadioGroupEnabled(m_cr_lTPT, m_cr_bTPT, 3, enable);
+   SetButtonEnabled(m_cr_lPTP, m_cr_bPTP, enable);
+   SetButtonEnabled(m_cr_lCSL, m_cr_bCSL, enable);
+   SetButtonEnabled(m_cr_lCTP, m_cr_bCTP, enable);
+   if(enable)
+     {
+      SetRadioSelection(m_cr_bSLT, 3, SLTypeToIndex(m_cur_slType));
+      SetRadioSelection(m_cr_bTPT, 3, TPTypeToIndex(m_cur_tpType));
+      m_cr_bCSL.ColorBackground(m_cur_compSL ? C'30,120,70' : C'120,50,50');
+      m_cr_bCSL.Color(clrWhite);
+      RefreshRiscoState();
+     }
 
 // ── CONFIG: RISCO 2 ──
    SetEditEnabled(m_c2_lTrlSt, m_c2_iTrlSt, enable);
@@ -1517,9 +1530,89 @@ void CEPBotPanel::SetAllControlsEnabled(bool enable)
    SetEditEnabled(m_c2_lDLLoss, m_c2_iDLLoss, enable);
    SetEditEnabled(m_c2_lDLGain, m_c2_iDLGain, enable);
    SetEditEnabled(m_c2_lDD, m_c2_iDD, enable);
+   SetButtonEnabled(m_c2_lTrlAct, m_c2_bTrlAct, enable);
+   SetButtonEnabled(m_c2_lCTrl, m_c2_bCTrl, enable);
+   SetButtonEnabled(m_c2_lBEAct, m_c2_bBEAct, enable);
+   SetButtonEnabled(m_c2_lDLAct, m_c2_bDLAct, enable);
+   SetButtonEnabled(m_c2_lDDAct, m_c2_bDDAct, enable);
+   SetRadioGroupEnabled(m_c2_lDLPTA, m_c2_bDLPTA, 2, enable);
+   SetRadioGroupEnabled(m_c2_lDDT, m_c2_bDDT, 2, enable);
+   SetRadioGroupEnabled(m_c2_lDDPk, m_c2_bDDPk, 2, enable);
+   if(enable)
+     {
+      m_c2_bTrlAct.ColorBackground(m_cur_trailOn ? C'30,120,70' : C'120,50,50');
+      m_c2_bTrlAct.Color(clrWhite);
+      m_c2_bBEAct.ColorBackground(m_cur_beOn ? C'30,120,70' : C'120,50,50');
+      m_c2_bBEAct.Color(clrWhite);
+      m_c2_bDLAct.ColorBackground(m_cur_dailyLimitsOn ? C'30,120,70' : C'120,50,50');
+      m_c2_bDLAct.Color(clrWhite);
+      RefreshDailyLimitsState();
+      RefreshRisco2State();
+     }
 
 // ── CONFIG: BLOQUEIOS ──
    SetEditEnabled(m_cb_lSpr, m_cb_iSpr, enable);
+   SetRadioGroupEnabled(m_cb_lDir, m_cb_bDir, 3, enable);
+   SetButtonEnabled(m_cb_lLStrOn, m_cb_bLStrOn, enable);
+   SetEditEnabled(m_cb_lLStr, m_cb_iLStr, enable);
+   SetEditEnabled(m_cb_lLStrP, m_cb_iLStrP, enable);
+   SetRadioGroupEnabled(m_cb_lLStrA, m_cb_bLStrA, 2, enable);
+   SetButtonEnabled(m_cb_lWStrOn, m_cb_bWStrOn, enable);
+   SetEditEnabled(m_cb_lWStr, m_cb_iWStr, enable);
+   SetEditEnabled(m_cb_lWStrP, m_cb_iWStrP, enable);
+   SetRadioGroupEnabled(m_cb_lWStrA, m_cb_bWStrA, 2, enable);
+   SetButtonEnabled(m_cb_lTFOn, m_cb_bTFOn, enable);
+   SetEditEnabled(m_cb_lTFSH, m_cb_iTFSH, enable);
+   SetEditEnabled(m_cb_lTFSM, m_cb_iTFSM, enable);
+   SetEditEnabled(m_cb_lTFEH, m_cb_iTFEH, enable);
+   SetEditEnabled(m_cb_lTFEM, m_cb_iTFEM, enable);
+   SetButtonEnabled(m_cb_lTFCl, m_cb_bTFCl, enable);
+   SetButtonEnabled(m_cb_lCBSOn, m_cb_bCBSOn, enable);
+   SetEditEnabled(m_cb_lCBSMin, m_cb_iCBSMin, enable);
+   if(enable)
+     {
+      SetRadioSelection(m_cb_bDir, 3, (int)m_cur_direction);
+      m_cb_bLStrOn.ColorBackground(m_cur_lossStreakOn ? C'30,120,70' : C'120,50,50');
+      m_cb_bLStrOn.Color(clrWhite);
+      m_cb_bWStrOn.ColorBackground(m_cur_winStreakOn ? C'30,120,70' : C'120,50,50');
+      m_cb_bWStrOn.Color(clrWhite);
+      m_cb_bTFOn.ColorBackground(m_cur_tfOn ? C'30,120,70' : C'120,50,50');
+      m_cb_bTFOn.Color(clrWhite);
+      m_cb_bCBSOn.ColorBackground(m_cur_cbsOn ? C'30,120,70' : C'120,50,50');
+      m_cb_bCBSOn.Color(clrWhite);
+      RefreshStreakState();
+      RefreshBloqTimeFilter();
+      RefreshBloqSessionEnd();
+     }
+
+// ── CONFIG: BLOQ2 (News) ──
+   SetButtonEnabled(m_cb2_lN1On, m_cb2_bN1On, enable);
+   SetEditEnabled(m_cb2_lN1SH, m_cb2_iN1SH, enable);
+   SetEditEnabled(m_cb2_lN1SM, m_cb2_iN1SM, enable);
+   SetEditEnabled(m_cb2_lN1EH, m_cb2_iN1EH, enable);
+   SetEditEnabled(m_cb2_lN1EM, m_cb2_iN1EM, enable);
+   SetButtonEnabled(m_cb2_lN2On, m_cb2_bN2On, enable);
+   SetEditEnabled(m_cb2_lN2SH, m_cb2_iN2SH, enable);
+   SetEditEnabled(m_cb2_lN2SM, m_cb2_iN2SM, enable);
+   SetEditEnabled(m_cb2_lN2EH, m_cb2_iN2EH, enable);
+   SetEditEnabled(m_cb2_lN2EM, m_cb2_iN2EM, enable);
+   SetButtonEnabled(m_cb2_lN3On, m_cb2_bN3On, enable);
+   SetEditEnabled(m_cb2_lN3SH, m_cb2_iN3SH, enable);
+   SetEditEnabled(m_cb2_lN3SM, m_cb2_iN3SM, enable);
+   SetEditEnabled(m_cb2_lN3EH, m_cb2_iN3EH, enable);
+   SetEditEnabled(m_cb2_lN3EM, m_cb2_iN3EM, enable);
+   if(enable)
+     {
+      m_cb2_bN1On.ColorBackground(m_cur_newsOn1 ? C'30,120,70' : C'120,50,50');
+      m_cb2_bN1On.Color(clrWhite);
+      m_cb2_bN2On.ColorBackground(m_cur_newsOn2 ? C'30,120,70' : C'120,50,50');
+      m_cb2_bN2On.Color(clrWhite);
+      m_cb2_bN3On.ColorBackground(m_cur_newsOn3 ? C'30,120,70' : C'120,50,50');
+      m_cb2_bN3On.Color(clrWhite);
+      RefreshNewsState(1);
+      RefreshNewsState(2);
+      RefreshNewsState(3);
+     }
 
 // ── CONFIG: OUTROS ──
    SetEditEnabled(m_co_lMagic, m_co_iMagic, enable);
@@ -1661,6 +1754,7 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
               { m_e_stratBtns[i].Pressed(false); ShowEstratPage(i); ChartRedraw(); return; }
            }
          // ESTRAT.: eventos dos painéis (genérico)
+         if(!m_eaStarted)
          for(int i = 0; i < m_stratPanelCount; i++)
            {
             if(m_stratPanels[i] != NULL && m_stratPanels[i].OnClick(sparam)) { ChartRedraw(); return; }
@@ -1673,6 +1767,7 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
               { m_f_filtBtns[i].Pressed(false); ShowFiltrosPage(i); ChartRedraw(); return; }
            }
          // FILTROS: eventos dos painéis (genérico)
+         if(!m_eaStarted)
          for(int i = 0; i < m_filtPanelCount; i++)
            {
             if(m_filtPanels[i] != NULL && m_filtPanels[i].OnClick(sparam)) { ChartRedraw(); return; }
