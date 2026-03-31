@@ -2,7 +2,7 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.59 - Claude Parte 029 (Claude Code) |
+//|                     Versão 1.60 - Claude Parte 029 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.59"
@@ -11,6 +11,9 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.60 (Parte 029):
+// * Fix restauração DD toggle ao destravar: cor ON/OFF/REQUER META correta
+//
 // v1.59 (Parte 029):
 // * SetAllControlsEnabled: expandido com radio groups, toggles e edits
 //   de RISCO, RISCO 2, BLOQUEIOS, BLOQ2 (News) — tudo travado com EA rodando
@@ -1552,6 +1555,15 @@ void CEPBotPanel::SetAllControlsEnabled(bool enable)
       m_c2_bBEAct.Color(clrWhite);
       m_c2_bDLAct.ColorBackground(m_cur_dailyLimitsOn ? C'30,120,70' : C'120,50,50');
       m_c2_bDLAct.Color(clrWhite);
+      // DD toggle: restaurar cor correta (ON/OFF/REQUER META)
+      bool ddAllowed = m_cur_dailyLimitsOn && m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN;
+      if(m_cur_ddOn && ddAllowed)
+        { m_c2_bDDAct.Text("ON"); m_c2_bDDAct.ColorBackground(C'30,120,70'); }
+      else if(m_cur_ddOn && !ddAllowed)
+        { m_c2_bDDAct.Text("REQUER META"); m_c2_bDDAct.ColorBackground(C'180,120,0'); }
+      else
+        { m_c2_bDDAct.Text("OFF"); m_c2_bDDAct.ColorBackground(C'120,50,50'); }
+      m_c2_bDDAct.Color(clrWhite);
       RefreshDailyLimitsState();
       RefreshRisco2State();
      }

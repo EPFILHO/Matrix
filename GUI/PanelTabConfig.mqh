@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.34 - Claude Parte 029 (Claude Code) |
+//|                     Versão 1.35 - Claude Parte 029 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -13,6 +13,10 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.35 (Parte 029):
+// * Fix RefreshRisco2State: DD toggle cor restaurada em todos os estados
+//   (ON/OFF/REQUER META) — antes ficava cinza ao destravar
+//
 // v1.34 (Parte 029):
 // * Guard m_eaStarted em 25 handlers OnClick (RISCO, RISCO2, BLOQUEIOS, BLOQ2)
 // * Refresh*State: guard m_eaStarted para não sobrescrever estado travado
@@ -1036,9 +1040,17 @@ void CEPBotPanel::RefreshRisco2State(void)
    SetEditEnabled(m_c2_lBEVal, m_c2_iBEVal, m_cur_beOn);
    SetEditEnabled(m_c2_lBEOff, m_c2_iBEOff, m_cur_beOn);
 
-// DD fields: habilitado se toggle ON E dependência satisfeita (v1.19/v1.53)
-// DD só funciona se Limites Diarios ON + Profit Acao = ATIVAR DD
+// DD toggle: restaurar cor em todos os estados
    bool ddAllowed = m_cur_dailyLimitsOn && m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN;
+   if(m_cur_ddOn && ddAllowed)
+     { m_c2_bDDAct.Text("ON"); m_c2_bDDAct.ColorBackground(C'30,120,70'); }
+   else if(m_cur_ddOn && !ddAllowed)
+     { m_c2_bDDAct.Text("REQUER META"); m_c2_bDDAct.ColorBackground(C'180,120,0'); }
+   else
+     { m_c2_bDDAct.Text("OFF"); m_c2_bDDAct.ColorBackground(C'120,50,50'); }
+   m_c2_bDDAct.Color(clrWhite);
+
+// DD sub-campos: habilitado se toggle ON E dependência satisfeita
    bool ddEffective = m_cur_ddOn && ddAllowed;
    SetEditEnabled(m_c2_lDD, m_c2_iDD, ddEffective);
    if(ddEffective)
@@ -1054,12 +1066,6 @@ void CEPBotPanel::RefreshRisco2State(void)
       m_c2_lDDPk.Color(C'180,180,180');
       for(int i=0;i<2;i++) { m_c2_bDDT[i].ColorBackground(C'160,160,160'); m_c2_bDDT[i].Color(C'200,200,200'); }
       for(int i=0;i<2;i++) { m_c2_bDDPk[i].ColorBackground(C'160,160,160'); m_c2_bDDPk[i].Color(C'200,200,200'); }
-     }
-// Aviso dinâmico: se DD ON mas dependência não satisfeita
-   if(m_cur_ddOn && !ddAllowed)
-     {
-      m_c2_bDDAct.Text("REQUER META");
-      m_c2_bDDAct.ColorBackground(C'180,120,0');
      }
 
    ChartRedraw();
@@ -1085,15 +1091,7 @@ void CEPBotPanel::RefreshDailyLimitsState(void)
       for(int i=0;i<2;i++) { m_c2_bDLPTA[i].ColorBackground(C'160,160,160'); m_c2_bDLPTA[i].Color(C'200,200,200'); }
      }
 
-// Atualizar estado do DD (depende de Limites Diários + Profit Acao)
-   bool ddAllowed = m_cur_dailyLimitsOn && m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN;
-   if(m_cur_ddOn)
-     {
-      if(ddAllowed)
-        { m_c2_bDDAct.Text("ON"); m_c2_bDDAct.ColorBackground(C'30,120,70'); }
-      else
-        { m_c2_bDDAct.Text("REQUER META"); m_c2_bDDAct.ColorBackground(C'180,120,0'); }
-     }
+// RefreshRisco2State cuida do DD toggle + sub-campos
    RefreshRisco2State();
   }
 
@@ -2065,22 +2063,6 @@ void CEPBotPanel::OnClickDDToggle(void)
    if(m_eaStarted) return;
    m_cur_ddOn = !m_cur_ddOn;
    m_c2_bDDAct.Pressed(false);
-   bool ddAllowed = m_cur_dailyLimitsOn && m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN;
-   if(m_cur_ddOn && ddAllowed)
-     {
-      m_c2_bDDAct.Text("ON");
-      m_c2_bDDAct.ColorBackground(C'30,120,70');
-     }
-   else if(m_cur_ddOn && !ddAllowed)
-     {
-      m_c2_bDDAct.Text("REQUER META");
-      m_c2_bDDAct.ColorBackground(C'180,120,0');
-     }
-   else
-     {
-      m_c2_bDDAct.Text("OFF");
-      m_c2_bDDAct.ColorBackground(C'120,50,50');
-     }
    RefreshRisco2State();
   }
 
