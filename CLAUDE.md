@@ -14,7 +14,7 @@
 
 ---
 
-## Parte 029 — Em andamento (2026-03-30)
+## Parte 029 — Concluída (2026-03-31)
 
 ### O que foi feito
 
@@ -48,9 +48,41 @@
   - RSIFilterPanel: TF, 3 Mode
   - BollingerBandsFilterPanel: TF, 3 Mode
 
-### TODO restante
+#### FIXES — Sub-painéis (Estratégias/Filtros)
+- [x] **m_locked flag**: adicionado em FilterPanelBase + StrategyPanelBase
+  - Update() verifica `!m_locked` antes de chamar `ApplyToggleStyle()` e `_RefreshFieldState()`
+  - Impede que Update() sobrescreva estado visual travado quando EA rodando
+  - Fixes: botões ON/OFF não piscam cinza→colorido, campos não ficam habilitados
+- [x] **TFName() + CycleTF()**: agora cobrem todos os 21 timeframes do MQL5
+  - Antes: apenas 10 timeframes (M1, M5, M15, M30, H1, H4, D1, W1, MN1)
+  - Depois: +11 faltantes (M2, M3, M4, M6, M10, M12, M20, H2, H3, H6, H8, H12)
+  - Fixa: "??" em TimeFrame buttons para gráficos em M2, etc.
+
+#### FIXES — DD Toggle (RISCO 2)
+- [x] **DD ficava cinza ao destravar EA**
+  - Root cause: `SetAllControlsEnabled(true)` restaurava Trailing/BE/DailyLimits mas esquecia DD
+  - Fix: adicionada restauração de cor do DD toggle (ON/OFF/REQUER META)
+- [x] **Lógica DD centralizada em RefreshRisco2State()**
+  - Removida duplicação: `OnClickDDToggle` + `RefreshDailyLimitsState` + `RefreshRisco2State`
+  - Agora único ponto de verdade para cor do DD toggle em todos os 3 estados
+
+### Versões atualizadas
+- FilterPanelBase.mqh: 1.02 → 1.03
+- StrategyPanelBase.mqh: 1.02 → 1.03
+- PanelUtils.mqh: 1.01 → 1.02
+- Panel.mqh: 1.59 → 1.60
+- PanelTabConfig.mqh: 1.34 → 1.35
+- TrendFilterPanel.mqh: 1.05 → 1.06
+- RSIFilterPanel.mqh: 1.06 → 1.07
+- BollingerBandsFilterPanel.mqh: 1.06 → 1.07
+- RSIStrategyPanel.mqh: 1.06 → 1.07
+- BollingerBandsPanel.mqh: 1.06 → 1.07
+- MACrossPanel.mqh: 1.06 → 1.07
+
+### TODO restante (Parte 030)
 - [ ] Validações dos campos (RISCO, RISCO2, BLOQUEIOS, BLOQ2)
-- [ ] Commit + push + PR
+- [ ] Criar PR da Parte 029 → main
 
 ### Geral
 - [x] PR da Parte 028 → main (PR #9 mergeado)
+- [x] Parte 029: GUI locks + sub-panel fixes + DD logic centralized
