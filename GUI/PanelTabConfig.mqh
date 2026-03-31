@@ -1598,18 +1598,53 @@ bool CEPBotPanel::ApplyConfig(void)
      }
 
    int errors = 0;
+   string errFields = "";
+
+// ── Limites dinâmicos baseados no ativo (Parte 030) ─────────────
+   double lotMin = 0, lotMax = 0, lotStep = 0;
+   CalcSymbolLotLimits(lotMin, lotMax, lotStep);
+   int minPts     = CalcMinSLTP();
+   int maxSlPts   = CalcMaxPoints(0.25, 100000);  // 25% do preço
+   int maxTpPts   = CalcMaxPoints(0.50, 200000);   // 50% do preço
+   double maxMult = 100.0;                          // teto para multiplicadores ATR/Range
+   int maxPeriod  = 999;                             // teto para períodos ATR/Range
+
+// ── Clear field highlights (Parte 030) ──────────────────────────
+   ClearFieldError(m_cr_iLot);  ClearFieldError(m_cr_iSL);
+   ClearFieldError(m_cr_iTP);   ClearFieldError(m_cr_iATRp);
+   ClearFieldError(m_cr_iRngP);
+   ClearFieldError(m_cr_iTP1p); ClearFieldError(m_cr_iTP1d);
+   ClearFieldError(m_cr_iTP2p); ClearFieldError(m_cr_iTP2d);
+   ClearFieldError(m_c2_iTrlSt); ClearFieldError(m_c2_iTrlSp);
+   ClearFieldError(m_c2_iBEVal); ClearFieldError(m_c2_iBEOff);
+   ClearFieldError(m_c2_iDLTrd); ClearFieldError(m_c2_iDLLoss);
+   ClearFieldError(m_c2_iDLGain); ClearFieldError(m_c2_iDD);
+   ClearFieldError(m_cb_iSpr);
+   ClearFieldError(m_cb_iLStr);  ClearFieldError(m_cb_iWStr);
+   ClearFieldError(m_cb_iLStrP); ClearFieldError(m_cb_iWStrP);
+   ClearFieldError(m_cb_iTFSH);  ClearFieldError(m_cb_iTFSM);
+   ClearFieldError(m_cb_iTFEH);  ClearFieldError(m_cb_iTFEM);
+   ClearFieldError(m_cb_iCBSMin);
+   ClearFieldError(m_cb2_iN1SH); ClearFieldError(m_cb2_iN1SM);
+   ClearFieldError(m_cb2_iN1EH); ClearFieldError(m_cb2_iN1EM);
+   ClearFieldError(m_cb2_iN2SH); ClearFieldError(m_cb2_iN2SM);
+   ClearFieldError(m_cb2_iN2EH); ClearFieldError(m_cb2_iN2EM);
+   ClearFieldError(m_cb2_iN3SH); ClearFieldError(m_cb2_iN3SM);
+   ClearFieldError(m_cb2_iN3EH); ClearFieldError(m_cb2_iN3EM);
+   ClearFieldError(m_co_iSlip);  ClearFieldError(m_co_iMagic);
+   ClearFieldError(m_co_iDbgCd);
 
 // ═══════════════════════════════════════════════
 // RISCO
 // ═══════════════════════════════════════════════
    if(m_riskManager != NULL)
      {
-      // Lote
+      // Lote — validado contra limites do broker
       double lot = StringToDouble(m_cr_iLot.Text());
-      if(lot > 0)
+      if(lot >= lotMin && lot <= lotMax)
          m_riskManager.SetLotSize(lot);
       else
-         errors++;
+        { errors++; errFields += "Lote, "; MarkFieldError(m_cr_iLot); }
 
       // SL Type
       m_riskManager.SetSLType(m_cur_slType);
@@ -1618,17 +1653,26 @@ bool CEPBotPanel::ApplyConfig(void)
       if(m_cur_slType == SL_FIXED)
         {
          int sl = (int)StringToInteger(m_cr_iSL.Text());
-         if(sl > 0) m_riskManager.SetFixedSL(sl); else errors++;
+         if(sl >= minPts && sl <= maxSlPts)
+            m_riskManager.SetFixedSL(sl);
+         else
+           { errors++; errFields += "SL, "; MarkFieldError(m_cr_iSL); }
         }
       else if(m_cur_slType == SL_ATR)
         {
          double mult = StringToDouble(m_cr_iSL.Text());
-         if(mult > 0) m_riskManager.SetSLATRMultiplier(mult); else errors++;
+         if(mult > 0 && mult <= maxMult)
+            m_riskManager.SetSLATRMultiplier(mult);
+         else
+           { errors++; errFields += "SL, "; MarkFieldError(m_cr_iSL); }
         }
       else if(m_cur_slType == SL_RANGE)
         {
          double mult = StringToDouble(m_cr_iSL.Text());
-         if(mult > 0) m_riskManager.SetRangeMultiplier(mult); else errors++;
+         if(mult > 0 && mult <= maxMult)
+            m_riskManager.SetRangeMultiplier(mult);
+         else
+           { errors++; errFields += "SL, "; MarkFieldError(m_cr_iSL); }
         }
 
       // TP Type
@@ -1640,12 +1684,18 @@ bool CEPBotPanel::ApplyConfig(void)
          if(m_cur_tpType == TP_FIXED)
            {
             int tp = (int)StringToInteger(m_cr_iTP.Text());
-            if(tp > 0) m_riskManager.SetFixedTP(tp); else errors++;
+            if(tp >= minPts && tp <= maxTpPts)
+               m_riskManager.SetFixedTP(tp);
+            else
+              { errors++; errFields += "TP, "; MarkFieldError(m_cr_iTP); }
            }
          else if(m_cur_tpType == TP_ATR)
            {
             double mult = StringToDouble(m_cr_iTP.Text());
-            if(mult > 0) m_riskManager.SetTPATRMultiplier(mult); else errors++;
+            if(mult > 0 && mult <= maxMult)
+               m_riskManager.SetTPATRMultiplier(mult);
+            else
+              { errors++; errFields += "TP, "; MarkFieldError(m_cr_iTP); }
            }
         }
 
@@ -1659,19 +1709,31 @@ bool CEPBotPanel::ApplyConfig(void)
            {
             int start = (int)StringToInteger(m_c2_iTrlSt.Text());
             int step  = (int)StringToInteger(m_c2_iTrlSp.Text());
-            if(start > 0 && step > 0)
+            bool ok = (start >= minPts && start <= maxSlPts &&
+                       step >= 1 && step <= maxSlPts);
+            if(ok)
                m_riskManager.SetTrailingParams(start, step);
             else
+              {
                errors++;
+               if(start < minPts || start > maxSlPts) { errFields += "TrlStart, "; MarkFieldError(m_c2_iTrlSt); }
+               if(step < 1 || step > maxSlPts)        { errFields += "TrlStep, ";  MarkFieldError(m_c2_iTrlSp); }
+              }
            }
          else
            {
             double start = StringToDouble(m_c2_iTrlSt.Text());
             double step  = StringToDouble(m_c2_iTrlSp.Text());
-            if(start > 0 && step > 0)
+            bool ok = (start > 0 && start <= maxMult &&
+                       step > 0 && step <= maxMult);
+            if(ok)
                m_riskManager.SetTrailingATRParams(start, step);
             else
+              {
                errors++;
+               if(start <= 0 || start > maxMult) { errFields += "TrlStart, "; MarkFieldError(m_c2_iTrlSt); }
+               if(step <= 0 || step > maxMult)   { errFields += "TrlStep, ";  MarkFieldError(m_c2_iTrlSp); }
+              }
            }
         }
 
@@ -1685,19 +1747,31 @@ bool CEPBotPanel::ApplyConfig(void)
            {
             int act = (int)StringToInteger(m_c2_iBEVal.Text());
             int off = (int)StringToInteger(m_c2_iBEOff.Text());
-            if(act > 0 && off >= 0)
+            bool actOk = (act >= minPts && act <= maxSlPts);
+            bool offOk = (off >= 0 && off <= maxSlPts && off < act);
+            if(actOk && offOk)
                m_riskManager.SetBreakevenParams(act, off);
             else
+              {
                errors++;
+               if(!actOk) { errFields += "BE Ativ, "; MarkFieldError(m_c2_iBEVal); }
+               if(!offOk) { errFields += "BE Off, ";  MarkFieldError(m_c2_iBEOff); }
+              }
            }
          else
            {
             double act = StringToDouble(m_c2_iBEVal.Text());
             double off = StringToDouble(m_c2_iBEOff.Text());
-            if(act > 0 && off >= 0)
+            bool actOk = (act > 0 && act <= maxMult);
+            bool offOk = (off >= 0 && off <= maxMult && off < act);
+            if(actOk && offOk)
                m_riskManager.SetBreakevenATRParams(act, off);
             else
+              {
                errors++;
+               if(!actOk) { errFields += "BE Ativ, "; MarkFieldError(m_c2_iBEVal); }
+               if(!offOk) { errFields += "BE Off, ";  MarkFieldError(m_c2_iBEOff); }
+              }
            }
         }
 
@@ -1709,9 +1783,15 @@ bool CEPBotPanel::ApplyConfig(void)
          int    tp1d = (int)StringToInteger(m_cr_iTP1d.Text());
          double tp2p = StringToDouble(m_cr_iTP2p.Text());
          int    tp2d = (int)StringToInteger(m_cr_iTP2d.Text());
-         if(tp1p > 0 && tp1p <= 100 && tp1d > 0 &&
-            tp2p >= 0 && tp2p <= 100 &&
-            tp1p + tp2p <= 100)
+
+         bool tp1pOk = (tp1p > 0 && tp1p <= 100);
+         bool tp1dOk = (tp1d >= minPts && tp1d <= maxTpPts);
+         bool tp2pOk = (tp2p >= 0 && tp2p <= 100);
+         bool tp2dOk = (tp2p == 0 || (tp2d >= minPts && tp2d <= maxTpPts));
+         bool sumOk  = (tp1p + tp2p <= 100);
+         bool distOk = (tp2p == 0 || tp2d > tp1d);
+
+         if(tp1pOk && tp1dOk && tp2pOk && tp2dOk && sumOk && distOk)
            {
             m_riskManager.SetPartialTP1(true, tp1p, tp1d);
             if(tp2p > 0 && tp2d > 0)
@@ -1720,21 +1800,33 @@ bool CEPBotPanel::ApplyConfig(void)
                m_riskManager.SetPartialTP2(false, 0, 0);
            }
          else
+           {
             errors++;
+            if(!tp1pOk || !sumOk) { errFields += "TP1%, ";    MarkFieldError(m_cr_iTP1p); }
+            if(!tp1dOk)           { errFields += "TP1 Dist, "; MarkFieldError(m_cr_iTP1d); }
+            if(!tp2pOk || !sumOk) { errFields += "TP2%, ";    MarkFieldError(m_cr_iTP2p); }
+            if(!tp2dOk || !distOk){ errFields += "TP2 Dist, "; MarkFieldError(m_cr_iTP2d); }
+           }
         }
 
       // ATR Period (só se alguma feature usa ATR)
       if(m_cfg_hasATR)
         {
          int atrP = (int)StringToInteger(m_cr_iATRp.Text());
-         if(atrP >= 1) m_riskManager.SetATRPeriod(atrP); else errors++;
+         if(atrP >= 1 && atrP <= maxPeriod)
+            m_riskManager.SetATRPeriod(atrP);
+         else
+           { errors++; errFields += "ATR Per, "; MarkFieldError(m_cr_iATRp); }
         }
 
       // Range Period (só se SL=RANGE)
       if(m_cfg_hasRange)
         {
          int rngP = (int)StringToInteger(m_cr_iRngP.Text());
-         if(rngP >= 1) m_riskManager.SetRangePeriod(rngP); else errors++;
+         if(rngP >= 1 && rngP <= maxPeriod)
+            m_riskManager.SetRangePeriod(rngP);
+         else
+           { errors++; errFields += "Range Per, "; MarkFieldError(m_cr_iRngP); }
         }
 
       // Spread Compensation
@@ -1936,7 +2028,13 @@ bool CEPBotPanel::ApplyConfig(void)
       ShowHeaderStatus(warnMsg, CLR_WARNING);
    else if(errors > 0)
      {
-      ShowHeaderStatus(IntegerToString(errors) + " campo(s) invalido(s)", CLR_NEGATIVE);
+      // Remove vírgula+espaço final da lista de campos
+      if(StringLen(errFields) >= 2)
+         errFields = StringSubstr(errFields, 0, StringLen(errFields) - 2);
+      // Trunca se muito longo para caber no header
+      if(StringLen(errFields) > 60)
+         errFields = StringSubstr(errFields, 0, 57) + "...";
+      ShowHeaderStatus("Invalido: " + errFields, CLR_NEGATIVE);
       ChartRedraw();
       return false;
      }
