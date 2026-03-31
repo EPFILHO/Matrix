@@ -171,7 +171,8 @@ void SetEditEnabled(CLabel &lbl, CEdit &inp, bool enable)
      {
       lbl.Color(CLR_LABEL);
       inp.ReadOnly(false);
-      inp.ColorBackground(clrWhite);
+      if(inp.ColorBackground() != CLR_FIELD_ERROR)
+         inp.ColorBackground(clrWhite);
       inp.Color(clrBlack);
      }
    else
