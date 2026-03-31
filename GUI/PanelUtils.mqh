@@ -2,7 +2,7 @@
 //|                                                   PanelUtils.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|          Funções utilitárias livres para sub-páginas do painel    |
-//|                     Versão 1.02 - Claude Parte 029 (Claude Code) |
+//|                     Versão 1.03 - Claude Parte 030 (Claude Code) |
 //|          + free-function Enable/Disable helpers para painéis      |
 //+------------------------------------------------------------------+
 // NOTA: Incluído por Panel.mqh APÓS #include das dependências de
@@ -13,6 +13,14 @@
 // CHANGELOG v1.02 (Parte 029):
 // * TFName(): adicionados todos os timeframes MQL5 (M2-M20, H2-H12)
 // * CycleTF(): adicionados todos os timeframes MQL5
+//
+// CHANGELOG v1.03 (Parte 030):
+// * CLR_FIELD_ERROR: constante para highlight de campos inválidos
+// * MarkFieldError(): pinta fundo do CEdit vermelho claro
+// * ClearFieldError(): restaura fundo branco (se campo habilitado)
+// * CalcMaxPoints(): calcula limite max de pontos baseado no ativo
+// * CalcMinSLTP(): calcula SL/TP mínimo do broker (STOPS_LEVEL)
+// * CalcSymbolLotLimits(): obtém min/max/step de lote do ativo
 //+------------------------------------------------------------------+
 
 //── Timeframe ──────────────────────────────────────────────────────
@@ -202,5 +210,50 @@ void SetRadioGroupEnabled(CLabel &lbl, CButton &btns[], int count, bool enable)
          btns[i].Color(C'200,200,200');
         }
      }
+  }
+
+//── Field validation helpers (Parte 030) ──────────────────────────
+#define CLR_FIELD_ERROR   C'255,210,210'   // rosa claro para campo inválido
+
+void MarkFieldError(CEdit &inp)
+  {
+   inp.ColorBackground(CLR_FIELD_ERROR);
+  }
+
+void ClearFieldError(CEdit &inp)
+  {
+   if(!inp.ReadOnly())
+      inp.ColorBackground(clrWhite);
+  }
+
+//── Symbol-based dynamic limits (Parte 030) ───────────────────────
+// Calcula o máximo de pontos baseado em percentual do preço do ativo
+// pctOfPrice: 0.25 = 25%, 0.50 = 50%, etc.
+// fallback: valor retornado se não conseguir ler preço/point
+int CalcMaxPoints(double pctOfPrice, int fallback)
+  {
+   double bid   = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   if(bid <= 0 || point <= 0)
+      return fallback;
+   return (int)(bid * pctOfPrice / point);
+  }
+
+// Retorna o SL/TP mínimo do broker (STOPS_LEVEL), mínimo 1
+int CalcMinSLTP(void)
+  {
+   int stopsLevel = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
+   return (stopsLevel > 0) ? stopsLevel : 1;
+  }
+
+// Obtém limites de lote do ativo (min, max, step)
+void CalcSymbolLotLimits(double &lotMin, double &lotMax, double &lotStep)
+  {
+   lotMin  = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
+   lotMax  = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
+   lotStep = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
+   if(lotMin  <= 0) lotMin  = 0.01;
+   if(lotMax  <= 0) lotMax  = 1000.0;
+   if(lotStep <= 0) lotStep = 0.01;
   }
 //+------------------------------------------------------------------+
