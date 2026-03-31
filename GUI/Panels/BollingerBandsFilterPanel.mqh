@@ -2,10 +2,17 @@
 //|                                     BollingerBandsFilterPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Bollinger Bands Filter (Anti-Squeeze)   |
-//|                     Versão 1.05 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.07 - Claude Parte 029 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.07 (Parte 029):
+// * m_locked: Update() não sobrescreve visual quando EA rodando
+//
+// CHANGELOG v1.06 (Parte 029):
+// * SetEnabled(): toggle ON/OFF cinza, campos fundo branco/cinza,
+//   labels dim, TF + Mode radios cobertos
 //
 // CHANGELOG v1.05 (Parte 027) — Fase 2: Controle de Estado:
 // * Removido botão APLICAR (m_btnApply) — aplicação centralizada
@@ -214,7 +221,11 @@ public:
 
    virtual void Update(void)
      {
-      ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      if(!m_locked)
+        {
+         ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+         _RefreshFieldState();
+        }
       m_lModeDesc.Text(_ModeDesc(m_cur_metric));
       m_lThreshHint.Text(_ThreshHint(m_cur_metric));
       if(m_filter != NULL && m_filter.IsInitialized())
@@ -235,7 +246,6 @@ public:
          m_eWidth.Text("--");            m_eWidth.Color(CLR_NEUTRAL);
          m_eMode.Text("--");             m_eMode.Color(CLR_NEUTRAL);
         }
-      _RefreshFieldState();
      }
 
    virtual bool OnClick(string name)
@@ -297,11 +307,29 @@ public:
 
    void SetEnabled(bool enable)
      {
+      m_locked = !enable;
       color bg = enable ? clrWhite : C'220,220,220';
-      m_iPeriod.ReadOnly(!enable);     m_iPeriod.ColorBackground(bg);
-      m_iDev.ReadOnly(!enable);        m_iDev.ColorBackground(bg);
-      m_iThreshold.ReadOnly(!enable);  m_iThreshold.ColorBackground(bg);
-      m_iPercPeriod.ReadOnly(!enable);  m_iPercPeriod.ColorBackground(bg);
+      color fg = enable ? clrBlack : C'160,160,160';
+      m_iPeriod.ReadOnly(!enable);     m_iPeriod.ColorBackground(bg);     m_iPeriod.Color(fg);
+      m_iDev.ReadOnly(!enable);        m_iDev.ColorBackground(bg);        m_iDev.Color(fg);
+      m_iThreshold.ReadOnly(!enable);  m_iThreshold.ColorBackground(bg);  m_iThreshold.Color(fg);
+      m_iPercPeriod.ReadOnly(!enable);  m_iPercPeriod.ColorBackground(bg); m_iPercPeriod.Color(fg);
+      // Labels
+      color lc = enable ? CLR_LABEL : C'180,180,180';
+      m_lPeriod.Color(lc); m_lDev.Color(lc); m_lThreshold.Color(lc); m_lPercPeriod.Color(lc);
+      // Toggle ON/OFF
+      if(!enable)
+        { m_btnToggle.ColorBackground(C'160,160,160'); m_btnToggle.Color(C'200,200,200'); }
+      else
+         ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      // Buttons + radios
+      SetButtonEnabled(m_lTF, m_bTF, enable);
+      SetRadioGroupEnabled(m_lMode2, m_bMode, 3, enable);
+      if(enable)
+        {
+         m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+         SetRadioSel(m_bMode, 3, (int)m_cur_metric);
+        }
      }
 
 private:

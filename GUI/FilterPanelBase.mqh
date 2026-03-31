@@ -2,7 +2,7 @@
 //|                                             FilterPanelBase.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Interface base para sub-páginas de filtro                 |
-//|                     Versão 1.02 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.03 - Claude Parte 029 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh ANTES da definição de CEPBotPanel.
 // Usa forward declaration para CEPBotPanel.
@@ -10,6 +10,9 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.03 (Parte 029):
+// + m_locked: flag para impedir Update() de sobrescrever estado travado
+//
 // v1.02 (Parte 027) — Fase 2: Controle de Estado:
 // + Pure virtual Apply() e SetEnabled(bool) para controle centralizado
 //
@@ -31,6 +34,7 @@ protected:
    CEPBotPanel      *m_parent;   // Referência ao painel principal (Parte 027: persistência)
    long              m_chart_id;
    int               m_subwin;
+   bool              m_locked;    // true = EA rodando, Update() não sobrescreve visual
 public:
    virtual          ~CFilterPanelBase(void) {}
    virtual string    GetName(void) const = 0;

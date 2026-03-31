@@ -2,10 +2,17 @@
 //|                                           BollingerBandsPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Bollinger Bands Strategy                 |
-//|                     Versão 1.05 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.07 - Claude Parte 029 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.07 (Parte 029):
+// * m_locked: Update() não sobrescreve visual quando EA rodando
+//
+// CHANGELOG v1.06 (Parte 029):
+// * SetEnabled(): toggle ON/OFF cinza, campos fundo branco/cinza,
+//   labels dim, TF + Mode/Entry/Exit radios cobertos
 //
 // CHANGELOG v1.05 (Parte 027) — Fase 2: Controle de Estado:
 // * Removido botão APLICAR (m_btnApply) — aplicação centralizada
@@ -113,13 +120,32 @@ public:
 
    void SetEnabled(bool enable)
      {
-      color bg = enable ? clrWhite : C'200,200,200';
-      m_iPeriod.ReadOnly(!enable);
-      m_iPeriod.ColorBackground(bg);
-      m_iDev.ReadOnly(!enable);
-      m_iDev.ColorBackground(bg);
-      m_iPriority.ReadOnly(!enable);
-      m_iPriority.ColorBackground(bg);
+      m_locked = !enable;
+      color bg = enable ? clrWhite : C'220,220,220';
+      color fg = enable ? clrBlack : C'160,160,160';
+      m_iPeriod.ReadOnly(!enable);   m_iPeriod.ColorBackground(bg);   m_iPeriod.Color(fg);
+      m_iDev.ReadOnly(!enable);      m_iDev.ColorBackground(bg);      m_iDev.Color(fg);
+      m_iPriority.ReadOnly(!enable); m_iPriority.ColorBackground(bg); m_iPriority.Color(fg);
+      // Labels
+      color lc = enable ? CLR_LABEL : C'180,180,180';
+      m_lPriority.Color(lc); m_lPeriod.Color(lc); m_lDev.Color(lc);
+      // Toggle ON/OFF
+      if(!enable)
+        { m_btnToggle.ColorBackground(C'160,160,160'); m_btnToggle.Color(C'200,200,200'); }
+      else
+         ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      // Buttons + radios
+      SetButtonEnabled(m_lTF, m_bTF, enable);
+      SetRadioGroupEnabled(m_lMode, m_bMode, 3, enable);
+      SetRadioGroupEnabled(m_lEntry, m_bEntry, 2, enable);
+      SetRadioGroupEnabled(m_lExit, m_bExit, 3, enable);
+      if(enable)
+        {
+         m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+         SetRadioSel(m_bMode, 3, (int)m_cur_mode);
+         SetRadioSel(m_bEntry, 2, (int)m_cur_entry);
+         SetRadioSel(m_bExit, 3, (int)m_cur_exit);
+        }
      }
 
    virtual bool Create(CEPBotPanel *parent, long chart_id, int subwin)
@@ -305,7 +331,8 @@ public:
 
    virtual void Update(void)
      {
-      ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      if(!m_locked)
+         ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
       m_lModeDesc.Text(_ModeDesc(m_cur_mode));
       m_lEntryDesc.Text(_EntryDesc(m_cur_entry));
       m_lExitDesc.Text(_ExitDesc(m_cur_exit));

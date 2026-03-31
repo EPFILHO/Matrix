@@ -2,10 +2,17 @@
 //|                                                 MACrossPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — MA Cross Strategy                        |
-//|                     Versão 1.05 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.07 - Claude Parte 029 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.07 (Parte 029):
+// * m_locked: Update() não sobrescreve visual quando EA rodando
+//
+// CHANGELOG v1.06 (Parte 029):
+// * SetEnabled(): toggle ON/OFF cinza, campos fundo branco/cinza,
+//   labels dim, radios + TF/Price buttons cobertos
 //
 // CHANGELOG v1.05 (Parte 027) — Fase 2: Controle de Estado:
 // * Removido botão APLICAR (m_btnApply) — aplicação centralizada
@@ -250,7 +257,8 @@ public:
 
    virtual void Update(void)
      {
-      ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      if(!m_locked)
+         ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
       m_lEntryDesc.Text(_EntryDesc(m_cur_entry));
       m_lExitDesc.Text(_ExitDesc(m_cur_exit));
       if(m_strategy != NULL && m_strategy.IsInitialized() && m_strategy.GetEnabled())
@@ -447,13 +455,43 @@ public:
 
    void SetEnabled(bool enable)
      {
+      m_locked = !enable;
       m_iFastP.ReadOnly(!enable);
       m_iSlowP.ReadOnly(!enable);
       m_iPriority.ReadOnly(!enable);
-      color bg = enable ? C'25,25,25' : C'50,50,50';
-      m_iFastP.ColorBackground(bg);
-      m_iSlowP.ColorBackground(bg);
-      m_iPriority.ColorBackground(bg);
+      color bg = enable ? clrWhite : C'220,220,220';
+      color fg = enable ? clrBlack : C'160,160,160';
+      m_iFastP.ColorBackground(bg);   m_iFastP.Color(fg);
+      m_iSlowP.ColorBackground(bg);   m_iSlowP.Color(fg);
+      m_iPriority.ColorBackground(bg); m_iPriority.Color(fg);
+      // Labels
+      color lc = enable ? CLR_LABEL : C'180,180,180';
+      m_lPriority.Color(lc); m_lFastP.Color(lc); m_lSlowP.Color(lc);
+      // Toggle ON/OFF
+      if(!enable)
+        { m_btnToggle.ColorBackground(C'160,160,160'); m_btnToggle.Color(C'200,200,200'); }
+      else
+         ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      // Radio groups + buttons
+      SetRadioGroupEnabled(m_lFastM, m_bFastM, 4, enable);
+      SetButtonEnabled(m_lFastTF, m_bFastTF, enable);
+      SetButtonEnabled(m_lFastPr, m_bFastPr, enable);
+      SetRadioGroupEnabled(m_lSlowM, m_bSlowM, 4, enable);
+      SetButtonEnabled(m_lSlowTF, m_bSlowTF, enable);
+      SetButtonEnabled(m_lSlowPr, m_bSlowPr, enable);
+      SetRadioGroupEnabled(m_lEntry, m_bEntry, 2, enable);
+      SetRadioGroupEnabled(m_lExit, m_bExit, 3, enable);
+      if(enable)
+        {
+         SetRadioSel(m_bFastM, 4, MAMethodToIndex(m_cur_fastMethod));
+         m_bFastTF.ColorBackground(C'50,80,140'); m_bFastTF.Color(clrWhite);
+         m_bFastPr.ColorBackground(C'50,80,140'); m_bFastPr.Color(clrWhite);
+         SetRadioSel(m_bSlowM, 4, MAMethodToIndex(m_cur_slowMethod));
+         m_bSlowTF.ColorBackground(C'50,80,140'); m_bSlowTF.Color(clrWhite);
+         m_bSlowPr.ColorBackground(C'50,80,140'); m_bSlowPr.Color(clrWhite);
+         SetRadioSel(m_bEntry, 2, (int)m_cur_entry);
+         SetRadioSel(m_bExit, 3, (int)m_cur_exit);
+        }
      }
   };
 //+------------------------------------------------------------------+

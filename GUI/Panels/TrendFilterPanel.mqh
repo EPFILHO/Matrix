@@ -2,10 +2,18 @@
 //|                                             TrendFilterPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Trend Filter                             |
-//|                     Versão 1.04 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.06 - Claude Parte 029 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.06 (Parte 029):
+// * m_locked: Update() não sobrescreve visual quando EA rodando
+// * SetEnabled() seta m_locked; Update() respeita o flag
+//
+// CHANGELOG v1.05 (Parte 029):
+// * SetEnabled(): toggle ON/OFF cinza, campos fundo branco/cinza,
+//   labels dim, Method radios + TF/Price buttons cobertos
 //
 // CHANGELOG v1.04 (Parte 027) — Fase 2: Controle de Estado:
 // * Removido botão APLICAR (m_btnApply) — aplicação centralizada
@@ -165,7 +173,11 @@ public:
 
    virtual void Update(void)
      {
-      ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      if(!m_locked)
+        {
+         ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+         _RefreshFieldState();
+        }
       if(m_filter != NULL && m_filter.IsInitialized())
         {
          bool active = m_filter.IsTrendFilterActive() || m_filter.IsNeutralZoneActive();
@@ -182,7 +194,6 @@ public:
          m_eMA.Text("--");               m_eMA.Color(CLR_NEUTRAL);
          m_eDist.Text("--");             m_eDist.Color(CLR_NEUTRAL);
         }
-      _RefreshFieldState();
      }
 
    virtual bool OnClick(string name)
@@ -238,11 +249,29 @@ public:
 
    void SetEnabled(bool enable)
      {
-      color bg = enable ? clrWhite : C'60,60,60';
-      m_iPeriod.ReadOnly(!enable);
-      m_iPeriod.ColorBackground(bg);
-      m_iNeutDist.ReadOnly(!enable);
-      m_iNeutDist.ColorBackground(bg);
+      m_locked = !enable;
+      color bg = enable ? clrWhite : C'220,220,220';
+      color fg = enable ? clrBlack : C'160,160,160';
+      m_iPeriod.ReadOnly(!enable);   m_iPeriod.ColorBackground(bg);   m_iPeriod.Color(fg);
+      m_iNeutDist.ReadOnly(!enable); m_iNeutDist.ColorBackground(bg); m_iNeutDist.Color(fg);
+      // Labels
+      color lc = enable ? CLR_LABEL : C'180,180,180';
+      m_lPeriod.Color(lc); m_lNeutDist.Color(lc);
+      // Toggle ON/OFF
+      if(!enable)
+        { m_btnToggle.ColorBackground(C'160,160,160'); m_btnToggle.Color(C'200,200,200'); }
+      else
+         ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      // Radio groups + buttons
+      SetRadioGroupEnabled(m_lMethod, m_bMethod, 4, enable);
+      SetButtonEnabled(m_lTF, m_bTF, enable);
+      SetButtonEnabled(m_lPrice, m_bPrice, enable);
+      if(enable)
+        {
+         m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+         m_bPrice.ColorBackground(C'50,80,140'); m_bPrice.Color(clrWhite);
+         SetRadioSel(m_bMethod, 4, MAMethodToIndex(m_cur_method));
+        }
      }
 
 private:

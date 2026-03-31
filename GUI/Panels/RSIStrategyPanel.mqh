@@ -2,10 +2,17 @@
 //|                                            RSIStrategyPanel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — RSI Strategy                             |
-//|                     Versão 1.05 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.07 - Claude Parte 029 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.07 (Parte 029):
+// * m_locked: Update() não sobrescreve visual quando EA rodando
+//
+// CHANGELOG v1.06 (Parte 029):
+// * SetEnabled(): toggle ON/OFF cinza, campos fundo branco/cinza,
+//   labels dim, TF + Mode radios cobertos
 //
 // CHANGELOG v1.05 (Parte 027) — Fase 2: Controle de Estado:
 // * Removido botão APLICAR (m_btnApply) — aplicação centralizada
@@ -186,7 +193,11 @@ public:
 
    virtual void Update(void)
      {
-      ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      if(!m_locked)
+        {
+         ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+         _RefreshFieldState();
+        }
       m_lModeDesc.Text(RSIModeDesc(m_cur_rsiMode));
       if(m_strategy != NULL && m_strategy.IsInitialized() && m_strategy.GetEnabled())
         {
@@ -207,7 +218,6 @@ public:
          m_eMode.Text("--");         m_eMode.Color(CLR_NEUTRAL);
          m_eLevels.Text("--");       m_eLevels.Color(CLR_NEUTRAL);
         }
-      _RefreshFieldState();
       if(m_statusExpiry > 0 && GetTickCount() >= m_statusExpiry)
         { m_lblStatus.Text(""); m_statusExpiry = 0; ChartRedraw(); }
      }
@@ -311,13 +321,34 @@ public:
 
    void SetEnabled(bool enable)
      {
+      m_locked = !enable;
       m_iPeriod.ReadOnly(!enable); m_iOversold.ReadOnly(!enable);
       m_iOverbought.ReadOnly(!enable); m_iMiddle.ReadOnly(!enable);
       m_iPriority.ReadOnly(!enable);
-      color bg = enable ? C'25,25,25' : C'50,50,50';
-      m_iPeriod.ColorBackground(bg); m_iOversold.ColorBackground(bg);
-      m_iOverbought.ColorBackground(bg); m_iMiddle.ColorBackground(bg);
-      m_iPriority.ColorBackground(bg);
+      color bg = enable ? clrWhite : C'220,220,220';
+      color fg = enable ? clrBlack : C'160,160,160';
+      m_iPeriod.ColorBackground(bg);     m_iPeriod.Color(fg);
+      m_iOversold.ColorBackground(bg);   m_iOversold.Color(fg);
+      m_iOverbought.ColorBackground(bg); m_iOverbought.Color(fg);
+      m_iMiddle.ColorBackground(bg);     m_iMiddle.Color(fg);
+      m_iPriority.ColorBackground(bg);   m_iPriority.Color(fg);
+      // Labels
+      color lc = enable ? CLR_LABEL : C'180,180,180';
+      m_lPriority.Color(lc); m_lPeriod.Color(lc);
+      m_lOversold.Color(lc); m_lOverbought.Color(lc); m_lMiddle.Color(lc);
+      // Toggle ON/OFF
+      if(!enable)
+        { m_btnToggle.ColorBackground(C'160,160,160'); m_btnToggle.Color(C'200,200,200'); }
+      else
+         ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      // Buttons + radios
+      SetButtonEnabled(m_lTF, m_bTF, enable);
+      SetRadioGroupEnabled(m_lMode2, m_bMode, 3, enable);
+      if(enable)
+        {
+         m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+         SetRadioSel(m_bMode, 3, (int)m_cur_rsiMode);
+        }
      }
   };
 //+------------------------------------------------------------------+

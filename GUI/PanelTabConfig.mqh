@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.33 - Claude Parte 028 (Claude Code) |
+//|                     Versão 1.35 - Claude Parte 029 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -13,6 +13,16 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.35 (Parte 029):
+// * Fix RefreshRisco2State: DD toggle cor restaurada em todos os estados
+//   (ON/OFF/REQUER META) — antes ficava cinza ao destravar
+//
+// v1.34 (Parte 029):
+// * Guard m_eaStarted em 25 handlers OnClick (RISCO, RISCO2, BLOQUEIOS, BLOQ2)
+// * Refresh*State: guard m_eaStarted para não sobrescrever estado travado
+//   (RefreshRiscoState, RefreshRisco2State, RefreshDailyLimitsState,
+//    RefreshStreakState, RefreshBloqTimeFilter, RefreshBloqSessionEnd, RefreshNewsState)
+//
 // v1.33 (Parte 028):
 // * Trade Comment: log HOT_RELOAD adicionado (só quando valor muda)
 //
@@ -952,6 +962,7 @@ void CEPBotPanel::PopulateConfig(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::RefreshRiscoState(void)
   {
+   if(m_eaStarted) return;
 // ATR Period: habilitado quando qualquer feature usa ATR
    SetEditEnabled(m_cr_lATRp, m_cr_iATRp, m_cfg_hasATR);
 
@@ -1014,6 +1025,7 @@ void CEPBotPanel::RefreshRiscoState(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::RefreshRisco2State(void)
   {
+   if(m_eaStarted) return;
 // Trailing fields: habilitado se toggle ON
    SetEditEnabled(m_c2_lTrlSt, m_c2_iTrlSt, m_cur_trailOn);
    SetEditEnabled(m_c2_lTrlSp, m_c2_iTrlSp, m_cur_trailOn);
@@ -1028,9 +1040,17 @@ void CEPBotPanel::RefreshRisco2State(void)
    SetEditEnabled(m_c2_lBEVal, m_c2_iBEVal, m_cur_beOn);
    SetEditEnabled(m_c2_lBEOff, m_c2_iBEOff, m_cur_beOn);
 
-// DD fields: habilitado se toggle ON E dependência satisfeita (v1.19/v1.53)
-// DD só funciona se Limites Diarios ON + Profit Acao = ATIVAR DD
+// DD toggle: restaurar cor em todos os estados
    bool ddAllowed = m_cur_dailyLimitsOn && m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN;
+   if(m_cur_ddOn && ddAllowed)
+     { m_c2_bDDAct.Text("ON"); m_c2_bDDAct.ColorBackground(C'30,120,70'); }
+   else if(m_cur_ddOn && !ddAllowed)
+     { m_c2_bDDAct.Text("REQUER META"); m_c2_bDDAct.ColorBackground(C'180,120,0'); }
+   else
+     { m_c2_bDDAct.Text("OFF"); m_c2_bDDAct.ColorBackground(C'120,50,50'); }
+   m_c2_bDDAct.Color(clrWhite);
+
+// DD sub-campos: habilitado se toggle ON E dependência satisfeita
    bool ddEffective = m_cur_ddOn && ddAllowed;
    SetEditEnabled(m_c2_lDD, m_c2_iDD, ddEffective);
    if(ddEffective)
@@ -1047,12 +1067,6 @@ void CEPBotPanel::RefreshRisco2State(void)
       for(int i=0;i<2;i++) { m_c2_bDDT[i].ColorBackground(C'160,160,160'); m_c2_bDDT[i].Color(C'200,200,200'); }
       for(int i=0;i<2;i++) { m_c2_bDDPk[i].ColorBackground(C'160,160,160'); m_c2_bDDPk[i].Color(C'200,200,200'); }
      }
-// Aviso dinâmico: se DD ON mas dependência não satisfeita
-   if(m_cur_ddOn && !ddAllowed)
-     {
-      m_c2_bDDAct.Text("REQUER META");
-      m_c2_bDDAct.ColorBackground(C'180,120,0');
-     }
 
    ChartRedraw();
   }
@@ -1062,6 +1076,7 @@ void CEPBotPanel::RefreshRisco2State(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::RefreshDailyLimitsState(void)
   {
+   if(m_eaStarted) return;
    SetEditEnabled(m_c2_lDLTrd, m_c2_iDLTrd, m_cur_dailyLimitsOn);
    SetEditEnabled(m_c2_lDLLoss, m_c2_iDLLoss, m_cur_dailyLimitsOn);
    SetEditEnabled(m_c2_lDLGain, m_c2_iDLGain, m_cur_dailyLimitsOn);
@@ -1076,15 +1091,7 @@ void CEPBotPanel::RefreshDailyLimitsState(void)
       for(int i=0;i<2;i++) { m_c2_bDLPTA[i].ColorBackground(C'160,160,160'); m_c2_bDLPTA[i].Color(C'200,200,200'); }
      }
 
-// Atualizar estado do DD (depende de Limites Diários + Profit Acao)
-   bool ddAllowed = m_cur_dailyLimitsOn && m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN;
-   if(m_cur_ddOn)
-     {
-      if(ddAllowed)
-        { m_c2_bDDAct.Text("ON"); m_c2_bDDAct.ColorBackground(C'30,120,70'); }
-      else
-        { m_c2_bDDAct.Text("REQUER META"); m_c2_bDDAct.ColorBackground(C'180,120,0'); }
-     }
+// RefreshRisco2State cuida do DD toggle + sub-campos
    RefreshRisco2State();
   }
 
@@ -1093,6 +1100,7 @@ void CEPBotPanel::RefreshDailyLimitsState(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickDailyLimitsToggle(void)
   {
+   if(m_eaStarted) return;
    m_cur_dailyLimitsOn = !m_cur_dailyLimitsOn;
    m_c2_bDLAct.Pressed(false);
    m_c2_bDLAct.Text(m_cur_dailyLimitsOn ? "ON" : "OFF");
@@ -1105,6 +1113,7 @@ void CEPBotPanel::OnClickDailyLimitsToggle(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickDLProfitTargetAction(int selected)
   {
+   if(m_eaStarted) return;
    if(!m_cur_dailyLimitsOn) return;
    m_cur_profitTargetAction = (ENUM_PROFIT_TARGET_ACTION)selected;
    SetRadioSelection(m_c2_bDLPTA, 2, selected);
@@ -1414,6 +1423,7 @@ void CEPBotPanel::OnClickCfgBloq2(void)   { ShowCfgPage(CFG_BLOQ2);     }
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickDirection(int selected)
   {
+   if(m_eaStarted) return;
    m_cur_direction = (ENUM_TRADE_DIRECTION)selected;
    SetRadioSelection(m_cb_bDir, 3, selected);
    ChartRedraw();
@@ -1440,6 +1450,7 @@ void CEPBotPanel::OnClickDebug(void)
 
 void CEPBotPanel::OnClickPartialTP(void)
   {
+   if(m_eaStarted) return;
 // Bloqueado se TP = ATR (conflito conceitual)
    if(m_cur_tpType == TP_ATR)
       return;
@@ -1457,6 +1468,7 @@ void CEPBotPanel::OnClickPartialTP(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickTrailToggle(void)
   {
+   if(m_eaStarted) return;
    m_cur_trailOn = !m_cur_trailOn;
    m_c2_bTrlAct.Pressed(false);
    m_c2_bTrlAct.Text(m_cur_trailOn ? "ON" : "OFF");
@@ -1469,6 +1481,7 @@ void CEPBotPanel::OnClickTrailToggle(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickBEToggle(void)
   {
+   if(m_eaStarted) return;
    m_cur_beOn = !m_cur_beOn;
    m_c2_bBEAct.Pressed(false);
    m_c2_bBEAct.Text(m_cur_beOn ? "ON" : "OFF");
@@ -1481,6 +1494,7 @@ void CEPBotPanel::OnClickBEToggle(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickSLType(int selected)
   {
+   if(m_eaStarted) return;
    m_cur_slType = IndexToSLType(selected);
    SetRadioSelection(m_cr_bSLT, 3, selected);
 
@@ -1510,7 +1524,7 @@ void CEPBotPanel::OnClickSLType(int selected)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickTPType(int selected)
   {
-
+   if(m_eaStarted) return;
    m_cur_tpType = IndexToTPType(selected);
    SetRadioSelection(m_cr_bTPT, 3, selected);
 
@@ -1962,6 +1976,7 @@ void CEPBotPanel::ApplyMagicNumberChange(int newMagic)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickCompSL(void)
   {
+   if(m_eaStarted) return;
    m_cur_compSL = !m_cur_compSL;
    m_cr_bCSL.Pressed(false);
    m_cr_bCSL.Text(m_cur_compSL ? "ON" : "OFF");
@@ -1971,6 +1986,7 @@ void CEPBotPanel::OnClickCompSL(void)
 
 void CEPBotPanel::OnClickCompTP(void)
   {
+   if(m_eaStarted) return;
 // Bloqueado se TP = NENHUM
    if(!m_cfg_hasTP) return;
    m_cur_compTP = !m_cur_compTP;
@@ -1982,6 +1998,7 @@ void CEPBotPanel::OnClickCompTP(void)
 
 void CEPBotPanel::OnClickCompTrail(void)
   {
+   if(m_eaStarted) return;
 // Bloqueado se Trailing desligado
    if(!m_cur_trailOn) return;
    m_cur_compTrail = !m_cur_compTrail;
@@ -1996,6 +2013,7 @@ void CEPBotPanel::OnClickCompTrail(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::RefreshStreakState(void)
   {
+   if(m_eaStarted) return;
 // ── Loss Streak ──
    SetEditEnabled(m_cb_lLStr, m_cb_iLStr, m_cur_lossStreakOn);
    if(m_cur_lossStreakOn)
@@ -2042,29 +2060,15 @@ void CEPBotPanel::RefreshStreakState(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickDDToggle(void)
   {
+   if(m_eaStarted) return;
    m_cur_ddOn = !m_cur_ddOn;
    m_c2_bDDAct.Pressed(false);
-   bool ddAllowed = m_cur_dailyLimitsOn && m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN;
-   if(m_cur_ddOn && ddAllowed)
-     {
-      m_c2_bDDAct.Text("ON");
-      m_c2_bDDAct.ColorBackground(C'30,120,70');
-     }
-   else if(m_cur_ddOn && !ddAllowed)
-     {
-      m_c2_bDDAct.Text("REQUER META");
-      m_c2_bDDAct.ColorBackground(C'180,120,0');
-     }
-   else
-     {
-      m_c2_bDDAct.Text("OFF");
-      m_c2_bDDAct.ColorBackground(C'120,50,50');
-     }
    RefreshRisco2State();
   }
 
 void CEPBotPanel::OnClickLossStreakToggle(void)
   {
+   if(m_eaStarted) return;
    m_cur_lossStreakOn = !m_cur_lossStreakOn;
    m_cb_bLStrOn.Pressed(false);
    m_cb_bLStrOn.Text(m_cur_lossStreakOn ? "ON" : "OFF");
@@ -2075,6 +2079,7 @@ void CEPBotPanel::OnClickLossStreakToggle(void)
 
 void CEPBotPanel::OnClickWinStreakToggle(void)
   {
+   if(m_eaStarted) return;
    m_cur_winStreakOn = !m_cur_winStreakOn;
    m_cb_bWStrOn.Pressed(false);
    m_cb_bWStrOn.Text(m_cur_winStreakOn ? "ON" : "OFF");
@@ -2088,6 +2093,7 @@ void CEPBotPanel::OnClickWinStreakToggle(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::RefreshBloqTimeFilter(void)
   {
+   if(m_eaStarted) return;
    SetEditEnabled(m_cb_lTFSH, m_cb_iTFSH, m_cur_tfOn);
    SetEditEnabled(m_cb_lTFSM, m_cb_iTFSM, m_cur_tfOn);
    SetEditEnabled(m_cb_lTFEH, m_cb_iTFEH, m_cur_tfOn);
@@ -2111,6 +2117,7 @@ void CEPBotPanel::RefreshBloqTimeFilter(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickTFToggle(void)
   {
+   if(m_eaStarted) return;
    m_cur_tfOn = !m_cur_tfOn;
    m_cb_bTFOn.Pressed(false);
    m_cb_bTFOn.Text(m_cur_tfOn ? "ON" : "OFF");
@@ -2121,6 +2128,7 @@ void CEPBotPanel::OnClickTFToggle(void)
 
 void CEPBotPanel::OnClickTFClose(void)
   {
+   if(m_eaStarted) return;
    if(!m_cur_tfOn) return;
    m_cur_tfClose = !m_cur_tfClose;
    m_cb_bTFCl.Pressed(false);
@@ -2134,6 +2142,7 @@ void CEPBotPanel::OnClickTFClose(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::RefreshBloqSessionEnd(void)
   {
+   if(m_eaStarted) return;
    SetEditEnabled(m_cb_lCBSMin, m_cb_iCBSMin, m_cur_cbsOn);
   }
 
@@ -2142,6 +2151,7 @@ void CEPBotPanel::RefreshBloqSessionEnd(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickCBSToggle(void)
   {
+   if(m_eaStarted) return;
    m_cur_cbsOn = !m_cur_cbsOn;
    m_cb_bCBSOn.Pressed(false);
    m_cb_bCBSOn.Text(m_cur_cbsOn ? "ON" : "OFF");
@@ -2155,6 +2165,7 @@ void CEPBotPanel::OnClickCBSToggle(void)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickLossStreakAction(int selected)
   {
+   if(m_eaStarted) return;
    if(!m_cur_lossStreakOn) return;
    m_cur_lossStreakAction = (ENUM_STREAK_ACTION)selected;
    SetRadioSelection(m_cb_bLStrA, 2, selected);
@@ -2164,6 +2175,7 @@ void CEPBotPanel::OnClickLossStreakAction(int selected)
 
 void CEPBotPanel::OnClickWinStreakAction(int selected)
   {
+   if(m_eaStarted) return;
    if(!m_cur_winStreakOn) return;
    m_cur_winStreakAction = (ENUM_STREAK_ACTION)selected;
    SetRadioSelection(m_cb_bWStrA, 2, selected);
@@ -2173,6 +2185,7 @@ void CEPBotPanel::OnClickWinStreakAction(int selected)
 
 void CEPBotPanel::OnClickDDType(int selected)
   {
+   if(m_eaStarted) return;
    if(!m_cur_ddOn) return;
    m_cur_ddType = (ENUM_DRAWDOWN_TYPE)selected;
    SetRadioSelection(m_c2_bDDT, 2, selected);
@@ -2184,6 +2197,7 @@ void CEPBotPanel::OnClickDDType(int selected)
 
 void CEPBotPanel::OnClickDDPeakMode(int selected)
   {
+   if(m_eaStarted) return;
    if(!m_cur_ddOn) return;
    m_cur_ddPeakMode = (ENUM_DRAWDOWN_PEAK_MODE)selected;
    SetRadioSelection(m_c2_bDDPk, 2, selected);
@@ -2197,6 +2211,7 @@ void CEPBotPanel::OnClickDDPeakMode(int selected)
 //+------------------------------------------------------------------+
 void CEPBotPanel::RefreshNewsState(int w)
   {
+   if(m_eaStarted) return;
    bool on = (w == 1) ? m_cur_newsOn1 : (w == 2) ? m_cur_newsOn2 : m_cur_newsOn3;
    if(w == 1)
      {
@@ -2226,6 +2241,7 @@ void CEPBotPanel::RefreshNewsState(int w)
 //+------------------------------------------------------------------+
 void CEPBotPanel::OnClickNewsOn1(void)
   {
+   if(m_eaStarted) return;
    m_cur_newsOn1 = !m_cur_newsOn1;
    m_cb2_bN1On.Text(m_cur_newsOn1 ? "ON" : "OFF");
    m_cb2_bN1On.ColorBackground(m_cur_newsOn1 ? C'30,120,70' : C'120,50,50');
@@ -2234,6 +2250,7 @@ void CEPBotPanel::OnClickNewsOn1(void)
 
 void CEPBotPanel::OnClickNewsOn2(void)
   {
+   if(m_eaStarted) return;
    m_cur_newsOn2 = !m_cur_newsOn2;
    m_cb2_bN2On.Text(m_cur_newsOn2 ? "ON" : "OFF");
    m_cb2_bN2On.ColorBackground(m_cur_newsOn2 ? C'30,120,70' : C'120,50,50');
@@ -2242,6 +2259,7 @@ void CEPBotPanel::OnClickNewsOn2(void)
 
 void CEPBotPanel::OnClickNewsOn3(void)
   {
+   if(m_eaStarted) return;
    m_cur_newsOn3 = !m_cur_newsOn3;
    m_cb2_bN3On.Text(m_cur_newsOn3 ? "ON" : "OFF");
    m_cb2_bN3On.ColorBackground(m_cur_newsOn3 ? C'30,120,70' : C'120,50,50');
