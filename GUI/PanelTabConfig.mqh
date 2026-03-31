@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.35 - Claude Parte 029 (Claude Code) |
+//|                     Versão 1.36 - Claude Parte 030 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -13,6 +13,16 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.36 (Parte 030):
+// * ApplyConfig(): limites dinâmicos baseados no ativo (SYMBOL_VOLUME, preço/POINT)
+// * Feedback por campo: "Invalido: Lote, SL, TP..." + highlight rosa (CLR_FIELD_ERROR)
+// * SL max 25% preço, TP max 50% preço, Spread max 1% preço
+// * Lot validado contra SYMBOL_VOLUME_MIN/MAX
+// * SL/TP mínimo via SYMBOL_TRADE_STOPS_LEVEL
+// * Validações cruzadas: BE Off < BE Ativ, TP2 Dist > TP1 Dist
+// * DD%: teto 100%, Streak max 999, Pausa max 1440min, CBS max 1440min
+// * DbgCooldown max 3600s, MaxTrades max 9999
+//
 // v1.35 (Parte 029):
 // * Fix RefreshRisco2State: DD toggle cor restaurada em todos os estados
 //   (ON/OFF/REQUER META) — antes ficava cinza ao destravar
@@ -1840,8 +1850,13 @@ bool CEPBotPanel::ApplyConfig(void)
 // ═══════════════════════════════════════════════
    if(m_blockers != NULL)
      {
+      // Spread — 0 = sem limite (Parte 030: teto 1% do preço)
+      int maxSprPts = CalcMaxPoints(0.01, 10000);
       int spr = (int)StringToInteger(m_cb_iSpr.Text());
-      if(spr >= 0) m_blockers.SetMaxSpread(spr); else errors++;
+      if(spr >= 0 && (spr == 0 || spr <= maxSprPts))
+         m_blockers.SetMaxSpread(spr);
+      else
+        { errors++; errFields += "Spread, "; MarkFieldError(m_cb_iSpr); }
 
       m_blockers.SetTradeDirection(m_cur_direction);
 
@@ -1851,10 +1866,18 @@ bool CEPBotPanel::ApplyConfig(void)
          int maxTrd   = (int)StringToInteger(m_c2_iDLTrd.Text());
          double maxLs = StringToDouble(m_c2_iDLLoss.Text());
          double maxGn = StringToDouble(m_c2_iDLGain.Text());
-         if(maxTrd >= 0 && maxLs >= 0 && maxGn >= 0)
+         bool trdOk = (maxTrd >= 0 && maxTrd <= 9999);
+         bool lsOk  = (maxLs >= 0);
+         bool gnOk  = (maxGn >= 0);
+         if(trdOk && lsOk && gnOk)
             m_blockers.SetDailyLimits(maxTrd, maxLs, maxGn, m_cur_profitTargetAction);
          else
+           {
             errors++;
+            if(!trdOk) { errFields += "MaxTrd, ";  MarkFieldError(m_c2_iDLTrd); }
+            if(!lsOk)  { errFields += "MaxLoss, "; MarkFieldError(m_c2_iDLLoss); }
+            if(!gnOk)  { errFields += "MaxGain, "; MarkFieldError(m_c2_iDLGain); }
+           }
         }
       else
         {
@@ -1867,13 +1890,21 @@ bool CEPBotPanel::ApplyConfig(void)
        int wStr   = m_cur_winStreakOn  ? (int)StringToInteger(m_cb_iWStr.Text()) : 0;
        int lPause = m_cur_lossStreakOn ? (int)StringToInteger(m_cb_iLStrP.Text()) : 0;
        int wPause = m_cur_winStreakOn  ? (int)StringToInteger(m_cb_iWStrP.Text()) : 0;
-       if(lStr >= 0 && wStr >= 0 && lPause >= 0 && wPause >= 0 &&
-          (!m_cur_lossStreakOn || lStr > 0) &&
-          (!m_cur_winStreakOn  || wStr > 0))
+       bool lStrOk = (!m_cur_lossStreakOn || (lStr > 0 && lStr <= 999));
+       bool wStrOk = (!m_cur_winStreakOn  || (wStr > 0 && wStr <= 999));
+       bool lPsOk  = (!m_cur_lossStreakOn || (lPause >= 0 && lPause <= 1440));
+       bool wPsOk  = (!m_cur_winStreakOn  || (wPause >= 0 && wPause <= 1440));
+       if(lStrOk && wStrOk && lPsOk && wPsOk)
           m_blockers.SetStreakLimits(lStr, m_cur_lossStreakAction, lPause,
                                     wStr, m_cur_winStreakAction,  wPause);
        else
+         {
           errors++;
+          if(!lStrOk) { errFields += "LossStrk, ";  MarkFieldError(m_cb_iLStr); }
+          if(!wStrOk) { errFields += "WinStrk, ";   MarkFieldError(m_cb_iWStr); }
+          if(!lPsOk)  { errFields += "PausaLoss, "; MarkFieldError(m_cb_iLStrP); }
+          if(!wPsOk)  { errFields += "PausaWin, ";  MarkFieldError(m_cb_iWStrP); }
+         }
       }
 
       // DrawDown — aplica só se toggle ON E dependência satisfeita (v1.19/v1.53)
@@ -1881,7 +1912,8 @@ bool CEPBotPanel::ApplyConfig(void)
       if(m_cur_ddOn && ddAllowed)
         {
          double dd = StringToDouble(m_c2_iDD.Text());
-         if(dd > 0)
+         double ddMax = (m_cur_ddType == DD_PERCENTAGE) ? 100.0 : 999999999.0;
+         if(dd > 0 && dd <= ddMax)
            {
             m_blockers.SetDrawdownValue(dd);
             m_blockers.SetDrawdownType(m_cur_ddType);
@@ -1894,7 +1926,7 @@ bool CEPBotPanel::ApplyConfig(void)
                m_blockers.TryActivateDrawdownNow(curDailyProfit);
            }
          else
-            errors++;
+           { errors++; errFields += "DD, "; MarkFieldError(m_c2_iDD); }
         }
       else
         {
@@ -1907,25 +1939,34 @@ bool CEPBotPanel::ApplyConfig(void)
        int sfM = (int)StringToInteger(m_cb_iTFSM.Text());
        int efH = (int)StringToInteger(m_cb_iTFEH.Text());
        int efM = (int)StringToInteger(m_cb_iTFEM.Text());
-       bool valid = (sfH >= 0 && sfH <= 23 && sfM >= 0 && sfM <= 59 &&
-                    efH >= 0 && efH <= 23 && efM >= 0 && efM <= 59);
-       if(valid)
+       bool hOk = (sfH >= 0 && sfH <= 23);
+       bool mOk = (sfM >= 0 && sfM <= 59);
+       bool hOk2 = (efH >= 0 && efH <= 23);
+       bool mOk2 = (efM >= 0 && efM <= 59);
+       if(hOk && mOk && hOk2 && mOk2)
           m_blockers.SetTimeFilter(m_cur_tfOn, sfH, sfM, efH, efM);
        else
+         {
           errors++;
+          if(!hOk)  { errFields += "TF H.Ini, "; MarkFieldError(m_cb_iTFSH); }
+          if(!mOk)  { errFields += "TF M.Ini, "; MarkFieldError(m_cb_iTFSM); }
+          if(!hOk2) { errFields += "TF H.Fim, "; MarkFieldError(m_cb_iTFEH); }
+          if(!mOk2) { errFields += "TF M.Fim, "; MarkFieldError(m_cb_iTFEM); }
+         }
        m_blockers.SetCloseOnEndTime(m_cur_tfClose);
       }
 
       // Fechar Antes do Fim da Sessão (v1.21)
       {
        int mins = (int)StringToInteger(m_cb_iCBSMin.Text());
-       if(m_cur_cbsOn ? mins > 0 : mins >= 0)
+       bool cbsOk = m_cur_cbsOn ? (mins > 0 && mins <= 1440) : (mins >= 0);
+       if(cbsOk)
           m_blockers.SetCloseBeforeSessionEnd(m_cur_cbsOn, mins);
        else
-          errors++;
+         { errors++; errFields += "CBS Min, "; MarkFieldError(m_cb_iCBSMin); }
       }
 
-      // ── News Filters (v1.22) ──
+      // ── News Filters (v1.22) ── highlight individual por janela
       {
        int s1H=(int)StringToInteger(m_cb2_iN1SH.Text()), s1M=(int)StringToInteger(m_cb2_iN1SM.Text());
        int e1H=(int)StringToInteger(m_cb2_iN1EH.Text()), e1M=(int)StringToInteger(m_cb2_iN1EM.Text());
@@ -1933,12 +1974,14 @@ bool CEPBotPanel::ApplyConfig(void)
        int e2H=(int)StringToInteger(m_cb2_iN2EH.Text()), e2M=(int)StringToInteger(m_cb2_iN2EM.Text());
        int s3H=(int)StringToInteger(m_cb2_iN3SH.Text()), s3M=(int)StringToInteger(m_cb2_iN3SM.Text());
        int e3H=(int)StringToInteger(m_cb2_iN3EH.Text()), e3M=(int)StringToInteger(m_cb2_iN3EM.Text());
+
        bool nv1 = !m_cur_newsOn1 || (s1H >= 0 && s1H <= 23 && s1M >= 0 && s1M <= 59 &&
                                      e1H >= 0 && e1H <= 23 && e1M >= 0 && e1M <= 59);
        bool nv2 = !m_cur_newsOn2 || (s2H >= 0 && s2H <= 23 && s2M >= 0 && s2M <= 59 &&
                                      e2H >= 0 && e2H <= 23 && e2M >= 0 && e2M <= 59);
        bool nv3 = !m_cur_newsOn3 || (s3H >= 0 && s3H <= 23 && s3M >= 0 && s3M <= 59 &&
                                      e3H >= 0 && e3H <= 23 && e3M >= 0 && e3M <= 59);
+
        if(nv1 && nv2 && nv3)
          {
           m_blockers.SetNewsFilter(1, m_cur_newsOn1, s1H, s1M, e1H, e1M);
@@ -1946,7 +1989,15 @@ bool CEPBotPanel::ApplyConfig(void)
           m_blockers.SetNewsFilter(3, m_cur_newsOn3, s3H, s3M, e3H, e3M);
          }
        else
+         {
           errors++;
+          if(!nv1) { errFields += "News1, "; MarkFieldError(m_cb2_iN1SH); MarkFieldError(m_cb2_iN1SM);
+                     MarkFieldError(m_cb2_iN1EH); MarkFieldError(m_cb2_iN1EM); }
+          if(!nv2) { errFields += "News2, "; MarkFieldError(m_cb2_iN2SH); MarkFieldError(m_cb2_iN2SM);
+                     MarkFieldError(m_cb2_iN2EH); MarkFieldError(m_cb2_iN2EM); }
+          if(!nv3) { errFields += "News3, "; MarkFieldError(m_cb2_iN3SH); MarkFieldError(m_cb2_iN3SM);
+                     MarkFieldError(m_cb2_iN3EH); MarkFieldError(m_cb2_iN3EM); }
+         }
       }
      }
 
@@ -1963,14 +2014,14 @@ bool CEPBotPanel::ApplyConfig(void)
          g_slippage = slip;
         }
       else
-         errors++;
+        { errors++; errFields += "Slippage, "; MarkFieldError(m_co_iSlip); }
 
       // Magic Number
       int magic = (int)StringToInteger(m_co_iMagic.Text());
       if(magic > 0)
          ApplyMagicNumberChange(magic);
       else
-         errors++;
+        { errors++; errFields += "Magic, "; MarkFieldError(m_co_iMagic); }
      }
 
    // Trade Comment
@@ -1990,7 +2041,11 @@ bool CEPBotPanel::ApplyConfig(void)
      {
       m_logger.SetShowDebug(m_cur_debug);
       int cd = (int)StringToInteger(m_co_iDbgCd.Text());
-      if(m_cur_debug ? cd > 0 : cd >= 0) m_logger.SetDebugCooldown(cd); else errors++;
+      bool cdOk = m_cur_debug ? (cd > 0 && cd <= 3600) : (cd >= 0 && cd <= 3600);
+      if(cdOk)
+         m_logger.SetDebugCooldown(cd);
+      else
+        { errors++; errFields += "DbgCool, "; MarkFieldError(m_co_iDbgCd); }
      }
 
 // ═══════════════════════════════════════════════
