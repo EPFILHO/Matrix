@@ -1427,20 +1427,26 @@ bool CEPBotPanel::ValidateAndApplyAll(void)
    if(!ApplyConfig())
       return false;
 
-   // Verificar sub-painéis de estratégias
-   bool hasErrors = false;
+   // Verificar sub-painéis (Parte 030: acumular nomes dos campos inválidos)
+   string allErrs = "";
    for(int i = 0; i < m_stratPanelCount; i++)
-      if(m_stratPanels[i] != NULL && !m_stratPanels[i].Apply())
-         hasErrors = true;
-
-   // Verificar sub-painéis de filtros
-   for(int i = 0; i < m_filtPanelCount; i++)
-      if(m_filtPanels[i] != NULL && !m_filtPanels[i].Apply())
-         hasErrors = true;
-
-   if(hasErrors)
      {
-      ShowHeaderStatus("Corrija os erros antes de prosseguir", CLR_NEGATIVE);
+      if(m_stratPanels[i] != NULL)
+        { string err = ""; m_stratPanels[i].Apply(err); allErrs += err; }
+     }
+   for(int i = 0; i < m_filtPanelCount; i++)
+     {
+      if(m_filtPanels[i] != NULL)
+        { string err = ""; m_filtPanels[i].Apply(err); allErrs += err; }
+     }
+
+   if(allErrs != "")
+     {
+      if(StringLen(allErrs) >= 2)
+         allErrs = StringSubstr(allErrs, 0, StringLen(allErrs) - 2);
+      if(StringLen(allErrs) > 60)
+         allErrs = StringSubstr(allErrs, 0, 57) + "...";
+      ShowHeaderStatus("Invalido: " + allErrs, CLR_NEGATIVE);
       return false;
      }
    return true;

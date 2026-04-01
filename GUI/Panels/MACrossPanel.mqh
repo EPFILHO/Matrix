@@ -409,8 +409,9 @@ private:
      }
 
 public:
-   bool Apply(void)
+   bool Apply(string &outErr)
      {
+      outErr = "";
       if(m_strategy == NULL) return false;
       int errors = 0;
       string errFields = "";
@@ -448,9 +449,8 @@ public:
 
       if(errors > 0)
         {
-         if(StringLen(errFields) >= 2)
-            errFields = StringSubstr(errFields, 0, StringLen(errFields) - 2);
-         m_lblStatus.Text("Invalido: " + errFields);
+         outErr = errFields;  // passa para o header (sem trim — ValidateAndApplyAll faz)
+         m_lblStatus.Text("Valores invalidos");
          m_lblStatus.Color(CLR_NEGATIVE);
          m_statusExpiry = GetTickCount() + 10000;
          ChartRedraw();

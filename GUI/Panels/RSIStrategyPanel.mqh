@@ -283,24 +283,37 @@ private:
      }
 
 public:
-   bool Apply(void)
+   bool Apply(string &outErr)
      {
+      outErr = "";
       if(m_strategy == NULL) return false;
+
+      // Clear highlights
+      ClearFieldError(m_iPeriod); ClearFieldError(m_iPriority);
+      ClearFieldError(m_iOversold); ClearFieldError(m_iOverbought); ClearFieldError(m_iMiddle);
+
       int period = (int)StringToInteger(m_iPeriod.Text());
       int prio   = (int)StringToInteger(m_iPriority.Text());
       double os  = StringToDouble(m_iOversold.Text());
       double ob  = StringToDouble(m_iOverbought.Text());
       double mi  = StringToDouble(m_iMiddle.Text());
 
-      string errorMsg = "";
-      if(period < 2 || period > 500) errorMsg = "Periodo invalido";
-      else if(prio <= 0) errorMsg = "Prioridade deve ser > 0";
-      else if(m_cur_rsiMode == RSI_MODE_MIDDLE) { if(mi <= 0 || mi >= 100) errorMsg = "Medio invalido"; }
-      else { if(os <= 0 || os >= 100 || ob <= 0 || ob >= 100 || ob <= os) errorMsg = "Niveis invalidos"; }
-
-      if(errorMsg != "")
+      string errFields = "";
+      if(period < 2 || period > 500) { errFields += "RSI Per, "; MarkFieldError(m_iPeriod); }
+      if(prio <= 0)                  { errFields += "RSI Prior, "; MarkFieldError(m_iPriority); }
+      if(m_cur_rsiMode == RSI_MODE_MIDDLE)
+        { if(mi <= 0 || mi >= 100)   { errFields += "RSI Medio, "; MarkFieldError(m_iMiddle); } }
+      else
         {
-         m_lblStatus.Text(errorMsg); m_lblStatus.Color(CLR_NEGATIVE);
+         if(os <= 0 || os >= 100)    { errFields += "RSI OS, "; MarkFieldError(m_iOversold); }
+         if(ob <= 0 || ob >= 100)    { errFields += "RSI OB, "; MarkFieldError(m_iOverbought); }
+         if(os > 0 && ob > 0 && ob <= os) { errFields += "RSI OB<=OS, "; MarkFieldError(m_iOversold); MarkFieldError(m_iOverbought); }
+        }
+
+      if(errFields != "")
+        {
+         outErr = errFields;
+         m_lblStatus.Text("Valores invalidos"); m_lblStatus.Color(CLR_NEGATIVE);
          m_statusExpiry = GetTickCount() + 10000; ChartRedraw();
          return false;
         }

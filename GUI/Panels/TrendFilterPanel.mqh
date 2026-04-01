@@ -227,17 +227,23 @@ public:
      }
 
 public:
-   bool Apply(void)
+   bool Apply(string &outErr)
      {
+      outErr = "";
       if(m_filter == NULL)
          return false;
 
+      ClearFieldError(m_iPeriod); ClearFieldError(m_iNeutDist);
+
       int    period   = (int)StringToInteger(m_iPeriod.Text());
       double neutDist = StringToDouble(m_iNeutDist.Text());
-      if(period <= 0 || period > 1000)
-         return false;
-      if(neutDist < 0)
-         return false;
+
+      string errFields = "";
+      if(period <= 0 || period > 1000) { errFields += "Trend Per, ";  MarkFieldError(m_iPeriod); }
+      if(neutDist < 0)                 { errFields += "Trend Dist, "; MarkFieldError(m_iNeutDist); }
+
+      if(errFields != "")
+        { outErr = errFields; return false; }
 
       m_filter.SetEnabled(m_pendingEnabled);
       m_filter.SetTrendFilterEnabled(m_pendingEnabled);
