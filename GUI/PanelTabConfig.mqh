@@ -1569,8 +1569,9 @@ void CEPBotPanel::OnClickTPType(int selected)
 //+------------------------------------------------------------------+
 //| ApplyConfig — lê CEdit, valida e chama setters nos módulos         |
 //+------------------------------------------------------------------+
-bool CEPBotPanel::ApplyConfig(void)
+bool CEPBotPanel::ApplyConfig(string &outErr)
   {
+   outErr = "";
 // ═══════════════════════════════════════════════
 // PRÉ-VALIDAÇÃO CRUZADA (bloqueante — antes de aplicar)
 // ═══════════════════════════════════════════════
@@ -2082,16 +2083,9 @@ bool CEPBotPanel::ApplyConfig(void)
 // ═══════════════════════════════════════════════
    if(errors == 0 && warnings > 0)
       ShowHeaderStatus(warnMsg, CLR_WARNING);
-   else if(errors > 0)
+   if(errors > 0)
      {
-      // Remove vírgula+espaço final da lista de campos
-      if(StringLen(errFields) >= 2)
-         errFields = StringSubstr(errFields, 0, StringLen(errFields) - 2);
-      // Trunca se muito longo para caber no header
-      if(StringLen(errFields) > 60)
-         errFields = StringSubstr(errFields, 0, 57) + "...";
-      ShowHeaderStatus("Invalido: " + errFields, CLR_NEGATIVE);
-      ChartRedraw();
+      outErr = errFields;  // passa para ValidateAndApplyAll acumular
       return false;
      }
    ChartRedraw();

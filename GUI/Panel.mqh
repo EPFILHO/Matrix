@@ -873,7 +873,7 @@ private:
 
    // Panel factory
    void              RegisterPanels(void);
-   bool              ApplyConfig(void);
+   bool              ApplyConfig(string &outErr);
    void              ApplyMagicNumberChange(int newMagic);
 
    // Estado visual RISCO (enable/disable campos por tipo SL/TP)
@@ -1424,16 +1424,23 @@ void CEPBotPanel::OnClickCancel(void)
 //+------------------------------------------------------------------+
 bool CEPBotPanel::ValidateAndApplyAll(void)
   {
-   if(!ApplyConfig())
-      return false;
-
-   // Verificar sub-painéis (Parte 030: acumular nomes dos campos inválidos)
+   // Parte 030: acumular TODOS os erros (config + sub-painéis) numa mensagem só
    string allErrs = "";
+
+   // CONFIG (RISCO, RISCO2, BLOQUEIOS, BLOQ2, OUTROS)
+   // Pré-validação cruzada (DD) ainda bloqueia imediatamente via return false
+   string cfgErr = "";
+   ApplyConfig(cfgErr);
+   allErrs += cfgErr;
+
+   // Sub-painéis de estratégias
    for(int i = 0; i < m_stratPanelCount; i++)
      {
       if(m_stratPanels[i] != NULL)
         { string err = ""; m_stratPanels[i].Apply(err); allErrs += err; }
      }
+
+   // Sub-painéis de filtros
    for(int i = 0; i < m_filtPanelCount; i++)
      {
       if(m_filtPanels[i] != NULL)
@@ -1447,6 +1454,7 @@ bool CEPBotPanel::ValidateAndApplyAll(void)
       if(StringLen(allErrs) > 60)
          allErrs = StringSubstr(allErrs, 0, 57) + "...";
       ShowHeaderStatus("Invalido: " + allErrs, CLR_NEGATIVE);
+      ChartRedraw();
       return false;
      }
    return true;
