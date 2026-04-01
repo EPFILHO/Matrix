@@ -2,10 +2,14 @@
 //|                                                 MACrossPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — MA Cross Strategy                        |
-//|                     Versão 1.07 - Claude Parte 029 (Claude Code) |
+//|                     Versão 1.08 - Claude Parte 030 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.08 (Parte 030):
+// * Apply(): highlight rosa por campo + mensagem "Invalido: Fast, Slow..."
+// * SetEnabled(): preserva CLR_FIELD_ERROR ao habilitar
 //
 // CHANGELOG v1.07 (Parte 029):
 // * m_locked: Update() não sobrescreve visual quando EA rodando
@@ -409,11 +413,20 @@ public:
      {
       if(m_strategy == NULL) return false;
       int errors = 0;
+      string errFields = "";
+
+      // Clear highlights
+      ClearFieldError(m_iFastP); ClearFieldError(m_iSlowP); ClearFieldError(m_iPriority);
+
       int fastP = (int)StringToInteger(m_iFastP.Text());
       int slowP = (int)StringToInteger(m_iSlowP.Text());
       int prio  = (int)StringToInteger(m_iPriority.Text());
 
-      if(fastP > 0 && fastP <= 1000 && slowP > 0 && slowP <= 1000 && fastP < slowP)
+      bool fastOk = (fastP > 0 && fastP <= 1000);
+      bool slowOk = (slowP > 0 && slowP <= 1000);
+      bool orderOk = (fastOk && slowOk && fastP < slowP);
+
+      if(fastOk && slowOk && orderOk)
         {
          if(!m_strategy.SetMAParams(fastP, slowP,
                                     m_cur_fastMethod, m_cur_slowMethod,
@@ -422,13 +435,22 @@ public:
             errors++;
         }
       else
+        {
          errors++;
+         if(!fastOk)  { errFields += "Fast, ";  MarkFieldError(m_iFastP); }
+         if(!slowOk)  { errFields += "Slow, ";  MarkFieldError(m_iSlowP); }
+         if(!orderOk && fastOk && slowOk)
+           { errFields += "Fast>=Slow, "; MarkFieldError(m_iFastP); MarkFieldError(m_iSlowP); }
+        }
 
-      if(prio <= 0) errors++;
+      if(prio <= 0)
+        { errors++; errFields += "Prior, "; MarkFieldError(m_iPriority); }
 
       if(errors > 0)
         {
-         m_lblStatus.Text("Valores invalidos");
+         if(StringLen(errFields) >= 2)
+            errFields = StringSubstr(errFields, 0, StringLen(errFields) - 2);
+         m_lblStatus.Text("Invalido: " + errFields);
          m_lblStatus.Color(CLR_NEGATIVE);
          m_statusExpiry = GetTickCount() + 10000;
          ChartRedraw();
@@ -459,11 +481,17 @@ public:
       m_iFastP.ReadOnly(!enable);
       m_iSlowP.ReadOnly(!enable);
       m_iPriority.ReadOnly(!enable);
-      color bg = enable ? clrWhite : C'220,220,220';
+      color bg = C'220,220,220';
       color fg = enable ? clrBlack : C'160,160,160';
-      m_iFastP.ColorBackground(bg);   m_iFastP.Color(fg);
-      m_iSlowP.ColorBackground(bg);   m_iSlowP.Color(fg);
-      m_iPriority.ColorBackground(bg); m_iPriority.Color(fg);
+      if(enable)
+        {
+         if(m_iFastP.ColorBackground() != CLR_FIELD_ERROR)    m_iFastP.ColorBackground(clrWhite);
+         if(m_iSlowP.ColorBackground() != CLR_FIELD_ERROR)    m_iSlowP.ColorBackground(clrWhite);
+         if(m_iPriority.ColorBackground() != CLR_FIELD_ERROR) m_iPriority.ColorBackground(clrWhite);
+        }
+      else
+        { m_iFastP.ColorBackground(bg); m_iSlowP.ColorBackground(bg); m_iPriority.ColorBackground(bg); }
+      m_iFastP.Color(fg); m_iSlowP.Color(fg); m_iPriority.Color(fg);
       // Labels
       color lc = enable ? CLR_LABEL : C'180,180,180';
       m_lPriority.Color(lc); m_lFastP.Color(lc); m_lSlowP.Color(lc);
