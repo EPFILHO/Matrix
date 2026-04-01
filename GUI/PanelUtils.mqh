@@ -164,6 +164,9 @@ void SetRadioSel(CButton &btns[], int count, int selected)
      }
   }
 
+//── Field validation constant (Parte 030) ────────────────────────
+#define CLR_FIELD_ERROR   C'255,210,210'   // rosa claro para campo inválido
+
 //── Enable/Disable helpers (for panels) ──────────────────────────
 void SetEditEnabled(CLabel &lbl, CEdit &inp, bool enable)
   {
@@ -214,8 +217,6 @@ void SetRadioGroupEnabled(CLabel &lbl, CButton &btns[], int count, bool enable)
   }
 
 //── Field validation helpers (Parte 030) ──────────────────────────
-#define CLR_FIELD_ERROR   C'255,210,210'   // rosa claro para campo inválido
-
 void MarkFieldError(CEdit &inp)
   {
    inp.ColorBackground(CLR_FIELD_ERROR);
