@@ -1882,8 +1882,8 @@ bool CEPBotPanel::ApplyConfig(string &outErr)
          double maxLs = StringToDouble(m_c2_iDLLoss.Text());
          double maxGn = StringToDouble(m_c2_iDLGain.Text());
          bool trdOk = (maxTrd >= 0 && maxTrd <= 9999);
-         bool lsOk  = (maxLs > 0);
-         bool gnOk  = (maxGn > 0);
+         bool lsOk  = (maxLs >= 0);
+         bool gnOk  = (maxGn >= 0);
          if(trdOk && lsOk && gnOk)
             m_blockers.SetDailyLimits(maxTrd, maxLs, maxGn, m_cur_profitTargetAction);
          else
@@ -2077,19 +2077,6 @@ bool CEPBotPanel::ApplyConfig(string &outErr)
       warnMsg = "Aviso: DD ativo sem Daily Limits";
      }
 
-   // AVISO: Daily Limits ON mas todos os valores = 0
-   if(m_cur_dailyLimitsOn)
-     {
-      int maxTrd2   = (int)StringToInteger(m_c2_iDLTrd.Text());
-      double maxLs2 = StringToDouble(m_c2_iDLLoss.Text());
-      double maxGn2 = StringToDouble(m_c2_iDLGain.Text());
-      if(maxTrd2 == 0 && maxLs2 == 0.0 && maxGn2 == 0.0)
-        {
-         warnings++;
-         if(warnMsg == "")
-            warnMsg = "Aviso: Daily Limits ON mas sem valores";
-        }
-     }
 
 // ═══════════════════════════════════════════════
 // FEEDBACK
