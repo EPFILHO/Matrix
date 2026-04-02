@@ -691,18 +691,20 @@ bool CBlockerFilters::ShouldCloseBeforeSessionEnd(ulong positionTicket)
 //+------------------------------------------------------------------+
 void CBlockerFilters::SetTimeFilter(bool enable, int startH, int startM, int endH, int endM)
   {
+   bool changed = (m_enableTimeFilter != enable ||
+                   m_startHour != startH || m_startMinute != startM ||
+                   m_endHour != endH || m_endMinute != endM);
    m_enableTimeFilter = enable;
    m_startHour        = startH;
    m_startMinute      = startM;
    m_endHour          = endH;
    m_endMinute        = endM;
+   if(!changed) return;
    string info = enable
       ? StringFormat("ON %02d:%02d -> %02d:%02d", startH, startM, endH, endM)
       : "OFF";
    if(m_logger != NULL)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "TimeFilter: " + info);
-   else
-      Print("🔄 TimeFilter: ", info);
   }
 
 //+------------------------------------------------------------------+
@@ -743,33 +745,42 @@ void CBlockerFilters::SetNewsFilter(int window, bool enable,
   {
    if(window < 1 || window > 3) return;
 
+   bool changed = false;
    if(window == 1)
      {
+      changed = (m_enableNewsFilter1 != enable ||
+                 m_newsStart1Hour != startH || m_newsStart1Minute != startM ||
+                 m_newsEnd1Hour != endH || m_newsEnd1Minute != endM);
       m_enableNewsFilter1 = enable;
       m_newsStart1Hour    = startH; m_newsStart1Minute = startM;
       m_newsEnd1Hour      = endH;   m_newsEnd1Minute   = endM;
      }
    else if(window == 2)
      {
+      changed = (m_enableNewsFilter2 != enable ||
+                 m_newsStart2Hour != startH || m_newsStart2Minute != startM ||
+                 m_newsEnd2Hour != endH || m_newsEnd2Minute != endM);
       m_enableNewsFilter2 = enable;
       m_newsStart2Hour    = startH; m_newsStart2Minute = startM;
       m_newsEnd2Hour      = endH;   m_newsEnd2Minute   = endM;
      }
    else
      {
+      changed = (m_enableNewsFilter3 != enable ||
+                 m_newsStart3Hour != startH || m_newsStart3Minute != startM ||
+                 m_newsEnd3Hour != endH || m_newsEnd3Minute != endM);
       m_enableNewsFilter3 = enable;
       m_newsStart3Hour    = startH; m_newsStart3Minute = startM;
       m_newsEnd3Hour      = endH;   m_newsEnd3Minute   = endM;
      }
 
+   if(!changed) return;
    string info = enable
       ? StringFormat("ON %02d:%02d -> %02d:%02d", startH, startM, endH, endM)
       : "OFF";
    if(m_logger != NULL)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
                    StringFormat("NewsFilter%d: %s", window, info));
-   else
-      Print(StringFormat("🔄 NewsFilter%d: %s", window, info));
   }
 
 //+------------------------------------------------------------------+

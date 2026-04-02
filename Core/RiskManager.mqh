@@ -1090,12 +1090,10 @@ void CRiskManager::SetUsePartialTP(bool enable)
   {
    bool oldValue = m_usePartialTP;
    m_usePartialTP = enable;
-   
-   if(m_logger != NULL)
+
+   if(oldValue != enable && m_logger != NULL)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
          "🔄 Partial TP: " + (enable ? "ATIVADO" : "DESATIVADO"));
-   else
-      Print("🔄 Partial TP: ", enable ? "ATIVADO" : "DESATIVADO");
   }
 
 void CRiskManager::SetSLType(ENUM_SL_TYPE type)
@@ -1146,40 +1144,45 @@ void CRiskManager::SetRangeMultiplier(double mult)
 
 void CRiskManager::SetATRPeriod(int period)
   {
+   int oldValue = m_atrPeriod;
    m_atrPeriod = period;
-   if(m_logger != NULL)
+   if(oldValue != period && m_logger != NULL)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         "🔄 ATR Period: " + IntegerToString(period));
+         StringFormat("🔄 ATR Period: %d → %d", oldValue, period));
   }
 
 void CRiskManager::SetRangePeriod(int period)
   {
+   int oldValue = m_rangePeriod;
    m_rangePeriod = period;
-   if(m_logger != NULL)
+   if(oldValue != period && m_logger != NULL)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         "🔄 Range Period: " + IntegerToString(period));
+         StringFormat("🔄 Range Period: %d → %d", oldValue, period));
   }
 
 void CRiskManager::SetSLCompensateSpread(bool enable)
   {
+   bool oldValue = m_slCompensateSpread;
    m_slCompensateSpread = enable;
-   if(m_logger != NULL)
+   if(oldValue != enable && m_logger != NULL)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
          "🔄 SL Compensar Spread: " + (enable ? "ON" : "OFF"));
   }
 
 void CRiskManager::SetTPCompensateSpread(bool enable)
   {
+   bool oldValue = m_tpCompensateSpread;
    m_tpCompensateSpread = enable;
-   if(m_logger != NULL)
+   if(oldValue != enable && m_logger != NULL)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
          "🔄 TP Compensar Spread: " + (enable ? "ON" : "OFF"));
   }
 
 void CRiskManager::SetTrailingCompensateSpread(bool enable)
   {
+   bool oldValue = m_trailingCompensateSpread;
    m_trailingCompensateSpread = enable;
-   if(m_logger != NULL)
+   if(oldValue != enable && m_logger != NULL)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
          "🔄 Trailing Compensar Spread: " + (enable ? "ON" : "OFF"));
   }
