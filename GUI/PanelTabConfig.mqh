@@ -1597,6 +1597,7 @@ bool CEPBotPanel::ApplyConfig(string &outErr)
       if(preMaxGn <= 0)
         {
          crossErrors++;
+         MarkFieldError(m_c2_iDLGain);
          if(crossMsg == "")
             crossMsg = "Max Gain deve ser > 0 para ATIVAR DD";
          else
