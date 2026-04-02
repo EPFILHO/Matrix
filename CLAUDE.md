@@ -141,6 +141,7 @@
 - PanelUtils.mqh: 1.02 → 1.03
 - PanelTabConfig.mqh: 1.35 → 1.36
 - Panel.mqh: 1.60 → 1.61
+- PanelPersistence.mqh: 1.02 → 1.03
 - StrategyPanelBase.mqh: 1.03 → 1.04
 - FilterPanelBase.mqh: 1.03 → 1.04
 - MACrossPanel.mqh: 1.07 → 1.08
