@@ -464,7 +464,8 @@ void CEPBotPanel::ApplyLoadedConfig(const SConfigData &data)
 // ═══════════════════════════════════════════════
 // 5. Aplicar nos MÓDULOS — chama ApplyConfig() que lê os CEdit/m_cur_*
 // ═══════════════════════════════════════════════
-   ApplyConfig();
+   string loadErr = "";
+   ApplyConfig(loadErr);
 
 // ═══════════════════════════════════════════════
 // 6. Aplicar STRATEGIES via setters
