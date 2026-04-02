@@ -1436,8 +1436,12 @@ bool CEPBotPanel::ValidateAndApplyAll(void)
    // CONFIG (RISCO, RISCO2, BLOQUEIOS, BLOQ2, OUTROS)
    // Pré-validação cruzada (DD) ainda bloqueia imediatamente via return false
    string cfgErr = "";
-   ApplyConfig(cfgErr);
+   bool cfgOk = ApplyConfig(cfgErr);
    allErrs += cfgErr;
+
+   // Pré-validação cruzada bloqueante (ex: Partial TP + TP=NONE + Trail OFF)
+   if(!cfgOk && cfgErr == "")
+      return false;  // ApplyConfig já mostrou ShowHeaderStatus
 
    // Sub-painéis de estratégias
    for(int i = 0; i < m_stratPanelCount; i++)
