@@ -1881,8 +1881,8 @@ bool CEPBotPanel::ApplyConfig(string &outErr)
          double maxLs = StringToDouble(m_c2_iDLLoss.Text());
          double maxGn = StringToDouble(m_c2_iDLGain.Text());
          bool trdOk = (maxTrd >= 0 && maxTrd <= 9999);
-         bool lsOk  = (maxLs >= 0);
-         bool gnOk  = (maxGn >= 0);
+         bool lsOk  = (maxLs > 0);
+         bool gnOk  = (maxGn > 0);
          if(trdOk && lsOk && gnOk)
             m_blockers.SetDailyLimits(maxTrd, maxLs, maxGn, m_cur_profitTargetAction);
          else
