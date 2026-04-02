@@ -1602,6 +1602,16 @@ bool CEPBotPanel::ApplyConfig(string &outErr)
         }
      }
 
+   // ERRO: Partial TP ativo sem TP geral e sem Trailing
+   if(m_cur_partialTP && m_cur_tpType == TP_NONE && !m_cur_trailOn)
+     {
+      crossErrors++;
+      if(crossMsg == "")
+         crossMsg = "Partial TP requer TP (Fixo/ATR) ou Trailing";
+      else
+         crossMsg = IntegerToString(crossErrors) + " erros de validacao cruzada";
+     }
+
    if(crossErrors > 0)
      {
       ShowHeaderStatus(crossMsg, CLR_NEGATIVE);

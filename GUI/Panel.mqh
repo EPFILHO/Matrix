@@ -1447,6 +1447,18 @@ bool CEPBotPanel::ValidateAndApplyAll(void)
         { string err = ""; m_filtPanels[i].Apply(err); allErrs += err; }
      }
 
+   // Validação cruzada: Exit TP/SL requer TP definido (Parte 030)
+   if(m_cur_tpType == TP_NONE)
+     {
+      bool needsTP = false;
+      if(m_maCross != NULL && m_maCross.GetEnabled() && m_maCross.GetExitMode() == EXIT_TP_SL)
+         needsTP = true;
+      if(m_bbStrategy != NULL && m_bbStrategy.GetEnabled() && m_bbStrategy.GetExitMode() == EXIT_TP_SL)
+         needsTP = true;
+      if(needsTP)
+         allErrs += "Saida TP/SL requer TP, ";
+     }
+
    if(allErrs != "")
      {
       if(StringLen(allErrs) >= 2)
