@@ -2,7 +2,7 @@
 //|                                             FilterPanelBase.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Interface base para sub-páginas de filtro                 |
-//|                     Versão 1.03 - Claude Parte 029 (Claude Code) |
+//|                     Versão 1.04 - Claude Parte 030 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh ANTES da definição de CEPBotPanel.
 // Usa forward declaration para CEPBotPanel.
@@ -10,6 +10,9 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.04 (Parte 030):
+// + Apply(string &outErr): retorna nomes dos campos inválidos para o header
+//
 // v1.03 (Parte 029):
 // + m_locked: flag para impedir Update() de sobrescrever estado travado
 //
@@ -45,7 +48,7 @@ public:
    // Retorna true se o clique foi tratado por este painel
    virtual bool      OnClick(string name) = 0;
    // Valida + aplica nos módulos (chamado pelo INICIAR/SALVAR centralizado)
-   virtual bool      Apply(void) = 0;
+   virtual bool      Apply(string &outErr) = 0;
    // Habilita/desabilita edição dos controles
    virtual void      SetEnabled(bool enable) = 0;
   };

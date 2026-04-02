@@ -2,7 +2,7 @@
 //|                                     BollingerBandsFilterPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Bollinger Bands Filter (Anti-Squeeze)   |
-//|                     Versão 1.07 - Claude Parte 029 (Claude Code) |
+//|                     Versão 1.08 - Claude Parte 030 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
@@ -278,22 +278,29 @@ public:
      }
 
 public:
-   bool Apply(void)
+   bool Apply(string &outErr)
      {
+      outErr = "";
       if(m_filter == NULL)
          return false;
+
+      ClearFieldError(m_iPeriod); ClearFieldError(m_iDev);
+      ClearFieldError(m_iThreshold); ClearFieldError(m_iPercPeriod);
+
       int    period     = (int)StringToInteger(m_iPeriod.Text());
       double deviation  = StringToDouble(m_iDev.Text());
       double threshold  = StringToDouble(m_iThreshold.Text());
       int    percPeriod = (int)StringToInteger(m_iPercPeriod.Text());
-      if(period <= 0 || period > 500)
-         return false;
-      if(deviation <= 0 || deviation > 10.0)
-         return false;
-      if(threshold <= 0)
-         return false;
+
+      string errFields = "";
+      if(period <= 0 || period > 500)   { errFields += "BFilt Per, ";  MarkFieldError(m_iPeriod); }
+      if(deviation <= 0 || deviation > 10.0) { errFields += "BFilt Dev, ";  MarkFieldError(m_iDev); }
+      if(threshold <= 0)                { errFields += "BFilt Thr, ";  MarkFieldError(m_iThreshold); }
       if(m_cur_metric == BB_SQUEEZE_PERCENTILE && (percPeriod <= 0 || percPeriod > 500))
-         return false;
+        { errFields += "BFilt PercP, "; MarkFieldError(m_iPercPeriod); }
+
+      if(errFields != "")
+        { outErr = errFields; return false; }
 
       m_filter.SetEnabled(m_pendingEnabled);
       m_filter.SetSqueezeMetric(m_cur_metric);

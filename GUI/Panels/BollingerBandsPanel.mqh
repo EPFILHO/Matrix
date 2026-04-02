@@ -2,7 +2,7 @@
 //|                                           BollingerBandsPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Bollinger Bands Strategy                 |
-//|                     Versão 1.07 - Claude Parte 029 (Claude Code) |
+//|                     Versão 1.08 - Claude Parte 030 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
@@ -76,22 +76,32 @@ public:
    virtual string GetName(void) const { return "BB"; }
    void           SetStrategy(CBollingerBandsStrategy *s) { m_strategy = s; }
 
-   bool Apply(void)
+   bool Apply(string &outErr)
      {
+      outErr = "";
       if(m_strategy == NULL)
          return false;
+
+      // Clear highlights
+      ClearFieldError(m_iPeriod); ClearFieldError(m_iDev); ClearFieldError(m_iPriority);
 
       int period = (int)StringToInteger(m_iPeriod.Text());
       double dev = StringToDouble(m_iDev.Text());
       int prio = (int)StringToInteger(m_iPriority.Text());
 
-      // Validação
-      if(period < 2 || period > 500)
+      // Validação com highlight individual
+      string errFields = "";
+      if(period < 2 || period > 500) { errFields += "BB Per, ";   MarkFieldError(m_iPeriod); }
+      if(dev <= 0 || dev > 10.0)     { errFields += "BB Dev, ";   MarkFieldError(m_iDev); }
+      if(prio <= 0)                  { errFields += "BB Prior, "; MarkFieldError(m_iPriority); }
+
+      if(errFields != "")
+        {
+         outErr = errFields;
+         m_lblStatus.Text("Valores invalidos"); m_lblStatus.Color(CLR_NEGATIVE);
+         m_statusExpiry = GetTickCount() + 10000; ChartRedraw();
          return false;
-      if(dev <= 0 || dev > 10.0)
-         return false;
-      if(prio <= 0)
-         return false;
+        }
 
       // Aplicar
       if(!m_strategy.SetPeriod(period) || !m_strategy.SetDeviation(dev))

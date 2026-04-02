@@ -2,7 +2,7 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.60 - Claude Parte 029 (Claude Code) |
+//|                     Versão 1.61 - Claude Parte 030 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.59"
@@ -11,6 +11,12 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.61 (Parte 030):
+// * ValidateAndApplyAll(): acumula erros CONFIG + sub-painéis numa mensagem só
+// * ApplyConfig() assinatura: void → string &outErr (retorna campos inválidos)
+// * Validação cruzada: Exit Mode TP/SL requer TP (Fixo/ATR) definido
+//   (verifica m_maCross e m_bbStrategy após Apply() dos sub-painéis)
+//
 // v1.60 (Parte 029):
 // * Fix restauração DD toggle ao destravar: cor ON/OFF/REQUER META correta
 //
@@ -873,7 +879,7 @@ private:
 
    // Panel factory
    void              RegisterPanels(void);
-   bool              ApplyConfig(void);
+   bool              ApplyConfig(string &outErr);
    void              ApplyMagicNumberChange(int newMagic);
 
    // Estado visual RISCO (enable/disable campos por tipo SL/TP)
@@ -1424,23 +1430,53 @@ void CEPBotPanel::OnClickCancel(void)
 //+------------------------------------------------------------------+
 bool CEPBotPanel::ValidateAndApplyAll(void)
   {
-   if(!ApplyConfig())
-      return false;
+   // Parte 030: acumular TODOS os erros (config + sub-painéis) numa mensagem só
+   string allErrs = "";
 
-   // Verificar sub-painéis de estratégias
-   bool hasErrors = false;
+   // CONFIG (RISCO, RISCO2, BLOQUEIOS, BLOQ2, OUTROS)
+   // Pré-validação cruzada (DD) ainda bloqueia imediatamente via return false
+   string cfgErr = "";
+   bool cfgOk = ApplyConfig(cfgErr);
+   allErrs += cfgErr;
+
+   // Pré-validação cruzada bloqueante (ex: Partial TP + TP=NONE + Trail OFF)
+   if(!cfgOk && cfgErr == "")
+      return false;  // ApplyConfig já mostrou ShowHeaderStatus
+
+   // Sub-painéis de estratégias
    for(int i = 0; i < m_stratPanelCount; i++)
-      if(m_stratPanels[i] != NULL && !m_stratPanels[i].Apply())
-         hasErrors = true;
-
-   // Verificar sub-painéis de filtros
-   for(int i = 0; i < m_filtPanelCount; i++)
-      if(m_filtPanels[i] != NULL && !m_filtPanels[i].Apply())
-         hasErrors = true;
-
-   if(hasErrors)
      {
-      ShowHeaderStatus("Corrija os erros antes de prosseguir", CLR_NEGATIVE);
+      if(m_stratPanels[i] != NULL)
+        { string err = ""; m_stratPanels[i].Apply(err); allErrs += err; }
+     }
+
+   // Sub-painéis de filtros
+   for(int i = 0; i < m_filtPanelCount; i++)
+     {
+      if(m_filtPanels[i] != NULL)
+        { string err = ""; m_filtPanels[i].Apply(err); allErrs += err; }
+     }
+
+   // Validação cruzada: Exit TP/SL requer TP definido (Parte 030)
+   if(m_cur_tpType == TP_NONE)
+     {
+      bool needsTP = false;
+      if(m_maCross != NULL && m_maCross.GetEnabled() && m_maCross.GetExitMode() == EXIT_TP_SL)
+         needsTP = true;
+      if(m_bbStrategy != NULL && m_bbStrategy.GetEnabled() && m_bbStrategy.GetExitMode() == EXIT_TP_SL)
+         needsTP = true;
+      if(needsTP)
+         allErrs += "Saida TP/SL requer TP, ";
+     }
+
+   if(allErrs != "")
+     {
+      if(StringLen(allErrs) >= 2)
+         allErrs = StringSubstr(allErrs, 0, StringLen(allErrs) - 2);
+      if(StringLen(allErrs) > 60)
+         allErrs = StringSubstr(allErrs, 0, 57) + "...";
+      ShowHeaderStatus("Invalido: " + allErrs, CLR_NEGATIVE);
+      ChartRedraw();
       return false;
      }
    return true;

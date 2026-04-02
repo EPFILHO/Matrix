@@ -2,7 +2,7 @@
 //|                                              RSIFilterPanel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — RSI Filter                               |
-//|                     Versão 1.07 - Claude Parte 029 (Claude Code) |
+//|                     Versão 1.08 - Claude Parte 030 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
@@ -232,26 +232,30 @@ public:
      }
 
 public:
-   bool Apply(void)
+   bool Apply(string &outErr)
      {
+      outErr = "";
       if(m_filter == NULL)
          return false;
+
+      ClearFieldError(m_iPeriod); ClearFieldError(m_iOversold); ClearFieldError(m_iOverbought);
 
       int    period     = (int)StringToInteger(m_iPeriod.Text());
       double oversold   = StringToDouble(m_iOversold.Text());
       double overbought = StringToDouble(m_iOverbought.Text());
 
-      if(period < 2 || period > 500)
-         return false;
+      string errFields = "";
+      if(period < 2 || period > 500) { errFields += "RFilt Per, "; MarkFieldError(m_iPeriod); }
       if(m_cur_mode != RSI_FILTER_NEUTRAL)
         {
-         if(oversold <= 0 || oversold >= 100)
-            return false;
-         if(overbought <= 0 || overbought >= 100)
-            return false;
-         if(overbought <= oversold)
-            return false;
+         if(oversold <= 0 || oversold >= 100)    { errFields += "RFilt OS, "; MarkFieldError(m_iOversold); }
+         if(overbought <= 0 || overbought >= 100) { errFields += "RFilt OB, "; MarkFieldError(m_iOverbought); }
+         if(oversold > 0 && overbought > 0 && overbought <= oversold)
+           { errFields += "RFilt OB<=OS, "; MarkFieldError(m_iOversold); MarkFieldError(m_iOverbought); }
         }
+
+      if(errFields != "")
+        { outErr = errFields; return false; }
 
       m_filter.SetEnabled(m_pendingEnabled);
       m_filter.SetFilterMode(m_cur_mode);
