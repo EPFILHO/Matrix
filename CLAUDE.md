@@ -151,7 +151,31 @@
 - RSIFilterPanel.mqh: 1.07 → 1.08
 - BollingerBandsFilterPanel.mqh: 1.07 → 1.08
 
+#### FIXES ADICIONAIS (Sessão 030 continuação)
+- [x] **Partial TP + TP=NONE + Trailing OFF**: pré-validação agora bloqueia corretamente
+  - `ValidateAndApplyAll()` captura `return false` de `ApplyConfig()` 
+  - Impede que "Config salva com sucesso!" sobrescreva mensagem de erro
+- [x] **Max Gain fica rosa** na validação cruzada DD (DD ON + ProfitTargetAction=ATIVAR DD + Max Gain <= 0)
+  - Adicionado `MarkFieldError(m_c2_iDLGain)` no bloco de validação cruzada
+- [x] **MaxLoss/MaxGain aceitam 0** = "sem limite" (permitindo usar só MaxTrades, ou só MaxLoss, ou só MaxGain)
+  - Validação volta a `>= 0` para ambos; MaxTrades mantém `>= 0`
+- [x] **Aviso "Daily Limits ON mas sem valores"** removido
+  - Zero é escolha válida do trader; não precisa de warning
+
+### Versões atualizadas (continuação)
+- Panel.mqh: 1.61 → (sem novo número, só changelog adicionado)
+- PanelTabConfig.mqh: 1.36 → (sem novo número, só fixes e changelog)
+
 ### Geral
 - [x] Parte 030: Validações de campos (CONFIG + ESTRAT + FILTROS)
 - [x] PR da Parte 029 → main (PR #11 mergeado)
+- [x] Validações cruzadas TP/SL + Partial TP implementadas e testadas
+- [x] Feedback visual (pink highlight) consistente em todas as abas
+
+### TODO restante (Parte 031)
+- [ ] Expandir padrão "só loga se mudar" para mais campos:
+  - **Em Parte 028**: Trade Comment, Slippage já implementados
+  - **Faltam**: Magic Number (TradeManager.SetMagicNumber), Conflict Resolution, e demais campos que sofrem hot reload
+  - Padrão estabelecido em TradeManager::SetSlippage() pode ser replicado
+- [ ] Criar PR da Parte 030 → main
 
