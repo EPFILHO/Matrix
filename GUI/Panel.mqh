@@ -11,6 +11,12 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.61 (Parte 030):
+// * ValidateAndApplyAll(): acumula erros CONFIG + sub-painéis numa mensagem só
+// * ApplyConfig() assinatura: void → string &outErr (retorna campos inválidos)
+// * Validação cruzada: Exit Mode TP/SL requer TP (Fixo/ATR) definido
+//   (verifica m_maCross e m_bbStrategy após Apply() dos sub-painéis)
+//
 // v1.60 (Parte 029):
 // * Fix restauração DD toggle ao destravar: cor ON/OFF/REQUER META correta
 //

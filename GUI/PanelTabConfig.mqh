@@ -22,6 +22,8 @@
 // * Validações cruzadas: BE Off < BE Ativ, TP2 Dist > TP1 Dist
 // * DD%: teto 100%, Streak max 999, Pausa max 1440min, CBS max 1440min
 // * DbgCooldown max 3600s, MaxTrades max 9999
+// * Pré-validação cruzada: Partial TP ON + TP=NONE + Trailing OFF → bloqueante
+// * ApplyConfig() assinatura: void → ApplyConfig(string &outErr)
 //
 // v1.35 (Parte 029):
 // * Fix RefreshRisco2State: DD toggle cor restaurada em todos os estados
