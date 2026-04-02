@@ -83,6 +83,74 @@
 - [ ] Validações dos campos (RISCO, RISCO2, BLOQUEIOS, BLOQ2)
 - [ ] Criar PR da Parte 029 → main
 
+---
+
+## Parte 030 — Concluída (2026-04-02)
+
+### O que foi feito
+
+#### INFRAESTRUTURA (PanelUtils.mqh)
+- [x] `CLR_FIELD_ERROR`: constante rosa claro para highlight de campos inválidos
+- [x] `MarkFieldError()` / `ClearFieldError()`: feedback visual em CEdit
+- [x] `CalcMaxPoints()`: limite dinâmico baseado no preço do ativo (%)
+- [x] `CalcMinSLTP()`: obtém SYMBOL_TRADE_STOPS_LEVEL do broker
+- [x] `CalcSymbolLotLimits()`: obtém min/max/step de lote do ativo
+
+#### CONFIG → RISCO + RISCO2
+- [x] **Limites dinâmicos** baseados no ativo:
+  - Lote: `SYMBOL_VOLUME_MIN/MAX`
+  - SL fixo: `>= STOPS_LEVEL && <= 25% preço`
+  - TP fixo: `>= STOPS_LEVEL && <= 50% preço`
+  - SL/TP ATR mult: `> 0 && <= 100.0`
+  - Trail Start/Step: validados individualmente com limites
+  - BE Offset < BE Activation (validação cruzada!)
+  - TP2 Dist > TP1 Dist (validação cruzada!)
+  - ATR/Range Period: `>= 1 && <= 999`
+- [x] **Highlight rosa** em cada campo inválido (MarkFieldError)
+- [x] **Feedback por campo**: `"Invalido: Lote, SL, TP1%"` no header (não mais genérico)
+- [x] **Persistência de cor** quando troca de aba (SetEditEnabled preserva CLR_FIELD_ERROR)
+
+#### CONFIG → BLOQUEIOS + BLOQ2 + OUTROS
+- [x] **Spread**: teto `1% preço`, mantém `0=sem limite`
+- [x] **Daily Limits**: MaxTrades `<= 9999`, highlight individual
+- [x] **Streak**: max `999`, Pausa max `1440min` (24h)
+- [x] **DD%**: teto `100%` (percentual)
+- [x] **TimeFilter**: highlight individual por campo H/M
+- [x] **News Filter**: highlight dos 4 campos da janela inválida
+- [x] **CBS**: max `1440min`
+- [x] **Slippage/Magic/DbgCooldown**: highlight + nome no feedback
+- [x] **DbgCooldown**: teto `3600s` (1h)
+
+#### ESTRATÉGIAS / FILTROS (6 sub-painéis)
+- [x] **Assinatura Apply()** mudou para `Apply(string &outErr)` para retornar erros
+- [x] **MACrossPanel**: highlight Fast/Slow/Priority + nomes específicos
+- [x] **RSIStrategyPanel**: highlight Period/OS/OB/Middle/Priority
+- [x] **BollingerBandsPanel**: highlight Period/Dev/Priority
+- [x] **TrendFilterPanel**: highlight Period/NeutDist
+- [x] **RSIFilterPanel**: highlight Period/OS/OB
+- [x] **BollingerBandsFilterPanel**: highlight Period/Dev/Threshold/PercPeriod
+- [x] **Validação cruzada** em cada sub-painel (ex: OB > OS, dist order)
+
+#### UNIFICAÇÃO DE FEEDBACK
+- [x] **ValidateAndApplyAll()**: acumula erros de CONFIG + ESTRAT + FILTROS
+- [x] **Uma única mensagem no header**: `"Invalido: Lote, MA Fast>=Slow, RFilt Per"`
+- [x] **Sem dois rounds**: agora roda tudo de uma vez antes de informar erros
+- [x] **SetEditEnabled() em sub-painéis**: preserva CLR_FIELD_ERROR entre abas
+
+### Versões atualizadas
+- PanelUtils.mqh: 1.02 → 1.03
+- PanelTabConfig.mqh: 1.35 → 1.36
+- Panel.mqh: 1.60 → 1.61
+- StrategyPanelBase.mqh: 1.03 → 1.04
+- FilterPanelBase.mqh: 1.03 → 1.04
+- MACrossPanel.mqh: 1.07 → 1.08
+- RSIStrategyPanel.mqh: 1.07 → 1.08
+- BollingerBandsPanel.mqh: 1.07 → 1.08
+- TrendFilterPanel.mqh: 1.06 → 1.07
+- RSIFilterPanel.mqh: 1.07 → 1.08
+- BollingerBandsFilterPanel.mqh: 1.07 → 1.08
+
 ### Geral
-- [x] PR da Parte 028 → main (PR #9 mergeado)
-- [x] Parte 029: GUI locks + sub-panel fixes + DD logic centralized
+- [x] Parte 030: Validações de campos (CONFIG + ESTRAT + FILTROS)
+- [x] PR da Parte 029 → main (PR #11 mergeado)
+
