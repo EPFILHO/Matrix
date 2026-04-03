@@ -95,6 +95,7 @@ string g_tradeComment = "";
 #include "Strategy/Base/StrategyBase.mqh"
 
 // 2️⃣ MÓDULOS CORE
+#include "Core/Utils.mqh"
 #include "Core/TradeManager.mqh"
 
 // 3️⃣ FILTROS ADICIONAIS
@@ -1421,20 +1422,6 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
 
    g_logger.Log(LOG_SIGNAL, THROTTLE_NONE, "SIGNAL",
       "════════════════════════════════════════════════════════════════");
-}
-
-//+------------------------------------------------------------------+
-//| GetTypeFilling()                                                 |
-//+------------------------------------------------------------------+
-ENUM_ORDER_TYPE_FILLING GetTypeFilling(string symbol)
-{
-   uint filling = (uint)SymbolInfoInteger(symbol, SYMBOL_FILLING_MODE);
-   if((filling & SYMBOL_FILLING_FOK) == SYMBOL_FILLING_FOK)
-      return ORDER_FILLING_FOK;
-   else if((filling & SYMBOL_FILLING_IOC) == SYMBOL_FILLING_IOC)
-      return ORDER_FILLING_IOC;
-   else
-      return ORDER_FILLING_RETURN;
 }
 
 //+------------------------------------------------------------------+
