@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //|                                           BlockerFilters.mqh     |
 //|                                        Copyright 2026, EP Filho  |
-//|           Filtros de Condição de Mercado - EPBot Matrix          |
+//|                   Filtros de Condição de Mercado - EPBot Matrix  |
 //|                       Versão 1.02 - Claude Parte 032             |
 //+------------------------------------------------------------------+
 // NOTA: Enums (ENUM_BLOCKER_REASON, ENUM_SESSION_STATE, etc.) e
