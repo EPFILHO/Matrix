@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //|                                                  Blockers.mqh    |
 //|                                      Copyright 2026, EP Filho    |
-//|                    Sistema de Bloqueios - EPBot Matrix            |
+//|                    Sistema de Bloqueios - EPBot Matrix           |
 //|                    Versão 3.25 - Refatoração de segurança         |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
