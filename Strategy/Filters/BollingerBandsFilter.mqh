@@ -130,6 +130,7 @@ public:
    // ═══════════════════════════════════════════════════════════
    // HOT RELOAD - Parâmetros quentes (sem reiniciar indicadores)
    // ═══════════════════════════════════════════════════════════
+   virtual void      SetEnabled(bool enabled) override; // v1.01 — log se mudar
    void              SetSqueezeMetric(ENUM_BB_SQUEEZE_METRIC metric);
    void              SetSqueezeThreshold(double value);
    void              SetPercentilePeriod(int value);
@@ -468,6 +469,19 @@ bool CBollingerBandsFilter::CheckSqueezePercentile()
 // ═══════════════════════════════════════════════════════════════
 // HOT RELOAD - MÉTODOS SET QUENTES
 // ═══════════════════════════════════════════════════════════════
+
+//+------------------------------------------------------------------+
+//| HOT RELOAD - Ativar/desativar filtro (v1.01)                     |
+//+------------------------------------------------------------------+
+void CBollingerBandsFilter::SetEnabled(bool enabled)
+  {
+   bool oldValue = m_isEnabled;
+   m_isEnabled = enabled;
+
+   if(oldValue != enabled && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 [BB Filter] Filtro: " + (enabled ? "ATIVADO" : "DESATIVADO"));
+  }
 
 //+------------------------------------------------------------------+
 //| HOT RELOAD - Alterar métrica de squeeze                          |

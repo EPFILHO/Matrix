@@ -184,7 +184,7 @@ public:
    bool              SetEntryMode(ENUM_ENTRY_MODE mode);
    bool              SetExitMode(ENUM_EXIT_MODE mode);
    void              SetMinDistance(int points);  // v2.26
-   // SetEnabled/GetEnabled: herdados de CStrategyBase v2.01
+   virtual void      SetEnabled(bool v) override; // v2.27 — log se mudar
 
    // ═══════════════════════════════════════════════════════════
    // COLD RELOAD - Parâmetros frios (reinicia indicadores)
@@ -755,6 +755,19 @@ void CMACrossStrategy::SetMinDistance(int points)
       else
          Print(msg);
      }
+  }
+
+//+------------------------------------------------------------------+
+//| HOT RELOAD - Ativar/desativar estratégia (v2.27)                 |
+//+------------------------------------------------------------------+
+void CMACrossStrategy::SetEnabled(bool v)
+  {
+   bool oldValue = m_enabled;
+   m_enabled = v;
+
+   if(oldValue != v && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 [MA Cross] Estratégia: " + (v ? "ATIVADA" : "DESATIVADA"));
   }
 
 //+------------------------------------------------------------------+

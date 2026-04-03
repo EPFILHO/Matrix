@@ -129,6 +129,7 @@ public:
    // ═══════════════════════════════════════════════════════════
    // HOT RELOAD - Parâmetros quentes (sem reiniciar indicadores)
    // ═══════════════════════════════════════════════════════════
+   virtual void SetEnabled(bool enabled) override; // v1.12 — log se mudar
    void SetFilterMode(ENUM_RSI_FILTER_MODE mode);
    void SetOversold(double value);
    void SetOverbought(double value);
@@ -478,6 +479,19 @@ bool CRSIFilter::CheckNeutralFilter(ENUM_SIGNAL_TYPE signal)
 // ═══════════════════════════════════════════════════════════════
 // HOT RELOAD - MÉTODOS SET QUENTES (v1.10)
 // ═══════════════════════════════════════════════════════════════
+
+//+------------------------------------------------------------------+
+//| HOT RELOAD - Ativar/desativar filtro (v1.12)                     |
+//+------------------------------------------------------------------+
+void CRSIFilter::SetEnabled(bool enabled)
+{
+   bool oldValue = m_isEnabled;
+   m_isEnabled = enabled;
+
+   if(oldValue != enabled && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 [RSI Filter] Filtro: " + (enabled ? "ATIVADO" : "DESATIVADO"));
+}
 
 //+------------------------------------------------------------------+
 //| HOT RELOAD - Alterar modo de filtro - v1.10                      |

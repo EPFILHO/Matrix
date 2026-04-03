@@ -69,7 +69,7 @@ public:
    void Enable() { m_isEnabled = true; }
    void Disable() { m_isEnabled = false; }
    bool IsEnabled() const { return m_isEnabled; }
-   void SetEnabled(bool enabled) { m_isEnabled = enabled; }
+   virtual void SetEnabled(bool enabled) { m_isEnabled = enabled; }
    
    // ═══════════════════════════════════════════════════════════
    // GETTERS
