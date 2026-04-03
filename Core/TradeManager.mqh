@@ -2,11 +2,18 @@
 //|                                                 TradeManager.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|             Gerenciamento de Posições Individuais - EPBot Matrix |
-//|                     Versão 1.25 - Claude Parte 028 (Claude Code) |
+//|                 Versão 1.26 - FetchDealRealValues + HistorySelect 300s  |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.25"
+#property version   "1.26"
 
+// CHANGELOG v1.26 (FIX Correções de qualidade):
+// + FetchDealRealValues(): método privado que centraliza busca de valores reais
+//   do deal no histórico — elimina bloco duplicado de ~60 linhas em TP1 e TP2
+// + HistorySelect janela: 60s -> 300s (brokers com alta latência)
+// + SaveState(): fallback de cópia agora loga cada etapa
+// + Declaracao FetchDealRealValues() adicionada em private: da classe
+//
 // CHANGELOG v1.25 (Parte 028):
 // * SetSlippage(): só loga/aplica quando valor realmente muda
 //
@@ -109,6 +116,9 @@ private:
    int               m_slippage;
 
    bool              ExecutePartialClose(ulong ticket, double lot, string comment, ulong &outDealTicket);
+      bool              FetchDealRealValues(ulong dealTicket, double openPrice, ENUM_POSITION_TYPE posType,
+                                          double fallbackLot, double currentPrice,
+                                          double &outProfit, double &outExitPrice, double &outVolume);
    ENUM_ORDER_TYPE_FILLING GetTypeFilling();
    bool              m_isResyncing;
    string            GetStateFileName();
@@ -519,6 +529,56 @@ void CTradeManager::SetTP2Executed(ulong ticket, bool state)
 
    if(oldState != state) SaveState();
   }
+//+------------------------------------------------------------------+
+//| FetchDealRealValues() — busca valores reais do deal no histórico |
+//| (v1.26 - FIX 2: extrai bloco duplicado de TP1/TP2)             |
+//+------------------------------------------------------------------+
+bool CTradeManager::FetchDealRealValues(ulong dealTicket, double openPrice, ENUM_POSITION_TYPE posType,
+                                        double fallbackLot, double currentPrice,
+                                        double &outProfit, double &outExitPrice, double &outVolume)
+{
+   outProfit    = 0;
+   outExitPrice = 0;
+   outVolume    = 0;
+
+   datetime from = TimeCurrent() - 300; // Últimos 5 min (latência alta)
+   datetime to   = TimeCurrent() + 1;
+
+   if(HistorySelect(from, to) && HistoryDealSelect(dealTicket))
+   {
+      outProfit    = HistoryDealGetDouble(dealTicket, DEAL_PROFIT);
+      outExitPrice = HistoryDealGetDouble(dealTicket, DEAL_PRICE);
+      outVolume    = HistoryDealGetDouble(dealTicket, DEAL_VOLUME);
+
+      if(m_logger != NULL)
+      {
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
+            StringFormat(" 📊 Deal #%I64u - Valores REAIS:", dealTicket));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
+            StringFormat("   Preço execução: %.5f", outExitPrice));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
+            StringFormat("   Volume: %.2f", outVolume));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
+            StringFormat("   💰 Lucro REAL: $%.2f", outProfit));
+      }
+      return true;
+   }
+
+   // Fallback: deal não encontrado no histórico
+   if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
+         "⚠️ Deal não encontrado no histórico - usando estimativa");
+
+   double tickValue = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_VALUE);
+   double tickSize  = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_SIZE);
+   double priceDiff = (posType == POSITION_TYPE_BUY)
+                      ? (currentPrice - openPrice)
+                      : (openPrice - currentPrice);
+   outProfit    = (priceDiff / tickSize) * tickValue * fallbackLot;
+   outExitPrice = currentPrice;
+   outVolume    = fallbackLot;
+   return false;
+}
 
 //+------------------------------------------------------------------+
 //| Monitorar Partial TP (v1.22)                                     |
@@ -565,53 +625,13 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
             if(m_logger != NULL)
                m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "✅ TP1 executado com sucesso!");
 
-            // ═══════════════════════════════════════════════════════════════
-            // 🆕 v1.22: BUSCAR VALORES REAIS DO DEAL NO HISTÓRICO
-            // Elimina discrepâncias por slippage
-            // ═══════════════════════════════════════════════════════════════
-            if(m_logger != NULL && dealTicket > 0)
-              {
-               double realProfit = 0;
-               double realExitPrice = 0;
-               double realVolume = 0;
-               double openPrice = m_positions[index].openPrice;
-
-               // Atualizar histórico e buscar deal
-               datetime from = TimeCurrent() - 60;  // Último minuto
-               datetime to = TimeCurrent() + 1;
-
-               if(HistorySelect(from, to) && HistoryDealSelect(dealTicket))
-                 {
-                  // 🎯 VALORES REAIS DO DEAL
-                  realProfit = HistoryDealGetDouble(dealTicket, DEAL_PROFIT);
-                  realExitPrice = HistoryDealGetDouble(dealTicket, DEAL_PRICE);
-                  realVolume = HistoryDealGetDouble(dealTicket, DEAL_VOLUME);
-
-                  m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
-                     StringFormat("   📊 Deal #%I64u - Valores REAIS:", dealTicket));
-                  m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
-                     StringFormat("      Preço execução: %.5f", realExitPrice));
-                  m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
-                     StringFormat("      Volume: %.2f", realVolume));
-                  m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
-                     StringFormat("      💰 Lucro REAL: $%.2f", realProfit));
-                 }
-               else
-                 {
-                  // Fallback: calcular estimado se deal não encontrado
-                  m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
-                     "⚠️ Deal não encontrado no histórico - usando estimativa");
-
-                  double tickValue = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_VALUE);
-                  double tickSize = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_SIZE);
-
-                  double priceDiff = (m_positions[index].posType == POSITION_TYPE_BUY) ?
-                                     (currentPrice - openPrice) : (openPrice - currentPrice);
-
-                  realProfit = (priceDiff / tickSize) * tickValue * lotToClose;
-                  realExitPrice = currentPrice;
-                  realVolume = lotToClose;
-                 }
+                        // v1.26: FetchDealRealValues() — elimina bloco duplicado (60 linhas)
+            double realProfit = 0, realExitPrice = 0, realVolume = 0;
+            FetchDealRealValues(dealTicket,
+                                m_positions[index].openPrice,
+                                m_positions[index].posType,
+                                lotToClose, currentPrice,
+                                realProfit, realExitPrice, realVolume);
 
                // Registrar no Logger para contabilizar no dailyProfit
                m_logger.AddPartialTPProfit(realProfit);
@@ -664,53 +684,13 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
             if(m_logger != NULL)
                m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "✅ TP2 executado com sucesso!");
 
-            // ═══════════════════════════════════════════════════════════════
-            // 🆕 v1.22: BUSCAR VALORES REAIS DO DEAL NO HISTÓRICO
-            // Elimina discrepâncias por slippage
-            // ═══════════════════════════════════════════════════════════════
-            if(m_logger != NULL && dealTicket > 0)
-              {
-               double realProfit = 0;
-               double realExitPrice = 0;
-               double realVolume = 0;
-               double openPrice = m_positions[index].openPrice;
-
-               // Atualizar histórico e buscar deal
-               datetime from = TimeCurrent() - 60;  // Último minuto
-               datetime to = TimeCurrent() + 1;
-
-               if(HistorySelect(from, to) && HistoryDealSelect(dealTicket))
-                 {
-                  // 🎯 VALORES REAIS DO DEAL
-                  realProfit = HistoryDealGetDouble(dealTicket, DEAL_PROFIT);
-                  realExitPrice = HistoryDealGetDouble(dealTicket, DEAL_PRICE);
-                  realVolume = HistoryDealGetDouble(dealTicket, DEAL_VOLUME);
-
-                  m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
-                     StringFormat("   📊 Deal #%I64u - Valores REAIS:", dealTicket));
-                  m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
-                     StringFormat("      Preço execução: %.5f", realExitPrice));
-                  m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
-                     StringFormat("      Volume: %.2f", realVolume));
-                  m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
-                     StringFormat("      💰 Lucro REAL: $%.2f", realProfit));
-                 }
-               else
-                 {
-                  // Fallback: calcular estimado se deal não encontrado
-                  m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
-                     "⚠️ Deal não encontrado no histórico - usando estimativa");
-
-                  double tickValue = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_VALUE);
-                  double tickSize = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_SIZE);
-
-                  double priceDiff = (m_positions[index].posType == POSITION_TYPE_BUY) ?
-                                     (currentPrice - openPrice) : (openPrice - currentPrice);
-
-                  realProfit = (priceDiff / tickSize) * tickValue * lotToClose;
-                  realExitPrice = currentPrice;
-                  realVolume = lotToClose;
-                 }
+                        // v1.26: FetchDealRealValues() — elimina bloco duplicado (60 linhas)
+            double realProfit = 0, realExitPrice = 0, realVolume = 0;
+            FetchDealRealValues(dealTicket,
+                                m_positions[index].openPrice,
+                                m_positions[index].posType,
+                                lotToClose, currentPrice,
+                                realProfit, realExitPrice, realVolume);
 
                // Registrar no Logger para contabilizar no dailyProfit
                m_logger.AddPartialTPProfit(realProfit);
@@ -1097,21 +1077,41 @@ bool CTradeManager::SaveState()
    // Escrita atômica
    FileDelete(fn);
    if(!FileMove(fnTmp, 0, fn, 0))
-     {
+   {
+      // FIX v1.26: logar cada etapa do fallback
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STATE",
+            "⚠️ FileMove falhou — tentando cópia manual: " + fnTmp + " -> " + fn);
+
       int src = FileOpen(fnTmp, FILE_READ | FILE_TXT | FILE_ANSI);
-      if(src != INVALID_HANDLE)
-        {
+      if(src == INVALID_HANDLE)
+      {
+         if(m_logger != NULL)
+            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "STATE",
+               "❌ Fallback: não foi possível abrir " + fnTmp + " para leitura");
+      }
+      else
+      {
          int dst = FileOpen(fn, FILE_WRITE | FILE_TXT | FILE_ANSI);
-         if(dst != INVALID_HANDLE)
-           {
+         if(dst == INVALID_HANDLE)
+         {
+            if(m_logger != NULL)
+               m_logger.Log(LOG_ERROR, THROTTLE_NONE, "STATE",
+                  "❌ Fallback: não foi possível abrir " + fn + " para escrita");
+         }
+         else
+         {
             while(!FileIsEnding(src))
                FileWriteString(dst, FileReadString(src) + "\n");
             FileClose(dst);
-           }
+            if(m_logger != NULL)
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "STATE",
+                  "✅ Fallback: arquivo copiado com sucesso para " + fn);
+         }
          FileClose(src);
          FileDelete(fnTmp);
-        }
-     }
+      }
+   }
 
    return true;
   }
