@@ -2,7 +2,7 @@
 //|                                                  TrendFilter.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                      Filtro de Tendência por MA - EPBot Matrix   |
-//|                     Versão 2.23 - Claude Parte 027 (Claude Code) |
+//|                     Versão 2.24 - Claude Parte 031 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "2.24"
@@ -15,6 +15,12 @@
 #include "../Base/FilterBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.24 (Parte 031):
+// + SetTrendFilterEnabled, SetNeutralDistance: só logam se valor mudar
+// + SetMAPeriod, SetMAMethod, SetMATimeframe, SetMAApplied, SetMACold:
+//   skip Deinitialize+Initialize se parâmetros forem idênticos
+// + Removidos fallbacks else Print(...) — m_logger nunca é NULL
+//
 // NOVIDADES v2.23 (Parte 027):
 // + Override GetStatusSummary(): retorna "Ativo"/"Inativo" baseado em
 //   m_useTrendFilter/m_neutralDistance (não em m_isEnabled que é sempre true)

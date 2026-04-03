@@ -2,7 +2,7 @@
 //|                                             MACrossStrategy.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                   Estratégia de Cruzamento de MAs - EPBot Matrix |
-//|                                   Versão 2.26 - Claude Parte 025 |
+//|                                   Versão 2.27 - Claude Parte 031 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "2.27"
@@ -15,6 +15,12 @@
 #include "../Base/StrategyBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.27 (Parte 031):
+// + SetEntryMode, SetExitMode: só logam se modo realmente mudar
+// + SetMAPeriods, SetMAMethods, SetMATimeframes, SetMAParams:
+//   skip Deinitialize+Initialize se parâmetros forem idênticos
+// + Removidos fallbacks else Print(...) — m_logger nunca é NULL
+//
 // NOVIDADES v2.26 (Parte 025):
 // + minDistance: filtro de força do cruzamento (pontos entre MA rápida e lenta)
 //   Se 0, filtro desativado (comportamento anterior mantido)

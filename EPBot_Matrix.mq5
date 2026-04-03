@@ -2,7 +2,7 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.56 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.57 - Claude Parte 031 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
@@ -10,10 +10,12 @@
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //--- Constante centralizada de versão
-#define EA_VERSION "1.56"
+#define EA_VERSION "1.57"
 
 //+------------------------------------------------------------------+
-//| CHANGELOG v1.56 (Parte 027):                                     |
+//| CHANGELOG v1.57 (Parte 031):                                     |
+//| - Fix: memory leak no OnDeinit — g_bbStrategy e g_bbFilter não   |
+//|   eram deletados na ETAPA 2 (CleanupAll só roda em INIT_FAILED)  |                                     |
 //| - Botão INICIAR/PAUSAR no topo do painel (acima das tabs)         |
 //|   Visível em TODAS as abas, sempre acessível                      |
 //|   Estado inicial: PAUSADO (verde "INICIAR EA")                    |

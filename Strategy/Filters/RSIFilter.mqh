@@ -2,7 +2,7 @@
 //|                                                    RSIFilter.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                                        Filtro RSI - EPBot Matrix |
-//|                                   Versão 1.11 - Claude Parte 022 |
+//|                                   Versão 1.12 - Claude Parte 031 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.12"
@@ -15,6 +15,13 @@
 #include "../Base/FilterBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
+// NOVIDADES v1.12 (Parte 031):
+// + SetFilterMode, SetOversold, SetOverbought, SetLowerNeutral,
+//   SetUpperNeutral, SetShift: só logam se valor realmente mudar
+// + SetPeriod, SetTimeframe, SetAppliedPrice:
+//   skip Deinitialize+Initialize se parâmetros forem idênticos
+// + Removidos fallbacks else Print(...) — m_logger nunca é NULL
+//
 // NOVIDADES v1.11:
 // + Fix: CopyBuffer validação alterada de <= 0 para < count
 //   (previne acesso fora dos limites se indicador retorna dados incompletos)

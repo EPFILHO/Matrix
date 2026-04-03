@@ -2,7 +2,7 @@
 //|                                                 RSIStrategy.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                                    Estratégia RSI - EPBot Matrix |
-//|                                   Versão 2.15 - Claude Parte 025 |
+//|                                   Versão 2.16 - Claude Parte 031 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "2.16"
@@ -15,6 +15,13 @@
 #include "../Base/StrategyBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.16 (Parte 031):
+// + SetSignalMode, SetOversold, SetOverbought, SetMiddle, SetEnabled:
+//   só logam se valor realmente mudar
+// + SetPeriod, SetTimeframe, SetAppliedPrice:
+//   skip Deinitialize+Initialize se parâmetros forem idênticos
+// + Removidos fallbacks else Print(...) — m_logger nunca é NULL
+//
 // NOVIDADES v2.15 (Parte 025):
 // + signal_shift removido do Setup() — hardcode 1 (última barra fechada)
 //   Elimina input inp_RSISignalShift desnecessário

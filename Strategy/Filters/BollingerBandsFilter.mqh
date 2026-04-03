@@ -2,7 +2,7 @@
 //|                                         BollingerBandsFilter.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                          Filtro Bollinger Bands - EPBot Matrix   |
-//|                                   Versão 1.00 - Claude Parte 026 |
+//|                                   Versão 1.01 - Claude Parte 031 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.01"
@@ -16,6 +16,13 @@
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
+// v1.01 (Parte 031):
+// + SetSqueezeMetric, SetSqueezeThreshold, SetPercentilePeriod:
+//   só logam se valor realmente mudar
+// + SetPeriod, SetDeviation, SetTimeframe, SetAppliedPrice:
+//   skip Deinitialize+Initialize se parâmetros forem idênticos
+// + Removidos fallbacks else Print(...) — m_logger nunca é NULL
+//
 // v1.00 (Parte 026):
 // + Filtro Anti-Squeeze para Bollinger Bands
 //   Bloqueia trades quando bandas estão estreitas (mercado em range)
