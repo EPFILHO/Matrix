@@ -2,10 +2,10 @@
 //|                                                  TrendFilter.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                      Filtro de Tendência por MA - EPBot Matrix   |
-//|                     Versão 2.23 - Claude Parte 027 (Claude Code) |
+//|                     Versão 2.24 - Claude Parte 031 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.23"
+#property version   "2.24"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,13 @@
 #include "../Base/FilterBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.24 (Parte 031):
+// + SetEnabled override: loga "Filtro: ATIVADO/DESATIVADO" se mudar
+// + SetTrendFilterEnabled, SetNeutralDistance: só logam se valor mudar
+// + SetMAPeriod, SetMAMethod, SetMATimeframe, SetMAApplied, SetMACold:
+//   skip Deinitialize+Initialize se parâmetros forem idênticos
+// + Removidos fallbacks else Print(...) — m_logger nunca é NULL
+//
 // NOVIDADES v2.23 (Parte 027):
 // + Override GetStatusSummary(): retorna "Ativo"/"Inativo" baseado em
 //   m_useTrendFilter/m_neutralDistance (não em m_isEnabled que é sempre true)
@@ -171,6 +178,7 @@ public:
    // ═══════════════════════════════════════════════════════════
    // HOT RELOAD - Parâmetros quentes (sem reiniciar indicadores)
    // ═══════════════════════════════════════════════════════════
+   virtual void      SetEnabled(bool enabled) override; // v2.24 — log se mudar
    bool              SetTrendFilterEnabled(bool enabled);
    bool              SetNeutralDistance(double distancePoints);
 
@@ -611,20 +619,32 @@ bool CTrendFilter::ValidateSignal(ENUM_SIGNAL_TYPE signal)
 // ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
+//| HOT RELOAD - Ativar/desativar filtro (v2.24)                     |
+//+------------------------------------------------------------------+
+void CTrendFilter::SetEnabled(bool enabled)
+  {
+   bool oldValue = m_isEnabled;
+   m_isEnabled = enabled;
+
+   if(oldValue != enabled && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 [Trend Filter] Filtro: " + (enabled ? "ATIVADO" : "DESATIVADO"));
+  }
+
+//+------------------------------------------------------------------+
 //| HOT RELOAD - Ativar/desativar filtro direcional (v2.15)          |
 //+------------------------------------------------------------------+
 bool CTrendFilter::SetTrendFilterEnabled(bool enabled)
   {
    bool oldValue = m_useTrendFilter;
+   if(oldValue == enabled) return true;
    m_useTrendFilter = enabled;
 
-   string msg = "🔄 [Trend Filter] Filtro direcional: " + 
-                (oldValue ? "ATIVADO" : "DESATIVADO") + " → " +
-                (enabled ? "ATIVADO" : "DESATIVADO");
    if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 [Trend Filter] Filtro direcional: " +
+         (oldValue ? "ATIVADO" : "DESATIVADO") + " → " +
+         (enabled ? "ATIVADO" : "DESATIVADO"));
 
    return true;
   }
@@ -646,14 +666,14 @@ bool CTrendFilter::SetNeutralDistance(double distancePoints)
 
    double oldValue = m_neutralDistance;
    m_neutralDistance = distancePoints;
-   
-   string status = (distancePoints > 0) ? "ATIVADA" : "DESATIVADA";
-   string msg = StringFormat("🔄 [Trend Filter] Zona neutra: %.0f → %.0f pts (%s)", 
-                             oldValue, distancePoints, status);
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
+
+   if(oldValue != distancePoints && m_logger != NULL)
+     {
+      string status = (distancePoints > 0) ? "ATIVADA" : "DESATIVADA";
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 [Trend Filter] Zona neutra: %.0f → %.0f pts (%s)",
+                      oldValue, distancePoints, status));
+     }
 
    return true;
   }
@@ -678,20 +698,16 @@ bool CTrendFilter::SetMAPeriod(int period)
      }
 
    int oldValue = m_maPeriod;
+   if(oldValue == period) return true;
    m_maPeriod = period;
 
    Deinitialize();
    bool success = Initialize();
 
-   if(success)
-     {
-      string msg = StringFormat("🔄 [Trend Filter] Período MA alterado: %d → %d (reiniciado)", 
-                                oldValue, period);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print(msg);
-     }
+   if(success && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
+         StringFormat("🔄 [Trend Filter] Período MA alterado: %d → %d (reiniciado)",
+                      oldValue, period));
 
    return success;
   }
@@ -702,19 +718,15 @@ bool CTrendFilter::SetMAPeriod(int period)
 bool CTrendFilter::SetMAMethod(ENUM_MA_METHOD method)
   {
    ENUM_MA_METHOD oldMethod = m_maMethod;
+   if(oldMethod == method) return true;
    m_maMethod = method;
 
    Deinitialize();
    bool success = Initialize();
 
-   if(success)
-     {
-      string msg = "🔄 [Trend Filter] Método MA alterado (reiniciado)";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print(msg);
-     }
+   if(success && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
+         "🔄 [Trend Filter] Método MA alterado (reiniciado)");
 
    return success;
   }
@@ -725,23 +737,17 @@ bool CTrendFilter::SetMAMethod(ENUM_MA_METHOD method)
 bool CTrendFilter::SetMATimeframe(ENUM_TIMEFRAMES tf)
   {
    ENUM_TIMEFRAMES oldTF = m_maTimeframe;
+   if(oldTF == tf) return true;
    m_maTimeframe = tf;
 
    Deinitialize();
    bool success = Initialize();
 
-   if(success)
-     {
-      string msg = "🔄 [Trend Filter] Timeframe MA alterado (reiniciado)";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print(msg);
-     }
-   else
-     {
+   if(!success)
       m_maTimeframe = oldTF;   // reverter se falhou
-     }
+   else if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
+         "🔄 [Trend Filter] Timeframe MA alterado (reiniciado)");
 
    return success;
   }
@@ -752,6 +758,7 @@ bool CTrendFilter::SetMATimeframe(ENUM_TIMEFRAMES tf)
 bool CTrendFilter::SetMAApplied(ENUM_APPLIED_PRICE applied)
   {
    ENUM_APPLIED_PRICE oldApplied = m_maApplied;
+   if(oldApplied == applied) return true;
    m_maApplied = applied;
 
    Deinitialize();
@@ -759,15 +766,10 @@ bool CTrendFilter::SetMAApplied(ENUM_APPLIED_PRICE applied)
 
    if(!success)
       m_maApplied = oldApplied;   // reverter se falhou
-   else
-     {
-      string msg = "🔄 [Trend Filter] Applied price alterado: " +
-                   EnumToString(oldApplied) + " → " + EnumToString(applied) + " (reiniciado)";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print(msg);
-     }
+   else if(m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
+         "🔄 [Trend Filter] Applied price alterado: " +
+         EnumToString(oldApplied) + " → " + EnumToString(applied) + " (reiniciado)");
 
    return success;
   }
@@ -793,6 +795,10 @@ bool CTrendFilter::SetMACold(int period, ENUM_MA_METHOD method,
    ENUM_TIMEFRAMES    oldTF      = m_maTimeframe;
    ENUM_APPLIED_PRICE oldApplied = m_maApplied;
 
+   bool changed = (oldPeriod != period || oldMethod != method ||
+                   oldTF != tf || oldApplied != applied);
+   if(!changed) return true;
+
    m_maPeriod    = period;
    m_maMethod    = method;
    m_maTimeframe = tf;
@@ -811,17 +817,14 @@ bool CTrendFilter::SetMACold(int period, ENUM_MA_METHOD method,
       Deinitialize();
       Initialize();
      }
-   else
+   else if(m_logger != NULL)
      {
       string msg = StringFormat("🔄 [Trend Filter] Cold reload: MA %d→%d / %s→%s / %s→%s / %s→%s",
                                 oldPeriod, period,
                                 EnumToString(oldMethod), EnumToString(method),
                                 EnumToString(oldTF), EnumToString(tf),
                                 EnumToString(oldApplied), EnumToString(applied));
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
      }
 
    return success;

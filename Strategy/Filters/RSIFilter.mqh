@@ -2,10 +2,10 @@
 //|                                                    RSIFilter.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                                        Filtro RSI - EPBot Matrix |
-//|                                   Versão 1.11 - Claude Parte 022 |
+//|                                   Versão 1.12 - Claude Parte 031 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.11"
+#property version   "1.12"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -15,6 +15,14 @@
 #include "../Base/FilterBase.mqh"
 
 // ═══════════════════════════════════════════════════════════════
+// NOVIDADES v1.12 (Parte 031):
+// + SetEnabled override: loga "Filtro: ATIVADO/DESATIVADO" se mudar
+// + SetFilterMode, SetOversold, SetOverbought, SetLowerNeutral,
+//   SetUpperNeutral, SetShift: só logam se valor realmente mudar
+// + SetPeriod, SetTimeframe, SetAppliedPrice:
+//   skip Deinitialize+Initialize se parâmetros forem idênticos
+// + Removidos fallbacks else Print(...) — m_logger nunca é NULL
+//
 // NOVIDADES v1.11:
 // + Fix: CopyBuffer validação alterada de <= 0 para < count
 //   (previne acesso fora dos limites se indicador retorna dados incompletos)
@@ -122,6 +130,7 @@ public:
    // ═══════════════════════════════════════════════════════════
    // HOT RELOAD - Parâmetros quentes (sem reiniciar indicadores)
    // ═══════════════════════════════════════════════════════════
+   virtual void SetEnabled(bool enabled) override; // v1.12 — log se mudar
    void SetFilterMode(ENUM_RSI_FILTER_MODE mode);
    void SetOversold(double value);
    void SetOverbought(double value);
@@ -473,13 +482,27 @@ bool CRSIFilter::CheckNeutralFilter(ENUM_SIGNAL_TYPE signal)
 // ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
+//| HOT RELOAD - Ativar/desativar filtro (v1.12)                     |
+//+------------------------------------------------------------------+
+void CRSIFilter::SetEnabled(bool enabled)
+{
+   bool oldValue = m_isEnabled;
+   m_isEnabled = enabled;
+
+   if(oldValue != enabled && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 [RSI Filter] Filtro: " + (enabled ? "ATIVADO" : "DESATIVADO"));
+}
+
+//+------------------------------------------------------------------+
 //| HOT RELOAD - Alterar modo de filtro - v1.10                      |
 //+------------------------------------------------------------------+
 void CRSIFilter::SetFilterMode(ENUM_RSI_FILTER_MODE mode)
 {
    ENUM_RSI_FILTER_MODE oldMode = m_filter_mode;
+   if(oldMode == mode) return;
    m_filter_mode = mode;
-   
+
    string oldStr, newStr;
    switch(oldMode)
    {
@@ -487,19 +510,16 @@ void CRSIFilter::SetFilterMode(ENUM_RSI_FILTER_MODE mode)
       case RSI_FILTER_DIRECTION: oldStr = "Direction"; break;
       case RSI_FILTER_NEUTRAL: oldStr = "Neutral"; break;
    }
-   
    switch(mode)
    {
       case RSI_FILTER_ZONE: newStr = "Zone"; break;
       case RSI_FILTER_DIRECTION: newStr = "Direction"; break;
       case RSI_FILTER_NEUTRAL: newStr = "Neutral"; break;
    }
-   
-   string msg = "🔄 [RSI Filter] Modo alterado: " + oldStr + " → " + newStr;
+
    if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 [RSI Filter] Modo alterado: " + oldStr + " → " + newStr);
 }
 
 //+------------------------------------------------------------------+
@@ -515,12 +535,10 @@ void CRSIFilter::SetOversold(double value)
      }
    double oldValue = m_oversold;
    m_oversold = value;
-   
-   string msg = StringFormat("🔄 [RSI Filter] Sobrevenda alterado: %.1f → %.1f", oldValue, value);
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
+
+   if(oldValue != value && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 [RSI Filter] Sobrevenda alterado: %.1f → %.1f", oldValue, value));
 }
 
 //+------------------------------------------------------------------+
@@ -536,12 +554,10 @@ void CRSIFilter::SetOverbought(double value)
      }
    double oldValue = m_overbought;
    m_overbought = value;
-   
-   string msg = StringFormat("🔄 [RSI Filter] Sobrecompra alterado: %.1f → %.1f", oldValue, value);
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
+
+   if(oldValue != value && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 [RSI Filter] Sobrecompra alterado: %.1f → %.1f", oldValue, value));
 }
 
 //+------------------------------------------------------------------+
@@ -557,12 +573,10 @@ void CRSIFilter::SetLowerNeutral(double value)
      }
    double oldValue = m_lower_neutral;
    m_lower_neutral = value;
-   
-   string msg = StringFormat("🔄 [RSI Filter] Lower neutral alterado: %.1f → %.1f", oldValue, value);
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
+
+   if(oldValue != value && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 [RSI Filter] Lower neutral alterado: %.1f → %.1f", oldValue, value));
 }
 
 //+------------------------------------------------------------------+
@@ -578,12 +592,10 @@ void CRSIFilter::SetUpperNeutral(double value)
      }
    double oldValue = m_upper_neutral;
    m_upper_neutral = value;
-   
-   string msg = StringFormat("🔄 [RSI Filter] Upper neutral alterado: %.1f → %.1f", oldValue, value);
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
+
+   if(oldValue != value && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 [RSI Filter] Upper neutral alterado: %.1f → %.1f", oldValue, value));
 }
 
 //+------------------------------------------------------------------+
@@ -599,12 +611,10 @@ void CRSIFilter::SetShift(int value)
      }
    int oldValue = m_shift;
    m_shift = value;
-   
-   string msg = StringFormat("🔄 [RSI Filter] Shift alterado: %d → %d", oldValue, value);
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
+
+   if(oldValue != value && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 [RSI Filter] Shift alterado: %d → %d", oldValue, value));
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -627,20 +637,16 @@ bool CRSIFilter::SetPeriod(int value)
    }
    
    int oldValue = m_period;
+   if(oldValue == value) return true;
    m_period = value;
-   
+
    Deinitialize();
    bool success = Initialize();
-   
-   if(success)
-   {
-      string msg = StringFormat("🔄 [RSI Filter] Período alterado: %d → %d (reiniciado)", oldValue, value);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print(msg);
-   }
-   
+
+   if(success && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
+         StringFormat("🔄 [RSI Filter] Período alterado: %d → %d (reiniciado)", oldValue, value));
+
    return success;
 }
 
@@ -650,20 +656,16 @@ bool CRSIFilter::SetPeriod(int value)
 bool CRSIFilter::SetTimeframe(ENUM_TIMEFRAMES tf)
 {
    ENUM_TIMEFRAMES oldTF = m_timeframe;
+   if(oldTF == tf) return true;
    m_timeframe = tf;
-   
+
    Deinitialize();
    bool success = Initialize();
-   
-   if(success)
-   {
-      string msg = "🔄 [RSI Filter] Timeframe alterado: " + EnumToString(oldTF) + " → " + EnumToString(tf) + " (reiniciado)";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print(msg);
-   }
-   
+
+   if(success && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
+         "🔄 [RSI Filter] Timeframe alterado: " + EnumToString(oldTF) + " → " + EnumToString(tf) + " (reiniciado)");
+
    return success;
 }
 
@@ -672,21 +674,16 @@ bool CRSIFilter::SetTimeframe(ENUM_TIMEFRAMES tf)
 //+------------------------------------------------------------------+
 bool CRSIFilter::SetAppliedPrice(ENUM_APPLIED_PRICE price)
 {
-   ENUM_APPLIED_PRICE oldPrice = m_applied_price;
+   if(m_applied_price == price) return true;
    m_applied_price = price;
-   
+
    Deinitialize();
    bool success = Initialize();
-   
-   if(success)
-   {
-      string msg = "🔄 [RSI Filter] Applied price alterado (reiniciado)";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print(msg);
-   }
-   
+
+   if(success && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
+         "🔄 [RSI Filter] Applied price alterado (reiniciado)");
+
    return success;
 }
 

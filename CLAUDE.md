@@ -179,3 +179,71 @@
   - Padrão estabelecido em TradeManager::SetSlippage() pode ser replicado
 - [ ] Criar PR da Parte 030 → main
 
+---
+
+## Parte 031 — Concluída (2026-04-03)
+
+### O que foi feito
+
+#### HOT RELOAD — Expandir "só loga se mudar"
+
+**RiskManager** (6 métodos):
+- SetUsePartialTP: compara `oldValue != enable`
+- SetATRPeriod: compara `oldValue != period`, mostra transição `old → new`
+- SetRangePeriod: idem
+- SetSLCompensateSpread: compara `oldValue != enable`
+- SetTPCompensateSpread: idem
+- SetTrailingCompensateSpread: idem
+
+**BlockerFilters** (2 métodos):
+- SetTimeFilter: compara todos 5 campos (enable + 4 horários)
+- SetNewsFilter: compara campos da janela específica (1/2/3)
+
+**Estratégias** (3 arquivos, 15 métodos):
+- **MACrossStrategy**: SetEntryMode, SetExitMode (HOT); SetMAPeriods, SetMAMethods, SetMATimeframes, SetMAParams (COLD)
+- **RSIStrategy**: SetSignalMode, SetOversold, SetOverbought, SetMiddle, SetEnabled (HOT); SetPeriod, SetTimeframe, SetAppliedPrice (COLD)
+- **BollingerBandsStrategy**: SetSignalMode, SetEntryMode, SetExitMode, SetEnabled (HOT); SetPeriod, SetDeviation, SetTimeframe, SetAppliedPrice (COLD)
+
+**Filtros** (3 arquivos, 23 métodos):
+- **TrendFilter**: SetTrendFilterEnabled, SetNeutralDistance (HOT); SetMAPeriod, SetMAMethod, SetMATimeframe, SetMAApplied, SetMACold (COLD)
+- **RSIFilter**: SetFilterMode, SetOversold, SetOverbought, SetLowerNeutral, SetUpperNeutral, SetShift (HOT); SetPeriod, SetTimeframe, SetAppliedPrice (COLD)
+- **BollingerBandsFilter**: SetSqueezeMetric, SetSqueezeThreshold, SetPercentilePeriod (HOT); SetPeriod, SetDeviation, SetTimeframe, SetAppliedPrice (COLD)
+
+#### COLD RELOAD — Skip Deinitialize+Initialize
+Todos os métodos COLD agora:
+1. Comparam valor antigo vs novo
+2. Se iguais, retornam `true` imediatamente (sem Deinitialize)
+3. Se diferentes, fazem Deinitialize+Initialize normal
+4. Só logam se Initialize foi bem-sucedido E valor mudou
+
+**Benefício**: Ganho de performance — não reinicializa indicadores se parâmetros são idênticos
+
+#### FIX — Memory leak no OnDeinit
+- **Bug**: g_bbStrategy e g_bbFilter não eram deletados na ETAPA 2 do OnDeinit
+- **Causa**: CleanupAll() tem os 6 módulos, mas só é chamado em INIT_FAILED. OnDeinit normal não passava por CleanupAll()
+- **Fix**: Adicionado delete explícito de g_bbFilter e g_bbStrategy na ETAPA 2
+- **Impacto**: Toda remoção do EA vazava ~2 objetos
+
+#### FIX — SetEnabled sem log em 4 módulos
+- **Bug**: Toggle ON/OFF nos sub-painéis não logava em MACross, TrendFilter, RSIFilter, BBFilter
+- **Causa**: SetEnabled herdava da classe base (setter mudo sem log)
+- **Fix**: Override com log "ATIVADO/DESATIVADO" nos 4 módulos
+- **FilterBase**: SetEnabled tornado `virtual` para permitir override
+- RSIStrategy e BollingerBandsStrategy já tinham override — não precisaram de fix
+
+#### Removidos fallbacks `else Print(...)`
+Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para manter consistência com padrão: sempre usar `m_logger` (que nunca é NULL em operação).
+
+### Versões atualizadas
+- EPBot_Matrix.mq5: 1.56 → 1.57
+- MACrossStrategy.mqh: 2.26 → 2.27
+- RSIStrategy.mqh: 2.15 → 2.16
+- BollingerBandsStrategy.mqh: 1.00 → 1.01
+- TrendFilter.mqh: 2.23 → 2.24
+- RSIFilter.mqh: 1.11 → 1.12
+- BollingerBandsFilter.mqh: 1.00 → 1.01
+- FilterBase.mqh: 2.01 → 2.02
+
+### TODO restante (Parte 032)
+- [ ] Criar PR da Parte 031 → main
+
