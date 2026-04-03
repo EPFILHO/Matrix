@@ -468,13 +468,12 @@ bool CBollingerBandsFilter::CheckSqueezePercentile()
 void CBollingerBandsFilter::SetSqueezeMetric(ENUM_BB_SQUEEZE_METRIC metric)
   {
    ENUM_BB_SQUEEZE_METRIC oldMetric = m_squeeze_metric;
+   if(oldMetric == metric) return;
    m_squeeze_metric = metric;
 
-   string msg = "🔄 [BB Filter] Modo alterado: " + GetSqueezeMetricText();
    if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 [BB Filter] Modo alterado: " + GetSqueezeMetricText());
   }
 
 //+------------------------------------------------------------------+
@@ -491,11 +490,9 @@ void CBollingerBandsFilter::SetSqueezeThreshold(double value)
    double oldValue = m_squeeze_threshold;
    m_squeeze_threshold = value;
 
-   string msg = StringFormat("🔄 [BB Filter] Threshold alterado: %.2f → %.2f", oldValue, value);
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
+   if(oldValue != value && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 [BB Filter] Threshold alterado: %.2f → %.2f", oldValue, value));
   }
 
 //+------------------------------------------------------------------+
@@ -512,11 +509,9 @@ void CBollingerBandsFilter::SetPercentilePeriod(int value)
    int oldValue = m_percentile_period;
    m_percentile_period = value;
 
-   string msg = StringFormat("🔄 [BB Filter] Período percentil alterado: %d → %d", oldValue, value);
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
+   if(oldValue != value && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 [BB Filter] Período percentil alterado: %d → %d", oldValue, value));
   }
 
 // ═══════════════════════════════════════════════════════════════
@@ -539,19 +534,15 @@ bool CBollingerBandsFilter::SetPeriod(int value)
      }
 
    int oldValue = m_period;
+   if(oldValue == value) return true;
    m_period = value;
 
    Deinitialize();
    bool success = Initialize();
 
-   if(success)
-     {
-      string msg = StringFormat("🔄 [BB Filter] Período alterado: %d → %d (reiniciado)", oldValue, value);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print(msg);
-     }
+   if(success && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
+         StringFormat("🔄 [BB Filter] Período alterado: %d → %d (reiniciado)", oldValue, value));
 
    return success;
   }
@@ -566,25 +557,19 @@ bool CBollingerBandsFilter::SetDeviation(double value)
       string msg = "[BB Filter] Desvio inválido: " + DoubleToString(value, 2);
       if(m_logger != NULL)
          m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print("❌ ", msg);
       return false;
      }
 
    double oldValue = m_deviation;
+   if(oldValue == value) return true;
    m_deviation = value;
 
    Deinitialize();
    bool success = Initialize();
 
-   if(success)
-     {
-      string msg = StringFormat("🔄 [BB Filter] Desvio alterado: %.1f → %.1f (reiniciado)", oldValue, value);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print(msg);
-     }
+   if(success && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
+         StringFormat("🔄 [BB Filter] Desvio alterado: %.1f → %.1f (reiniciado)", oldValue, value));
 
    return success;
   }
@@ -595,19 +580,15 @@ bool CBollingerBandsFilter::SetDeviation(double value)
 bool CBollingerBandsFilter::SetTimeframe(ENUM_TIMEFRAMES tf)
   {
    ENUM_TIMEFRAMES oldTF = m_timeframe;
+   if(oldTF == tf) return true;
    m_timeframe = tf;
 
    Deinitialize();
    bool success = Initialize();
 
-   if(success)
-     {
-      string msg = "🔄 [BB Filter] Timeframe alterado: " + EnumToString(oldTF) + " → " + EnumToString(tf) + " (reiniciado)";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print(msg);
-     }
+   if(success && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
+         "🔄 [BB Filter] Timeframe alterado: " + EnumToString(oldTF) + " → " + EnumToString(tf) + " (reiniciado)");
 
    return success;
   }
@@ -617,19 +598,15 @@ bool CBollingerBandsFilter::SetTimeframe(ENUM_TIMEFRAMES tf)
 //+------------------------------------------------------------------+
 bool CBollingerBandsFilter::SetAppliedPrice(ENUM_APPLIED_PRICE price)
   {
+   if(m_applied_price == price) return true;
    m_applied_price = price;
 
    Deinitialize();
    bool success = Initialize();
 
-   if(success)
-     {
-      string msg = "🔄 [BB Filter] Applied price alterado (reiniciado)";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print(msg);
-     }
+   if(success && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
+         "🔄 [BB Filter] Applied price alterado (reiniciado)");
 
    return success;
   }

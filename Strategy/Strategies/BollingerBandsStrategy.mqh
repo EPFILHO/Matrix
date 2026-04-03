@@ -668,14 +668,13 @@ ENUM_SIGNAL_TYPE CBollingerBandsStrategy::CheckExitSignal(ENUM_POSITION_TYPE cur
 void CBollingerBandsStrategy::SetSignalMode(ENUM_BB_SIGNAL_MODE mode)
   {
    ENUM_BB_SIGNAL_MODE oldMode = m_signal_mode;
+   if(oldMode == mode) return;
    m_signal_mode = mode;
    ResetSignalControl();
 
-   string msg = "🔄 [BB] Modo alterado: " + GetSignalModeText();
    if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 [BB] Modo alterado: " + GetSignalModeText());
   }
 
 //+------------------------------------------------------------------+
@@ -684,17 +683,16 @@ void CBollingerBandsStrategy::SetSignalMode(ENUM_BB_SIGNAL_MODE mode)
 bool CBollingerBandsStrategy::SetEntryMode(ENUM_ENTRY_MODE mode)
   {
    ENUM_ENTRY_MODE oldMode = m_entryMode;
+   if(oldMode == mode) return true;
    m_entryMode = mode;
    ResetSignalControl();
 
    string oldStr = (oldMode == ENTRY_NEXT_CANDLE) ? "NEXT_CANDLE" : "E2C";
    string newStr = (mode == ENTRY_NEXT_CANDLE) ? "NEXT_CANDLE" : "E2C";
 
-   string msg = "🔄 [BB] Entry mode alterado: " + oldStr + " → " + newStr;
    if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 [BB] Entry mode alterado: " + oldStr + " → " + newStr);
 
    return true;
   }
@@ -705,6 +703,7 @@ bool CBollingerBandsStrategy::SetEntryMode(ENUM_ENTRY_MODE mode)
 bool CBollingerBandsStrategy::SetExitMode(ENUM_EXIT_MODE mode)
   {
    ENUM_EXIT_MODE oldMode = m_exitMode;
+   if(oldMode == mode) return true;
    m_exitMode = mode;
 
    string oldStr, newStr;
@@ -713,11 +712,9 @@ bool CBollingerBandsStrategy::SetExitMode(ENUM_EXIT_MODE mode)
    switch(mode)
      { case EXIT_FCO: newStr = "FCO"; break; case EXIT_VM: newStr = "VM"; break; default: newStr = "TP/SL"; break; }
 
-   string msg = "🔄 [BB] Exit mode alterado: " + oldStr + " → " + newStr;
    if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 [BB] Exit mode alterado: " + oldStr + " → " + newStr);
 
    return true;
   }
@@ -730,11 +727,9 @@ void CBollingerBandsStrategy::SetEnabled(bool value)
    bool oldValue = m_enabled;
    m_enabled = value;
 
-   string msg = "🔄 [BB] Estratégia: " + (value ? "ATIVADA" : "DESATIVADA");
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
+   if(oldValue != value && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 [BB] Estratégia: " + (value ? "ATIVADA" : "DESATIVADA"));
   }
 
 // ═══════════════════════════════════════════════════════════════
@@ -757,19 +752,15 @@ bool CBollingerBandsStrategy::SetPeriod(int value)
      }
 
    int oldValue = m_period;
+   if(oldValue == value) return true;
    m_period = value;
 
    Deinitialize();
    bool success = Initialize();
 
-   if(success)
-     {
-      string msg = StringFormat("🔄 [BB] Período alterado: %d → %d (reiniciado)", oldValue, value);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print(msg);
-     }
+   if(success && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
+         StringFormat("🔄 [BB] Período alterado: %d → %d (reiniciado)", oldValue, value));
 
    return success;
   }
@@ -784,25 +775,19 @@ bool CBollingerBandsStrategy::SetDeviation(double value)
       string msg = "[BB] Desvio inválido: " + DoubleToString(value, 2);
       if(m_logger != NULL)
          m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print("❌ ", msg);
       return false;
      }
 
    double oldValue = m_deviation;
+   if(oldValue == value) return true;
    m_deviation = value;
 
    Deinitialize();
    bool success = Initialize();
 
-   if(success)
-     {
-      string msg = StringFormat("🔄 [BB] Desvio alterado: %.1f → %.1f (reiniciado)", oldValue, value);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print(msg);
-     }
+   if(success && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
+         StringFormat("🔄 [BB] Desvio alterado: %.1f → %.1f (reiniciado)", oldValue, value));
 
    return success;
   }
@@ -813,19 +798,15 @@ bool CBollingerBandsStrategy::SetDeviation(double value)
 bool CBollingerBandsStrategy::SetTimeframe(ENUM_TIMEFRAMES tf)
   {
    ENUM_TIMEFRAMES oldTF = m_timeframe;
+   if(oldTF == tf) return true;
    m_timeframe = tf;
 
    Deinitialize();
    bool success = Initialize();
 
-   if(success)
-     {
-      string msg = "🔄 [BB] Timeframe alterado: " + EnumToString(oldTF) + " → " + EnumToString(tf) + " (reiniciado)";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print(msg);
-     }
+   if(success && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
+         "🔄 [BB] Timeframe alterado: " + EnumToString(oldTF) + " → " + EnumToString(tf) + " (reiniciado)");
 
    return success;
   }
@@ -835,19 +816,15 @@ bool CBollingerBandsStrategy::SetTimeframe(ENUM_TIMEFRAMES tf)
 //+------------------------------------------------------------------+
 bool CBollingerBandsStrategy::SetAppliedPrice(ENUM_APPLIED_PRICE price)
   {
+   if(m_applied_price == price) return true;
    m_applied_price = price;
 
    Deinitialize();
    bool success = Initialize();
 
-   if(success)
-     {
-      string msg = "🔄 [BB] Applied price alterado (reiniciado)";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print(msg);
-     }
+   if(success && m_logger != NULL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
+         "🔄 [BB] Applied price alterado (reiniciado)");
 
    return success;
   }

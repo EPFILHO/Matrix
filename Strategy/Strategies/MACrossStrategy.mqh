@@ -683,19 +683,20 @@ bool CMACrossStrategy::SetEntryMode(ENUM_ENTRY_MODE mode)
    ENUM_ENTRY_MODE oldMode = m_entryMode;
    m_entryMode = mode;
 
-   string oldStr = (oldMode == ENTRY_NEXT_CANDLE) ? "NEXT_CANDLE" : "E2C";
-   string newStr = (mode == ENTRY_NEXT_CANDLE) ? "NEXT_CANDLE" : "E2C";
+   if(oldMode != mode)
+     {
+      string oldStr = (oldMode == ENTRY_NEXT_CANDLE) ? "NEXT_CANDLE" : "E2C";
+      string newStr = (mode == ENTRY_NEXT_CANDLE) ? "NEXT_CANDLE" : "E2C";
 
-   string msg = "🔄 [MA Cross] Entry mode alterado: " + oldStr + " → " + newStr;
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
+      string msg = "🔄 [MA Cross] Entry mode alterado: " + oldStr + " → " + newStr;
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
 
-// Resetar controle de cruzamento
-   m_lastCrossSignal = SIGNAL_NONE;
-   m_candlesAfterCross = 0;
-   m_lastCheckBarTime = 0;
+      // Resetar controle de cruzamento
+      m_lastCrossSignal = SIGNAL_NONE;
+      m_candlesAfterCross = 0;
+      m_lastCheckBarTime = 0;
+     }
 
    return true;
   }
@@ -708,38 +709,26 @@ bool CMACrossStrategy::SetExitMode(ENUM_EXIT_MODE mode)
    ENUM_EXIT_MODE oldMode = m_exitMode;
    m_exitMode = mode;
 
-   string oldStr, newStr;
-   switch(oldMode)
+   if(oldMode != mode)
      {
-      case EXIT_FCO:
-         oldStr = "FCO";
-         break;
-      case EXIT_VM:
-         oldStr = "VM";
-         break;
-      case EXIT_TP_SL:
-         oldStr = "TP/SL";
-         break;
-     }
+      string oldStr, newStr;
+      switch(oldMode)
+        {
+         case EXIT_FCO: oldStr = "FCO"; break;
+         case EXIT_VM:  oldStr = "VM";  break;
+         case EXIT_TP_SL: oldStr = "TP/SL"; break;
+        }
+      switch(mode)
+        {
+         case EXIT_FCO: newStr = "FCO"; break;
+         case EXIT_VM:  newStr = "VM";  break;
+         case EXIT_TP_SL: newStr = "TP/SL"; break;
+        }
 
-   switch(mode)
-     {
-      case EXIT_FCO:
-         newStr = "FCO";
-         break;
-      case EXIT_VM:
-         newStr = "VM";
-         break;
-      case EXIT_TP_SL:
-         newStr = "TP/SL";
-         break;
+      string msg = "🔄 [MA Cross] Exit mode alterado: " + oldStr + " → " + newStr;
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
      }
-
-   string msg = "🔄 [MA Cross] Exit mode alterado: " + oldStr + " → " + newStr;
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-   else
-      Print(msg);
 
    return true;
   }
@@ -781,6 +770,8 @@ bool CMACrossStrategy::SetMAPeriods(int fastPeriod, int slowPeriod)
    int oldFast = m_fastPeriod;
    int oldSlow = m_slowPeriod;
 
+   if(oldFast == fastPeriod && oldSlow == slowPeriod) return true;
+
    m_fastPeriod = fastPeriod;
    m_slowPeriod = slowPeriod;
 
@@ -794,8 +785,6 @@ bool CMACrossStrategy::SetMAPeriods(int fastPeriod, int slowPeriod)
                    "→" + IntegerToString(slowPeriod);
       if(m_logger != NULL)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print(msg);
      }
 
    return success;
@@ -806,6 +795,8 @@ bool CMACrossStrategy::SetMAPeriods(int fastPeriod, int slowPeriod)
 //+------------------------------------------------------------------+
 bool CMACrossStrategy::SetMAMethods(ENUM_MA_METHOD fastMethod, ENUM_MA_METHOD slowMethod)
   {
+   if(m_fastMethod == fastMethod && m_slowMethod == slowMethod) return true;
+
    m_fastMethod = fastMethod;
    m_slowMethod = slowMethod;
 
@@ -817,8 +808,6 @@ bool CMACrossStrategy::SetMAMethods(ENUM_MA_METHOD fastMethod, ENUM_MA_METHOD sl
       string msg = "🔄 [MA Cross] Métodos alterados";
       if(m_logger != NULL)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print(msg);
      }
 
    return success;
@@ -829,6 +818,8 @@ bool CMACrossStrategy::SetMAMethods(ENUM_MA_METHOD fastMethod, ENUM_MA_METHOD sl
 //+------------------------------------------------------------------+
 bool CMACrossStrategy::SetMATimeframes(ENUM_TIMEFRAMES fastTF, ENUM_TIMEFRAMES slowTF)
   {
+   if(m_fastTimeframe == fastTF && m_slowTimeframe == slowTF) return true;
+
    m_fastTimeframe = fastTF;
    m_slowTimeframe = slowTF;
 
@@ -840,8 +831,6 @@ bool CMACrossStrategy::SetMATimeframes(ENUM_TIMEFRAMES fastTF, ENUM_TIMEFRAMES s
       string msg = "🔄 [MA Cross] Timeframes alterados";
       if(m_logger != NULL)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print(msg);
      }
 
    return success;
@@ -871,6 +860,12 @@ bool CMACrossStrategy::SetMAParams(int fastPeriod, int slowPeriod,
    ENUM_MA_METHOD oldFastM = m_fastMethod, oldSlowM = m_slowMethod;
    ENUM_TIMEFRAMES oldFastTF = m_fastTimeframe, oldSlowTF = m_slowTimeframe;
 
+   bool changed = (oldFastP != fastPeriod || oldSlowP != slowPeriod ||
+                   oldFastM != fastMethod || oldSlowM != slowMethod ||
+                   oldFastTF != fastTF || oldSlowTF != slowTF ||
+                   m_fastApplied != fastApplied || m_slowApplied != slowApplied);
+   if(!changed) return true;
+
    m_fastPeriod    = fastPeriod;
    m_slowPeriod    = slowPeriod;
    m_fastMethod    = fastMethod;
@@ -894,8 +889,6 @@ bool CMACrossStrategy::SetMAParams(int fastPeriod, int slowPeriod,
                    "/" + EnumToString(oldSlowTF) + "→" + EnumToString(slowTF);
       if(m_logger != NULL)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print(msg);
      }
 
    return success;
