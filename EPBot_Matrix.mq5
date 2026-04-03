@@ -1209,6 +1209,11 @@ void OnDeinit(const int reason)
 
 // ETAPA 2: Deletar filtros e estratégias
 //          (agora é seguro porque ponteiros foram zerados)
+   if(g_bbFilter != NULL)
+     {
+      delete g_bbFilter;
+      g_bbFilter = NULL;
+     }
    if(g_rsiFilter != NULL)
      {
       delete g_rsiFilter;
@@ -1218,6 +1223,11 @@ void OnDeinit(const int reason)
      {
       delete g_trendFilter;
       g_trendFilter = NULL;
+     }
+   if(g_bbStrategy != NULL)
+     {
+      delete g_bbStrategy;
+      g_bbStrategy = NULL;
      }
    if(g_rsiStrategy != NULL)
      {
