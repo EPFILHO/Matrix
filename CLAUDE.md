@@ -247,3 +247,77 @@ Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para m
 ### TODO restante (Parte 032)
 - [ ] Criar PR da Parte 031 → main
 
+
+- [ ] Criar PR da Parte 031 → main
+
+---
+
+## Parte 032 — Concluída (2026-04-03)
+
+### O que foi feito
+
+#### ANÁLISE DE QUALIDADE — EPBot Matrix v1.58
+
+Revisão completa do codebase (`Core/`) em resposta a pergunta do usuário: _"meu EA está bom?"_
+
+Arquivos analisados:
+- `EPBot_Matrix.mq5`
+- `Core/TradeManager.mqh`
+- `Core/BlockerFilters.mqh`
+- `Core/Blockers.mqh`
+
+#### FIX 1 — Win/Loss inconsistency (`EPBot_Matrix.mq5`)
+
+- **Bug**: `g_logger.UpdateStats(finalDealProfit)` usava o lucro do deal final (sem parciais), enquanto o Streak usava `totalPositionProfit`
+- **Fix**: `g_logger.UpdateStats(totalPositionProfit)` — consistência total entre Logger e Streak
+- **Impacto**: Em trades com TP1+TP2, o Logger contava como perda mesmo quando a posição era lucrativa
+- Comentário `KNOWN LIMITATION` convertido em `✅ CORRIGIDO v1.59`
+
+#### FIX 2 — `FetchDealRealValues()` centralizado (`TradeManager.mqh`)
+
+- **Bug**: Bloco de ~60 linhas duplicado nos blocos TP1 e TP2 de `MonitorPartialTP()`
+- **Fix**: Extraído como método privado `FetchDealRealValues()` — elimina duplicação, facilita manutenção
+- Logs de diagnóstico (preço real, volume, lucro) mantidos no método centralizado
+
+#### FIX 3 — `HistorySelect` 60s → 300s (`TradeManager.mqh`)
+
+- **Bug**: Janela de 60s em `FetchDealRealValues()` insuficiente para brokers com alta latência
+- **Fix**: Janela expandida para 300s (5 minutos) em ambas as ocorrências (TP1 e TP2)
+
+#### FIX 4 — `GetTypeFilling()` centralizado em `Core/Utils.mqh`
+
+- **Bug**: Função duplicada em `EPBot_Matrix.mq5` (global) e `TradeManager.mqh` (método privado)
+- **Fix**: Criado `Core/Utils.mqh` com `GetTypeFilling(const string symbol)` usando operadores bitwise corretos
+  - Lógica corrigida: `(filling & SYMBOL_FILLING_FOK) != 0` em vez de `== SYMBOL_FILLING_FOK`
+- `EPBot_Matrix.mq5`: removida função global, adicionado `#include "Core/Utils.mqh"`
+- `TradeManager.mqh`: método privado agora delega para `::GetTypeFilling(m_symbol)`, adicionado `#include "Utils.mqh"`
+
+#### FIX 5 — `SaveState()` fallback com logs detalhados (`TradeManager.mqh`)
+
+- **Bug**: Fallback de cópia manual (quando `FileMove()` falha) era silencioso — difícil diagnosticar falhas
+- **Fix**: Cada etapa do fallback agora loga: abertura do src, abertura do dst, sucesso da cópia, deleção do tmp
+- Sem alteração de comportamento, apenas melhor observabilidade
+
+#### FIX 6 — `PrintConfiguration()` completa (`Blockers.mqh`)
+
+- **Bug**: Stub que só imprimia Spread e Direção como inteiros (ilegível)
+- **Fix**: Implementação completa usando macro `CFG_LOG` para evitar duplicação logger/Print:
+  - Exibe Spread atual vs input em pts
+  - Exibe Direção como texto legível ("Ambas", "Apenas COMPRAS", etc.)
+  - Delega para `m_filters.PrintConfiguration()`, `m_limits.PrintConfiguration()`, `m_drawdown.PrintConfiguration()`
+- Requer que os submodulos implementem `PrintConfiguration()` (delegação por design)
+
+### Versões atualizadas
+
+- `EPBot_Matrix.mq5`: 1.58 → 1.59
+- `Core/TradeManager.mqh`: 1.25 → 1.27
+  - 1.26: FetchDealRealValues + HistorySelect 300s + SaveState logs
+  - 1.27: GetTypeFilling() delega para Core/Utils.mqh
+- `Core/Blockers.mqh`: 3.25 → 3.26
+- `Core/Utils.mqh`: criado (1.00) — `GetTypeFilling(const string symbol)`
+
+### TODO restante (Parte 033)
+
+- [ ] Implementar `PrintConfiguration()` nos submodulos (`BlockerFilters`, `BlockerLimits`, `BlockerDrawdown`)
+- [ ] Criar PR da Parte 032 → main
+- [ ] Revisar se há outros métodos com lógica duplicada nos submodulos de Blockers
