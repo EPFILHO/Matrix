@@ -2,16 +2,22 @@
 //|                                                  Blockers.mqh    |
 //|                                      Copyright 2026, EP Filho    |
 //|                    Sistema de Bloqueios - EPBot Matrix           |
-//|                    Versão 3.25 - Refatoração de segurança         |
+//|                Versao 3.26 - PrintConfiguration() completa      |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.25"
+#property version   "3.26"
 #property strict
 
 //+------------------------------------------------------------------+
 //| CHANGELOG v3.25 (Refatoração crítica):                           |
 //| FIX 1 — IsNewDay()/ResetDaily() removidos de CanTrade().         |
 //|          O EA principal é o único dono da lógica de virada de    |
+//+------------------------------------------------------------------+
+//| CHANGELOG v3.26:                                                 |
+//| + PrintConfiguration() completada: delega para submodulos       |
+//|   (m_filters, m_limits, m_drawdown) e exibe geral + spread +    |
+//|   direcao de forma legivel (antes apenas inteiros)              |
+//+------------------------------------------------------------------+
 //|          dia. Duplo reset causava zeragem de streak no meio do    |
 //|          dia e conflito de responsabilidades.                     |
 //| FIX 2 — m_lastResetDate inicializado com D'1970.01.01' em vez    |
@@ -760,36 +766,47 @@ void CBlockers::PrintStatus()
 //+------------------------------------------------------------------+
 void CBlockers::PrintConfiguration()
 {
-   if(m_logger != NULL)
-   {
-      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG",
-         "╔══════════════════════════════════════════════════════╗");
-      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG",
-         "║        BLOCKERS - CONFIGURAÇÃO COMPLETA             ║");
-      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG",
-         "╚══════════════════════════════════════════════════════╝");
-      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "");
-      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG",
-         "  Spread Máx: " + IntegerToString(m_filters.GetMaxSpread()));
-      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG",
-         "  Direção:    " + IntegerToString((int)m_tradeDirection));
-      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "");
-      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG",
-         "═══════════════════════════════════════════════════════");
-   }
-   else
-   {
-      Print("╔══════════════════════════════════════════════════════╗");
-      Print("║        BLOCKERS - CONFIGURAÇÃO COMPLETA             ║");
-      Print("╚══════════════════════════════════════════════════════╝");
-      Print("");
-      Print("  Spread Máx: ", m_filters.GetMaxSpread());
-      Print("  Direção:    ", (int)m_tradeDirection);
-      Print("");
-      Print("═══════════════════════════════════════════════════════");
-   }
-}
+   string sep = "═══════════════════════════════════════════════════════";
+   string hdr = "╔══════════════════════════════════════════════════════╗";
+   string ftr = "╚══════════════════════════════════════════════════════╝";
 
-//+------------------------------------------------------------------+
+   // Helper lambda-style macro via local function not available in MQL5
+   // so we duplicate logger/print pattern inline
+   #define CFG_LOG(msg) if(m_logger != NULL) m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", (msg)); else Print(msg)
+
+   CFG_LOG(hdr);
+   CFG_LOG("║          BLOCKERS - CONFIGURACAO COMPLETA            ║");
+   CFG_LOG(ftr);
+   CFG_LOG("");
+
+   // ── Geral ────────────────────────────────────────────────────
+   CFG_LOG("[ GERAL ]");
+   string dirText;
+   switch(m_tradeDirection)
+     {
+      case DIRECTION_BOTH:      dirText = "Ambas (Compra e Venda)"; break;
+      case DIRECTION_BUY_ONLY:  dirText = "Apenas COMPRAS";         break;
+      case DIRECTION_SELL_ONLY: dirText = "Apenas VENDAS";          break;
+      default:                  dirText = "Desconhecida";            break;
+     }
+   CFG_LOG("  Spread Max atual : " + IntegerToString(m_filters.GetMaxSpread()) + " pts");
+   CFG_LOG("  Spread Max input : " + IntegerToString(m_filters.GetInputMaxSpread()) + " pts");
+   CFG_LOG("  Direcao          : " + dirText);
+   CFG_LOG("");
+
+   // ── Filtros (delegado ao submodulo) ──────────────────────────
+   m_filters.PrintConfiguration();
+
+   // ── Limites diarios e streak ─────────────────────────────────
+   m_limits.PrintConfiguration();
+
+   // ── Drawdown ─────────────────────────────────────────────────
+   m_drawdown.PrintConfiguration();
+
+   CFG_LOG("");
+   CFG_LOG(sep);
+
+   #undef CFG_LOG
+  }
 //| FIM — Blockers.mqh v3.25                                        |
 //+------------------------------------------------------------------+
