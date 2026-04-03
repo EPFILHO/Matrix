@@ -2,15 +2,30 @@
 //|                                              EPBot_Matrix.mq5    |
 //|                                      Copyright 2026, EP Filho    |
 //|                    EA Modular Multistrategy - EPBot Matrix        |
-//|                    Versão 1.58 - Refatoração de segurança         |
+//|                    Versão 1.59 - Correções de qualidade         |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.58"
+#property version   "1.59"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
-#define EA_VERSION "1.58"
+#define EA_VERSION "1.59"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.59 (Correções de qualidade):                       |
+//| FIX 1 — UpdateStats() agora usa totalPositionProfit em vez de   |
+//|          finalDealProfit, eliminando inconsistência entre        |
+//|          Logger.m_dailyWins/Losses e o cálculo do Streak.       |
+//| FIX 2 — FetchDealRealValues() extraido como método privado em   |
+//|          TradeManager.mqh, remove bloco duplicado TP1/TP2.      |
+//| FIX 3 — Janela HistorySelect em TradeManager: 60s -> 300s       |
+//|          (brokers com alta latência).                            |
+//| FIX 4 — GetTypeFilling() centralizado em Core/Utils.mqh,        |
+//|          remove duplicata em TradeManager e EPBot_Matrix.        |
+//| FIX 5 — SaveState(): fallback de cópia agora loga cada etapa.   |
+//| FIX 6 — PrintConfiguration() em Blockers.mqh imprime todos os   |
+//|          parâmetros de limites, streak e drawdown.               |
+//+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.58 (Refatoração crítica):                           |
 //| FIX 1 — ResetDaily do Blockers agora chamado em TODOS os dias,   |
@@ -43,12 +58,12 @@
 //| - Layout: PANEL_HEIGHT 600→626, CONTENT_TOP +26px (START_BTN_H)  |
 //+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
-//| KNOWN LIMITATION (documentado em 2026-03):                       |
+//| ✅ CORRIGIDO v1.59 (era KNOWN LIMITATION em 2026-03):          |
 //| ⚠️ INCONSISTÊNCIA: Logger.m_dailyWins/Losses vs Streak           |
 //| Quando TP1+TP2 executam E o deal final fecha no prejuízo:        |
 //| - Streak usa totalPositionProfit → WIN ✅                        |
-//| - Logger UpdateStats() usa finalDealProfit → LOSS ❌             |
-//| Impacto baixo — cenário raro, limites diários NÃO são afetados.  |
+//| - Logger UpdateStats() usa totalPositionProfit → WIN ✅        |
+//| Bug eliminado — consistência total entre Logger e Streak.      |
 //| Ver análise completa no histórico do projeto.                     |
 //+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
@@ -719,7 +734,7 @@ void OnTick()
 
             // ⚠️ KNOWN LIMITATION: UpdateStats usa finalDealProfit,
             // streak usa totalPositionProfit. Ver changelog v1.58.
-            g_logger.UpdateStats(finalDealProfit);
+            g_logger.UpdateStats(totalPositionProfit);
 
             bool isWin = (totalPositionProfit > 0);
             g_blockers.UpdateAfterTrade(isWin, finalDealProfit);
