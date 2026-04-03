@@ -5,8 +5,12 @@
 //|                 Versão 1.26 - FetchDealRealValues + HistorySelect 300s  |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.26"
+#property version   "1.27"
 
+// CHANGELOG v1.27:
+// + GetTypeFilling() delega para ::GetTypeFilling(m_symbol) em Core/Utils.mqh
+// + #include "Utils.mqh" adicionado ao INCLUDES
+//
 // CHANGELOG v1.26 (FIX Correções de qualidade):
 // + FetchDealRealValues(): método privado que centraliza busca de valores reais
 //   do deal no histórico — elimina bloco duplicado de ~60 linhas em TP1 e TP2
@@ -32,6 +36,7 @@
 // INCLUDES
 // ═══════════════════════════════════════════════════════════════════
 #include "Logger.mqh"
+#include "Utils.mqh"
 #include "RiskManager.mqh"
 
 // ═══════════════════════════════════════════════════════════════════
@@ -967,19 +972,11 @@ void CTradeManager::PrintAllPositions()
   }
 
 //+------------------------------------------------------------------+
-//| GetTypeFilling                                                   |
+//| GetTypeFilling — delega para Utils.mqh (centralizado v1.27)     |
 //+------------------------------------------------------------------+
 ENUM_ORDER_TYPE_FILLING CTradeManager::GetTypeFilling()
   {
-   uint filling = (uint)SymbolInfoInteger(m_symbol, SYMBOL_FILLING_MODE);
-
-   if((filling & SYMBOL_FILLING_FOK) == SYMBOL_FILLING_FOK)
-      return ORDER_FILLING_FOK;
-   else
-      if((filling & SYMBOL_FILLING_IOC) == SYMBOL_FILLING_IOC)
-         return ORDER_FILLING_IOC;
-
-   return ORDER_FILLING_RETURN;
+   return ::GetTypeFilling(m_symbol); // Core/Utils.mqh
   }
 
 //+------------------------------------------------------------------+
