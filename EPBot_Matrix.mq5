@@ -124,10 +124,11 @@ CBollingerBandsFilter*    g_bbFilter        = NULL;
 
 CEPBotPanel*              g_panel           = NULL;
 
-datetime g_lastBarTime        = 0;
-datetime g_lastTradeBarTime   = 0;
-datetime g_lastExitBarTime    = 0;
-ulong    g_lastPositionTicket = 0;
+datetime       g_lastBarTime        = 0;
+datetime       g_lastTradeBarTime   = 0;
+datetime       g_lastExitBarTime    = 0;
+ulong          g_lastPositionTicket = 0;
+ENUM_EXIT_MODE g_exitMode           = EXIT_TP_SL; // L-32: working var para inp_ExitMode (hot reload)
 // REMOVIDO: g_tradingAllowed — era variável morta (FIX 7)
 
 //+------------------------------------------------------------------+
@@ -175,7 +176,7 @@ int OnInit()
    g_magicNumber  = inp_MagicNumber;
    g_slippage     = inp_Slippage;
    g_tradeComment = inp_TradeComment;
-   g_exitMode     = inp_ExitMode;
+   g_exitMode     = inp_ExitMode;    // L-32: working var para hot reload
 
    //--- ETAPA 1: LOGGER
    g_logger = new CLogger();
@@ -624,18 +625,18 @@ void OnTick()
 
    // ═══════════════════════════════════════════════════════════════
    // DETECTAR MUDANÇA DE DIA
+   // L-34: Inicializa lastDay com dia atual no primeiro tick para
+   // evitar edge case em restart à meia-noite.
    // ═══════════════════════════════════════════════════════════════
-   static int lastDay = -1; // L-34: -1 = não inicializado
+   static int lastDay = -1;
    MqlDateTime timeStruct;
    TimeToStruct(TimeCurrent(), timeStruct);
 
    // L-34: Inicializar com dia atual no primeiro tick para evitar edge case na meia-noite
    if(lastDay == -1)
-   {
       lastDay = timeStruct.day;
-   }
 
-   if(timeStruct.day != lastDay)
+   if(lastDay != timeStruct.day)
    {
       g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAY", "═══════════════════════════════════════");
       g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAY",
@@ -741,6 +742,8 @@ void OnTick()
          {
             g_logger.SaveTrade(g_lastPositionTicket, finalDealProfit);
 
+            // FIX v1.59: UpdateStats agora usa totalPositionProfit
+            // (consistente com Streak). Ver changelog v1.59.
             g_logger.UpdateStats(totalPositionProfit);
 
             bool isWin = (totalPositionProfit > 0);
@@ -1363,7 +1366,7 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
                               PositionGetInteger(POSITION_MAGIC) == g_magicNumber)
             {
                datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
-               if(TimeCurrent() - openTime < 30) // L-33: 5s → 30s para brokers com alta latência
+               if(TimeCurrent() - openTime < 30) // L-33: 5s → 30s (tolerância para alta latência)
                {
                   positionTicket = tk;
                   g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE",
@@ -1469,19 +1472,20 @@ void OnChartEvent(const int id,
 
 //+------------------------------------------------------------------+
 //| OnTimer()                                                        |
+//| L-35: Guard com ResetLastError para proteger contra falhas       |
 //+------------------------------------------------------------------+
 void OnTimer()
 {
    // L-35: Guard check — só atualiza se painel existe e chart ainda é válido
-   if(g_panel != NULL && ChartGetInteger(0, CHART_WINDOWS_TOTAL) > 0)
-   {
-      ResetLastError();
-      g_panel.Update();
-      int err = GetLastError();
-      if(err != 0 && g_logger != NULL)
-         g_logger.Log(LOG_ERROR, THROTTLE_TIME, "TIMER",
-            "⚠️ Panel.Update() erro: " + IntegerToString(err), 60);
-   }
+   if(g_panel == NULL || ChartGetInteger(0, CHART_WINDOWS_TOTAL) <= 0) return;
+
+   ResetLastError();
+   g_panel.Update();
+
+   int err = GetLastError();
+   if(err != 0 && g_logger != NULL)
+      g_logger.Log(LOG_ERROR, THROTTLE_TIME, "TIMER",
+         "Erro em Panel.Update(): " + IntegerToString(err), 60);
 }
 
 //+------------------------------------------------------------------+
