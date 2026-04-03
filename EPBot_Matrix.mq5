@@ -84,9 +84,10 @@
 //| INCLUDES - ORDEM IMPORTANTE                                      |
 //+------------------------------------------------------------------+
 // 0️⃣ RUNTIME VARS — cópias editáveis dos inputs (hot reload)
-int    g_magicNumber  = 0;
-int    g_slippage     = 0;
-string g_tradeComment = "";
+int             g_magicNumber  = 0;
+int             g_slippage     = 0;
+string          g_tradeComment = "";
+ENUM_EXIT_MODE  g_exitMode     = EXIT_TP_SL;
 
 // 1️⃣ INPUTS CENTRALIZADOS
 #include "Core/Inputs.mqh"
@@ -174,6 +175,7 @@ int OnInit()
    g_magicNumber  = inp_MagicNumber;
    g_slippage     = inp_Slippage;
    g_tradeComment = inp_TradeComment;
+   g_exitMode     = inp_ExitMode;
 
    //--- ETAPA 1: LOGGER
    g_logger = new CLogger();
@@ -623,11 +625,17 @@ void OnTick()
    // ═══════════════════════════════════════════════════════════════
    // DETECTAR MUDANÇA DE DIA
    // ═══════════════════════════════════════════════════════════════
-   static int lastDay = 0;
+   static int lastDay = -1; // L-34: -1 = não inicializado
    MqlDateTime timeStruct;
    TimeToStruct(TimeCurrent(), timeStruct);
 
-   if(lastDay != 0 && timeStruct.day != lastDay)
+   // L-34: Inicializar com dia atual no primeiro tick para evitar edge case na meia-noite
+   if(lastDay == -1)
+   {
+      lastDay = timeStruct.day;
+   }
+
+   if(timeStruct.day != lastDay)
    {
       g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAY", "═══════════════════════════════════════");
       g_logger.Log(LOG_EVENT, THROTTLE_NONE, "DAY",
@@ -733,8 +741,6 @@ void OnTick()
          {
             g_logger.SaveTrade(g_lastPositionTicket, finalDealProfit);
 
-            // ⚠️ KNOWN LIMITATION: UpdateStats usa finalDealProfit,
-            // streak usa totalPositionProfit. Ver changelog v1.58.
             g_logger.UpdateStats(totalPositionProfit);
 
             bool isWin = (totalPositionProfit > 0);
@@ -753,7 +759,7 @@ void OnTick()
       g_tradeManager.UnregisterPosition(g_lastPositionTicket);
 
       // Bloquear re-entrada no mesmo candle (exceto VM)
-            if(inp_ExitMode != EXIT_VM)
+            if(g_exitMode != EXIT_VM)
       {
          g_lastTradeBarTime = currentBarTime; // FIX 6: reutiliza var já calculada
          g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "RESET",
@@ -886,7 +892,7 @@ void OnTick()
    // ═══════════════════════════════════════════════════════════════
    bool isVMActive = (g_maCrossStrategy != NULL &&
                       g_maCrossStrategy.GetEnabled() &&
-                      inp_ExitMode == EXIT_VM);
+                      g_exitMode == EXIT_VM);
 
    if(!isVMActive)
    {
@@ -912,7 +918,7 @@ void OnTick()
    // ═══════════════════════════════════════════════════════════════
    // ETAPA 4.5: BLOQUEIO FCO
    // ═══════════════════════════════════════════════════════════════
-   if(inp_ExitMode == EXIT_FCO)
+   if(g_exitMode == EXIT_FCO)
    {
       if(currentBarTime == g_lastExitBarTime) // FIX 6: reutiliza var
       {
@@ -1152,7 +1158,7 @@ void ManageOpenPosition(ulong ticket)
                " | Fonte: " + g_signalManager.GetLastSignalSource() +
                " | Preço: " + DoubleToString(result.price, _Digits));
 
-            if(inp_ExitMode == EXIT_VM)
+            if(g_exitMode == EXIT_VM)
             {
                // FIX 3: EXIT_VM verifica CanTrade() + CanTradeDirection()
                // antes de abrir a posição oposta.
@@ -1357,7 +1363,7 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
                               PositionGetInteger(POSITION_MAGIC) == g_magicNumber)
             {
                datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
-               if(TimeCurrent() - openTime < 5)
+               if(TimeCurrent() - openTime < 30) // L-33: 5s → 30s para brokers com alta latência
                {
                   positionTicket = tk;
                   g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE",
@@ -1466,10 +1472,18 @@ void OnChartEvent(const int id,
 //+------------------------------------------------------------------+
 void OnTimer()
 {
-   if(g_panel != NULL)
+   // L-35: Guard check — só atualiza se painel existe e chart ainda é válido
+   if(g_panel != NULL && ChartGetInteger(0, CHART_WINDOWS_TOTAL) > 0)
+   {
+      ResetLastError();
       g_panel.Update();
+      int err = GetLastError();
+      if(err != 0 && g_logger != NULL)
+         g_logger.Log(LOG_ERROR, THROTTLE_TIME, "TIMER",
+            "⚠️ Panel.Update() erro: " + IntegerToString(err), 60);
+   }
 }
 
 //+------------------------------------------------------------------+
-//| FIM DO EA - EPBOT MATRIX v1.58                                   |
+//| FIM DO EA - EPBOT MATRIX v1.59                                   |
 //+------------------------------------------------------------------+
