@@ -6,7 +6,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.56"
+#property version   "1.57"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //--- Constante centralizada de versão

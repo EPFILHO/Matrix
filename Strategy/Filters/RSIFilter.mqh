@@ -5,7 +5,7 @@
 //|                                   Versão 1.11 - Claude Parte 022 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.11"
+#property version   "1.12"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════

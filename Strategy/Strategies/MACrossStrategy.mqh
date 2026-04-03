@@ -5,7 +5,7 @@
 //|                                   Versão 2.26 - Claude Parte 025 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.26"
+#property version   "2.27"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════

@@ -5,7 +5,7 @@
 //|                     Versão 2.23 - Claude Parte 027 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.23"
+#property version   "2.24"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
