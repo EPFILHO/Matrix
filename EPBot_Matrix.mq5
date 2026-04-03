@@ -84,10 +84,10 @@
 //| INCLUDES - ORDEM IMPORTANTE                                      |
 //+------------------------------------------------------------------+
 // 0️⃣ RUNTIME VARS — cópias editáveis dos inputs (hot reload)
+// (g_exitMode declarada após includes — ENUM_EXIT_MODE definido em StrategyBase.mqh)
 int             g_magicNumber  = 0;
 int             g_slippage     = 0;
 string          g_tradeComment = "";
-ENUM_EXIT_MODE  g_exitMode     = EXIT_TP_SL;
 
 // 1️⃣ INPUTS CENTRALIZADOS
 #include "Core/Inputs.mqh"
