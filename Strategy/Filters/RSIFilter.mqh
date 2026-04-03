@@ -16,6 +16,7 @@
 
 // ═══════════════════════════════════════════════════════════════
 // NOVIDADES v1.12 (Parte 031):
+// + SetEnabled override: loga "Filtro: ATIVADO/DESATIVADO" se mudar
 // + SetFilterMode, SetOversold, SetOverbought, SetLowerNeutral,
 //   SetUpperNeutral, SetShift: só logam se valor realmente mudar
 // + SetPeriod, SetTimeframe, SetAppliedPrice:

@@ -224,6 +224,13 @@ Todos os métodos COLD agora:
 - **Fix**: Adicionado delete explícito de g_bbFilter e g_bbStrategy na ETAPA 2
 - **Impacto**: Toda remoção do EA vazava ~2 objetos
 
+#### FIX — SetEnabled sem log em 4 módulos
+- **Bug**: Toggle ON/OFF nos sub-painéis não logava em MACross, TrendFilter, RSIFilter, BBFilter
+- **Causa**: SetEnabled herdava da classe base (setter mudo sem log)
+- **Fix**: Override com log "ATIVADO/DESATIVADO" nos 4 módulos
+- **FilterBase**: SetEnabled tornado `virtual` para permitir override
+- RSIStrategy e BollingerBandsStrategy já tinham override — não precisaram de fix
+
 #### Removidos fallbacks `else Print(...)`
 Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para manter consistência com padrão: sempre usar `m_logger` (que nunca é NULL em operação).
 
@@ -235,6 +242,7 @@ Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para m
 - TrendFilter.mqh: 2.23 → 2.24
 - RSIFilter.mqh: 1.11 → 1.12
 - BollingerBandsFilter.mqh: 1.00 → 1.01
+- FilterBase.mqh: 2.01 → 2.02
 
 ### TODO restante (Parte 032)
 - [ ] Criar PR da Parte 031 → main

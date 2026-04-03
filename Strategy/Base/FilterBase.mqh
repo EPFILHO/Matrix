@@ -2,14 +2,17 @@
 //|                                                   FilterBase.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                                  Interface Base para Filtros     |
-//|                                   Versão 2.01 - Claude Parte 025 |
+//|                                   Versão 2.02 - Claude Parte 031 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.01"
+#property version   "2.02"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
+// v2.02 (Parte 031):
+// + SetEnabled() tornado virtual para permitir override com log nas filhas
+//
 // v2.01 (Parte 025):
 // + GetStatusSummary(): virtual — retorna string de status para
 //   sub-página GERAL do painel GUI

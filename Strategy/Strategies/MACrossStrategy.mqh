@@ -16,6 +16,7 @@
 
 // ═══════════════════════════════════════════════════════════════
 // NOVIDADES v2.27 (Parte 031):
+// + SetEnabled override: loga "Estratégia: ATIVADA/DESATIVADA" se mudar
 // + SetEntryMode, SetExitMode: só logam se modo realmente mudar
 // + SetMAPeriods, SetMAMethods, SetMATimeframes, SetMAParams:
 //   skip Deinitialize+Initialize se parâmetros forem idênticos

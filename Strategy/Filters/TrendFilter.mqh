@@ -16,6 +16,7 @@
 
 // ═══════════════════════════════════════════════════════════════
 // NOVIDADES v2.24 (Parte 031):
+// + SetEnabled override: loga "Filtro: ATIVADO/DESATIVADO" se mudar
 // + SetTrendFilterEnabled, SetNeutralDistance: só logam se valor mudar
 // + SetMAPeriod, SetMAMethod, SetMATimeframe, SetMAApplied, SetMACold:
 //   skip Deinitialize+Initialize se parâmetros forem idênticos

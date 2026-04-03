@@ -17,6 +17,7 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // v1.01 (Parte 031):
+// + SetEnabled override: loga "Filtro: ATIVADO/DESATIVADO" se mudar
 // + SetSqueezeMetric, SetSqueezeThreshold, SetPercentilePeriod:
 //   só logam se valor realmente mudar
 // + SetPeriod, SetDeviation, SetTimeframe, SetAppliedPrice:
