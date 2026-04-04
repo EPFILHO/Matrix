@@ -490,7 +490,11 @@ public:
          if(m_iPriority.ColorBackground() != CLR_FIELD_ERROR) m_iPriority.ColorBackground(clrWhite);
         }
       else
-        { m_iFastP.ColorBackground(bg); m_iSlowP.ColorBackground(bg); m_iPriority.ColorBackground(bg); }
+        {
+         if(m_iFastP.ColorBackground() != CLR_FIELD_ERROR)    m_iFastP.ColorBackground(bg);
+         if(m_iSlowP.ColorBackground() != CLR_FIELD_ERROR)    m_iSlowP.ColorBackground(bg);
+         if(m_iPriority.ColorBackground() != CLR_FIELD_ERROR) m_iPriority.ColorBackground(bg);
+        }
       m_iFastP.Color(fg); m_iSlowP.Color(fg); m_iPriority.Color(fg);
       // Labels
       color lc = enable ? CLR_LABEL : C'180,180,180';

@@ -1447,14 +1447,14 @@ bool CEPBotPanel::ValidateAndApplyAll(void)
    for(int i = 0; i < m_stratPanelCount; i++)
      {
       if(m_stratPanels[i] != NULL)
-        { string err = ""; m_stratPanels[i].Apply(err); allErrs += err; }
+        { string err = ""; if(!m_stratPanels[i].Apply(err) || err != "") allErrs += err; }
      }
 
    // Sub-painéis de filtros
    for(int i = 0; i < m_filtPanelCount; i++)
      {
       if(m_filtPanels[i] != NULL)
-        { string err = ""; m_filtPanels[i].Apply(err); allErrs += err; }
+        { string err = ""; if(!m_filtPanels[i].Apply(err) || err != "") allErrs += err; }
      }
 
    // Validação cruzada: Exit TP/SL requer TP definido (Parte 030)

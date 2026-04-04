@@ -318,7 +318,8 @@ void CEPBotPanel::SetEditEnabled(CLabel &lbl, CEdit &inp, bool enable)
      {
       lbl.Color(C'180,180,180');
       inp.ReadOnly(true);
-      inp.ColorBackground(C'220,220,220');
+      if(inp.ColorBackground() != CLR_FIELD_ERROR)
+         inp.ColorBackground(C'220,220,220');
       inp.Color(C'160,160,160');
      }
   }
