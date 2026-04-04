@@ -674,6 +674,7 @@ private:
    CLabel   m_c2_lDLPTA;    CButton m_c2_bDLPTA[2];  // Radio: PARAR | ATIVAR DD
    CLabel   m_c2_hdr3;                              // Header "DRAWDOWN"
    CLabel   m_c2_lDDAct;    CButton m_c2_bDDAct;    // DrawDown ON/OFF
+   CLabel   m_c2_lDDHint;                           // Dica: Requer Limite Diário
    CLabel   m_c2_lDD;       CEdit   m_c2_iDD;
    CLabel   m_c2_lDDT;      CButton m_c2_bDDT[2];   // Radio: FINANCEIRO | PERCENTUAL
    CLabel   m_c2_lDDPk;     CButton m_c2_bDDPk[2];  // Radio: REALIZADO | FLUTUANTE

@@ -542,6 +542,15 @@ bool CEPBotPanel::CreateTabConfig(void)
    y += PANEL_GAP_Y + 2;
    if(!CreateLB(m_c2_lDDAct, m_c2_bDDAct, "c2_lDA", "c2_bDA", "DrawDown:", y)) return false;
    y += PANEL_GAP_Y + 2;
+   // Dica: DD requer Limite Diário
+   if(!m_c2_lDDHint.Create(m_chart_id, PFX + "c2_lDDH", m_subwin,
+                            COL_LABEL_X, y, COL_LABEL_X + PANEL_WIDTH - 20, y + PANEL_GAP_Y))
+      return false;
+   m_c2_lDDHint.Text("(Requer Limite Diário habilitado)");
+   m_c2_lDDHint.Color(CLR_NEUTRAL);
+   m_c2_lDDHint.FontSize(8);
+   if(!Add(m_c2_lDDHint)) return false;
+   y += PANEL_GAP_Y + 2;
    {
     string ddLabel = (inp_DrawdownType == DD_FINANCIAL) ? "Drawdown $:" : "Drawdown %:";
     if(!CreateLI(m_c2_lDD, m_c2_iDD, "c2_lDD", "c2_iDD", ddLabel, y)) return false;
@@ -1221,7 +1230,7 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_c2_lBEVal.Show(); m_c2_iBEVal.Show();
             m_c2_lBEOff.Show(); m_c2_iBEOff.Show();
             // DrawDown toggle + sub-campos
-            m_c2_hdr3.Show(); m_c2_lDDAct.Show(); m_c2_bDDAct.Show();
+            m_c2_hdr3.Show(); m_c2_lDDAct.Show(); m_c2_bDDAct.Show(); m_c2_lDDHint.Show();
             m_c2_lDD.Show(); m_c2_iDD.Show();
             m_c2_lDDT.Show(); for(int i=0;i<2;i++) m_c2_bDDT[i].Show();
             m_c2_lDDPk.Show(); for(int i=0;i<2;i++) m_c2_bDDPk[i].Show();
@@ -1245,7 +1254,7 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_c2_lBEVal.Hide(); m_c2_iBEVal.Hide();
             m_c2_lBEOff.Hide(); m_c2_iBEOff.Hide();
             // DrawDown toggle + sub-campos
-            m_c2_hdr3.Hide(); m_c2_lDDAct.Hide(); m_c2_bDDAct.Hide();
+            m_c2_hdr3.Hide(); m_c2_lDDAct.Hide(); m_c2_bDDAct.Hide(); m_c2_lDDHint.Hide();
             m_c2_lDD.Hide(); m_c2_iDD.Hide();
             m_c2_lDDT.Hide(); for(int i=0;i<2;i++) m_c2_bDDT[i].Hide();
             m_c2_lDDPk.Hide(); for(int i=0;i<2;i++) m_c2_bDDPk[i].Hide();
