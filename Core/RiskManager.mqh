@@ -2,10 +2,14 @@
 //|                                                  RiskManager.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                       Sistema de Cálculo de Risco - EPBot Matrix |
-//|                  Versão 3.16 - Claude Parte 025 (Claude Code)    |
+//|                  Versão 3.17 - Claude Parte 032 (Claude Code)    |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.16"
+#property version   "3.17"
+
+// CHANGELOG v3.17 (Parte 032):
+// * M-30: CalculatePartialTPLevels — guard lotStep <= 0 (previne divisão por zero)
+// * L-01: PrintConfiguration — versão corrigida v3.14 → v3.17
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
@@ -1795,9 +1799,10 @@ bool CRiskManager::CalculatePartialTPLevels(
    int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
    
    double lotStep = SymbolInfoDouble(m_symbol, SYMBOL_VOLUME_STEP);
+   if(lotStep <= 0) lotStep = 0.01;  // fallback seguro — previne divisão por zero
    double minLot = SymbolInfoDouble(m_symbol, SYMBOL_VOLUME_MIN);
    double maxLot = SymbolInfoDouble(m_symbol, SYMBOL_VOLUME_MAX);
-   
+
    if(m_tp1_enable && m_tp1_percent > 0)
      {
       SPartialTPLevel tp1;
@@ -1939,7 +1944,7 @@ void CRiskManager::PrintConfiguration()
    if(m_logger != NULL)
      {
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "╔══════════════════════════════════════════════════════╗");
-      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "║       RISKMANAGER v3.14 - CONFIGURAÇÃO ATUAL        ║");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "║       RISKMANAGER v3.17 - CONFIGURAÇÃO ATUAL        ║");
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "╚══════════════════════════════════════════════════════╝");
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "");
       
@@ -1978,7 +1983,7 @@ void CRiskManager::PrintConfiguration()
    else
      {
       Print("╔══════════════════════════════════════════════════════╗");
-      Print("║       RISKMANAGER v3.14 - CONFIGURAÇÃO ATUAL        ║");
+      Print("║       RISKMANAGER v3.17 - CONFIGURAÇÃO ATUAL        ║");
       Print("╚══════════════════════════════════════════════════════╝");
       Print("");
       
