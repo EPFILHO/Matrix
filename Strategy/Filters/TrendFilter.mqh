@@ -623,12 +623,8 @@ bool CTrendFilter::ValidateSignal(ENUM_SIGNAL_TYPE signal)
 //+------------------------------------------------------------------+
 void CTrendFilter::SetEnabled(bool enabled)
   {
-   bool oldValue = m_isEnabled;
+   // Não logar aqui — SetTrendFilterEnabled() já cobre com mais detalhe
    m_isEnabled = enabled;
-
-   if(oldValue != enabled && m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         "🔄 [Trend Filter] Filtro: " + (enabled ? "ATIVADO" : "DESATIVADO"));
   }
 
 //+------------------------------------------------------------------+
