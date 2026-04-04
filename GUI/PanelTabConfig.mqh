@@ -882,14 +882,14 @@ void CEPBotPanel::PopulateConfig(void)
    SetRadioSelection(m_cb_bWStrA, 2, (int)m_cur_winStreakAction);
    m_cb_iWStrP.Text(IntegerToString(inp_WinPauseMinutes));
 
-// DrawDown — toggle (v1.19/v1.53: aviso se dependência não satisfeita)
+// DrawDown — toggle (v1.19/v1.53: DD requer DailyLimits ON + ProfitAction=ENABLE_DD)
    m_cur_ddOn = m_cfg_hasDrawdown;
    {
     bool ddAllowed = m_cur_dailyLimitsOn && m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN;
-    if(m_cur_ddOn && ddAllowed)
+    if(!ddAllowed)
+       m_cur_ddOn = false;  // Forçar OFF se dependência não satisfeita
+    if(m_cur_ddOn)
       { m_c2_bDDAct.Text("ON"); m_c2_bDDAct.ColorBackground(C'30,120,70'); }
-    else if(m_cur_ddOn && !ddAllowed)
-      { m_c2_bDDAct.Text("REQUER META"); m_c2_bDDAct.ColorBackground(C'180,120,0'); }
     else
       { m_c2_bDDAct.Text("OFF"); m_c2_bDDAct.ColorBackground(C'120,50,50'); }
    }
@@ -1053,12 +1053,12 @@ void CEPBotPanel::RefreshRisco2State(void)
    SetEditEnabled(m_c2_lBEVal, m_c2_iBEVal, m_cur_beOn);
    SetEditEnabled(m_c2_lBEOff, m_c2_iBEOff, m_cur_beOn);
 
-// DD toggle: restaurar cor em todos os estados
+// DD toggle: restaurar cor — forçar OFF se dependência não satisfeita
    bool ddAllowed = m_cur_dailyLimitsOn && m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN;
-   if(m_cur_ddOn && ddAllowed)
+   if(!ddAllowed)
+      m_cur_ddOn = false;  // Forçar OFF se DailyLimits OFF ou ProfitAction != ENABLE_DD
+   if(m_cur_ddOn)
      { m_c2_bDDAct.Text("ON"); m_c2_bDDAct.ColorBackground(C'30,120,70'); }
-   else if(m_cur_ddOn && !ddAllowed)
-     { m_c2_bDDAct.Text("REQUER META"); m_c2_bDDAct.ColorBackground(C'180,120,0'); }
    else
      { m_c2_bDDAct.Text("OFF"); m_c2_bDDAct.ColorBackground(C'120,50,50'); }
    m_c2_bDDAct.Color(clrWhite);
@@ -1132,14 +1132,7 @@ void CEPBotPanel::OnClickDLProfitTargetAction(int selected)
    SetRadioSelection(m_c2_bDLPTA, 2, selected);
 
 // Atualizar estado do DD (depende de Profit Acao)
-   bool ddAllowed = m_cur_dailyLimitsOn && m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN;
-   if(m_cur_ddOn)
-     {
-      if(ddAllowed)
-        { m_c2_bDDAct.Text("ON"); m_c2_bDDAct.ColorBackground(C'30,120,70'); }
-      else
-        { m_c2_bDDAct.Text("REQUER META"); m_c2_bDDAct.ColorBackground(C'180,120,0'); }
-     }
+   // RefreshRisco2State forçará DD OFF se ddAllowed ficou false
    RefreshRisco2State();
   }
 
@@ -2209,6 +2202,12 @@ void CEPBotPanel::RefreshStreakState(void)
 void CEPBotPanel::OnClickDDToggle(void)
   {
    if(m_eaStarted) return;
+   bool ddAllowed = m_cur_dailyLimitsOn && m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN;
+   if(!ddAllowed)
+     {
+      m_c2_bDDAct.Pressed(false);
+      return;  // Ignorar clique se dependência não satisfeita
+     }
    m_cur_ddOn = !m_cur_ddOn;
    m_c2_bDDAct.Pressed(false);
    RefreshRisco2State();
