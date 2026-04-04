@@ -2,11 +2,15 @@
 //|                                                  TrendFilter.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                      Filtro de Tendência por MA - EPBot Matrix   |
-//|                     Versão 2.24 - Claude Parte 031 (Claude Code) |
+//|                     Versão 2.25 - Claude Parte 032 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.24"
+#property version   "2.25"
 #property strict
+
+// CHANGELOG v2.25 (Parte 032):
+// * H-12: SetTrendFilterEnabled — cold reload ao habilitar sem handle MA
+//         (previne estado inválido onde filtro bloqueia tudo permanentemente)
 
 // ═══════════════════════════════════════════════════════════════
 // INCLUDES
@@ -635,6 +639,24 @@ bool CTrendFilter::SetTrendFilterEnabled(bool enabled)
    bool oldValue = m_useTrendFilter;
    if(oldValue == enabled) return true;
    m_useTrendFilter = enabled;
+
+   // H-12: Se habilitando e não existe handle, disparar cold reload
+   if(enabled && m_handleMA == INVALID_HANDLE && m_isInitialized)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+            "🔄 [Trend Filter] Filtro direcional ativado sem handle — reinicializando");
+      Deinitialize();
+      if(!Initialize())
+        {
+         m_useTrendFilter = false;  // reverter se falhar
+         if(m_logger != NULL)
+            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD",
+               "❌ [Trend Filter] Falha ao reinicializar — filtro direcional revertido para DESATIVADO");
+         return false;
+        }
+      return true;
+     }
 
    if(m_logger != NULL)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
