@@ -173,11 +173,8 @@
 - [x] Feedback visual (pink highlight) consistente em todas as abas
 
 ### TODO restante (Parte 031)
-- [ ] Expandir padrão "só loga se mudar" para mais campos:
-  - **Em Parte 028**: Trade Comment, Slippage já implementados
-  - **Faltam**: Magic Number (TradeManager.SetMagicNumber), Conflict Resolution, e demais campos que sofrem hot reload
-  - Padrão estabelecido em TradeManager::SetSlippage() pode ser replicado
-- [ ] Criar PR da Parte 030 → main
+- [x] Expandir padrão "só loga se mudar" para mais campos — Feito na Parte 031
+- [x] Criar PR da Parte 030 → main (PR #12 mergeado)
 
 ---
 
@@ -234,6 +231,26 @@ Todos os métodos COLD agora:
 #### Removidos fallbacks `else Print(...)`
 Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para manter consistência com padrão: sempre usar `m_logger` (que nunca é NULL em operação).
 
+#### FIX — TrendFilter logava 2x ao toggle ON/OFF
+- **Bug**: SetEnabled e SetTrendFilterEnabled ambos logavam ao toggle
+- **Causa**: TrendFilterPanel.Apply() chama ambos (linhas 248-249)
+- **Fix**: TrendFilter::SetEnabled feito mudo (sem log), SetTrendFilterEnabled já cobre
+
+#### FIX — DD toggle "REQUER META" eliminado
+- **Bug**: Estado tri-state (ON/OFF/REQUER META) confundia o trader
+- **Fix**: DD agora é binário ON/OFF; forçado OFF quando dependências não satisfeitas
+- OnClickDDToggle bloqueia click se `!ddAllowed`
+- SetAllControlsEnabled restaura estado correto do DD toggle
+
+#### FIX — CLR_FIELD_ERROR perdido ao desabilitar controles
+- **Bug**: SetEditEnabled() e SetEnabled() sobrescreviam highlight rosa com cinza
+- **Fix**: Condição `if(ColorBackground() != CLR_FIELD_ERROR)` antes de aplicar cinza
+- Afeta: PanelTabConfig, MACrossPanel, BollingerBandsPanel, RSIFilterPanel, TrendFilterPanel, BollingerBandsFilterPanel
+
+#### FIX — ValidateAndApplyAll ignorava retorno de Apply()
+- **Bug**: Sub-painéis retornavam false (erro) mas ValidateAndApplyAll não capturava
+- **Fix**: Checa `!Apply(err) || err != ""` e acumula erros de todos os painéis
+
 ### Versões atualizadas
 - EPBot_Matrix.mq5: 1.56 → 1.57
 - MACrossStrategy.mqh: 2.26 → 2.27
@@ -243,6 +260,13 @@ Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para m
 - RSIFilter.mqh: 1.11 → 1.12
 - BollingerBandsFilter.mqh: 1.00 → 1.01
 - FilterBase.mqh: 2.01 → 2.02
+- Panel.mqh: 1.61 (fixes DD toggle + ValidateAndApplyAll)
+- PanelTabConfig.mqh: 1.36 (fixes DD toggle + CLR_FIELD_ERROR)
+- BollingerBandsFilterPanel.mqh: 1.08 (fix CLR_FIELD_ERROR)
+- BollingerBandsPanel.mqh: 1.08 (fix CLR_FIELD_ERROR)
+- MACrossPanel.mqh: 1.08 (fix CLR_FIELD_ERROR)
+- RSIFilterPanel.mqh: 1.08 (fix CLR_FIELD_ERROR)
+- TrendFilterPanel.mqh: 1.07 (fix CLR_FIELD_ERROR)
 
 ### TODO restante (Parte 032)
 - [ ] Criar PR da Parte 031 → main
