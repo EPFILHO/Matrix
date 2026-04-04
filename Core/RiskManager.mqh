@@ -1808,7 +1808,7 @@ bool CRiskManager::CalculatePartialTPLevels(
       SPartialTPLevel tp1;
       tp1.enabled = true;
       tp1.percentLot = m_tp1_percent;
-      tp1.lotSize = MathFloor((totalLotSize * m_tp1_percent / 100.0) / lotStep) * lotStep;
+      tp1.lotSize = MathFloor((totalLotSize * m_tp1_percent / 100.0) / lotStep + 0.1) * lotStep;
       
       if(tp1.lotSize < minLot)
          tp1.lotSize = minLot;
@@ -1849,7 +1849,7 @@ bool CRiskManager::CalculatePartialTPLevels(
       SPartialTPLevel tp2;
       tp2.enabled = true;
       tp2.percentLot = m_tp2_percent;
-      tp2.lotSize = MathFloor((totalLotSize * m_tp2_percent / 100.0) / lotStep) * lotStep;
+      tp2.lotSize = MathFloor((totalLotSize * m_tp2_percent / 100.0) / lotStep + 0.1) * lotStep;
       
       if(tp2.lotSize < minLot)
          tp2.lotSize = minLot;

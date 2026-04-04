@@ -813,10 +813,10 @@ bool CTradeManager::ExecutePartialClose(ulong ticket, double lot, string comment
 
    double lotStep = SymbolInfoDouble(m_symbol, SYMBOL_VOLUME_STEP);
    if(lotStep <= 0) lotStep = 0.01;  // fallback seguro
-   lot = MathFloor(lot / lotStep) * lotStep;
+   lot = MathFloor((lot + lotStep * 0.1) / lotStep) * lotStep;  // +epsilon previne truncamento por imprecisão IEEE 754
 
    double minLotFinal = SymbolInfoDouble(m_symbol, SYMBOL_VOLUME_MIN);
-   if(lot < minLotFinal)
+   if(lot < minLotFinal - lotStep * 0.1)
      {
       if(m_logger != NULL)
          m_logger.Log(LOG_ERROR, THROTTLE_NONE, "CLOSE",
