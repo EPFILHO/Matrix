@@ -131,11 +131,22 @@ public:
    void SetEnabled(bool enable)
      {
       m_locked = !enable;
-      color bg = enable ? clrWhite : C'220,220,220';
       color fg = enable ? clrBlack : C'160,160,160';
-      m_iPeriod.ReadOnly(!enable);   m_iPeriod.ColorBackground(bg);   m_iPeriod.Color(fg);
-      m_iDev.ReadOnly(!enable);      m_iDev.ColorBackground(bg);      m_iDev.Color(fg);
-      m_iPriority.ReadOnly(!enable); m_iPriority.ColorBackground(bg); m_iPriority.Color(fg);
+      m_iPeriod.ReadOnly(!enable);   m_iPeriod.Color(fg);
+      m_iDev.ReadOnly(!enable);      m_iDev.Color(fg);
+      m_iPriority.ReadOnly(!enable); m_iPriority.Color(fg);
+      if(enable)
+        {
+         if(m_iPeriod.ColorBackground() != CLR_FIELD_ERROR)   m_iPeriod.ColorBackground(clrWhite);
+         if(m_iDev.ColorBackground() != CLR_FIELD_ERROR)      m_iDev.ColorBackground(clrWhite);
+         if(m_iPriority.ColorBackground() != CLR_FIELD_ERROR) m_iPriority.ColorBackground(clrWhite);
+        }
+      else
+        {
+         if(m_iPeriod.ColorBackground() != CLR_FIELD_ERROR)   m_iPeriod.ColorBackground(C'220,220,220');
+         if(m_iDev.ColorBackground() != CLR_FIELD_ERROR)      m_iDev.ColorBackground(C'220,220,220');
+         if(m_iPriority.ColorBackground() != CLR_FIELD_ERROR) m_iPriority.ColorBackground(C'220,220,220');
+        }
       // Labels
       color lc = enable ? CLR_LABEL : C'180,180,180';
       m_lPriority.Color(lc); m_lPeriod.Color(lc); m_lDev.Color(lc);

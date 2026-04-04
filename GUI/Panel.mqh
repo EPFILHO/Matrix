@@ -674,6 +674,7 @@ private:
    CLabel   m_c2_lDLPTA;    CButton m_c2_bDLPTA[2];  // Radio: PARAR | ATIVAR DD
    CLabel   m_c2_hdr3;                              // Header "DRAWDOWN"
    CLabel   m_c2_lDDAct;    CButton m_c2_bDDAct;    // DrawDown ON/OFF
+   CLabel   m_c2_lDDHint;                           // Dica: Requer Limite Diário
    CLabel   m_c2_lDD;       CEdit   m_c2_iDD;
    CLabel   m_c2_lDDT;      CButton m_c2_bDDT[2];   // Radio: FINANCEIRO | PERCENTUAL
    CLabel   m_c2_lDDPk;     CButton m_c2_bDDPk[2];  // Radio: REALIZADO | FLUTUANTE
@@ -1447,14 +1448,14 @@ bool CEPBotPanel::ValidateAndApplyAll(void)
    for(int i = 0; i < m_stratPanelCount; i++)
      {
       if(m_stratPanels[i] != NULL)
-        { string err = ""; m_stratPanels[i].Apply(err); allErrs += err; }
+        { string err = ""; if(!m_stratPanels[i].Apply(err) || err != "") allErrs += err; }
      }
 
    // Sub-painéis de filtros
    for(int i = 0; i < m_filtPanelCount; i++)
      {
       if(m_filtPanels[i] != NULL)
-        { string err = ""; m_filtPanels[i].Apply(err); allErrs += err; }
+        { string err = ""; if(!m_filtPanels[i].Apply(err) || err != "") allErrs += err; }
      }
 
    // Validação cruzada: Exit TP/SL requer TP definido (Parte 030)
@@ -1591,12 +1592,12 @@ void CEPBotPanel::SetAllControlsEnabled(bool enable)
       m_c2_bBEAct.Color(clrWhite);
       m_c2_bDLAct.ColorBackground(m_cur_dailyLimitsOn ? C'30,120,70' : C'120,50,50');
       m_c2_bDLAct.Color(clrWhite);
-      // DD toggle: restaurar cor correta (ON/OFF/REQUER META)
+      // DD toggle: forçar OFF se dependência não satisfeita
       bool ddAllowed = m_cur_dailyLimitsOn && m_cur_profitTargetAction == PROFIT_ACTION_ENABLE_DRAWDOWN;
-      if(m_cur_ddOn && ddAllowed)
+      if(!ddAllowed)
+         m_cur_ddOn = false;
+      if(m_cur_ddOn)
         { m_c2_bDDAct.Text("ON"); m_c2_bDDAct.ColorBackground(C'30,120,70'); }
-      else if(m_cur_ddOn && !ddAllowed)
-        { m_c2_bDDAct.Text("REQUER META"); m_c2_bDDAct.ColorBackground(C'180,120,0'); }
       else
         { m_c2_bDDAct.Text("OFF"); m_c2_bDDAct.ColorBackground(C'120,50,50'); }
       m_c2_bDDAct.Color(clrWhite);

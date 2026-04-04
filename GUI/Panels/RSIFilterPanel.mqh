@@ -269,11 +269,22 @@ public:
    void SetEnabled(bool enable)
      {
       m_locked = !enable;
-      color bg = enable ? clrWhite : C'220,220,220';
       color fg = enable ? clrBlack : C'160,160,160';
-      m_iPeriod.ReadOnly(!enable);     m_iPeriod.ColorBackground(bg);     m_iPeriod.Color(fg);
-      m_iOversold.ReadOnly(!enable);   m_iOversold.ColorBackground(bg);   m_iOversold.Color(fg);
-      m_iOverbought.ReadOnly(!enable); m_iOverbought.ColorBackground(bg); m_iOverbought.Color(fg);
+      m_iPeriod.ReadOnly(!enable);     m_iPeriod.Color(fg);
+      m_iOversold.ReadOnly(!enable);   m_iOversold.Color(fg);
+      m_iOverbought.ReadOnly(!enable); m_iOverbought.Color(fg);
+      if(enable)
+        {
+         if(m_iPeriod.ColorBackground() != CLR_FIELD_ERROR)     m_iPeriod.ColorBackground(clrWhite);
+         if(m_iOversold.ColorBackground() != CLR_FIELD_ERROR)   m_iOversold.ColorBackground(clrWhite);
+         if(m_iOverbought.ColorBackground() != CLR_FIELD_ERROR) m_iOverbought.ColorBackground(clrWhite);
+        }
+      else
+        {
+         if(m_iPeriod.ColorBackground() != CLR_FIELD_ERROR)     m_iPeriod.ColorBackground(C'220,220,220');
+         if(m_iOversold.ColorBackground() != CLR_FIELD_ERROR)   m_iOversold.ColorBackground(C'220,220,220');
+         if(m_iOverbought.ColorBackground() != CLR_FIELD_ERROR) m_iOverbought.ColorBackground(C'220,220,220');
+        }
       // Labels
       color lc = enable ? CLR_LABEL : C'180,180,180';
       m_lPeriod.Color(lc); m_lOversold.Color(lc); m_lOverbought.Color(lc);
