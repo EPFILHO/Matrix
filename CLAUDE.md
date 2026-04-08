@@ -312,5 +312,18 @@ Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para m
 - EPBot_Matrix.mq5: 1.57 → 1.58
 
 ### TODO restante (Parte 032)
+- [ ] **TP1 negativo** (bug novo — ocorreu 1x em conta real): em mercado volátil
+  o TP1 parcial saiu com resultado negativo, bagunçando totalizações e
+  contagem de win/loss. Investigar cálculo do TP1 quando preço se move
+  contra a posição antes do nível ser atingido
+- [ ] **Trailing Start na GUI**: input `inp_TrailingStart` (início do trailing)
+  ainda não está no painel. Adicionar campo + hot reload
+- [ ] **RSI values não salvos no .cfg**: configurações do RSI (Period, OS, OB,
+  Middle, TF, AppliedPrice, Mode) não estão sendo persistidas no
+  arquivo de config. Verificar PanelPersistence e sub-painel RSI
 - [ ] Criar PR da Parte 032 → main
+
+### Notas
+- Race condition do ExecuteTrade (result.deal=0) ocorreu apenas em **conta real**,
+  não reproduziu em demo — comportamento típico de broker ao vivo sob volatilidade
 
