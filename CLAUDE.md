@@ -269,5 +269,48 @@ Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para m
 - TrendFilterPanel.mqh: 1.07 (fix CLR_FIELD_ERROR)
 
 ### TODO restante (Parte 032)
-- [ ] Criar PR da Parte 031 → main
+- [x] Criar PR da Parte 031 → main (PR #16)
+
+---
+
+## Parte 032 — Em andamento (2026-04-08)
+
+### O que foi feito
+
+#### FIX CRÍTICO — Race condition em ExecuteTrade
+- **Bug**: Broker retornava `result.deal = 0` e `result.price = 0.00` em mercados
+  voláteis (Gold sob spread spike). Posição era aberta na conta mas EA não
+  conseguia rastreá-la → trailing/BE/PartialTP não funcionavam
+- **Log do incidente**:
+  ```
+  ORDEM EXECUTADA COM SUCESSO!
+  Order: 67489378, Deal: 0, Preço: 0.00
+  ❌ Posição não encontrada após abertura! Order: 67489378
+  ```
+- **Causas do bug**:
+  1. Método 1 (via `DEAL_POSITION_ID`) pulado porque `result.deal == 0`
+  2. Método 2 fallback (`PositionsTotal`) executava cedo demais — posição
+     ainda não estava visível ao broker/terminal
+  3. `result.price = 0` e `result.volume = 0` eram usados depois em
+     `CalculatePartialTPLevels` e `RegisterPosition` — valores errados
+
+#### Solução implementada
+- **Retry loop**: 5 tentativas × 100ms entre elas (500ms total no pior caso)
+- **Novo MÉTODO 1.5**: busca via `HistorySelect` + iteração de `HistoryDealsTotal`
+  filtrando por `DEAL_ORDER == result.order`. Resolve o caso em que
+  `result.deal = 0` mas `result.order` é válido
+- **Ordem de busca por tentativa**:
+  1. MÉTODO 1: `result.deal > 0` → `HistoryDealSelect` → `DEAL_POSITION_ID`
+  2. MÉTODO 1.5: `result.order > 0` → iteração de deals filtrados
+  3. MÉTODO 2: fallback `PositionsTotal` (symbol + magic + tempo < 5s)
+- **Dados reais da posição**: após localizar, usa `POSITION_PRICE_OPEN` e
+  `POSITION_VOLUME` em vez de `result.price/result.volume`
+  - Afeta: `CalculatePartialTPLevels` e `RegisterPosition`
+  - Impede que partial TP seja calculado com preço = 0 ou volume = 0
+
+### Versões atualizadas
+- EPBot_Matrix.mq5: 1.57 → 1.58
+
+### TODO restante (Parte 032)
+- [ ] Criar PR da Parte 032 → main
 
