@@ -323,6 +323,15 @@ Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para m
   arquivo de config. Verificar PanelPersistence e sub-painel RSI
 - [ ] Criar PR da Parte 032 → main
 
+### TODO futuro (sem parte definida)
+- [ ] **Desenhar indicadores no gráfico**: quando uma estratégia/filtro está
+  ATIVO, plotar os objetos visuais no chart (MAs do MA Cross, bandas do BB,
+  linhas de OS/OB do RSI). Ao desativar ou trocar de strategy, remover os
+  objetos. Idem para filtros (TrendFilter, RSIFilter, BBFilter)
+- [ ] **Múltiplos arquivos .cfg**: funcionalidade para salvar/carregar
+  diversos perfis de configuração (ex: "Gold_Scalp.cfg", "EUR_Swing.cfg").
+  Dropdown ou lista de perfis no painel, botões Salvar Como / Carregar
+
 ### Notas
 - Race condition do ExecuteTrade (result.deal=0) ocorreu apenas em **conta real**,
   não reproduziu em demo — comportamento típico de broker ao vivo sob volatilidade
