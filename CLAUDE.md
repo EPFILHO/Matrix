@@ -321,6 +321,10 @@ Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para m
 - [ ] **RSI values não salvos no .cfg**: configurações do RSI (Period, OS, OB,
   Middle, TF, AppliedPrice, Mode) não estão sendo persistidas no
   arquivo de config. Verificar PanelPersistence e sub-painel RSI
+- [ ] **Log de bloqueio por spread otimizado**: atualmente loga "SPREAD ALTO"
+  e "SPREAD NORMALIZADO" toda vez que spread sobe/desce, poluindo o log.
+  Logar apenas se houve tentativa de entrada (sinal detectado foi bloqueado).
+  Aviso visual continua na GUI (STATUS)
 - [ ] Criar PR da Parte 032 → main
 
 ### TODO futuro (sem parte definida)
