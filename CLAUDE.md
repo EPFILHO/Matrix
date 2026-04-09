@@ -325,6 +325,9 @@ Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para m
   e "SPREAD NORMALIZADO" toda vez que spread sobe/desce, poluindo o log.
   Logar apenas se houve tentativa de entrada (sinal detectado foi bloqueado).
   Aviso visual continua na GUI (STATUS)
+- [ ] **Estratégia no comentário da ordem**: adicionar ao campo `comment` da
+  ordem o nome da estratégia que gerou o sinal (MACross, RSI, BB). Facilita
+  análise posterior no histórico de trades
 - [ ] Criar PR da Parte 032 → main
 
 ### TODO futuro (sem parte definida)
