@@ -2,16 +2,28 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.57 - Claude Parte 031 (Claude Code) |
+//|                     Versão 1.58 - Claude Parte 032 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.57"
+#property version   "1.58"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //--- Constante centralizada de versão
-#define EA_VERSION "1.57"
+#define EA_VERSION "1.58"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.58 (Parte 032):                                     |
+//| - Fix CRÍTICO: race condition em ExecuteTrade quando broker       |
+//|   retorna result.deal=0 e result.price=0 (comum no Gold sob       |
+//|   spread volátil). Posição abria na conta mas EA não rastreava    |
+//|   → trailing/BE/PartialTP não funcionavam                          |
+//| - Retry loop (5x × 100ms) para localizar posição após OrderSend   |
+//| - Novo MÉTODO 1.5: busca via HistoryOrderSelect + iteração de     |
+//|   deals filtrados por DEAL_ORDER (resolve result.deal=0)           |
+//| - RegisterPosition + CalculatePartialTPLevels agora usam          |
+//|   POSITION_PRICE_OPEN/POSITION_VOLUME (dados reais da posição)    |
+//|   em vez de result.price/result.volume (que podem vir zerados)    |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.57 (Parte 031):                                     |
 //| - Fix: memory leak no OnDeinit — g_bbStrategy e g_bbFilter não   |
@@ -2039,75 +2051,103 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
                    "📊 Trade executado no candle: " + TimeToString(g_lastTradeBarTime));
 
       // ═══════════════════════════════════════════════════════════════
-      // ✅ CORREÇÃO  - OBTER TICKET CORRETO DA POSIÇÃO
+      // ✅ CORREÇÃO Parte 032 — OBTER TICKET COM RETRY
+      // Broker pode retornar result.deal=0 e result.price=0 em mercados
+      // voláteis (Gold). Fazemos retry até 5x com 100ms entre tentativas.
+      // Ordem de busca: DEAL_POSITION_ID → HistoryOrder → PositionsTotal
       // ═══════════════════════════════════════════════════════════════
       ulong positionTicket = 0;
-      
-      // MÉTODO 1: INSTITUCIONAL - Usar DEAL_POSITION_ID
-      if(result.deal > 0)
+      const int MAX_RETRIES     = 5;
+      const int RETRY_DELAY_MS  = 100;
+
+      for(int attempt = 0; attempt < MAX_RETRIES && positionTicket == 0; attempt++)
         {
-         // Atualizar histórico para garantir que deal está disponível
+         if(attempt > 0)
+            Sleep(RETRY_DELAY_MS);
+
          datetime from = TimeCurrent() - 60;
-         datetime to = TimeCurrent();
-         
-         if(HistorySelect(from, to))
+         datetime to   = TimeCurrent() + 1;
+
+         // MÉTODO 1: INSTITUCIONAL — via result.deal → DEAL_POSITION_ID
+         if(result.deal > 0 && HistorySelect(from, to))
            {
             if(HistoryDealSelect(result.deal))
               {
-               positionTicket = HistoryDealGetInteger(result.deal, DEAL_POSITION_ID);
-               
-               g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE",
-                           StringFormat("🎯 Order: %I64u → Deal: %I64u → Position: %I64u",
-                                       result.order, result.deal, positionTicket));
-              }
-            else
-              {
-               g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "TRADE",
-                           "⚠️ Deal não encontrado na história: " + IntegerToString(result.deal));
+               ulong posId = HistoryDealGetInteger(result.deal, DEAL_POSITION_ID);
+               if(posId > 0 && PositionSelectByTicket(posId))
+                 {
+                  positionTicket = posId;
+                  g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE",
+                              StringFormat("🎯 Order: %I64u → Deal: %I64u → Position: %I64u",
+                                          result.order, result.deal, positionTicket));
+                  break;
+                 }
               }
            }
-         else
+
+         // MÉTODO 1.5: via HistoryOrderSelect + iteração de deals por DEAL_ORDER
+         // Resolve o caso em que result.deal = 0 mas result.order é válido
+         if(result.order > 0 && HistorySelect(from, to))
            {
-            g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "TRADE",
-                        "⚠️ Falha ao atualizar histórico");
+            int totalDeals = HistoryDealsTotal();
+            for(int d = totalDeals - 1; d >= 0; d--)
+              {
+               ulong dealTicket = HistoryDealGetTicket(d);
+               if(dealTicket == 0) continue;
+
+               if((ulong)HistoryDealGetInteger(dealTicket, DEAL_ORDER) == result.order)
+                 {
+                  ulong posId = HistoryDealGetInteger(dealTicket, DEAL_POSITION_ID);
+                  if(posId > 0 && PositionSelectByTicket(posId))
+                    {
+                     positionTicket = posId;
+                     g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE",
+                                 StringFormat("🎯 Order: %I64u → Deal(hist): %I64u → Position: %I64u (tentativa %d)",
+                                             result.order, dealTicket, positionTicket, attempt + 1));
+                     break;
+                    }
+                 }
+              }
+            if(positionTicket > 0) break;
            }
-        }
-      
-      // MÉTODO 2: FALLBACK - Busca robusta por símbolo/magic/tempo
-      if(positionTicket == 0 || !PositionSelectByTicket(positionTicket))
-        {
-         g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "TRADE",
-                     "⚠️ Fallback: Buscando posição por símbolo + magic...");
-         
+
+         // MÉTODO 2: FALLBACK — busca por símbolo + magic + tempo recente
          int total = PositionsTotal();
          for(int i = 0; i < total; i++)
            {
             ulong ticket = PositionGetTicket(i);
             if(ticket == 0) continue;
-            
+
             if(PositionGetString(POSITION_SYMBOL) == _Symbol &&
                PositionGetInteger(POSITION_MAGIC) == g_magicNumber)
               {
-               // Verificar se foi aberta "agora" (últimos 5 segundos)
                datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
                if(TimeCurrent() - openTime < 5)
                  {
                   positionTicket = ticket;
                   g_logger.Log(LOG_TRADE, THROTTLE_NONE, "TRADE",
-                              StringFormat("✅ Posição encontrada (fallback): %I64u", positionTicket));
+                              StringFormat("✅ Posição encontrada (fallback): %I64u (tentativa %d)",
+                                          positionTicket, attempt + 1));
                   break;
                  }
               }
            }
         }
-      
+
       // Validação final
       if(positionTicket == 0 || !PositionSelectByTicket(positionTicket))
         {
          g_logger.Log(LOG_ERROR, THROTTLE_NONE, "TRADE",
-                     "❌ Posição não encontrada após abertura! Order: " + IntegerToString(result.order));
+                     StringFormat("❌ Posição não encontrada após %d tentativas! Order: %I64u",
+                                 MAX_RETRIES, result.order));
          return;
         }
+
+      // ═══════════════════════════════════════════════════════════════
+      // OBTER DADOS REAIS DA POSIÇÃO (result.price/volume podem vir 0)
+      // ═══════════════════════════════════════════════════════════════
+      double actualPrice  = PositionGetDouble(POSITION_PRICE_OPEN);
+      double actualVolume = PositionGetDouble(POSITION_VOLUME);
 
       // ═══════════════════════════════════════════════════════════════
       // REGISTRAR POSIÇÃO NO TRADEMANAGER
@@ -2120,8 +2160,8 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
         {
          hasPartialTP = g_riskManager.CalculatePartialTPLevels(
                            orderType,
-                           result.price,
-                           result.volume,
+                           actualPrice,
+                           actualVolume,
                            tpLevels
                         );
 
@@ -2142,8 +2182,8 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
       g_tradeManager.RegisterPosition(
          positionTicket,  // ✅ TICKET CORRETO DA POSIÇÃO
          (orderType == ORDER_TYPE_BUY) ? POSITION_TYPE_BUY : POSITION_TYPE_SELL,
-         result.price,
-         result.volume,
+         actualPrice,
+         actualVolume,
          hasPartialTP,
          tpLevels
       );
