@@ -203,7 +203,7 @@ public:
    void              SavePartialTrade(ulong positionId, ulong dealTicket, string tradeType,
                                       double entryPrice, double exitPrice, double volume,
                                       double profit, string motivo);  // 🆕 v3.20
-   void              UpdateStats(double profit);
+   void              UpdateStats(double profit, double totalPositionProfit = 0);
    
    // ═══════════════════════════════════════════════════════════
    // RELATÓRIOS
@@ -747,23 +747,32 @@ void CLogger::SavePartialTrade(ulong positionId, ulong dealTicket, string tradeT
 //+------------------------------------------------------------------+
 //| Atualizar estatísticas                                           |
 //+------------------------------------------------------------------+
-void CLogger::UpdateStats(double profit)
+void CLogger::UpdateStats(double profit, double totalPositionProfit)
   {
    m_dailyProfit += profit;
    m_dailyTrades++;
-   
-   // Classificar trade
-   bool isBreakeven = (MathAbs(profit) < 0.01);
-   
+
+   // ═══════════════════════════════════════════════════════════════
+   // CLASSIFICAR TRADE
+   // Usa totalPositionProfit (soma de parciais + final) para classificar.
+   // Se não fornecido (= 0), usa profit (cenário sem partial TP).
+   // Nota: grossProfit/grossLoss usa 'profit' (finalDealProfit) para
+   // evitar double-counting — partials já estão em grossProfit via
+   // AddPartialTPProfit().
+   // ═══════════════════════════════════════════════════════════════
+   double classifyProfit = (totalPositionProfit != 0) ? totalPositionProfit : profit;
+
+   bool isBreakeven = (MathAbs(classifyProfit) < 0.01);
+
    if(isBreakeven)
      {
       m_dailyDraws++;
       LogDebug("Trade classificado como EMPATE");
      }
-   else if(profit > 0)
+   else if(classifyProfit > 0)
      {
       m_dailyWins++;
-      m_grossProfit += profit;
+      if(profit > 0) m_grossProfit += profit;
       LogDebug("Trade classificado como GANHO");
      }
    else
@@ -772,7 +781,7 @@ void CLogger::UpdateStats(double profit)
       m_grossLoss += MathAbs(profit);
       LogDebug("Trade classificado como PERDA");
      }
-   
+
    // Log resumo
    LogInfo(StringFormat("💰 P/L Atualizado: $%.2f | Trades: %d (%dW/%dL/%dE)",
                        GetDailyProfit(), m_dailyTrades, m_dailyWins, m_dailyLosses, m_dailyDraws));

@@ -198,13 +198,10 @@ bool CTradeManager::Init(CLogger* logger, CRiskManager* riskManager, string symb
    m_magicNumber = magicNumber;
    m_slippage = slippage;
 
-   if(m_logger != NULL)
-     {
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "✅ TradeManager inicializado");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Símbolo: " + m_symbol);
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Magic: " + IntegerToString(m_magicNumber));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Slippage: " + IntegerToString(m_slippage) + " pts");
-     }
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "✅ TradeManager inicializado");
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Símbolo: " + m_symbol);
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Magic: " + IntegerToString(m_magicNumber));
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Slippage: " + IntegerToString(m_slippage) + " pts");
 
    return true;
   }
@@ -245,9 +242,8 @@ int CTradeManager::ResyncExistingPositions()
 
       synced++;
 
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "RESYNC", 
-            "🔄 Posição ressincronizada: #" + IntegerToString(ticket));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "RESYNC",
+         "🔄 Posição ressincronizada: #" + IntegerToString(ticket));
      }
 
    m_isResyncing = false;
@@ -269,9 +265,8 @@ bool CTradeManager::RegisterPosition(ulong ticket, ENUM_POSITION_TYPE posType, d
   {
    if(GetPositionIndex(ticket) >= 0)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "WARNING", 
-            "⚠️ Posição #" + IntegerToString(ticket) + " já registrada!");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "WARNING",
+         "⚠️ Posição #" + IntegerToString(ticket) + " já registrada!");
       return false;
      }
 
@@ -313,24 +308,21 @@ bool CTradeManager::RegisterPosition(ulong ticket, ENUM_POSITION_TYPE posType, d
    ArrayResize(m_positions, size + 1);
    m_positions[size] = newPos;
 
-   if(m_logger != NULL)
-     {
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "📊 Posição registrada no TradeManager:");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Ticket: #" + IntegerToString(ticket));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Tipo: " + EnumToString(posType));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Preço: " + DoubleToString(openPrice, _Digits));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Lote: " + DoubleToString(openLot, 2));
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "📊 Posição registrada no TradeManager:");
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Ticket: #" + IntegerToString(ticket));
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Tipo: " + EnumToString(posType));
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Preço: " + DoubleToString(openPrice, _Digits));
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   Lote: " + DoubleToString(openLot, 2));
 
-      if(usePartialTP)
-        {
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   🎯 Partial TP ATIVO:");
-         if(newPos.tp1_enabled)
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
-               "      TP1: " + DoubleToString(newPos.tp1_lot, 2) + " @ " + DoubleToString(newPos.tp1_price, _Digits));
-         if(newPos.tp2_enabled)
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
-               "      TP2: " + DoubleToString(newPos.tp2_lot, 2) + " @ " + DoubleToString(newPos.tp2_price, _Digits));
-        }
+   if(usePartialTP)
+     {
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "   🎯 Partial TP ATIVO:");
+      if(newPos.tp1_enabled)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+            "      TP1: " + DoubleToString(newPos.tp1_lot, 2) + " @ " + DoubleToString(newPos.tp1_price, _Digits));
+      if(newPos.tp2_enabled)
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+            "      TP2: " + DoubleToString(newPos.tp2_lot, 2) + " @ " + DoubleToString(newPos.tp2_price, _Digits));
      }
 
    SaveState();
@@ -345,9 +337,8 @@ bool CTradeManager::UnregisterPosition(ulong ticket)
    int index = GetPositionIndex(ticket);
    if(index < 0)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "WARNING", 
-            "⚠️ Tentativa de remover posição não encontrada: #" + IntegerToString(ticket));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "WARNING",
+         "⚠️ Tentativa de remover posição não encontrada: #" + IntegerToString(ticket));
       return false;
      }
 
@@ -356,9 +347,8 @@ bool CTradeManager::UnregisterPosition(ulong ticket)
       m_positions[i] = m_positions[i + 1];
    ArrayResize(m_positions, size - 1);
 
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
-         "🗑️ Posição #" + IntegerToString(ticket) + " removida do TradeManager");
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+      "🗑️ Posição #" + IntegerToString(ticket) + " removida do TradeManager");
 
    SaveState();
    return true;
@@ -544,17 +534,14 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
 
       if(tp1Hit)
         {
-         if(m_logger != NULL)
-           {
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════════════");
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "🎯 TP1 ATINGIDO - Posição #" + IntegerToString(ticket));
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
-               "   Preço alvo: " + DoubleToString(m_positions[index].tp1_price, _Digits));
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
-               "   Preço atual: " + DoubleToString(currentPrice, _Digits));
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
-               "   Fechando: " + DoubleToString(m_positions[index].tp1_lot, 2) + " lote(s)");
-           }
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════════════");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "🎯 TP1 ATINGIDO - Posição #" + IntegerToString(ticket));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+            "   Preço alvo: " + DoubleToString(m_positions[index].tp1_price, _Digits));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+            "   Preço atual: " + DoubleToString(currentPrice, _Digits));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+            "   Fechando: " + DoubleToString(m_positions[index].tp1_lot, 2) + " lote(s)");
 
          double lotToClose = m_positions[index].tp1_lot;
          ulong dealTicket = 0;
@@ -562,27 +549,24 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
          if(ExecutePartialClose(ticket, lotToClose, "Partial TP1", dealTicket))
            {
             SetTP1Executed(ticket, true);
-            if(m_logger != NULL)
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "✅ TP1 executado com sucesso!");
 
             // ═══════════════════════════════════════════════════════════════
-            // 🆕 v1.22: BUSCAR VALORES REAIS DO DEAL NO HISTÓRICO
-            // Elimina discrepâncias por slippage
+            // BUSCAR VALORES REAIS DO DEAL NO HISTÓRICO
+            // Se dealTicket > 0 (retry encontrou), usa valores reais.
+            // Se dealTicket == 0 (retry falhou), usa estimativa por preço.
             // ═══════════════════════════════════════════════════════════════
-            if(m_logger != NULL && dealTicket > 0)
+            double realProfit = 0;
+            double realExitPrice = 0;
+            double realVolume = 0;
+            double openPrice = m_positions[index].openPrice;
+
+            if(dealTicket > 0)
               {
-               double realProfit = 0;
-               double realExitPrice = 0;
-               double realVolume = 0;
-               double openPrice = m_positions[index].openPrice;
-
-               // Atualizar histórico e buscar deal
-               datetime from = TimeCurrent() - 60;  // Último minuto
+               datetime from = TimeCurrent() - 60;
                datetime to = TimeCurrent() + 1;
 
                if(HistorySelect(from, to) && HistoryDealSelect(dealTicket))
                  {
-                  // 🎯 VALORES REAIS DO DEAL
                   realProfit = HistoryDealGetDouble(dealTicket, DEAL_PROFIT);
                   realExitPrice = HistoryDealGetDouble(dealTicket, DEAL_PRICE);
                   realVolume = HistoryDealGetDouble(dealTicket, DEAL_VOLUME);
@@ -598,38 +582,44 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
                  }
                else
                  {
-                  // Fallback: calcular estimado se deal não encontrado
-                  m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
-                     "⚠️ Deal não encontrado no histórico - usando estimativa");
-
-                  double tickValue = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_VALUE);
-                  double tickSize = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_SIZE);
-
-                  double priceDiff = (m_positions[index].posType == POSITION_TYPE_BUY) ?
-                                     (currentPrice - openPrice) : (openPrice - currentPrice);
-
-                  realProfit = (priceDiff / tickSize) * tickValue * lotToClose;
-                  realExitPrice = currentPrice;
-                  realVolume = lotToClose;
+                  // Deal no histórico mas HistoryDealSelect falhou — fallback
+                  dealTicket = 0;  // Forçar fallback abaixo
                  }
-
-               // Registrar no Logger para contabilizar no dailyProfit
-               m_logger.AddPartialTPProfit(realProfit);
-
-               // Salvar TP parcial no CSV com valores REAIS
-               string tradeType = (m_positions[index].posType == POSITION_TYPE_BUY) ? "BUY" : "SELL";
-               m_logger.SavePartialTrade(ticket, dealTicket, tradeType, openPrice, realExitPrice,
-                                         realVolume, realProfit, "Partial TP1");
               }
+
+            if(dealTicket == 0)
+              {
+               // Fallback: calcular estimado
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
+                  "⚠️ Deal não encontrado no histórico - usando estimativa");
+
+               double tickValue = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_VALUE);
+               double tickSize = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_SIZE);
+
+               double priceDiff = (m_positions[index].posType == POSITION_TYPE_BUY) ?
+                                  (currentPrice - openPrice) : (openPrice - currentPrice);
+
+               realProfit = (priceDiff / tickSize) * tickValue * lotToClose;
+               realExitPrice = currentPrice;
+               realVolume = lotToClose;
+              }
+
+            // Registrar no Logger para contabilizar no dailyProfit
+            m_logger.AddPartialTPProfit(realProfit);
+
+            // Salvar TP parcial no CSV com valores REAIS (ou estimados)
+            string tradeType = (m_positions[index].posType == POSITION_TYPE_BUY) ? "BUY" : "SELL";
+            m_logger.SavePartialTrade(ticket, dealTicket, tradeType, openPrice, realExitPrice,
+                                      realVolume, realProfit, "Partial TP1");
+
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "✅ TP1 executado com sucesso!");
            }
          else
            {
-            if(m_logger != NULL)
-               m_logger.Log(LOG_ERROR, THROTTLE_NONE, "PARTIAL_TP", "❌ Falha ao executar TP1");
+            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "PARTIAL_TP", "❌ Falha ao executar TP1");
            }
 
-         if(m_logger != NULL)
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════════════");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════════════");
         }
      }
 
@@ -643,17 +633,14 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
 
       if(tp2Hit)
         {
-         if(m_logger != NULL)
-           {
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════════════");
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "🎯 TP2 ATINGIDO - Posição #" + IntegerToString(ticket));
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
-               "   Preço alvo: " + DoubleToString(m_positions[index].tp2_price, _Digits));
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
-               "   Preço atual: " + DoubleToString(currentPrice, _Digits));
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
-               "   Fechando: " + DoubleToString(m_positions[index].tp2_lot, 2) + " lote(s)");
-           }
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════════════");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "🎯 TP2 ATINGIDO - Posição #" + IntegerToString(ticket));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+            "   Preço alvo: " + DoubleToString(m_positions[index].tp2_price, _Digits));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+            "   Preço atual: " + DoubleToString(currentPrice, _Digits));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+            "   Fechando: " + DoubleToString(m_positions[index].tp2_lot, 2) + " lote(s)");
 
          double lotToClose = m_positions[index].tp2_lot;
          ulong dealTicket = 0;
@@ -661,27 +648,24 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
          if(ExecutePartialClose(ticket, lotToClose, "Partial TP2", dealTicket))
            {
             SetTP2Executed(ticket, true);
-            if(m_logger != NULL)
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "✅ TP2 executado com sucesso!");
 
             // ═══════════════════════════════════════════════════════════════
-            // 🆕 v1.22: BUSCAR VALORES REAIS DO DEAL NO HISTÓRICO
-            // Elimina discrepâncias por slippage
+            // BUSCAR VALORES REAIS DO DEAL NO HISTÓRICO
+            // Se dealTicket > 0 (retry encontrou), usa valores reais.
+            // Se dealTicket == 0 (retry falhou), usa estimativa por preço.
             // ═══════════════════════════════════════════════════════════════
-            if(m_logger != NULL && dealTicket > 0)
+            double realProfit = 0;
+            double realExitPrice = 0;
+            double realVolume = 0;
+            double openPrice = m_positions[index].openPrice;
+
+            if(dealTicket > 0)
               {
-               double realProfit = 0;
-               double realExitPrice = 0;
-               double realVolume = 0;
-               double openPrice = m_positions[index].openPrice;
-
-               // Atualizar histórico e buscar deal
-               datetime from = TimeCurrent() - 60;  // Último minuto
+               datetime from = TimeCurrent() - 60;
                datetime to = TimeCurrent() + 1;
 
                if(HistorySelect(from, to) && HistoryDealSelect(dealTicket))
                  {
-                  // 🎯 VALORES REAIS DO DEAL
                   realProfit = HistoryDealGetDouble(dealTicket, DEAL_PROFIT);
                   realExitPrice = HistoryDealGetDouble(dealTicket, DEAL_PRICE);
                   realVolume = HistoryDealGetDouble(dealTicket, DEAL_VOLUME);
@@ -697,29 +681,35 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
                  }
                else
                  {
-                  // Fallback: calcular estimado se deal não encontrado
-                  m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
-                     "⚠️ Deal não encontrado no histórico - usando estimativa");
-
-                  double tickValue = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_VALUE);
-                  double tickSize = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_SIZE);
-
-                  double priceDiff = (m_positions[index].posType == POSITION_TYPE_BUY) ?
-                                     (currentPrice - openPrice) : (openPrice - currentPrice);
-
-                  realProfit = (priceDiff / tickSize) * tickValue * lotToClose;
-                  realExitPrice = currentPrice;
-                  realVolume = lotToClose;
+                  dealTicket = 0;  // Forçar fallback abaixo
                  }
-
-               // Registrar no Logger para contabilizar no dailyProfit
-               m_logger.AddPartialTPProfit(realProfit);
-
-               // Salvar TP parcial no CSV com valores REAIS
-               string tradeType = (m_positions[index].posType == POSITION_TYPE_BUY) ? "BUY" : "SELL";
-               m_logger.SavePartialTrade(ticket, dealTicket, tradeType, openPrice, realExitPrice,
-                                         realVolume, realProfit, "Partial TP2");
               }
+
+            if(dealTicket == 0)
+              {
+               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
+                  "⚠️ Deal não encontrado no histórico - usando estimativa");
+
+               double tickValue = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_VALUE);
+               double tickSize = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_SIZE);
+
+               double priceDiff = (m_positions[index].posType == POSITION_TYPE_BUY) ?
+                                  (currentPrice - openPrice) : (openPrice - currentPrice);
+
+               realProfit = (priceDiff / tickSize) * tickValue * lotToClose;
+               realExitPrice = currentPrice;
+               realVolume = lotToClose;
+              }
+
+            // Registrar no Logger para contabilizar no dailyProfit
+            m_logger.AddPartialTPProfit(realProfit);
+
+            // Salvar TP parcial no CSV com valores REAIS (ou estimados)
+            string tradeType = (m_positions[index].posType == POSITION_TYPE_BUY) ? "BUY" : "SELL";
+            m_logger.SavePartialTrade(ticket, dealTicket, tradeType, openPrice, realExitPrice,
+                                      realVolume, realProfit, "Partial TP2");
+
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "✅ TP2 executado com sucesso!");
 
             // ╔══════════════════════════════════════════════════════════════╗
             // ║  🆕 v1.11 - REMOVER TP FIXO APÓS TP2 (deixa trailing livre) ║
@@ -741,28 +731,20 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
                   request.magic = m_magicNumber;
 
                   if(OrderSend(request, result) && result.retcode == TRADE_RETCODE_DONE)
-                    {
-                     if(m_logger != NULL)
-                        m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
-                           "🔓 TP Fixo removido - Trailing livre para operar");
-                    }
+                     m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+                        "🔓 TP Fixo removido - Trailing livre para operar");
                   else
-                    {
-                     if(m_logger != NULL)
-                        m_logger.Log(LOG_EVENT, THROTTLE_NONE, "WARNING",
-                           "⚠️ Não foi possível remover TP - Retcode: " + IntegerToString(result.retcode));
-                    }
+                     m_logger.Log(LOG_EVENT, THROTTLE_NONE, "WARNING",
+                        "⚠️ Não foi possível remover TP - Retcode: " + IntegerToString(result.retcode));
                  }
               }
            }
          else
            {
-            if(m_logger != NULL)
-               m_logger.Log(LOG_ERROR, THROTTLE_NONE, "PARTIAL_TP", "❌ Falha ao executar TP2");
+            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "PARTIAL_TP", "❌ Falha ao executar TP2");
            }
 
-         if(m_logger != NULL)
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════════════");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "═══════════════════════════════════════════════════════════════");
         }
      }
   }
@@ -777,9 +759,8 @@ bool CTradeManager::ExecutePartialClose(ulong ticket, double lot, string comment
 
    if(!PositionSelectByTicket(ticket))
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "CLOSE",
-            "❌ Posição #" + IntegerToString(ticket) + " não encontrada");
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "CLOSE",
+         "❌ Posição #" + IntegerToString(ticket) + " não encontrada");
       return false;
      }
 
@@ -788,17 +769,15 @@ bool CTradeManager::ExecutePartialClose(ulong ticket, double lot, string comment
 
    if(lot >= currentVolume)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "CLOSE", "⚠️ Lote parcial >= lote atual - Ajustando");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "CLOSE", "⚠️ Lote parcial >= lote atual - Ajustando");
 
       double minLot = SymbolInfoDouble(m_symbol, SYMBOL_VOLUME_MIN);
       lot = currentVolume - minLot;
 
       if(lot <= 0)
         {
-         if(m_logger != NULL)
-            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "CLOSE",
-               "❌ Não é possível fechar parcial - Lote insuficiente");
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "CLOSE",
+            "❌ Não é possível fechar parcial - Lote insuficiente");
          return false;
         }
      }
@@ -822,36 +801,78 @@ bool CTradeManager::ExecutePartialClose(ulong ticket, double lot, string comment
 
    if(!OrderSend(request, result))
      {
-      if(m_logger != NULL)
-        {
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "CLOSE", "❌ Falha ao enviar ordem parcial");
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "CLOSE",
-            "   Retcode: " + IntegerToString(result.retcode));
-        }
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "CLOSE", "❌ Falha ao enviar ordem parcial");
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "CLOSE",
+         "   Retcode: " + IntegerToString(result.retcode));
       return false;
      }
 
    if(result.retcode == TRADE_RETCODE_DONE)
      {
-      // 🆕 v1.22: Retornar deal ticket para buscar valores reais
       outDealTicket = result.deal;
 
-      if(m_logger != NULL)
+      // ═══════════════════════════════════════════════════════════════
+      // ✅ CORREÇÃO Parte 032b — BUSCAR DEAL COM RETRY
+      // Broker pode retornar result.deal=0 em mercados voláteis (Gold).
+      // Retry até 5x com 100ms para encontrar o deal via DEAL_ORDER.
+      // ═══════════════════════════════════════════════════════════════
+      if(outDealTicket == 0 && result.order > 0)
         {
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "✅ Fechamento parcial executado:");
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
-            "   Deal: #" + IntegerToString(result.deal));
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
-            "   Volume: " + DoubleToString(result.volume, 2));
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
-            "   Preço: " + DoubleToString(result.price, _Digits));
+         const int MAX_RETRIES    = 5;
+         const int RETRY_DELAY_MS = 100;
+
+         for(int attempt = 0; attempt < MAX_RETRIES && outDealTicket == 0; attempt++)
+           {
+            if(attempt > 0)
+               Sleep(RETRY_DELAY_MS);
+
+            datetime from = TimeCurrent() - 60;
+            datetime to   = TimeCurrent() + 1;
+
+            if(HistorySelect(from, to))
+              {
+               int totalDeals = HistoryDealsTotal();
+               for(int d = totalDeals - 1; d >= 0; d--)
+                 {
+                  ulong dTicket = HistoryDealGetTicket(d);
+                  if(dTicket == 0) continue;
+
+                  if((ulong)HistoryDealGetInteger(dTicket, DEAL_ORDER) == result.order)
+                    {
+                     outDealTicket = dTicket;
+                     m_logger.Log(LOG_EVENT, THROTTLE_NONE, "CLOSE",
+                        StringFormat("🎯 Partial close: Order %I64u → Deal %I64u (tentativa %d)",
+                                    result.order, outDealTicket, attempt + 1));
+                     break;
+                    }
+                 }
+              }
+           }
         }
+
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", "✅ Fechamento parcial executado:");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+         "   Deal: #" + IntegerToString(outDealTicket));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+         "   Volume: " + DoubleToString(result.volume, 2));
+
+      // Obter preço real do deal (result.price pode vir 0)
+      double closePrice = result.price;
+      if(outDealTicket > 0)
+        {
+         datetime from = TimeCurrent() - 60;
+         datetime to   = TimeCurrent() + 1;
+         if(HistorySelect(from, to) && HistoryDealSelect(outDealTicket))
+            closePrice = HistoryDealGetDouble(outDealTicket, DEAL_PRICE);
+        }
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+         "   Preço: " + DoubleToString(closePrice, _Digits));
+
       return true;
      }
 
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "CLOSE",
-         "⚠️ Retcode: " + IntegerToString(result.retcode));
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "CLOSE",
+      "⚠️ Retcode: " + IntegerToString(result.retcode));
 
    return false;
   }
@@ -874,17 +895,15 @@ void CTradeManager::CleanClosedPositions()
          ArrayResize(m_positions, size - 1);
          removedCount++;
 
-         if(m_logger != NULL)
-            m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CLEANUP", 
-               "🗑️ Posição fechada removida: #" + IntegerToString(ticket));
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CLEANUP",
+            "🗑️ Posição fechada removida: #" + IntegerToString(ticket));
         }
      }
 
    if(removedCount > 0)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "CLEANUP",
-            "🧹 Limpeza: " + IntegerToString(removedCount) + " posição(ões) removida(s)");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "CLEANUP",
+         "🧹 Limpeza: " + IntegerToString(removedCount) + " posição(ões) removida(s)");
       SaveState();
      }
   }
@@ -895,9 +914,8 @@ void CTradeManager::CleanClosedPositions()
 void CTradeManager::Clear()
   {
    ArrayResize(m_positions, 0);
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "CLEANUP", 
-         "🗑️ TradeManager: Todas as posições limpas");
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "CLEANUP",
+      "🗑️ TradeManager: Todas as posições limpas");
   }
 
 //+------------------------------------------------------------------+
@@ -909,9 +927,8 @@ void CTradeManager::SetSlippage(int newSlippage)
    if(newSlippage == oldValue) return;
    m_slippage = newSlippage;
 
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         "🔄 Slippage: " + IntegerToString(oldValue) + " → " + IntegerToString(newSlippage) + " pts");
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+      "🔄 Slippage: " + IntegerToString(oldValue) + " → " + IntegerToString(newSlippage) + " pts");
   }
 
 //+------------------------------------------------------------------+
@@ -933,10 +950,9 @@ void CTradeManager::SetMagicNumber(int newMagic)
    // Re-sincronizar posições abertas do novo magic (se houver)
    ResyncExistingPositions();
 
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         "Magic Number: " + IntegerToString(oldValue) + " -> " + IntegerToString(newMagic)
-         + " | Posicoes resincronizadas");
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+      "Magic Number: " + IntegerToString(oldValue) + " -> " + IntegerToString(newMagic)
+      + " | Posicoes resincronizadas");
   }
 
 //+------------------------------------------------------------------+
@@ -944,9 +960,6 @@ void CTradeManager::SetMagicNumber(int newMagic)
 //+------------------------------------------------------------------+
 void CTradeManager::PrintAllPositions()
   {
-   if(m_logger == NULL)
-      return;
-
    int count = ArraySize(m_positions);
 
    m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DEBUG", "═══════════════════════════════════════════════════════════════");
@@ -1061,8 +1074,7 @@ bool CTradeManager::SaveState()
    int h = FileOpen(fnTmp, FILE_WRITE | FILE_TXT | FILE_ANSI);
    if(h == INVALID_HANDLE)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "STATE", "❌ Falha ao abrir " + fnTmp);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "STATE", "❌ Falha ao abrir " + fnTmp);
       return false;
      }
 

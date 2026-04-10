@@ -1416,14 +1416,10 @@ void OnTick()
             // Salvar trade no Logger (apenas o deal final)
             g_logger.SaveTrade(g_lastPositionTicket, finalDealProfit);
 
-            // Atualizar estatísticas (apenas o deal final)
-            // ⚠️ KNOWN LIMITATION: UpdateStats usa finalDealProfit, mas isWin abaixo usa
-            // totalPositionProfit. Se TP1+TP2 executaram e o deal final fechou no prejuízo,
-            // m_dailyWins/Losses ficará inconsistente com o streak (win rate errado no
-            // relatório, e streak reconstruído incorretamente após reinício do EA).
-            // Impacto baixo — cenário raro, limites diários NÃO são afetados.
-            // Ver "KNOWN LIMITATION" no changelog do EA para análise completa.
-            g_logger.UpdateStats(finalDealProfit);
+            // Atualizar estatísticas
+            // ✅ Fix Parte 032b: passa totalPositionProfit para classificação win/loss
+            // correta (soma parciais + final). m_dailyProfit acumula só finalDealProfit.
+            g_logger.UpdateStats(finalDealProfit, totalPositionProfit);
 
             // Registrar no Blockers - usar totalPositionProfit para determinar win/loss
             bool isWin = (totalPositionProfit > 0);
