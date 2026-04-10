@@ -2,11 +2,24 @@
 //|                                                 TradeManager.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|             Gerenciamento de Posições Individuais - EPBot Matrix |
-//|                     Versão 1.25 - Claude Parte 028 (Claude Code) |
+//|                     Versão 1.26 - Claude Parte 032 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.25"
+#property version   "1.26"
 
+// CHANGELOG v1.26 (Parte 032):
+// * Fix CRÍTICO: ExecutePartialClose retornava Deal=0 em mercados
+//   voláteis (Gold). Guard `dealTicket > 0` no MonitorPartialTP
+//   impedia AddPartialTPProfit() e SavePartialTrade() de executar
+//   → lucro parcial desaparecia do sistema, P/L errado, win/loss errado,
+//   Daily Limits com valor subdimensionado, CSV sem linha da parcial.
+// * ExecutePartialClose: retry 5x × 100ms para buscar deal via
+//   DEAL_ORDER no histórico (mesmo padrão do ExecuteTrade v1.58).
+// * MonitorPartialTP: guard `dealTicket > 0` removido. AddPartialTPProfit
+//   e SavePartialTrade sempre executam — se retry falhar, usa estimativa
+//   por preço como fallback.
+// * Limpeza: todos os `if(m_logger != NULL)` removidos (dead code).
+//
 // CHANGELOG v1.25 (Parte 028):
 // * SetSlippage(): só loga/aplica quando valor realmente muda
 //

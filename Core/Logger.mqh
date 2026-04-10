@@ -2,12 +2,22 @@
 //|                                                       Logger.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                                Sistema de Logging - EPBot Matrix |
-//|                     Versão 3.28 - Claude Parte 028 (Claude Code) |
+//|                     Versão 3.29 - Claude Parte 032 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "3.28"
+#property version   "3.29"
 
+// ═══════════════════════════════════════════════════════════════════
+// CHANGELOG v3.29 (Parte 032):
+// * UpdateStats() recebe 2º parâmetro opcional totalPositionProfit
+//   para classificação win/loss correta quando há partial TPs.
+//   - m_dailyProfit acumula apenas finalDealProfit (sem double-count)
+//   - Win/loss/draw classificado pelo resultado TOTAL da posição
+//   - grossProfit acumula finalDealProfit só quando classifyProfit > 0
+//   - Parâmetro omitido = comportamento antigo (sem partial TP)
+// * LIMITAÇÃO CONHECIDA: LoadDailyStats() ainda classifica pelo
+//   finalDealProfit do CSV no reinício do EA (ver issue #TODO).
 // ═══════════════════════════════════════════════════════════════════
 // CHANGELOG v3.28 (Parte 028):
 // * SetShowDebug(): log removido — alterações de debug não são logadas

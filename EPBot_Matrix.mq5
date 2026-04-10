@@ -2,16 +2,21 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.58 - Claude Parte 032 (Claude Code) |
+//|                     Versão 1.59 - Claude Parte 032 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.58"
+#property version   "1.59"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //--- Constante centralizada de versão
-#define EA_VERSION "1.58"
+#define EA_VERSION "1.59"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.59 (Parte 032):                                     |
+//| - Fix: UpdateStats() passa totalPositionProfit para classificação |
+//|   win/loss correta (soma parciais + deal final). Antes, trade de  |
+//|   +$2.25 era contado como LOSS porque só via o deal final -$0.75  |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.58 (Parte 032):                                     |
 //| - Fix CRÍTICO: race condition em ExecuteTrade quando broker       |

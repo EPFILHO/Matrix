@@ -308,14 +308,28 @@ Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para m
   - Afeta: `CalculatePartialTPLevels` e `RegisterPosition`
   - Impede que partial TP seja calculado com preço = 0 ou volume = 0
 
-### Versões atualizadas
+### Versões atualizadas (032 — primeira parte)
 - EPBot_Matrix.mq5: 1.57 → 1.58
+- TradeManager.mqh: 1.24 → 1.25 (hot reload magic/slippage)
+
+### Versões atualizadas (032 — segunda parte)
+- EPBot_Matrix.mq5: 1.58 → 1.59
+- TradeManager.mqh: 1.25 → 1.26
+- Logger.mqh: 3.28 → 3.29
 
 ### TODO restante (Parte 032)
-- [ ] **TP1 negativo** (bug novo — ocorreu 1x em conta real): em mercado volátil
-  o TP1 parcial saiu com resultado negativo, bagunçando totalizações e
-  contagem de win/loss. Investigar cálculo do TP1 quando preço se move
-  contra a posição antes do nível ser atingido
+- [x] **Race condition no ExecutePartialClose**: mesmo bug do ExecuteTrade —
+  Deal=0 fazia AddPartialTPProfit() nunca ser chamado → lucro parcial sumia
+  (corrigido: retry 5x + guard removido + fallback garantido)
+- [x] **Classificação win/loss errada**: UpdateStats usava finalDealProfit
+  em vez de totalPositionProfit → trade de +$2.25 contado como LOSS
+  (corrigido: 2º parâmetro totalPositionProfit em UpdateStats)
+- [ ] **LoadDailyStats classifica errado no reinício**: ao recarregar o CSV,
+  classifica pelo finalDealProfit (deal final) em vez do totalPositionProfit.
+  Trade com partial TP lucrativo + trailing final negativo = reconstruído como
+  LOSS. Afeta: win rate, streak, grossProfit/grossLoss pós-reinício.
+  Solução: ao ler linha final no CSV, somar partials do mesmo ticket para
+  obter totalPositionProfit e usar para classificação. (ver issue #TODO)
 - [ ] **Trailing Start na GUI**: input `inp_TrailingStart` (início do trailing)
   ainda não está no painel. Adicionar campo + hot reload
 - [ ] **RSI values não salvos no .cfg**: configurações do RSI (Period, OS, OB,
@@ -344,6 +358,6 @@ Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para m
   Dropdown ou lista de perfis no painel, botões Salvar Como / Carregar
 
 ### Notas
-- Race condition do ExecuteTrade (result.deal=0) ocorreu apenas em **conta real**,
-  não reproduziu em demo — comportamento típico de broker ao vivo sob volatilidade
+- Race condition (result.deal=0) ocorre apenas em **conta real**, não reproduz
+  em demo — comportamento típico de broker ao vivo sob volatilidade
 
