@@ -6,8 +6,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "3.17"
-//
-// CHANGELOG v3.17 (Parte 031):
+//// CHANGELOG v3.17 (Parte 031):
 // * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1770,15 +1769,16 @@ bool CRiskManager::CalculatePartialTPLevels(
    int digits = (int)SymbolInfoInteger(m_symbol, SYMBOL_DIGITS);
    
    double lotStep = SymbolInfoDouble(m_symbol, SYMBOL_VOLUME_STEP);
+   if(lotStep <= 0) lotStep = 0.01;  // fallback seguro — previne divisão por zero
    double minLot = SymbolInfoDouble(m_symbol, SYMBOL_VOLUME_MIN);
    double maxLot = SymbolInfoDouble(m_symbol, SYMBOL_VOLUME_MAX);
-   
+
    if(m_tp1_enable && m_tp1_percent > 0)
      {
       SPartialTPLevel tp1;
       tp1.enabled = true;
       tp1.percentLot = m_tp1_percent;
-      tp1.lotSize = MathFloor((totalLotSize * m_tp1_percent / 100.0) / lotStep) * lotStep;
+      tp1.lotSize = MathFloor((totalLotSize * m_tp1_percent / 100.0) / lotStep + 0.1) * lotStep;
       
       if(tp1.lotSize < minLot)
          tp1.lotSize = minLot;
@@ -1819,7 +1819,7 @@ bool CRiskManager::CalculatePartialTPLevels(
       SPartialTPLevel tp2;
       tp2.enabled = true;
       tp2.percentLot = m_tp2_percent;
-      tp2.lotSize = MathFloor((totalLotSize * m_tp2_percent / 100.0) / lotStep) * lotStep;
+      tp2.lotSize = MathFloor((totalLotSize * m_tp2_percent / 100.0) / lotStep + 0.1) * lotStep;
       
       if(tp2.lotSize < minLot)
          tp2.lotSize = minLot;
@@ -1914,7 +1914,7 @@ void CRiskManager::PrintConfiguration()
    if(m_logger != NULL)
      {
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "╔══════════════════════════════════════════════════════╗");
-      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "║       RISKMANAGER v3.14 - CONFIGURAÇÃO ATUAL        ║");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "║       RISKMANAGER v3.17 - CONFIGURAÇÃO ATUAL        ║");
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "╚══════════════════════════════════════════════════════╝");
       m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "CONFIG", "");
       
@@ -1953,7 +1953,7 @@ void CRiskManager::PrintConfiguration()
    else
      {
       Print("╔══════════════════════════════════════════════════════╗");
-      Print("║       RISKMANAGER v3.14 - CONFIGURAÇÃO ATUAL        ║");
+      Print("║       RISKMANAGER v3.17 - CONFIGURAÇÃO ATUAL        ║");
       Print("╚══════════════════════════════════════════════════════╝");
       Print("");
       

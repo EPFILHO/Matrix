@@ -236,6 +236,7 @@ int CTradeManager::ResyncExistingPositions()
          continue;
 
       ulong ticket = PositionGetTicket(i);
+      if(ticket == 0) continue;  // ticket inválido
 
       // Já registrada?
       if(GetPositionIndex(ticket) >= 0)
@@ -796,7 +797,17 @@ bool CTradeManager::ExecutePartialClose(ulong ticket, double lot, string comment
      }
 
    double lotStep = SymbolInfoDouble(m_symbol, SYMBOL_VOLUME_STEP);
-   lot = MathFloor(lot / lotStep) * lotStep;
+   if(lotStep <= 0) lotStep = 0.01;  // fallback seguro
+   lot = MathFloor((lot + lotStep * 0.1) / lotStep) * lotStep;  // +epsilon previne truncamento por imprecisão IEEE 754
+
+   double minLotFinal = SymbolInfoDouble(m_symbol, SYMBOL_VOLUME_MIN);
+   if(lot < minLotFinal - lotStep * 0.1)
+     {
+      if(m_logger != NULL)
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "CLOSE",
+            "❌ Lote parcial " + DoubleToString(lot, 2) + " < mínimo " + DoubleToString(minLotFinal, 2) + " após arredondamento");
+      return false;
+     }
 
    MqlTradeRequest request = {};
    MqlTradeResult result = {};
@@ -952,13 +963,13 @@ void CTradeManager::SetMagicNumber(int newMagic)
    int oldValue = m_magicNumber;
    if(oldValue == newMagic) return;
 
+   // Deletar state file do magic antigo ANTES de atualizar m_magicNumber
+   DeleteState();
+
    m_magicNumber = newMagic;
 
    // Limpar posições registradas (pertencem ao magic antigo)
    ArrayResize(m_positions, 0);
-
-   // Deletar state file do magic antigo
-   DeleteState();
 
    // Re-sincronizar posições abertas do novo magic (se houver)
    ResyncExistingPositions();

@@ -375,3 +375,42 @@ Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para m
 - Race condition (result.deal=0) ocorre apenas em **conta real**, não reproduz
   em demo — comportamento típico de broker ao vivo sob volatilidade
 
+---
+
+## Parte 032 — Em andamento (2026-04-04)
+
+### O que foi feito
+
+#### FIXES BAIXO RISCO — Guards e Validações
+
+**TradeManager.mqh** (3 fixes):
+- [x] **H-04**: ExecutePartialClose — validação `lot >= minLot` APÓS MathFloor rounding
+  - Antes: check `lot <= 0` acontecia antes do rounding, lot podia virar 0 depois
+  - Adicionado fallback `lotStep <= 0 → 0.01` para prevenir divisão por zero
+- [x] **H-05**: SetMagicNumber — `DeleteState()` movido para ANTES de `m_magicNumber = newMagic`
+  - Antes: deletava state file do magic NOVO (m_magicNumber já atualizado)
+  - Agora: deleta state file do magic ANTIGO corretamente
+- [x] **H-06**: ResyncExistingPositions — guard `if(ticket == 0) continue`
+  - Previne entrada fantasma com ticket inválido no array m_positions
+
+**RiskManager.mqh** (2 fixes):
+- [x] **M-30**: CalculatePartialTPLevels — guard `lotStep <= 0 → 0.01`
+  - Previne divisão por zero se broker retornar SYMBOL_VOLUME_STEP = 0
+- [x] **L-01**: PrintConfiguration — versão corrigida "v3.14" → "v3.17"
+
+**TrendFilter.mqh** (1 fix):
+- [x] **H-12**: SetTrendFilterEnabled — cold reload ao habilitar sem handle MA
+  - Se ambos modos estavam desabilitados no Init (handle-less), habilitar via GUI
+    agora dispara Deinitialize+Initialize para criar o handle
+  - Se Initialize falhar, reverte `m_useTrendFilter = false` com log de erro
+  - Previne estado inválido onde filtro bloqueia todos os sinais permanentemente
+
+### Versões atualizadas
+- TradeManager.mqh: 1.25 → 1.26
+- RiskManager.mqh: 3.16 → 3.17
+- TrendFilter.mqh: 2.24 → 2.25
+
+### TODO restante (Parte 032 continuação)
+- [ ] Fixes de risco médio/alto: C-01, C-02, C-06, C-07, H-01, H-02, H-11
+- [ ] Criar PR da Parte 032 → main
+

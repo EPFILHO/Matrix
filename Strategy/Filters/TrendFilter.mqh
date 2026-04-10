@@ -10,6 +10,10 @@
 // * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 #property strict
 
+// CHANGELOG v2.25 (Parte 032):
+// * H-12: SetTrendFilterEnabled — cold reload ao habilitar sem handle MA
+//         (previne estado inválido onde filtro bloqueia tudo permanentemente)
+
 // ═══════════════════════════════════════════════════════════════
 // INCLUDES
 // ═══════════════════════════════════════════════════════════════
