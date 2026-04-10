@@ -329,12 +329,17 @@ Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para m
   Trade com partial TP lucrativo + trailing final negativo = reconstruído como
   LOSS. Afeta: win rate, streak, grossProfit/grossLoss pós-reinício.
   Solução: ao ler linha final no CSV, somar partials do mesmo ticket para
-  obter totalPositionProfit e usar para classificação. (ver issue #TODO)
+  obter totalPositionProfit e usar para classificação. (ver issue #20)
 - [ ] **Trailing Start na GUI**: input `inp_TrailingStart` (início do trailing)
   ainda não está no painel. Adicionar campo + hot reload
-- [ ] **RSI values não salvos no .cfg**: configurações do RSI (Period, OS, OB,
-  Middle, TF, AppliedPrice, Mode) não estão sendo persistidas no
-  arquivo de config. Verificar PanelPersistence e sub-painel RSI
+- [ ] **Magic Number e RSI não salvos no .cfg**: (issue #22)
+  - Magic Number alterado via hot reload não persiste no arquivo de config
+  - Configurações do RSI (Period, OS, OB, Middle, TF, AppliedPrice, Mode) não salvam
+  - Possível afeta outras estratégias/filtros. Verificar PanelPersistence.mqh
+- [ ] **ResyncExistingPositions fallback após 5 tentativas**: (issue #21)
+  - Quando ExecuteTrade falha 5x, posição fica órfã no broker mas não registrada no EA
+  - Resultado: sem Trailing, sem BE, sem Partial TP
+  - Solução: chamar ResyncExistingPositions como 6º fallback, recuperar TP levels
 - [ ] **Log de bloqueio por spread otimizado**: atualmente loga "SPREAD ALTO"
   e "SPREAD NORMALIZADO" toda vez que spread sobe/desce, poluindo o log.
   Logar apenas se houve tentativa de entrada (sinal detectado foi bloqueado).
