@@ -2,10 +2,12 @@
 //|                                        BollingerBandsStrategy.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                            Estratégia Bollinger Bands - EPBot Matrix |
-//|                                   Versão 1.01 - Claude Parte 031 |
+//|                                   Versão 1.02 - Claude Parte 032 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.01"
+#property version   "1.02"
+// CHANGELOG v1.02 (Parte 032):
+// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 #property strict
 
 // ═══════════════════════════════════════════════════════════════

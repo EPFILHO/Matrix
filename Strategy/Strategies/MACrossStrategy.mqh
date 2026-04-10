@@ -2,10 +2,12 @@
 //|                                             MACrossStrategy.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                   Estratégia de Cruzamento de MAs - EPBot Matrix |
-//|                                   Versão 2.27 - Claude Parte 031 |
+//|                                   Versão 2.28 - Claude Parte 032 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.27"
+#property version   "2.28"
+// CHANGELOG v2.28 (Parte 032):
+// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 #property strict
 
 // ═══════════════════════════════════════════════════════════════

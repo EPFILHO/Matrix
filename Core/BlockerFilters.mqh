@@ -2,7 +2,10 @@
 //|                                             BlockerFilters.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|              Filtros de Condição de Mercado - EPBot Matrix       |
-//|                     Versão 1.01 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.02 - Claude Parte 032 (Claude Code) |
+// CHANGELOG v1.02 (Parte 032):
+// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
+//
 // CHANGELOG v1.01 (Parte 027):
 // + SetMagicNumber() / GetMagicNumber() — hot reload do Magic Number
 //+------------------------------------------------------------------+

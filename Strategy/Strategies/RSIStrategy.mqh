@@ -2,10 +2,12 @@
 //|                                                 RSIStrategy.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                                    Estratégia RSI - EPBot Matrix |
-//|                                   Versão 2.16 - Claude Parte 031 |
+//|                                   Versão 2.17 - Claude Parte 032 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.16"
+#property version   "2.17"
+// CHANGELOG v2.17 (Parte 032):
+// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 #property strict
 
 // ═══════════════════════════════════════════════════════════════

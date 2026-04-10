@@ -2,10 +2,12 @@
 //|                                                    RSIFilter.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                                        Filtro RSI - EPBot Matrix |
-//|                                   Versão 1.12 - Claude Parte 031 |
+//|                                   Versão 1.13 - Claude Parte 032 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.12"
+#property version   "1.13"
+// CHANGELOG v1.13 (Parte 032):
+// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
