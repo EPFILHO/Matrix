@@ -2,13 +2,13 @@
 //|                                               SignalManager.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                   Gerenciador de Sinais e Filtros - EPBot Matrix |
-//|                                   Versão 2.16 - Claude Parte 032 |
+//|                                   Versão 2.16 - Claude Parte 031 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "2.16"
 //
 // ═══════════════════════════════════════════════════════════════
-// NOVIDADES v2.16 (Parte 032):
+// NOVIDADES v2.16 (Parte 031):
 // * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 // * PrintStatus(): bloco else com Print() removido (era dead code)
 // ═══════════════════════════════════════════════════════════════

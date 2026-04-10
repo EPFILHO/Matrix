@@ -2,7 +2,7 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.59 - Claude Parte 032 (Claude Code) |
+//|                     Versão 1.59 - Claude Parte 031 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
@@ -13,12 +13,12 @@
 #define EA_VERSION "1.59"
 
 //+------------------------------------------------------------------+
-//| CHANGELOG v1.59 (Parte 032):                                     |
+//| CHANGELOG v1.59 (Parte 031):                                     |
 //| - Fix: UpdateStats() passa totalPositionProfit para classificação |
 //|   win/loss correta (soma parciais + deal final). Antes, trade de  |
 //|   +$2.25 era contado como LOSS porque só via o deal final -$0.75  |
 //+------------------------------------------------------------------+
-//| CHANGELOG v1.58 (Parte 032):                                     |
+//| CHANGELOG v1.58 (Parte 031):                                     |
 //| - Fix CRÍTICO: race condition em ExecuteTrade quando broker       |
 //|   retorna result.deal=0 e result.price=0 (comum no Gold sob       |
 //|   spread volátil). Posição abria na conta mas EA não rastreava    |
@@ -1422,7 +1422,7 @@ void OnTick()
             g_logger.SaveTrade(g_lastPositionTicket, finalDealProfit);
 
             // Atualizar estatísticas
-            // ✅ Fix Parte 032b: passa totalPositionProfit para classificação win/loss
+            // ✅ Fix Parte 031b: passa totalPositionProfit para classificação win/loss
             // correta (soma parciais + final). m_dailyProfit acumula só finalDealProfit.
             g_logger.UpdateStats(finalDealProfit, totalPositionProfit);
 
@@ -2052,7 +2052,7 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
                    "📊 Trade executado no candle: " + TimeToString(g_lastTradeBarTime));
 
       // ═══════════════════════════════════════════════════════════════
-      // ✅ CORREÇÃO Parte 032 — OBTER TICKET COM RETRY
+      // ✅ CORREÇÃO Parte 031 — OBTER TICKET COM RETRY
       // Broker pode retornar result.deal=0 e result.price=0 em mercados
       // voláteis (Gold). Fazemos retry até 5x com 100ms entre tentativas.
       // Ordem de busca: DEAL_POSITION_ID → HistoryOrder → PositionsTotal

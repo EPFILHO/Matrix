@@ -2,9 +2,9 @@
 //|                                              BlockerLimits.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|                  Limites de Trading (Daily + Streak) - EPBot Matrix |
-//|                     Versão 1.01 - Claude Parte 032 (Claude Code) |
+//|                     Versão 1.01 - Claude Parte 031 (Claude Code) |
 //+------------------------------------------------------------------+
-// CHANGELOG v1.01 (Parte 032):
+// CHANGELOG v1.01 (Parte 031):
 // * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 //
 // NOTA: Enums (ENUM_STREAK_ACTION, ENUM_PROFIT_TARGET_ACTION, etc.) e

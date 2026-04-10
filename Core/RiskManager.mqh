@@ -2,12 +2,12 @@
 //|                                                  RiskManager.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                       Sistema de Cálculo de Risco - EPBot Matrix |
-//|                  Versão 3.17 - Claude Parte 032 (Claude Code)    |
+//|                  Versão 3.17 - Claude Parte 031 (Claude Code)    |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "3.17"
 //
-// CHANGELOG v3.17 (Parte 032):
+// CHANGELOG v3.17 (Parte 031):
 // * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 
 // ═══════════════════════════════════════════════════════════════════

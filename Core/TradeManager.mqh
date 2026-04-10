@@ -2,12 +2,12 @@
 //|                                                 TradeManager.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|             Gerenciamento de Posições Individuais - EPBot Matrix |
-//|                     Versão 1.26 - Claude Parte 032 (Claude Code) |
+//|                     Versão 1.26 - Claude Parte 031 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.26"
 
-// CHANGELOG v1.26 (Parte 032):
+// CHANGELOG v1.26 (Parte 031):
 // * Fix CRÍTICO: ExecutePartialClose retornava Deal=0 em mercados
 //   voláteis (Gold). Guard `dealTicket > 0` no MonitorPartialTP
 //   impedia AddPartialTPProfit() e SavePartialTrade() de executar
@@ -825,7 +825,7 @@ bool CTradeManager::ExecutePartialClose(ulong ticket, double lot, string comment
       outDealTicket = result.deal;
 
       // ═══════════════════════════════════════════════════════════════
-      // ✅ CORREÇÃO Parte 032b — BUSCAR DEAL COM RETRY
+      // ✅ CORREÇÃO Parte 031b — BUSCAR DEAL COM RETRY
       // Broker pode retornar result.deal=0 em mercados voláteis (Gold).
       // Retry até 5x com 100ms para encontrar o deal via DEAL_ORDER.
       // ═══════════════════════════════════════════════════════════════

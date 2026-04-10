@@ -2,14 +2,14 @@
 //|                                                       Logger.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                                Sistema de Logging - EPBot Matrix |
-//|                     Versão 3.29 - Claude Parte 032 (Claude Code) |
+//|                     Versão 3.29 - Claude Parte 031 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
 #property version   "3.29"
 
 // ═══════════════════════════════════════════════════════════════════
-// CHANGELOG v3.29 (Parte 032):
+// CHANGELOG v3.29 (Parte 031):
 // * UpdateStats() recebe 2º parâmetro opcional totalPositionProfit
 //   para classificação win/loss correta quando há partial TPs.
 //   - m_dailyProfit acumula apenas finalDealProfit (sem double-count)

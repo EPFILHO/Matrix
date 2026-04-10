@@ -2,13 +2,13 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.25 - Claude Parte 032 (Claude Code) |
+//|                     Versão 3.25 - Claude Parte 031 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "3.25"
 //
 // ═══════════════════════════════════════════════════════════════
-// CHANGELOG v3.25 (Parte 032):
+// CHANGELOG v3.25 (Parte 031):
 // * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 // ═══════════════════════════════════════════════════════════════
 #property strict

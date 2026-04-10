@@ -178,7 +178,7 @@
 
 ---
 
-## Parte 031 — Concluída (2026-04-03)
+## Parte 031 — Em andamento (2026-04-03)
 
 ### O que foi feito
 
@@ -268,14 +268,8 @@ Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para m
 - RSIFilterPanel.mqh: 1.08 (fix CLR_FIELD_ERROR)
 - TrendFilterPanel.mqh: 1.07 (fix CLR_FIELD_ERROR)
 
-### TODO restante (Parte 032)
+### TODO restante
 - [x] Criar PR da Parte 031 → main (PR #16)
-
----
-
-## Parte 032 — Em andamento (2026-04-08)
-
-### O que foi feito
 
 #### FIX CRÍTICO — Race condition em ExecuteTrade
 - **Bug**: Broker retornava `result.deal = 0` e `result.price = 0.00` em mercados
@@ -308,16 +302,31 @@ Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para m
   - Afeta: `CalculatePartialTPLevels` e `RegisterPosition`
   - Impede que partial TP seja calculado com preço = 0 ou volume = 0
 
-### Versões atualizadas (032 — primeira parte)
-- EPBot_Matrix.mq5: 1.57 → 1.58
-- TradeManager.mqh: 1.24 → 1.25 (hot reload magic/slippage)
+#### Limpeza de dead code (12 arquivos)
+- Removidos todos `if(m_logger != NULL)` e `else Print()` fallbacks
+- m_logger nunca é NULL em operação — checks eram dead code
+- Arquivos: BlockerLimits, BlockerDrawdown, BlockerFilters, RiskManager,
+  Blockers, SignalManager, MACrossStrategy, RSIStrategy, BollingerBandsStrategy,
+  TrendFilter, RSIFilter, BollingerBandsFilter
 
-### Versões atualizadas (032 — segunda parte)
-- EPBot_Matrix.mq5: 1.58 → 1.59
-- TradeManager.mqh: 1.25 → 1.26
+### Versões atualizadas (continuação)
+- EPBot_Matrix.mq5: 1.57 → 1.59
+- TradeManager.mqh: 1.24 → 1.26
 - Logger.mqh: 3.28 → 3.29
+- BlockerLimits.mqh: 1.00 → 1.01
+- BlockerDrawdown.mqh: 1.01 → 1.02
+- BlockerFilters.mqh: 1.01 → 1.02
+- RiskManager.mqh: 3.16 → 3.17
+- Blockers.mqh: 3.24 → 3.25
+- SignalManager.mqh: 2.15 → 2.16
+- MACrossStrategy.mqh: 2.27 → 2.28
+- RSIStrategy.mqh: 2.16 → 2.17
+- BollingerBandsStrategy.mqh: 1.01 → 1.02
+- TrendFilter.mqh: 2.24 → 2.25
+- RSIFilter.mqh: 1.12 → 1.13
+- BollingerBandsFilter.mqh: 1.01 → 1.02
 
-### TODO restante (Parte 032)
+### TODO restante (Parte 031)
 - [x] **Race condition no ExecutePartialClose**: mesmo bug do ExecuteTrade —
   Deal=0 fazia AddPartialTPProfit() nunca ser chamado → lucro parcial sumia
   (corrigido: retry 5x + guard removido + fallback garantido)
@@ -351,7 +360,7 @@ Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para m
   ON/OFF do RSIFilter ou BollingerBandsFilter está em OFF, os campos de
   configuração (Period, OS, OB, etc.) continuam habilitados para edição.
   Deveriam ficar desabilitados (cinza) enquanto o filtro estiver OFF
-- [ ] Criar PR da Parte 032 → main
+- [ ] Criar PR da Parte 031 → main
 
 ### TODO futuro (sem parte definida)
 - [ ] **Desenhar indicadores no gráfico**: quando uma estratégia/filtro está

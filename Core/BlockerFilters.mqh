@@ -2,8 +2,8 @@
 //|                                             BlockerFilters.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|              Filtros de Condição de Mercado - EPBot Matrix       |
-//|                     Versão 1.02 - Claude Parte 032 (Claude Code) |
-// CHANGELOG v1.02 (Parte 032):
+//|                     Versão 1.02 - Claude Parte 031 (Claude Code) |
+// CHANGELOG v1.02 (Parte 031):
 // * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 //
 // CHANGELOG v1.01 (Parte 027):
