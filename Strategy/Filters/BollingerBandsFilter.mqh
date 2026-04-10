@@ -263,10 +263,7 @@ bool CBollingerBandsFilter::Initialize()
    if(m_bands_handle == INVALID_HANDLE)
      {
       string msg = "[" + m_filterName + "] Erro ao criar indicador Bollinger Bands";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", msg);
       return false;
      }
 
@@ -276,10 +273,7 @@ bool CBollingerBandsFilter::Initialize()
                 EnumToString(m_timeframe) + " | Período: " + IntegerToString(m_period) +
                 " | Desvio: " + DoubleToString(m_deviation, 1) +
                 " | Modo: " + GetSqueezeMetricText() + "]";
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
-   else
-      Print(msg);
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
 
    return true;
   }
@@ -325,25 +319,22 @@ bool CBollingerBandsFilter::LoadBandsValues(int count)
 
    if(CopyBuffer(m_bands_handle, 0, 0, count, m_middle) < count)
      {
-      string msg = "[" + m_filterName + "] Erro ao copiar buffer Middle BB";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER", msg);
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER",
+         "[" + m_filterName + "] Erro ao copiar buffer Middle BB");
       return false;
      }
 
    if(CopyBuffer(m_bands_handle, 1, 0, count, m_upper) < count)
      {
-      string msg = "[" + m_filterName + "] Erro ao copiar buffer Upper BB";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER", msg);
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER",
+         "[" + m_filterName + "] Erro ao copiar buffer Upper BB");
       return false;
      }
 
    if(CopyBuffer(m_bands_handle, 2, 0, count, m_lower) < count)
      {
-      string msg = "[" + m_filterName + "] Erro ao copiar buffer Lower BB";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER", msg);
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER",
+         "[" + m_filterName + "] Erro ao copiar buffer Lower BB");
       return false;
      }
 
@@ -390,10 +381,7 @@ bool CBollingerBandsFilter::CheckSqueezeAbsolute()
      {
       string msg = StringFormat("🚫 [%s] Trade bloqueado - Squeeze (Absoluto): %.1f pts < %.1f pts",
                                 m_filterName, width, m_squeeze_threshold);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "FILTER", msg);
-      else
-         Print(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "FILTER", msg);
       return false;
      }
 
@@ -417,10 +405,7 @@ bool CBollingerBandsFilter::CheckSqueezeRelative()
      {
       string msg = StringFormat("🚫 [%s] Trade bloqueado - Squeeze (Relativo): %.2f%% < %.2f%%",
                                 m_filterName, widthPct, m_squeeze_threshold);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "FILTER", msg);
-      else
-         Print(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "FILTER", msg);
       return false;
      }
 
@@ -457,10 +442,7 @@ bool CBollingerBandsFilter::CheckSqueezePercentile()
      {
       string msg = StringFormat("🚫 [%s] Trade bloqueado - Squeeze (Percentil): %.1f%% < %.1f%% (últimas %d barras)",
                                 m_filterName, percentile, m_squeeze_threshold, m_percentile_period);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "FILTER", msg);
-      else
-         Print(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "FILTER", msg);
       return false;
      }
 
@@ -479,7 +461,7 @@ void CBollingerBandsFilter::SetEnabled(bool enabled)
    bool oldValue = m_isEnabled;
    m_isEnabled = enabled;
 
-   if(oldValue != enabled && m_logger != NULL)
+   if(oldValue != enabled)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
          "🔄 [BB Filter] Filtro: " + (enabled ? "ATIVADO" : "DESATIVADO"));
   }
@@ -493,9 +475,8 @@ void CBollingerBandsFilter::SetSqueezeMetric(ENUM_BB_SQUEEZE_METRIC metric)
    if(oldMetric == metric) return;
    m_squeeze_metric = metric;
 
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         "🔄 [BB Filter] Modo alterado: " + GetSqueezeMetricText());
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+      "🔄 [BB Filter] Modo alterado: " + GetSqueezeMetricText());
   }
 
 //+------------------------------------------------------------------+
@@ -505,14 +486,14 @@ void CBollingerBandsFilter::SetSqueezeThreshold(double value)
   {
    if(value <= 0)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[BB Filter] Threshold invalido: " + DoubleToString(value, 2));
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD",
+         "[BB Filter] Threshold invalido: " + DoubleToString(value, 2));
       return;
      }
    double oldValue = m_squeeze_threshold;
    m_squeeze_threshold = value;
 
-   if(oldValue != value && m_logger != NULL)
+   if(oldValue != value)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
          StringFormat("🔄 [BB Filter] Threshold alterado: %.2f → %.2f", oldValue, value));
   }
@@ -524,14 +505,14 @@ void CBollingerBandsFilter::SetPercentilePeriod(int value)
   {
    if(value <= 0 || value > 500)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[BB Filter] Periodo percentil invalido: " + IntegerToString(value));
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD",
+         "[BB Filter] Periodo percentil invalido: " + IntegerToString(value));
       return;
      }
    int oldValue = m_percentile_period;
    m_percentile_period = value;
 
-   if(oldValue != value && m_logger != NULL)
+   if(oldValue != value)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
          StringFormat("🔄 [BB Filter] Período percentil alterado: %d → %d", oldValue, value));
   }
@@ -548,10 +529,7 @@ bool CBollingerBandsFilter::SetPeriod(int value)
    if(value <= 0)
      {
       string msg = "[BB Filter] Período inválido: " + IntegerToString(value);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD", msg);
       return false;
      }
 
@@ -562,7 +540,7 @@ bool CBollingerBandsFilter::SetPeriod(int value)
    Deinitialize();
    bool success = Initialize();
 
-   if(success && m_logger != NULL)
+   if(success)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
          StringFormat("🔄 [BB Filter] Período alterado: %d → %d (reiniciado)", oldValue, value));
 
@@ -576,9 +554,8 @@ bool CBollingerBandsFilter::SetDeviation(double value)
   {
    if(value <= 0)
      {
-      string msg = "[BB Filter] Desvio inválido: " + DoubleToString(value, 2);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD",
+         "[BB Filter] Desvio inválido: " + DoubleToString(value, 2));
       return false;
      }
 
@@ -589,7 +566,7 @@ bool CBollingerBandsFilter::SetDeviation(double value)
    Deinitialize();
    bool success = Initialize();
 
-   if(success && m_logger != NULL)
+   if(success)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
          StringFormat("🔄 [BB Filter] Desvio alterado: %.1f → %.1f (reiniciado)", oldValue, value));
 
@@ -608,7 +585,7 @@ bool CBollingerBandsFilter::SetTimeframe(ENUM_TIMEFRAMES tf)
    Deinitialize();
    bool success = Initialize();
 
-   if(success && m_logger != NULL)
+   if(success)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
          "🔄 [BB Filter] Timeframe alterado: " + EnumToString(oldTF) + " → " + EnumToString(tf) + " (reiniciado)");
 
@@ -626,7 +603,7 @@ bool CBollingerBandsFilter::SetAppliedPrice(ENUM_APPLIED_PRICE price)
    Deinitialize();
    bool success = Initialize();
 
-   if(success && m_logger != NULL)
+   if(success)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
          "🔄 [BB Filter] Applied price alterado (reiniciado)");
 

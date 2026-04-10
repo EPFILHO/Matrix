@@ -328,6 +328,10 @@ Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para m
 - [ ] **Estratégia no comentário da ordem**: adicionar ao campo `comment` da
   ordem o nome da estratégia que gerou o sinal (MACross, RSI, BB). Facilita
   análise posterior no histórico de trades
+- [ ] **RSI e BB Filter: campos habilitados com botão OFF**: quando o toggle
+  ON/OFF do RSIFilter ou BollingerBandsFilter está em OFF, os campos de
+  configuração (Period, OS, OB, etc.) continuam habilitados para edição.
+  Deveriam ficar desabilitados (cinza) enquanto o filtro estiver OFF
 - [ ] Criar PR da Parte 032 → main
 
 ### TODO futuro (sem parte definida)

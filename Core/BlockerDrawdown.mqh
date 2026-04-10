@@ -171,16 +171,14 @@ bool CBlockerDrawdown::Init(
      {
       if(ddValue <= 0 || (ddType == DD_PERCENTAGE && ddValue > 100))
         {
-         if(m_logger != NULL) m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Drawdown inválido!");
-         else Print("❌ Drawdown inválido!");
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Drawdown inválido!");
          return false;
         }
 
       double autoBalance = AccountInfoDouble(ACCOUNT_BALANCE);
       if(autoBalance <= 0)
         {
-         if(m_logger != NULL) m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Saldo da conta inválido (zero ou negativo)!");
-         else Print("❌ Saldo da conta inválido (zero ou negativo)!");
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Saldo da conta inválido (zero ou negativo)!");
          return false;
         }
 
@@ -188,26 +186,24 @@ bool CBlockerDrawdown::Init(
       m_initialBalance      = autoBalance;
       m_peakBalance         = autoBalance;
 
-      if(m_logger != NULL) m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📉 Drawdown Máximo:");
-      else Print("📉 Drawdown Máximo:");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📉 Drawdown Máximo:");
 
       string typeMsg = (ddType == DD_FINANCIAL)
          ? "   - Tipo: Financeiro ($" + DoubleToString(ddValue, 2) + ")"
          : "   - Tipo: Percentual (" + DoubleToString(ddValue, 2) + "%)";
-      if(m_logger != NULL) m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", typeMsg); else Print(typeMsg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", typeMsg);
 
       string balMsg = "   - Saldo Inicial (auto): $" + DoubleToString(autoBalance, 2);
-      if(m_logger != NULL) m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", balMsg); else Print(balMsg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", balMsg);
 
       string peakMsg = (ddPeakMode == DD_PEAK_REALIZED_ONLY)
          ? "   - Pico: Apenas Lucro Realizado (fechados)"
          : "   - Pico: Incluir P/L Flutuante (fechados + aberta)";
-      if(m_logger != NULL) m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", peakMsg); else Print(peakMsg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", peakMsg);
      }
    else
      {
-      if(m_logger != NULL) m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📉 Proteção Drawdown: DESATIVADA");
-      else Print("📉 Proteção Drawdown: DESATIVADA");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📉 Proteção Drawdown: DESATIVADA");
      }
 
    return true;
@@ -229,7 +225,7 @@ bool CBlockerDrawdown::CheckDrawdownWithLog(ENUM_BLOCKER_REASON &blocker, string
      }
 
 // v3.20: usa lucro do dia (fechados) + floating, consistente com ShouldCloseByDrawdown()
-   double dailyProfit = (m_logger != NULL) ? m_logger.GetDailyProfit() : 0.0;
+   double dailyProfit = m_logger.GetDailyProfit();
 
    double floating = 0.0, swap = 0.0;
    for(int i = PositionsTotal() - 1; i >= 0; i--)
@@ -258,40 +254,23 @@ bool CBlockerDrawdown::CheckDrawdownWithLog(ENUM_BLOCKER_REASON &blocker, string
       blocker     = BLOCKER_DRAWDOWN;
       blockReason = StringFormat("Drawdown %.2f%% excedido", GetCurrentDrawdown());
 
-      if(m_logger != NULL)
-        {
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "═══════════════════════════════════════════════════════");
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "🛑 LIMITE DE DRAWDOWN ATINGIDO!");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "═══════════════════════════════════════════════════════");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "🛑 LIMITE DE DRAWDOWN ATINGIDO!");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+         "   📊 Pico do dia: $" + DoubleToString(m_dailyPeakProfit, 2));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+         "   💰 Lucro atual: $" + DoubleToString(projectedProfit, 2));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+         "   📉 Drawdown: $" + DoubleToString(currentDD, 2));
+      if(m_drawdownType == DD_FINANCIAL)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
-            "   📊 Pico do dia: $" + DoubleToString(m_dailyPeakProfit, 2));
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
-            "   💰 Lucro atual: $" + DoubleToString(projectedProfit, 2));
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
-            "   📉 Drawdown: $" + DoubleToString(currentDD, 2));
-         if(m_drawdownType == DD_FINANCIAL)
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
-               "   🛑 Limite: $" + DoubleToString(ddLimit, 2) + " (Financeiro)");
-         else
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
-               "   🛑 Limite: " + DoubleToString(m_drawdownValue, 1) + "% = $" + DoubleToString(ddLimit, 2));
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
-            "   🛡️ LUCRO PROTEGIDO! EA pausado até o fim do dia");
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "═══════════════════════════════════════════════════════");
-        }
+            "   🛑 Limite: $" + DoubleToString(ddLimit, 2) + " (Financeiro)");
       else
-        {
-         Print("═══════════════════════════════════════════════════════");
-         Print("🛑 LIMITE DE DRAWDOWN ATINGIDO!");
-         Print("   📊 Pico do dia: $", DoubleToString(m_dailyPeakProfit, 2));
-         Print("   💰 Lucro atual: $", DoubleToString(projectedProfit, 2));
-         Print("   📉 Drawdown: $", DoubleToString(currentDD, 2));
-         if(m_drawdownType == DD_FINANCIAL)
-            Print("   🛑 Limite: $", DoubleToString(ddLimit, 2), " (Financeiro)");
-         else
-            Print("   🛑 Limite: ", DoubleToString(m_drawdownValue, 1), "% = $", DoubleToString(ddLimit, 2));
-         Print("   🛡️ LUCRO PROTEGIDO! EA pausado até o fim do dia");
-         Print("═══════════════════════════════════════════════════════");
-        }
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+            "   🛑 Limite: " + DoubleToString(m_drawdownValue, 1) + "% = $" + DoubleToString(ddLimit, 2));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+         "   🛡️ LUCRO PROTEGIDO! EA pausado até o fim do dia");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "═══════════════════════════════════════════════════════");
 
       return false;
      }
@@ -311,20 +290,18 @@ bool CBlockerDrawdown::ShouldCloseByDrawdown(ulong positionTicket, double dailyP
 
    if(!PositionSelectByTicket(positionTicket))
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DRAWDOWN",
-            "Erro ao selecionar posição #" + IntegerToString((int)positionTicket));
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DRAWDOWN",
+         "Erro ao selecionar posição #" + IntegerToString((int)positionTicket));
       return false;
      }
 
    long posMagic = PositionGetInteger(POSITION_MAGIC);
    if(posMagic != m_magicNumber)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DRAWDOWN",
-            "Ignorando posição #" + IntegerToString((int)positionTicket) +
-            " (Magic " + IntegerToString((int)posMagic) + " ≠ " +
-            IntegerToString(m_magicNumber) + ")");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DRAWDOWN",
+         "Ignorando posição #" + IntegerToString((int)positionTicket) +
+         " (Magic " + IntegerToString((int)posMagic) + " ≠ " +
+         IntegerToString(m_magicNumber) + ")");
       return false;
      }
 
@@ -337,9 +314,8 @@ bool CBlockerDrawdown::ShouldCloseByDrawdown(ulong positionTicket, double dailyP
    if(peakCandidate > m_dailyPeakProfit)
      {
       m_dailyPeakProfit = peakCandidate;
-      if(m_logger != NULL)
-         m_logger.Log(LOG_DEBUG, THROTTLE_TIME, "DRAWDOWN",
-            "🔼 Novo pico de lucro: $" + DoubleToString(m_dailyPeakProfit, 2), 60);
+      m_logger.Log(LOG_DEBUG, THROTTLE_TIME, "DRAWDOWN",
+         "🔼 Novo pico de lucro: $" + DoubleToString(m_dailyPeakProfit, 2), 60);
      }
 
 // Debug log a cada 60s
@@ -349,10 +325,9 @@ bool CBlockerDrawdown::ShouldCloseByDrawdown(ulong positionTicket, double dailyP
       double ddLimit_dbg   = (m_drawdownType == DD_FINANCIAL)
                              ? m_drawdownValue
                              : (m_dailyPeakProfit * m_drawdownValue) / 100.0;
-      if(m_logger != NULL)
-         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DRAWDOWN",
-            StringFormat("📊 Drawdown: Pico=%.2f | Projetado=%.2f | DD=%.2f / %.2f",
-                         m_dailyPeakProfit, projectedProfit, currentDD_dbg, ddLimit_dbg));
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "DRAWDOWN",
+         StringFormat("📊 Drawdown: Pico=%.2f | Projetado=%.2f | DD=%.2f / %.2f",
+                      m_dailyPeakProfit, projectedProfit, currentDD_dbg, ddLimit_dbg));
       m_sLastDebugLog = TimeCurrent();
      }
 
@@ -375,60 +350,36 @@ bool CBlockerDrawdown::ShouldCloseByDrawdown(ulong positionTicket, double dailyP
                                     ddPercent, m_drawdownValue);
         }
 
-      if(m_logger != NULL)
-        {
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "════════════════════════════════════════════════════════════════");
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "🛑 LIMITE DE DRAWDOWN ATINGIDO!");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "════════════════════════════════════════════════════════════════");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "🛑 LIMITE DE DRAWDOWN ATINGIDO!");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+         "   📊 Pico do dia: $" + DoubleToString(m_dailyPeakProfit, 2));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+         "   💰 Lucro projetado: $" + DoubleToString(projectedProfit, 2));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+         "   📉 Drawdown atual: $" + DoubleToString(currentDD, 2));
+      if(m_drawdownType == DD_FINANCIAL)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
-            "   📊 Pico do dia: $" + DoubleToString(m_dailyPeakProfit, 2));
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
-            "   💰 Lucro projetado: $" + DoubleToString(projectedProfit, 2));
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
-            "   📉 Drawdown atual: $" + DoubleToString(currentDD, 2));
-         if(m_drawdownType == DD_FINANCIAL)
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
-               "   🛑 Limite: $" + DoubleToString(ddLimit, 2) + " (Financeiro)");
-         else
-           {
-            double ddPercent = (currentDD / m_dailyPeakProfit) * 100.0;
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
-               StringFormat("   🛑 Limite: %.1f%% = $%.2f", m_drawdownValue, ddLimit));
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
-               StringFormat("   📊 DD atual: %.1f%%", ddPercent));
-           }
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
-            "   📊 Composição: Fechados=$" + DoubleToString(dailyProfit, 2) +
-            " + Aberta=$" + DoubleToString(currentProfit, 2) +
-            " + Swap=$" + DoubleToString(swap, 2));
-         string modeStr = (m_drawdownPeakMode == DD_PEAK_REALIZED_ONLY) ? "realizado" : "projetado";
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
-            "   🛡️ Ativado às " + TimeToString(m_drawdownActivationTime, TIME_MINUTES) +
-            " | Pico inicial (" + modeStr + "): $" + DoubleToString(m_dailyPeakProfit, 2));
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
-            "   🛡️ LUCRO PROTEGIDO! Fechando posição IMEDIATAMENTE");
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "════════════════════════════════════════════════════════════════");
-        }
+            "   🛑 Limite: $" + DoubleToString(ddLimit, 2) + " (Financeiro)");
       else
         {
-         Print("════════════════════════════════════════════════════════════════");
-         Print("🛑 LIMITE DE DRAWDOWN ATINGIDO!");
-         Print("   📊 Pico do dia: $", DoubleToString(m_dailyPeakProfit, 2));
-         Print("   💰 Lucro projetado: $", DoubleToString(projectedProfit, 2));
-         Print("   📉 Drawdown atual: $", DoubleToString(currentDD, 2));
-         if(m_drawdownType == DD_FINANCIAL)
-            Print("   🛑 Limite: $", DoubleToString(ddLimit, 2), " (Financeiro)");
-         else
-           {
-            double ddPercent = (currentDD / m_dailyPeakProfit) * 100.0;
-            Print("   🛑 Limite: ", DoubleToString(m_drawdownValue, 1), "% = $", DoubleToString(ddLimit, 2));
-            Print("   📊 DD atual: ", DoubleToString(ddPercent, 1), "%");
-           }
-         string modeStr2 = (m_drawdownPeakMode == DD_PEAK_REALIZED_ONLY) ? "realizado" : "projetado";
-         Print("   🛡️ Ativado às ", TimeToString(m_drawdownActivationTime, TIME_MINUTES),
-            " | Pico inicial (", modeStr2, "): $", DoubleToString(m_dailyPeakProfit, 2));
-         Print("   🛡️ LUCRO PROTEGIDO! Fechando posição IMEDIATAMENTE");
-         Print("════════════════════════════════════════════════════════════════");
+         double ddPercent = (currentDD / m_dailyPeakProfit) * 100.0;
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+            StringFormat("   🛑 Limite: %.1f%% = $%.2f", m_drawdownValue, ddLimit));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+            StringFormat("   📊 DD atual: %.1f%%", ddPercent));
         }
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+         "   📊 Composição: Fechados=$" + DoubleToString(dailyProfit, 2) +
+         " + Aberta=$" + DoubleToString(currentProfit, 2) +
+         " + Swap=$" + DoubleToString(swap, 2));
+      string modeStr = (m_drawdownPeakMode == DD_PEAK_REALIZED_ONLY) ? "realizado" : "projetado";
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+         "   🛡️ Ativado às " + TimeToString(m_drawdownActivationTime, TIME_MINUTES) +
+         " | Pico inicial (" + modeStr + "): $" + DoubleToString(m_dailyPeakProfit, 2));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+         "   🛡️ LUCRO PROTEGIDO! Fechando posição IMEDIATAMENTE");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "════════════════════════════════════════════════════════════════");
 
       return true;
      }
@@ -453,34 +404,20 @@ void CBlockerDrawdown::ActivateDrawdownProtection(double closedProfit, double pr
 
    string modeStr = (m_drawdownPeakMode == DD_PEAK_REALIZED_ONLY) ? "realizado" : "projetado";
 
-   if(m_logger != NULL)
-     {
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "═══════════════════════════════════════════════════════");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "🛡️ PROTEÇÃO DE DRAWDOWN ATIVADA!");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "   Pico de lucro (" + modeStr + "): $" + DoubleToString(m_dailyPeakProfit, 2));
-      if(m_drawdownPeakMode == DD_PEAK_REALIZED_ONLY)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
-            "   📊 Fechados: $" + DoubleToString(closedProfit, 2) +
-            " | Projetado: $" + DoubleToString(projectedProfit, 2));
-      if(m_drawdownType == DD_FINANCIAL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
-            "   Proteção: Máx $" + DoubleToString(m_drawdownValue, 2) + " de drawdown");
-      else
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
-            "   Proteção: Máx " + DoubleToString(m_drawdownValue, 1) + "% de drawdown");
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "═══════════════════════════════════════════════════════");
-     }
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "═══════════════════════════════════════════════════════");
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "🛡️ PROTEÇÃO DE DRAWDOWN ATIVADA!");
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "   Pico de lucro (" + modeStr + "): $" + DoubleToString(m_dailyPeakProfit, 2));
+   if(m_drawdownPeakMode == DD_PEAK_REALIZED_ONLY)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+         "   📊 Fechados: $" + DoubleToString(closedProfit, 2) +
+         " | Projetado: $" + DoubleToString(projectedProfit, 2));
+   if(m_drawdownType == DD_FINANCIAL)
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+         "   Proteção: Máx $" + DoubleToString(m_drawdownValue, 2) + " de drawdown");
    else
-     {
-      Print("═══════════════════════════════════════════════════════");
-      Print("🛡️ PROTEÇÃO DE DRAWDOWN ATIVADA!");
-      Print("   Pico de lucro (", modeStr, "): $", DoubleToString(m_dailyPeakProfit, 2));
-      if(m_drawdownType == DD_FINANCIAL)
-         Print("   Proteção: Máx $", DoubleToString(m_drawdownValue, 2), " de drawdown");
-      else
-         Print("   Proteção: Máx ", DoubleToString(m_drawdownValue, 1), "% de drawdown");
-      Print("═══════════════════════════════════════════════════════");
-     }
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN",
+         "   Proteção: Máx " + DoubleToString(m_drawdownValue, 1) + "% de drawdown");
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "DRAWDOWN", "═══════════════════════════════════════════════════════");
   }
 
 //+------------------------------------------------------------------+
@@ -492,12 +429,9 @@ void CBlockerDrawdown::TryActivateDrawdownNow(double dailyProfit)
 
    ActivateDrawdownProtection(dailyProfit, dailyProfit);
 
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         "🛡️ Drawdown ativado via hot reload — pico inicial: $" +
-         DoubleToString(m_dailyPeakProfit, 2));
-   else
-      Print("🛡️ Drawdown ativado via hot reload — pico inicial: $", m_dailyPeakProfit);
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+      "🛡️ Drawdown ativado via hot reload — pico inicial: $" +
+      DoubleToString(m_dailyPeakProfit, 2));
   }
 
 //+------------------------------------------------------------------+
@@ -532,30 +466,21 @@ void CBlockerDrawdown::SetDrawdownValue(double newValue)
    if(oldValue != newValue)
      {
       string typeText = (m_drawdownType == DD_FINANCIAL) ? "$" : "%";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-            StringFormat("Drawdown alterado: %s%.2f → %s%.2f", typeText, oldValue, typeText, newValue));
-      else
-         Print("🔄 Drawdown alterado: ", typeText, oldValue, " → ", typeText, newValue);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("Drawdown alterado: %s%.2f → %s%.2f", typeText, oldValue, typeText, newValue));
      }
 
    if(oldEnabled != m_enableDrawdown)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-            "Drawdown: " + (m_enableDrawdown ? "ATIVADO" : "DESATIVADO"));
-      else
-         Print("🔄 Drawdown: ", m_enableDrawdown ? "ATIVADO" : "DESATIVADO");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "Drawdown: " + (m_enableDrawdown ? "ATIVADO" : "DESATIVADO"));
      }
 
    if(m_drawdownLimitReached && oldValue != newValue)
      {
       m_drawdownLimitReached = false;
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-            "▶️ Bloqueio de drawdown liberado — novo limite será reavaliado no próximo tick");
-      else
-         Print("▶️ Bloqueio de drawdown liberado — novo limite será reavaliado no próximo tick");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "▶️ Bloqueio de drawdown liberado — novo limite será reavaliado no próximo tick");
      }
   }
 
@@ -567,10 +492,7 @@ void CBlockerDrawdown::SetDrawdownType(ENUM_DRAWDOWN_TYPE newType)
    if(m_drawdownType == newType) return;
    m_drawdownType   = newType;
    string typeText  = (newType == DD_FINANCIAL) ? "FINANCEIRO ($)" : "PERCENTUAL (%)";
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "DrawdownType: " + typeText);
-   else
-      Print("🔄 DrawdownType: ", typeText);
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "DrawdownType: " + typeText);
   }
 
 //+------------------------------------------------------------------+
@@ -581,10 +503,7 @@ void CBlockerDrawdown::SetDrawdownPeakMode(ENUM_DRAWDOWN_PEAK_MODE newMode)
    if(m_drawdownPeakMode == newMode) return;
    m_drawdownPeakMode = newMode;
    string modeText    = (newMode == DD_PEAK_REALIZED_ONLY) ? "SO REALIZADO" : "C/ FLUTUANTE";
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "DrawdownPeakMode: " + modeText);
-   else
-      Print("🔄 DrawdownPeakMode: ", modeText);
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "DrawdownPeakMode: " + modeText);
   }
 
 //+------------------------------------------------------------------+
@@ -631,7 +550,7 @@ double CBlockerDrawdown::GetCurrentDrawdown()
         }
      }
 
-   double closedProfit    = (m_logger != NULL) ? m_logger.GetDailyProfit() : 0.0;
+   double closedProfit    = m_logger.GetDailyProfit();
    double projectedProfit = closedProfit + floating + swap;
 
    if(projectedProfit >= m_dailyPeakProfit) return 0.0;

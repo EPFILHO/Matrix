@@ -356,7 +356,7 @@ bool CBlockers::Init(
       case DIRECTION_SELL_ONLY: dirText = "Apenas VENDAS";          break;
      }
    string dirMsg = "🎯 Direção Permitida: " + dirText;
-   if(m_logger != NULL) m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", dirMsg); else Print(dirMsg);
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", dirMsg);
 
 // ── RESET ESTADO ─────────────────────────────────────────────────
    m_lastResetDate  = TimeCurrent();
@@ -524,20 +524,14 @@ void CBlockers::ActivateDrawdownProtection(double closedProfit, double projected
 //+------------------------------------------------------------------+
 void CBlockers::ResetDaily()
   {
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "RESET", "🔄 RESET DIÁRIO - Limpando contadores...");
-   else
-      Print("🔄 RESET DIÁRIO - Limpando contadores...");
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "RESET", "🔄 RESET DIÁRIO - Limpando contadores...");
 
    m_limits.ResetDaily();
    m_drawdown.ResetDaily();
    m_currentBlocker = BLOCKER_NONE;
    m_lastResetDate  = TimeCurrent();
 
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "RESET", "✅ Contadores zerados!");
-   else
-      Print("✅ Contadores zerados!");
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "RESET", "✅ Contadores zerados!");
   }
 
 //+------------------------------------------------------------------+
@@ -571,11 +565,8 @@ void CBlockers::SetTradeDirection(ENUM_TRADE_DIRECTION newDirection)
          case DIRECTION_BUY_ONLY:  newText = "APENAS COMPRAS"; break;
          case DIRECTION_SELL_ONLY: newText = "APENAS VENDAS";  break;
         }
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-            StringFormat("Direção alterada: %s → %s", oldText, newText));
-      else
-         Print("🔄 Direção alterada: ", oldText, " → ", newText);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("Direção alterada: %s → %s", oldText, newText));
      }
   }
 
@@ -740,8 +731,7 @@ void CBlockers::PrintStatus()
    string statusMsg = (m_currentBlocker != BLOCKER_NONE)
       ? "🚫 BLOQUEADO: " + GetBlockerReasonText(m_currentBlocker)
       : "✅ LIBERADO PARA OPERAR";
-   if(m_logger != NULL) m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", statusMsg);
-   else Print(statusMsg);
+   m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "STATUS", statusMsg);
 
    if(m_limits.IsStreakControlEnabled())
      {

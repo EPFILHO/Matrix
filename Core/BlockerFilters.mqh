@@ -255,10 +255,7 @@ bool CBlockerFilters::Init(
       if(startH < 0 || startH > 23 || endH < 0 || endH > 23 ||
          startM < 0 || startM > 59 || endM < 0 || endM > 59)
         {
-         if(m_logger != NULL)
-            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Horários inválidos!");
-         else
-            Print("❌ Horários inválidos!");
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Horários inválidos!");
          return false;
         }
 
@@ -269,19 +266,16 @@ bool CBlockerFilters::Init(
 
       string timeMsg = "⏰ Filtro de Horário: " +
                        StringFormat("%02d:%02d - %02d:%02d", startH, startM, endH, endM);
-      if(m_logger != NULL) m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", timeMsg);
-      else Print(timeMsg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", timeMsg);
 
       if(closeOnEnd)
         {
-         if(m_logger != NULL) m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "   └─ Fecha posição ao fim do horário");
-         else Print("   └─ Fecha posição ao fim do horário");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "   └─ Fecha posição ao fim do horário");
         }
      }
    else
      {
-      if(m_logger != NULL) m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Filtro de Horário: DESATIVADO");
-      else Print("⏰ Filtro de Horário: DESATIVADO");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Filtro de Horário: DESATIVADO");
      }
 
 // ── NEWS FILTERS ─────────────────────────────────────────────────
@@ -308,29 +302,27 @@ bool CBlockerFilters::Init(
 
    if(news1 || news2 || news3)
      {
-      if(m_logger != NULL) m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📰 Horários de Volatilidade:");
-      else Print("📰 Horários de Volatilidade:");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📰 Horários de Volatilidade:");
 
       if(news1)
         {
          string msg = "   • Bloqueio 1: " + StringFormat("%02d:%02d - %02d:%02d", n1StartH, n1StartM, n1EndH, n1EndM);
-         if(m_logger != NULL) m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", msg); else Print(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", msg);
         }
       if(news2)
         {
          string msg = "   • Bloqueio 2: " + StringFormat("%02d:%02d - %02d:%02d", n2StartH, n2StartM, n2EndH, n2EndM);
-         if(m_logger != NULL) m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", msg); else Print(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", msg);
         }
       if(news3)
         {
          string msg = "   • Bloqueio 3: " + StringFormat("%02d:%02d - %02d:%02d", n3StartH, n3StartM, n3EndH, n3EndM);
-         if(m_logger != NULL) m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", msg); else Print(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", msg);
         }
      }
    else
      {
-      if(m_logger != NULL) m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📰 Horários de Volatilidade: DESATIVADOS");
-      else Print("📰 Horários de Volatilidade: DESATIVADOS");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📰 Horários de Volatilidade: DESATIVADOS");
      }
 
 // ── SPREAD ───────────────────────────────────────────────────────
@@ -340,12 +332,11 @@ bool CBlockerFilters::Init(
    if(maxSpread > 0)
      {
       string msg = "📊 Spread Máximo: " + IntegerToString(maxSpread) + " pontos";
-      if(m_logger != NULL) m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", msg); else Print(msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", msg);
      }
    else
      {
-      if(m_logger != NULL) m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Spread Máximo: ILIMITADO");
-      else Print("📊 Spread Máximo: ILIMITADO");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Spread Máximo: ILIMITADO");
      }
 
    return true;
@@ -377,7 +368,7 @@ bool CBlockerFilters::CheckSessionBlocking(ENUM_BLOCKER_REASON &blocker, string 
 // Mercado 24/7 — ignorar proteção
    if(sessionStartMin == 0 && sessionEndMin == 0)
      {
-      if(!m_sCrypto24x7Logged && m_logger != NULL)
+      if(!m_sCrypto24x7Logged)
         {
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
             "🌐 Mercado 24/7 detectado - proteção de sessão DESATIVADA para este símbolo");
@@ -403,44 +394,41 @@ bool CBlockerFilters::CheckSessionBlocking(ENUM_BLOCKER_REASON &blocker, string 
    if(currentState != m_sLastSessionState)
      {
       m_sLastSessionState = currentState;
-      if(m_logger != NULL)
+      switch(currentState)
         {
-         switch(currentState)
-           {
-            case SESSION_BEFORE:
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "⏰ Sessão de negociação AINDA NÃO INICIOU");
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
-                  StringFormat("   Sessão: %02d:%02d → %02d:%02d",
-                               sessionStartTime.hour, sessionStartTime.min,
-                               sessionEndTime.hour,   sessionEndTime.min));
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "   Novas entradas bloqueadas até abertura da sessão");
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
-               break;
-            case SESSION_PROTECTION:
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "⏰ Proteção de Sessão ATIVADA - bloqueando novas entradas");
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
-                  StringFormat("   Sessão encerra: %02d:%02d", sessionEndTime.hour, sessionEndTime.min));
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
-                  StringFormat("   Margem segurança: %d minutos", m_minutesBeforeSessionEnd));
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
-                  StringFormat("   Faltam %d minutos para sessão encerrar", deltaEnd));
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
-               break;
-            case SESSION_AFTER:
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "⏰ Sessão de negociação ENCERRADA");
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
-                  StringFormat("   Sessão: %02d:%02d → %02d:%02d",
-                               sessionStartTime.hour, sessionStartTime.min,
-                               sessionEndTime.hour,   sessionEndTime.min));
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "   Novas entradas bloqueadas até próxima sessão");
-               m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
-               break;
-            case SESSION_ACTIVE:
-               break;
-           }
+         case SESSION_BEFORE:
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "⏰ Sessão de negociação AINDA NÃO INICIOU");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
+               StringFormat("   Sessão: %02d:%02d → %02d:%02d",
+                            sessionStartTime.hour, sessionStartTime.min,
+                            sessionEndTime.hour,   sessionEndTime.min));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "   Novas entradas bloqueadas até abertura da sessão");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
+            break;
+         case SESSION_PROTECTION:
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "⏰ Proteção de Sessão ATIVADA - bloqueando novas entradas");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
+               StringFormat("   Sessão encerra: %02d:%02d", sessionEndTime.hour, sessionEndTime.min));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
+               StringFormat("   Margem segurança: %d minutos", m_minutesBeforeSessionEnd));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
+               StringFormat("   Faltam %d minutos para sessão encerrar", deltaEnd));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
+            break;
+         case SESSION_AFTER:
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "⏰ Sessão de negociação ENCERRADA");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION",
+               StringFormat("   Sessão: %02d:%02d → %02d:%02d",
+                            sessionStartTime.hour, sessionStartTime.min,
+                            sessionEndTime.hour,   sessionEndTime.min));
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "   Novas entradas bloqueadas até próxima sessão");
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION", "═══════════════════════════════════════════════════════");
+            break;
+         case SESSION_ACTIVE:
+            break;
         }
      }
 
@@ -476,7 +464,7 @@ bool CBlockerFilters::CheckTimeWithLog(ENUM_BLOCKER_REASON &blocker, string &blo
      {
       blocker     = BLOCKER_TIME_FILTER;
       blockReason = "Fora do horário permitido";
-      if(!m_sTfWasBlocked && m_logger != NULL)
+      if(!m_sTfWasBlocked)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
             StringFormat("🕐 FILTRO HORÁRIO: operações bloqueadas | janela %02d:%02d-%02d:%02d",
                          m_startHour, m_startMinute, m_endHour, m_endMinute));
@@ -486,10 +474,9 @@ bool CBlockerFilters::CheckTimeWithLog(ENUM_BLOCKER_REASON &blocker, string &blo
    else if(m_sTfWasBlocked)
      {
       m_sTfWasBlocked = false;
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
-            StringFormat("✅ FILTRO HORÁRIO: janela %02d:%02d-%02d:%02d ativa, operações liberadas",
-                         m_startHour, m_startMinute, m_endHour, m_endMinute));
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
+         StringFormat("✅ FILTRO HORÁRIO: janela %02d:%02d-%02d:%02d ativa, operações liberadas",
+                      m_startHour, m_startMinute, m_endHour, m_endMinute));
      }
    return true;
   }
@@ -504,7 +491,7 @@ bool CBlockerFilters::CheckNewsWithLog(ENUM_BLOCKER_REASON &blocker, string &blo
      {
       blocker     = BLOCKER_NEWS_FILTER;
       blockReason = "Horário de volatilidade";
-      if(!m_sNfWasBlocked && m_logger != NULL)
+      if(!m_sNfWasBlocked)
         {
          MqlDateTime dt; TimeToStruct(TimeCurrent(), dt);
          int cur = dt.hour * 60 + dt.min;
@@ -527,9 +514,8 @@ bool CBlockerFilters::CheckNewsWithLog(ENUM_BLOCKER_REASON &blocker, string &blo
    else if(m_sNfWasBlocked)
      {
       m_sNfWasBlocked = false;
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
-            "✅ FILTRO NOTICIAS: janela encerrada, operações liberadas");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
+         "✅ FILTRO NOTICIAS: janela encerrada, operações liberadas");
      }
    return true;
   }
@@ -545,7 +531,7 @@ bool CBlockerFilters::CheckSpreadWithLog(ENUM_BLOCKER_REASON &blocker, string &b
       blocker = BLOCKER_SPREAD;
       long spread = SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
       blockReason = StringFormat("Spread alto (%d > %d)", spread, m_maxSpread);
-      if(!m_sSfWasBlocked && m_logger != NULL)
+      if(!m_sSfWasBlocked)
          m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
             StringFormat("⛔ SPREAD ALTO: %d pts (máx: %d pts) — operações bloqueadas", spread, m_maxSpread));
       m_sSfWasBlocked = true;
@@ -554,12 +540,9 @@ bool CBlockerFilters::CheckSpreadWithLog(ENUM_BLOCKER_REASON &blocker, string &b
    else if(m_sSfWasBlocked)
      {
       m_sSfWasBlocked = false;
-      if(m_logger != NULL)
-        {
-         long spread = SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
-            StringFormat("✅ SPREAD NORMALIZADO: %d pts — operações liberadas", spread));
-        }
+      long spread = SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
+         StringFormat("✅ SPREAD NORMALIZADO: %d pts — operações liberadas", spread));
      }
    return true;
   }
@@ -578,11 +561,10 @@ bool CBlockerFilters::ShouldCloseOnEndTime(ulong positionTicket)
    long posMagic = PositionGetInteger(POSITION_MAGIC);
    if(posMagic != m_magicNumber)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "TIME_CLOSE",
-            "Ignorando posição #" + IntegerToString((int)positionTicket) +
-            " (Magic " + IntegerToString((int)posMagic) + " ≠ " +
-            IntegerToString(m_magicNumber) + ")");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "TIME_CLOSE",
+         "Ignorando posição #" + IntegerToString((int)positionTicket) +
+         " (Magic " + IntegerToString((int)posMagic) + " ≠ " +
+         IntegerToString(m_magicNumber) + ")");
       return false;
      }
 
@@ -605,15 +587,12 @@ bool CBlockerFilters::ShouldCloseOnEndTime(ulong positionTicket)
       if(m_sCloseOnEndLastTicket != positionTicket)
         {
          m_sCloseOnEndLastTicket = positionTicket;
-         if(m_logger != NULL)
-           {
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE", "⏰ Término de horário de operação atingido");
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE",
-               "   Horário: " + StringFormat("%02d:%02d - %02d:%02d",
-                  m_startHour, m_startMinute, m_endHour, m_endMinute));
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE",
-               "   Posição #" + IntegerToString((int)positionTicket) + " deve ser fechada");
-           }
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE", "⏰ Término de horário de operação atingido");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE",
+            "   Horário: " + StringFormat("%02d:%02d - %02d:%02d",
+               m_startHour, m_startMinute, m_endHour, m_endMinute));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "TIME_CLOSE",
+            "   Posição #" + IntegerToString((int)positionTicket) + " deve ser fechada");
         }
       return true;
      }
@@ -635,11 +614,10 @@ bool CBlockerFilters::ShouldCloseBeforeSessionEnd(ulong positionTicket)
    long posMagic = PositionGetInteger(POSITION_MAGIC);
    if(posMagic != m_magicNumber)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "SESSION_CLOSE",
-            "Ignorando posição #" + IntegerToString((int)positionTicket) +
-            " (Magic " + IntegerToString((int)posMagic) + " ≠ " +
-            IntegerToString(m_magicNumber) + ")");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "SESSION_CLOSE",
+         "Ignorando posição #" + IntegerToString((int)positionTicket) +
+         " (Magic " + IntegerToString((int)posMagic) + " ≠ " +
+         IntegerToString(m_magicNumber) + ")");
       return false;
      }
 
@@ -666,19 +644,16 @@ bool CBlockerFilters::ShouldCloseBeforeSessionEnd(ulong positionTicket)
       if(m_sCloseBeforeSessionLastTicket != positionTicket)
         {
          m_sCloseBeforeSessionLastTicket = positionTicket;
-         if(m_logger != NULL)
-           {
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE", "════════════════════════════════════════════════════════════════");
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE", "⏰ Proteção de Sessão - fechando posição existente");
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE",
-               StringFormat("   Sessão encerra: %02d:%02d", sessionEndTime.hour, sessionEndTime.min));
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE",
-               StringFormat("   Margem: %d min | Faltam: %d min",
-                  m_minutesBeforeSessionEnd, minutesUntilSessionEnd));
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE",
-               "   Posição #" + IntegerToString((int)positionTicket) + " deve ser fechada");
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE", "════════════════════════════════════════════════════════════════");
-           }
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE", "════════════════════════════════════════════════════════════════");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE", "⏰ Proteção de Sessão - fechando posição existente");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE",
+            StringFormat("   Sessão encerra: %02d:%02d", sessionEndTime.hour, sessionEndTime.min));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE",
+            StringFormat("   Margem: %d min | Faltam: %d min",
+               m_minutesBeforeSessionEnd, minutesUntilSessionEnd));
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE",
+            "   Posição #" + IntegerToString((int)positionTicket) + " deve ser fechada");
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "SESSION_CLOSE", "════════════════════════════════════════════════════════════════");
         }
       return true;
      }
@@ -703,8 +678,7 @@ void CBlockerFilters::SetTimeFilter(bool enable, int startH, int startM, int end
    string info = enable
       ? StringFormat("ON %02d:%02d -> %02d:%02d", startH, startM, endH, endM)
       : "OFF";
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "TimeFilter: " + info);
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", "TimeFilter: " + info);
   }
 
 //+------------------------------------------------------------------+
@@ -714,11 +688,8 @@ void CBlockerFilters::SetCloseOnEndTime(bool close)
   {
    if(m_closeOnEndTime == close) return;
    m_closeOnEndTime = close;
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         "CloseOnEndTime: " + (close ? "ON" : "OFF"));
-   else
-      Print("🔄 CloseOnEndTime: ", close ? "ON" : "OFF");
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+      "CloseOnEndTime: " + (close ? "ON" : "OFF"));
   }
 
 //+------------------------------------------------------------------+
@@ -730,11 +701,8 @@ void CBlockerFilters::SetCloseBeforeSessionEnd(bool close, int minutes)
    m_closeBeforeSessionEnd   = close;
    m_minutesBeforeSessionEnd = minutes;
    if(!changed) return;
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         StringFormat("CloseBeforeSessionEnd: %s | %d min", close ? "ON" : "OFF", minutes));
-   else
-      Print("🔄 CloseBeforeSessionEnd: ", close ? "ON" : "OFF", " | ", minutes, " min");
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+      StringFormat("CloseBeforeSessionEnd: %s | %d min", close ? "ON" : "OFF", minutes));
   }
 
 //+------------------------------------------------------------------+
@@ -778,9 +746,8 @@ void CBlockerFilters::SetNewsFilter(int window, bool enable,
    string info = enable
       ? StringFormat("ON %02d:%02d -> %02d:%02d", startH, startM, endH, endM)
       : "OFF";
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-                   StringFormat("NewsFilter%d: %s", window, info));
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+                StringFormat("NewsFilter%d: %s", window, info));
   }
 
 //+------------------------------------------------------------------+
@@ -792,11 +759,8 @@ void CBlockerFilters::SetMaxSpread(int newMaxSpread)
    m_maxSpread   = newMaxSpread;
    if(oldValue != newMaxSpread)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-            StringFormat("Spread máximo alterado: %d → %d pontos", oldValue, newMaxSpread));
-      else
-         Print("🔄 Spread máximo alterado: ", oldValue, " → ", newMaxSpread, " pontos");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("Spread máximo alterado: %d → %d pontos", oldValue, newMaxSpread));
      }
   }
 
