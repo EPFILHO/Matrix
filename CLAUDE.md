@@ -178,7 +178,7 @@
 
 ---
 
-## Parte 031 — Concluída (2026-04-03)
+## Parte 031 — Em andamento (2026-04-03)
 
 ### O que foi feito
 
@@ -268,14 +268,8 @@ Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para m
 - RSIFilterPanel.mqh: 1.08 (fix CLR_FIELD_ERROR)
 - TrendFilterPanel.mqh: 1.07 (fix CLR_FIELD_ERROR)
 
-### TODO restante (Parte 032)
+### TODO restante
 - [x] Criar PR da Parte 031 → main (PR #16)
-
----
-
-## Parte 032 — Em andamento (2026-04-08)
-
-### O que foi feito
 
 #### FIX CRÍTICO — Race condition em ExecuteTrade
 - **Bug**: Broker retornava `result.deal = 0` e `result.price = 0.00` em mercados
@@ -308,19 +302,53 @@ Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para m
   - Afeta: `CalculatePartialTPLevels` e `RegisterPosition`
   - Impede que partial TP seja calculado com preço = 0 ou volume = 0
 
-### Versões atualizadas
-- EPBot_Matrix.mq5: 1.57 → 1.58
+#### Limpeza de dead code (12 arquivos)
+- Removidos todos `if(m_logger != NULL)` e `else Print()` fallbacks
+- m_logger nunca é NULL em operação — checks eram dead code
+- Arquivos: BlockerLimits, BlockerDrawdown, BlockerFilters, RiskManager,
+  Blockers, SignalManager, MACrossStrategy, RSIStrategy, BollingerBandsStrategy,
+  TrendFilter, RSIFilter, BollingerBandsFilter
 
-### TODO restante (Parte 032)
-- [ ] **TP1 negativo** (bug novo — ocorreu 1x em conta real): em mercado volátil
-  o TP1 parcial saiu com resultado negativo, bagunçando totalizações e
-  contagem de win/loss. Investigar cálculo do TP1 quando preço se move
-  contra a posição antes do nível ser atingido
+### Versões atualizadas (continuação)
+- EPBot_Matrix.mq5: 1.57 → 1.59
+- TradeManager.mqh: 1.24 → 1.26
+- Logger.mqh: 3.28 → 3.29
+- BlockerLimits.mqh: 1.00 → 1.01
+- BlockerDrawdown.mqh: 1.01 → 1.02
+- BlockerFilters.mqh: 1.01 → 1.02
+- RiskManager.mqh: 3.16 → 3.17
+- Blockers.mqh: 3.24 → 3.25
+- SignalManager.mqh: 2.15 → 2.16
+- MACrossStrategy.mqh: 2.27 → 2.28
+- RSIStrategy.mqh: 2.16 → 2.17
+- BollingerBandsStrategy.mqh: 1.01 → 1.02
+- TrendFilter.mqh: 2.24 → 2.25
+- RSIFilter.mqh: 1.12 → 1.13
+- BollingerBandsFilter.mqh: 1.01 → 1.02
+
+### TODO restante (Parte 031)
+- [x] **Race condition no ExecutePartialClose**: mesmo bug do ExecuteTrade —
+  Deal=0 fazia AddPartialTPProfit() nunca ser chamado → lucro parcial sumia
+  (corrigido: retry 5x + guard removido + fallback garantido)
+- [x] **Classificação win/loss errada**: UpdateStats usava finalDealProfit
+  em vez de totalPositionProfit → trade de +$2.25 contado como LOSS
+  (corrigido: 2º parâmetro totalPositionProfit em UpdateStats)
+- [ ] **LoadDailyStats classifica errado no reinício**: ao recarregar o CSV,
+  classifica pelo finalDealProfit (deal final) em vez do totalPositionProfit.
+  Trade com partial TP lucrativo + trailing final negativo = reconstruído como
+  LOSS. Afeta: win rate, streak, grossProfit/grossLoss pós-reinício.
+  Solução: ao ler linha final no CSV, somar partials do mesmo ticket para
+  obter totalPositionProfit e usar para classificação. (ver issue #20)
 - [ ] **Trailing Start na GUI**: input `inp_TrailingStart` (início do trailing)
   ainda não está no painel. Adicionar campo + hot reload
-- [ ] **RSI values não salvos no .cfg**: configurações do RSI (Period, OS, OB,
-  Middle, TF, AppliedPrice, Mode) não estão sendo persistidas no
-  arquivo de config. Verificar PanelPersistence e sub-painel RSI
+- [ ] **Magic Number e RSI não salvos no .cfg**: (issue #22)
+  - Magic Number alterado via hot reload não persiste no arquivo de config
+  - Configurações do RSI (Period, OS, OB, Middle, TF, AppliedPrice, Mode) não salvam
+  - Possível afeta outras estratégias/filtros. Verificar PanelPersistence.mqh
+- [ ] **ResyncExistingPositions fallback após 5 tentativas**: (issue #21)
+  - Quando ExecuteTrade falha 5x, posição fica órfã no broker mas não registrada no EA
+  - Resultado: sem Trailing, sem BE, sem Partial TP
+  - Solução: chamar ResyncExistingPositions como 6º fallback, recuperar TP levels
 - [ ] **Log de bloqueio por spread otimizado**: atualmente loga "SPREAD ALTO"
   e "SPREAD NORMALIZADO" toda vez que spread sobe/desce, poluindo o log.
   Logar apenas se houve tentativa de entrada (sinal detectado foi bloqueado).
@@ -328,7 +356,11 @@ Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para m
 - [ ] **Estratégia no comentário da ordem**: adicionar ao campo `comment` da
   ordem o nome da estratégia que gerou o sinal (MACross, RSI, BB). Facilita
   análise posterior no histórico de trades
-- [ ] Criar PR da Parte 032 → main
+- [ ] **RSI e BB Filter: campos habilitados com botão OFF**: quando o toggle
+  ON/OFF do RSIFilter ou BollingerBandsFilter está em OFF, os campos de
+  configuração (Period, OS, OB, etc.) continuam habilitados para edição.
+  Deveriam ficar desabilitados (cinza) enquanto o filtro estiver OFF
+- [ ] Criar PR da Parte 031 → main
 
 ### TODO futuro (sem parte definida)
 - [ ] **Desenhar indicadores no gráfico**: quando uma estratégia/filtro está
@@ -340,8 +372,8 @@ Em todos os métodos corrigidos, removemos os fallbacks `else Print(msg)` para m
   Dropdown ou lista de perfis no painel, botões Salvar Como / Carregar
 
 ### Notas
-- Race condition do ExecuteTrade (result.deal=0) ocorreu apenas em **conta real**,
-  não reproduziu em demo — comportamento típico de broker ao vivo sob volatilidade
+- Race condition (result.deal=0) ocorre apenas em **conta real**, não reproduz
+  em demo — comportamento típico de broker ao vivo sob volatilidade
 
 ---
 

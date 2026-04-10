@@ -2,10 +2,12 @@
 //|                                             MACrossStrategy.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                   Estratégia de Cruzamento de MAs - EPBot Matrix |
-//|                                   Versão 2.27 - Claude Parte 031 |
+//|                                   Versão 2.28 - Claude Parte 031 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.27"
+#property version   "2.28"
+// CHANGELOG v2.28 (Parte 031):
+// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -324,23 +326,17 @@ bool CMACrossStrategy::Setup(
 // ═══════════════════════════════════════════════════════════
    if(fastPeriod <= 0 || slowPeriod <= 0)
      {
-      string msg = "[MA Cross] Períodos inválidos: Fast=" + IntegerToString(fastPeriod) +
-                   " Slow=" + IntegerToString(slowPeriod);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "SETUP", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "SETUP",
+         "[MA Cross] Períodos inválidos: Fast=" + IntegerToString(fastPeriod) +
+         " Slow=" + IntegerToString(slowPeriod));
       return false;
      }
 
    if(fastPeriod >= slowPeriod)
      {
-      string msg = "[MA Cross] MA rápida deve ser menor que MA lenta: Fast=" +
-                   IntegerToString(fastPeriod) + " Slow=" + IntegerToString(slowPeriod);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "SETUP", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "SETUP",
+         "[MA Cross] MA rápida deve ser menor que MA lenta: Fast=" +
+         IntegerToString(fastPeriod) + " Slow=" + IntegerToString(slowPeriod));
       return false;
      }
 
@@ -404,11 +400,8 @@ bool CMACrossStrategy::Initialize()
    if(m_handleMAFast == INVALID_HANDLE)
      {
       int error = GetLastError();
-      string msg = "[MA Cross] Falha ao criar handle MA rápida. Código: " + IntegerToString(error);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT",
+         "[MA Cross] Falha ao criar handle MA rápida. Código: " + IntegerToString(error));
       return false;
      }
 
@@ -427,11 +420,8 @@ bool CMACrossStrategy::Initialize()
    if(m_handleMASlow == INVALID_HANDLE)
      {
       int error = GetLastError();
-      string msg = "[MA Cross] Falha ao criar handle MA lenta. Código: " + IntegerToString(error);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT",
+         "[MA Cross] Falha ao criar handle MA lenta. Código: " + IntegerToString(error));
       IndicatorRelease(m_handleMAFast);
       m_handleMAFast = INVALID_HANDLE;
       return false;
@@ -444,11 +434,8 @@ bool CMACrossStrategy::Initialize()
 
    if(!UpdateIndicators())
      {
-      string msg = "[MA Cross] Falha no teste inicial de indicadores";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT",
+         "[MA Cross] Falha no teste inicial de indicadores");
       Deinitialize();
       return false;
      }
@@ -471,10 +458,7 @@ bool CMACrossStrategy::Initialize()
    if(m_fastApplied != m_slowApplied)
       msg += " | Price: " + AppliedPriceToString(m_fastApplied) + "/" + AppliedPriceToString(m_slowApplied);
    
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
-   else
-      Print(msg);
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
 
    return true;
   }
@@ -506,11 +490,8 @@ bool CMACrossStrategy::UpdateIndicators()
   {
    if(m_handleMAFast == INVALID_HANDLE || m_handleMASlow == INVALID_HANDLE)
      {
-      string msg = "[MA Cross] Handles inválidos";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "UPDATE", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "UPDATE",
+         "[MA Cross] Handles inválidos");
       return false;
      }
 
@@ -518,11 +499,8 @@ bool CMACrossStrategy::UpdateIndicators()
    if(copiedFast < 3)
      {
       int error = GetLastError();
-      string msg = "[MA Cross] Erro ao copiar buffer MA rápida (copiados: " + IntegerToString(copiedFast) + "/3). Código: " + IntegerToString(error);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "UPDATE", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "UPDATE",
+         "[MA Cross] Erro ao copiar buffer MA rápida (copiados: " + IntegerToString(copiedFast) + "/3). Código: " + IntegerToString(error));
       return false;
      }
 
@@ -530,11 +508,8 @@ bool CMACrossStrategy::UpdateIndicators()
    if(copiedSlow < 3)
      {
       int error = GetLastError();
-      string msg = "[MA Cross] Erro ao copiar buffer MA lenta (copiados: " + IntegerToString(copiedSlow) + "/3). Código: " + IntegerToString(error);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "UPDATE", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "UPDATE",
+         "[MA Cross] Erro ao copiar buffer MA lenta (copiados: " + IntegerToString(copiedSlow) + "/3). Código: " + IntegerToString(error));
       return false;
      }
 
@@ -565,12 +540,9 @@ ENUM_SIGNAL_TYPE CMACrossStrategy::DetectCross()
       double distPts = MathAbs(m_maFast[1] - m_maSlow[1]) / _Point;
       if(distPts < m_minDistance)
         {
-         string msg = StringFormat("⏭ [MA Cross] Cruzamento ignorado: distância %.1f pts < mínimo %d pts",
-                                   distPts, m_minDistance);
-         if(m_logger != NULL)
-            m_logger.Log(LOG_SIGNAL, THROTTLE_NONE, "SIGNAL", msg);
-         else
-            Print(msg);
+         m_logger.Log(LOG_SIGNAL, THROTTLE_NONE, "SIGNAL",
+            StringFormat("⏭ [MA Cross] Cruzamento ignorado: distância %.1f pts < mínimo %d pts",
+                         distPts, m_minDistance));
          return SIGNAL_NONE;
         }
      }
@@ -588,21 +560,15 @@ ENUM_SIGNAL_TYPE CMACrossStrategy::GetSignal()
 
    if(!m_isInitialized)
      {
-      string msg = "[MA Cross] Tentativa de obter sinal sem estar inicializado";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "SIGNAL", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "SIGNAL",
+         "[MA Cross] Tentativa de obter sinal sem estar inicializado");
       return SIGNAL_NONE;
      }
 
    if(!UpdateIndicators())
      {
-      string msg = "[MA Cross] Falha ao atualizar indicadores";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "SIGNAL", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "SIGNAL",
+         "[MA Cross] Falha ao atualizar indicadores");
       return SIGNAL_NONE;
      }
 
@@ -623,21 +589,15 @@ ENUM_SIGNAL_TYPE CMACrossStrategy::GetSignal()
          // ENTRY_NEXT_CANDLE: Entra IMEDIATAMENTE
          if(m_entryMode == ENTRY_NEXT_CANDLE)
            {
-            string msg = "🎯 [MA Cross] Cruzamento detectado - gerando sinal imediato (NEXT_CANDLE)";
-            if(m_logger != NULL)
-               m_logger.Log(LOG_SIGNAL, THROTTLE_NONE, "SIGNAL", msg);
-            else
-               Print(msg);
+            m_logger.Log(LOG_SIGNAL, THROTTLE_NONE, "SIGNAL",
+               "🎯 [MA Cross] Cruzamento detectado - gerando sinal imediato (NEXT_CANDLE)");
             return crossSignal;
            }
          // ENTRY_2ND_CANDLE: Espera mais 1 candle
          else
            {
-            string msg = "⏳ [MA Cross] Cruzamento detectado - aguardando 2º candle (E2C)";
-            if(m_logger != NULL)
-               m_logger.Log(LOG_SIGNAL, THROTTLE_NONE, "SIGNAL", msg);
-            else
-               Print(msg);
+            m_logger.Log(LOG_SIGNAL, THROTTLE_NONE, "SIGNAL",
+               "⏳ [MA Cross] Cruzamento detectado - aguardando 2º candle (E2C)");
             return SIGNAL_NONE;
            }
         }
@@ -655,22 +615,16 @@ ENUM_SIGNAL_TYPE CMACrossStrategy::GetSignal()
         {
          m_lastCheckBarTime = currentBarTime;
          m_candlesAfterCross++;
-         
-         string msg = "⏳ [MA Cross] E2C: Candle " + IntegerToString(m_candlesAfterCross) + " após cruzamento";
-         if(m_logger != NULL)
-            m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "SIGNAL", msg);
-         else
-            Print(msg);
+
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "SIGNAL",
+            "⏳ [MA Cross] E2C: Candle " + IntegerToString(m_candlesAfterCross) + " após cruzamento");
         }
 
       // Após 1 candle completo → gerar sinal
       if(m_candlesAfterCross >= 1)
         {
-         string msg = "🎯 [MA Cross] 2º candle após cruzamento - gerando sinal (E2C)";
-         if(m_logger != NULL)
-            m_logger.Log(LOG_SIGNAL, THROTTLE_NONE, "SIGNAL", msg);
-         else
-            Print(msg);
+         m_logger.Log(LOG_SIGNAL, THROTTLE_NONE, "SIGNAL",
+            "🎯 [MA Cross] 2º candle após cruzamento - gerando sinal (E2C)");
          ENUM_SIGNAL_TYPE signal = m_lastCrossSignal;
          m_lastCrossSignal = SIGNAL_NONE;
          m_candlesAfterCross = 0;
@@ -695,9 +649,8 @@ bool CMACrossStrategy::SetEntryMode(ENUM_ENTRY_MODE mode)
       string oldStr = (oldMode == ENTRY_NEXT_CANDLE) ? "NEXT_CANDLE" : "E2C";
       string newStr = (mode == ENTRY_NEXT_CANDLE) ? "NEXT_CANDLE" : "E2C";
 
-      string msg = "🔄 [MA Cross] Entry mode alterado: " + oldStr + " → " + newStr;
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 [MA Cross] Entry mode alterado: " + oldStr + " → " + newStr);
 
       // Resetar controle de cruzamento
       m_lastCrossSignal = SIGNAL_NONE;
@@ -732,9 +685,8 @@ bool CMACrossStrategy::SetExitMode(ENUM_EXIT_MODE mode)
          case EXIT_TP_SL: newStr = "TP/SL"; break;
         }
 
-      string msg = "🔄 [MA Cross] Exit mode alterado: " + oldStr + " → " + newStr;
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 [MA Cross] Exit mode alterado: " + oldStr + " → " + newStr);
      }
 
    return true;
@@ -749,13 +701,8 @@ void CMACrossStrategy::SetMinDistance(int points)
    m_minDistance = (points < 0) ? 0 : points;
 
    if(oldValue != m_minDistance)
-     {
-      string msg = StringFormat("🔄 [MA Cross] MinDistance alterado: %d → %d pts", oldValue, m_minDistance);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
-      else
-         Print(msg);
-     }
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 [MA Cross] MinDistance alterado: %d → %d pts", oldValue, m_minDistance));
   }
 
 //+------------------------------------------------------------------+
@@ -766,7 +713,7 @@ void CMACrossStrategy::SetEnabled(bool v)
    bool oldValue = m_enabled;
    m_enabled = v;
 
-   if(oldValue != v && m_logger != NULL)
+   if(oldValue != v)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
          "🔄 [MA Cross] Estratégia: " + (v ? "ATIVADA" : "DESATIVADA"));
   }
@@ -778,12 +725,9 @@ bool CMACrossStrategy::SetMAPeriods(int fastPeriod, int slowPeriod)
   {
    if(fastPeriod <= 0 || slowPeriod <= 0 || fastPeriod >= slowPeriod)
      {
-      string msg = "[MA Cross] Períodos inválidos: Fast=" + IntegerToString(fastPeriod) +
-                   " Slow=" + IntegerToString(slowPeriod);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD",
+         "[MA Cross] Períodos inválidos: Fast=" + IntegerToString(fastPeriod) +
+         " Slow=" + IntegerToString(slowPeriod));
       return false;
      }
 
@@ -799,13 +743,10 @@ bool CMACrossStrategy::SetMAPeriods(int fastPeriod, int slowPeriod)
    bool success = Initialize();
 
    if(success)
-     {
-      string msg = "🔄 [MA Cross] Períodos alterados: Fast " + IntegerToString(oldFast) +
-                   "→" + IntegerToString(fastPeriod) + ", Slow " + IntegerToString(oldSlow) +
-                   "→" + IntegerToString(slowPeriod);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-     }
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
+         "🔄 [MA Cross] Períodos alterados: Fast " + IntegerToString(oldFast) +
+         "→" + IntegerToString(fastPeriod) + ", Slow " + IntegerToString(oldSlow) +
+         "→" + IntegerToString(slowPeriod));
 
    return success;
   }
@@ -824,11 +765,8 @@ bool CMACrossStrategy::SetMAMethods(ENUM_MA_METHOD fastMethod, ENUM_MA_METHOD sl
    bool success = Initialize();
 
    if(success)
-     {
-      string msg = "🔄 [MA Cross] Métodos alterados";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-     }
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
+         "🔄 [MA Cross] Métodos alterados");
 
    return success;
   }
@@ -847,11 +785,8 @@ bool CMACrossStrategy::SetMATimeframes(ENUM_TIMEFRAMES fastTF, ENUM_TIMEFRAMES s
    bool success = Initialize();
 
    if(success)
-     {
-      string msg = "🔄 [MA Cross] Timeframes alterados";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-     }
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
+         "🔄 [MA Cross] Timeframes alterados");
 
    return success;
   }
@@ -867,12 +802,9 @@ bool CMACrossStrategy::SetMAParams(int fastPeriod, int slowPeriod,
   {
    if(fastPeriod <= 0 || slowPeriod <= 0 || fastPeriod >= slowPeriod)
      {
-      string msg = "[MA Cross] SetMAParams: períodos inválidos Fast=" + IntegerToString(fastPeriod) +
-                   " Slow=" + IntegerToString(slowPeriod);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD",
+         "[MA Cross] SetMAParams: períodos inválidos Fast=" + IntegerToString(fastPeriod) +
+         " Slow=" + IntegerToString(slowPeriod));
       return false;
      }
 
@@ -899,17 +831,14 @@ bool CMACrossStrategy::SetMAParams(int fastPeriod, int slowPeriod,
    bool success = Initialize();
 
    if(success)
-     {
-      string msg = "🔄 [MA Cross] Params alterados:"
-                   " Fast " + IntegerToString(oldFastP) + "→" + IntegerToString(fastPeriod) +
-                   "/" + MAMethodToString(oldFastM) + "→" + MAMethodToString(fastMethod) +
-                   "/" + EnumToString(oldFastTF) + "→" + EnumToString(fastTF) +
-                   " | Slow " + IntegerToString(oldSlowP) + "→" + IntegerToString(slowPeriod) +
-                   "/" + MAMethodToString(oldSlowM) + "→" + MAMethodToString(slowMethod) +
-                   "/" + EnumToString(oldSlowTF) + "→" + EnumToString(slowTF);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-     }
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
+         "🔄 [MA Cross] Params alterados:"
+         " Fast " + IntegerToString(oldFastP) + "→" + IntegerToString(fastPeriod) +
+         "/" + MAMethodToString(oldFastM) + "→" + MAMethodToString(fastMethod) +
+         "/" + EnumToString(oldFastTF) + "→" + EnumToString(fastTF) +
+         " | Slow " + IntegerToString(oldSlowP) + "→" + IntegerToString(slowPeriod) +
+         "/" + MAMethodToString(oldSlowM) + "→" + MAMethodToString(slowMethod) +
+         "/" + EnumToString(oldSlowTF) + "→" + EnumToString(slowTF));
 
    return success;
   }
@@ -953,24 +882,18 @@ ENUM_SIGNAL_TYPE CMACrossStrategy::CheckExitSignal(ENUM_POSITION_TYPE currentPos
    // Se posição é COMPRA e detectou VENDA → Sinal de saída
    if(currentPosition == POSITION_TYPE_BUY && crossSignal == SIGNAL_SELL)
    {
-      string msg = "🔄 [MA Cross] EXIT detectado - Cruzamento de VENDA com posição de COMPRA";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_NONE, "EXIT", msg);
-      else
-         Print(msg);
-      
+      m_logger.Log(LOG_SIGNAL, THROTTLE_NONE, "EXIT",
+         "🔄 [MA Cross] EXIT detectado - Cruzamento de VENDA com posição de COMPRA");
+
       return SIGNAL_SELL;
    }
    
    // Se posição é VENDA e detectou COMPRA → Sinal de saída
    if(currentPosition == POSITION_TYPE_SELL && crossSignal == SIGNAL_BUY)
    {
-      string msg = "🔄 [MA Cross] EXIT detectado - Cruzamento de COMPRA com posição de VENDA";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_NONE, "EXIT", msg);
-      else
-         Print(msg);
-      
+      m_logger.Log(LOG_SIGNAL, THROTTLE_NONE, "EXIT",
+         "🔄 [MA Cross] EXIT detectado - Cruzamento de COMPRA com posição de VENDA");
+
       return SIGNAL_BUY;
    }
    

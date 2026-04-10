@@ -2,12 +2,22 @@
 //|                                                       Logger.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                                Sistema de Logging - EPBot Matrix |
-//|                     Versão 3.28 - Claude Parte 028 (Claude Code) |
+//|                     Versão 3.29 - Claude Parte 031 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "3.28"
+#property version   "3.29"
 
+// ═══════════════════════════════════════════════════════════════════
+// CHANGELOG v3.29 (Parte 031):
+// * UpdateStats() recebe 2º parâmetro opcional totalPositionProfit
+//   para classificação win/loss correta quando há partial TPs.
+//   - m_dailyProfit acumula apenas finalDealProfit (sem double-count)
+//   - Win/loss/draw classificado pelo resultado TOTAL da posição
+//   - grossProfit acumula finalDealProfit só quando classifyProfit > 0
+//   - Parâmetro omitido = comportamento antigo (sem partial TP)
+// * LIMITAÇÃO CONHECIDA: LoadDailyStats() ainda classifica pelo
+//   finalDealProfit do CSV no reinício do EA (ver issue #TODO).
 // ═══════════════════════════════════════════════════════════════════
 // CHANGELOG v3.28 (Parte 028):
 // * SetShowDebug(): log removido — alterações de debug não são logadas
@@ -203,7 +213,7 @@ public:
    void              SavePartialTrade(ulong positionId, ulong dealTicket, string tradeType,
                                       double entryPrice, double exitPrice, double volume,
                                       double profit, string motivo);  // 🆕 v3.20
-   void              UpdateStats(double profit);
+   void              UpdateStats(double profit, double totalPositionProfit = 0);
    
    // ═══════════════════════════════════════════════════════════
    // RELATÓRIOS
@@ -747,23 +757,32 @@ void CLogger::SavePartialTrade(ulong positionId, ulong dealTicket, string tradeT
 //+------------------------------------------------------------------+
 //| Atualizar estatísticas                                           |
 //+------------------------------------------------------------------+
-void CLogger::UpdateStats(double profit)
+void CLogger::UpdateStats(double profit, double totalPositionProfit)
   {
    m_dailyProfit += profit;
    m_dailyTrades++;
-   
-   // Classificar trade
-   bool isBreakeven = (MathAbs(profit) < 0.01);
-   
+
+   // ═══════════════════════════════════════════════════════════════
+   // CLASSIFICAR TRADE
+   // Usa totalPositionProfit (soma de parciais + final) para classificar.
+   // Se não fornecido (= 0), usa profit (cenário sem partial TP).
+   // Nota: grossProfit/grossLoss usa 'profit' (finalDealProfit) para
+   // evitar double-counting — partials já estão em grossProfit via
+   // AddPartialTPProfit().
+   // ═══════════════════════════════════════════════════════════════
+   double classifyProfit = (totalPositionProfit != 0) ? totalPositionProfit : profit;
+
+   bool isBreakeven = (MathAbs(classifyProfit) < 0.01);
+
    if(isBreakeven)
      {
       m_dailyDraws++;
       LogDebug("Trade classificado como EMPATE");
      }
-   else if(profit > 0)
+   else if(classifyProfit > 0)
      {
       m_dailyWins++;
-      m_grossProfit += profit;
+      if(profit > 0) m_grossProfit += profit;
       LogDebug("Trade classificado como GANHO");
      }
    else
@@ -772,7 +791,7 @@ void CLogger::UpdateStats(double profit)
       m_grossLoss += MathAbs(profit);
       LogDebug("Trade classificado como PERDA");
      }
-   
+
    // Log resumo
    LogInfo(StringFormat("💰 P/L Atualizado: $%.2f | Trades: %d (%dW/%dL/%dE)",
                        GetDailyProfit(), m_dailyTrades, m_dailyWins, m_dailyLosses, m_dailyDraws));

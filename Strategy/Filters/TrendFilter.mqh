@@ -2,10 +2,12 @@
 //|                                                  TrendFilter.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                      Filtro de Tendência por MA - EPBot Matrix   |
-//|                     Versão 2.25 - Claude Parte 032 (Claude Code) |
+//|                     Versão 2.25 - Claude Parte 031 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "2.25"
+// CHANGELOG v2.25 (Parte 031):
+// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 #property strict
 
 // CHANGELOG v2.25 (Parte 032):
@@ -285,32 +287,21 @@ bool CTrendFilter::Setup(
    // ═══════════════════════════════════════════════════════════
    if(maPeriod <= 0)
      {
-      string msg = "[Trend Filter] Período da MA inválido: " + IntegerToString(maPeriod);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "SETUP", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "SETUP",
+         "[Trend Filter] Período da MA inválido: " + IntegerToString(maPeriod));
       return false;
      }
 
    if(neutralDistancePoints < 0)
      {
-      string msg = "[Trend Filter] Distância da zona neutra inválida: " + DoubleToString(neutralDistancePoints, 1);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "SETUP", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "SETUP",
+         "[Trend Filter] Distância da zona neutra inválida: " + DoubleToString(neutralDistancePoints, 1));
       return false;
      }
 
    if(!useTrendFilter && neutralDistancePoints == 0)
-     {
-      string msg = "[Trend Filter] Ambos os modos desabilitados - filtro não terá efeito";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "WARNING", msg);
-      else
-         Print("⚠️ ", msg);
-     }
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "WARNING",
+         "[Trend Filter] Ambos os modos desabilitados - filtro não terá efeito");
 
    // ═══════════════════════════════════════════════════════════
    // ARMAZENAR INPUTS (imutáveis - valores originais)
@@ -342,9 +333,8 @@ bool CTrendFilter::Initialize()
   {
    if(m_isInitialized)
    {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "WARNING", 
-            "⚠️ [Trend Filter] Já está inicializado - ignorando");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "WARNING",
+         "⚠️ [Trend Filter] Já está inicializado - ignorando");
       return true;
    }
 
@@ -354,11 +344,10 @@ bool CTrendFilter::Initialize()
       m_isInitialized = true;
       m_isEnabled = true;
       m_maReady = true;
-      
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "WARNING", 
-            "⚠️ [Trend Filter] Ambos modos desabilitados - sem efeito");
-      
+
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "WARNING",
+         "⚠️ [Trend Filter] Ambos modos desabilitados - sem efeito");
+
       return true;
      }
 
@@ -378,11 +367,8 @@ bool CTrendFilter::Initialize()
    if(m_handleMA == INVALID_HANDLE)
      {
       int error = GetLastError();
-      string msg = "❌ [Trend Filter] Falha ao criar handle MA - Código: " + IntegerToString(error);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", msg);
-      else
-         Print(msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT",
+         "❌ [Trend Filter] Falha ao criar handle MA - Código: " + IntegerToString(error));
       return false;
      }
 
@@ -398,10 +384,7 @@ bool CTrendFilter::Initialize()
    if(m_neutralDistance > 0)
       msg += " | Zona: ±" + DoubleToString(m_neutralDistance, 0) + " pts";
 
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
-   else
-      Print(msg);
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
 
    return true;
   }
@@ -415,10 +398,9 @@ void CTrendFilter::Deinitialize()
      {
       IndicatorRelease(m_handleMA);
       m_handleMA = INVALID_HANDLE;
-      
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", 
-            "🔧 [Trend Filter] Handle MA liberado");
+
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+         "🔧 [Trend Filter] Handle MA liberado");
      }
 
    m_isInitialized = false;
@@ -436,9 +418,8 @@ bool CTrendFilter::UpdateIndicators()
    int calculated = BarsCalculated(m_handleMA);
    if(calculated <= 0)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "UPDATE", 
-            "⚠️ [Trend Filter] MA ainda calculando... (aguardar tick)");
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "UPDATE",
+         "⚠️ [Trend Filter] MA ainda calculando... (aguardar tick)");
       return false;
      }
 
@@ -447,31 +428,24 @@ bool CTrendFilter::UpdateIndicators()
      {
       m_maReady = false;
       int error = GetLastError();
-      string msg = "❌ [Trend Filter] Erro ao copiar buffer MA (copiados: " + IntegerToString(copied) + "/3) - Código: " + IntegerToString(error);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "UPDATE", msg);
-      else
-         Print(msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "UPDATE",
+         "❌ [Trend Filter] Erro ao copiar buffer MA (copiados: " + IntegerToString(copied) + "/3) - Código: " + IntegerToString(error));
       return false;
      }
-   
+
    // ═══════════════════════════════════════════════════════════════
    // Validar dados e marcar MA como pronta (se ainda não estiver)
    // ═══════════════════════════════════════════════════════════════
    if(!m_maReady && m_ma[0] > 0 && m_ma[1] > 0)
      {
       m_maReady = true;
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "UPDATE", 
-            "✅ [Trend Filter] MA pronta - Filtro LIBERADO para validações!");
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "UPDATE",
+         "✅ [Trend Filter] MA pronta - Filtro LIBERADO para validações!");
      }
 
    // 🔍 DEBUG: Buffer copiado (throttle por candle)
-   if(m_logger != NULL)
-     {
-      m_logger.Log(LOG_DEBUG, THROTTLE_CANDLE, "UPDATE",
-         StringFormat("📊 [Trend Filter] MA atualizada: [0]=%.2f [1]=%.2f", m_ma[0], m_ma[1]));
-     }
+   m_logger.Log(LOG_DEBUG, THROTTLE_CANDLE, "UPDATE",
+      StringFormat("📊 [Trend Filter] MA atualizada: [0]=%.2f [1]=%.2f", m_ma[0], m_ma[1]));
 
    return true;
   }
@@ -490,16 +464,14 @@ bool CTrendFilter::CheckTrendDirection(ENUM_SIGNAL_TYPE signal)
      {
       if(closePrice < m_ma[1])
         {
-         if(m_logger != NULL)
-            m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "INFO", 
-               "🔴 [Trend Filter] COMPRA bloqueada - preço abaixo da MA");
+         m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "INFO",
+            "🔴 [Trend Filter] COMPRA bloqueada - preço abaixo da MA");
          return false;
         }
       else
         {
-         if(m_logger != NULL)
-            m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "FILTER", 
-               "✅ [Trend Filter] COMPRA aprovada - preço acima MA");
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "FILTER",
+            "✅ [Trend Filter] COMPRA aprovada - preço acima MA");
         }
      }
 
@@ -507,16 +479,14 @@ bool CTrendFilter::CheckTrendDirection(ENUM_SIGNAL_TYPE signal)
      {
       if(closePrice > m_ma[1])
         {
-         if(m_logger != NULL)
-            m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "INFO", 
-               "🔴 [Trend Filter] VENDA bloqueada - preço acima da MA");
+         m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "INFO",
+            "🔴 [Trend Filter] VENDA bloqueada - preço acima da MA");
          return false;
         }
       else
         {
-         if(m_logger != NULL)
-            m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "FILTER", 
-               "✅ [Trend Filter] VENDA aprovada - preço abaixo MA");
+         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "FILTER",
+            "✅ [Trend Filter] VENDA aprovada - preço abaixo MA");
         }
      }
 
@@ -542,17 +512,15 @@ bool CTrendFilter::CheckNeutralZone()
    double distanceInPoints = distance / pointValue;
 
    // 🔍 DEBUG: Mostrar distância sempre em modo DEBUG
-   if(m_logger != NULL)
-      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "FILTER",
-         StringFormat("📏 [Trend Filter] Distância: %.1f pts (mín: %.0f)", 
-                     distanceInPoints, m_neutralDistance));
+   m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "FILTER",
+      StringFormat("📏 [Trend Filter] Distância: %.1f pts (mín: %.0f)",
+                   distanceInPoints, m_neutralDistance));
 
    if(distanceInPoints <= m_neutralDistance)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "INFO",
-            StringFormat("🔴 [Trend Filter] Bloqueado - zona neutra (%.1f ≤ %.0f pts)", 
-                        distanceInPoints, m_neutralDistance));
+      m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "INFO",
+         StringFormat("🔴 [Trend Filter] Bloqueado - zona neutra (%.1f ≤ %.0f pts)",
+                      distanceInPoints, m_neutralDistance));
       return false;
      }
 
@@ -569,11 +537,8 @@ bool CTrendFilter::ValidateSignal(ENUM_SIGNAL_TYPE signal)
 
    if(!m_isInitialized)
      {
-      string msg = "❌ [Trend Filter] Tentativa de validar sinal SEM estar inicializado!";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "VALIDATE", msg);
-      else
-         Print(msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "VALIDATE",
+         "❌ [Trend Filter] Tentativa de validar sinal SEM estar inicializado!");
       return false;
      }
 
@@ -590,9 +555,8 @@ bool CTrendFilter::ValidateSignal(ENUM_SIGNAL_TYPE signal)
    // ═══════════════════════════════════════════════════════════════
    if(!UpdateIndicators())
      {
-      string msg = "⚠️ [Trend Filter] Aguardando dados da MA - próximo tick";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "VALIDATE", msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "VALIDATE",
+         "⚠️ [Trend Filter] Aguardando dados da MA - próximo tick");
       return false;
      }
 
@@ -601,9 +565,8 @@ bool CTrendFilter::ValidateSignal(ENUM_SIGNAL_TYPE signal)
    // ═══════════════════════════════════════════════════════════════
    if(ArraySize(m_ma) < 2 || m_ma[0] == 0 || m_ma[1] == 0)
      {
-      string msg = "⚠️ [Trend Filter] Dados da MA ainda inválidos - aguardando próximo tick";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "VALIDATE", msg);
+      m_logger.Log(LOG_EVENT, THROTTLE_CANDLE, "VALIDATE",
+         "⚠️ [Trend Filter] Dados da MA ainda inválidos - aguardando próximo tick");
       return false;
      }
 
@@ -640,29 +603,10 @@ bool CTrendFilter::SetTrendFilterEnabled(bool enabled)
    if(oldValue == enabled) return true;
    m_useTrendFilter = enabled;
 
-   // H-12: Se habilitando e não existe handle, disparar cold reload
-   if(enabled && m_handleMA == INVALID_HANDLE && m_isInitialized)
-     {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-            "🔄 [Trend Filter] Filtro direcional ativado sem handle — reinicializando");
-      Deinitialize();
-      if(!Initialize())
-        {
-         m_useTrendFilter = false;  // reverter se falhar
-         if(m_logger != NULL)
-            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD",
-               "❌ [Trend Filter] Falha ao reinicializar — filtro direcional revertido para DESATIVADO");
-         return false;
-        }
-      return true;
-     }
-
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         "🔄 [Trend Filter] Filtro direcional: " +
-         (oldValue ? "ATIVADO" : "DESATIVADO") + " → " +
-         (enabled ? "ATIVADO" : "DESATIVADO"));
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+      "🔄 [Trend Filter] Filtro direcional: " +
+      (oldValue ? "ATIVADO" : "DESATIVADO") + " → " +
+      (enabled ? "ATIVADO" : "DESATIVADO"));
 
    return true;
   }
@@ -674,18 +618,15 @@ bool CTrendFilter::SetNeutralDistance(double distancePoints)
   {
    if(distancePoints < 0)
      {
-      string msg = "[Trend Filter] Distância inválida: " + DoubleToString(distancePoints, 1);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD",
+         "[Trend Filter] Distância inválida: " + DoubleToString(distancePoints, 1));
       return false;
      }
 
    double oldValue = m_neutralDistance;
    m_neutralDistance = distancePoints;
 
-   if(oldValue != distancePoints && m_logger != NULL)
+   if(oldValue != distancePoints)
      {
       string status = (distancePoints > 0) ? "ATIVADA" : "DESATIVADA";
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
@@ -707,11 +648,8 @@ bool CTrendFilter::SetMAPeriod(int period)
   {
    if(period <= 0)
      {
-      string msg = "[Trend Filter] Período inválido: " + IntegerToString(period);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD",
+         "[Trend Filter] Período inválido: " + IntegerToString(period));
       return false;
      }
 
@@ -722,7 +660,7 @@ bool CTrendFilter::SetMAPeriod(int period)
    Deinitialize();
    bool success = Initialize();
 
-   if(success && m_logger != NULL)
+   if(success)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
          StringFormat("🔄 [Trend Filter] Período MA alterado: %d → %d (reiniciado)",
                       oldValue, period));
@@ -742,7 +680,7 @@ bool CTrendFilter::SetMAMethod(ENUM_MA_METHOD method)
    Deinitialize();
    bool success = Initialize();
 
-   if(success && m_logger != NULL)
+   if(success)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
          "🔄 [Trend Filter] Método MA alterado (reiniciado)");
 
@@ -763,7 +701,7 @@ bool CTrendFilter::SetMATimeframe(ENUM_TIMEFRAMES tf)
 
    if(!success)
       m_maTimeframe = oldTF;   // reverter se falhou
-   else if(m_logger != NULL)
+   else
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
          "🔄 [Trend Filter] Timeframe MA alterado (reiniciado)");
 
@@ -784,7 +722,7 @@ bool CTrendFilter::SetMAApplied(ENUM_APPLIED_PRICE applied)
 
    if(!success)
       m_maApplied = oldApplied;   // reverter se falhou
-   else if(m_logger != NULL)
+   else
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
          "🔄 [Trend Filter] Applied price alterado: " +
          EnumToString(oldApplied) + " → " + EnumToString(applied) + " (reiniciado)");
@@ -800,11 +738,8 @@ bool CTrendFilter::SetMACold(int period, ENUM_MA_METHOD method,
   {
    if(period <= 0)
      {
-      string msg = "[Trend Filter] SetMACold: período inválido " + IntegerToString(period);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD",
+         "[Trend Filter] SetMACold: período inválido " + IntegerToString(period));
       return false;
      }
 
@@ -835,15 +770,13 @@ bool CTrendFilter::SetMACold(int period, ENUM_MA_METHOD method,
       Deinitialize();
       Initialize();
      }
-   else if(m_logger != NULL)
-     {
-      string msg = StringFormat("🔄 [Trend Filter] Cold reload: MA %d→%d / %s→%s / %s→%s / %s→%s",
-                                oldPeriod, period,
-                                EnumToString(oldMethod), EnumToString(method),
-                                EnumToString(oldTF), EnumToString(tf),
-                                EnumToString(oldApplied), EnumToString(applied));
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD", msg);
-     }
+   else
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
+         StringFormat("🔄 [Trend Filter] Cold reload: MA %d→%d / %s→%s / %s→%s / %s→%s",
+                      oldPeriod, period,
+                      EnumToString(oldMethod), EnumToString(method),
+                      EnumToString(oldTF), EnumToString(tf),
+                      EnumToString(oldApplied), EnumToString(applied)));
 
    return success;
   }

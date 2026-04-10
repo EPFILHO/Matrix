@@ -2,10 +2,12 @@
 //|                                                    RSIFilter.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                                        Filtro RSI - EPBot Matrix |
-//|                                   Versão 1.12 - Claude Parte 031 |
+//|                                   Versão 1.13 - Claude Parte 031 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.12"
+#property version   "1.13"
+// CHANGELOG v1.13 (Parte 031):
+// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -273,24 +275,18 @@ bool CRSIFilter::Initialize()
    
    if(m_rsi_handle == INVALID_HANDLE)
    {
-      string msg = "[" + m_filterName + "] Erro ao criar indicador RSI";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT",
+         "[" + m_filterName + "] Erro ao criar indicador RSI");
       return false;
    }
-   
+
    m_isInitialized = true;
-   
-   string msg = "✅ [" + m_filterName + "] Inicializado [" + m_symbol + " | " +
-                EnumToString(m_timeframe) + " | Período: " + IntegerToString(m_period) + " | Modo: " +
-                GetFilterModeText() + "]";
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
-   else
-      Print(msg);
-   
+
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+      "✅ [" + m_filterName + "] Inicializado [" + m_symbol + " | " +
+      EnumToString(m_timeframe) + " | Período: " + IntegerToString(m_period) + " | Modo: " +
+      GetFilterModeText() + "]");
+
    return true;
 }
 
@@ -336,11 +332,8 @@ bool CRSIFilter::LoadRSIValues(int count)
    
    if(CopyBuffer(m_rsi_handle, 0, 0, count, m_rsi_buffer) < count)
    {
-      string msg = "[" + m_filterName + "] Erro ao copiar buffer RSI (solicitados: " + IntegerToString(count) + ")";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER", msg);
-      else
-         Print("⚠️ ", msg);
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER",
+         "[" + m_filterName + "] Erro ao copiar buffer RSI (solicitados: " + IntegerToString(count) + ")");
       return false;
    }
    
@@ -386,27 +379,21 @@ bool CRSIFilter::CheckZoneFilter(ENUM_SIGNAL_TYPE signal)
    {
       if(rsi_current >= m_overbought)
       {
-         string msg = "🚫 [" + m_filterName + "] BUY bloqueado - RSI em sobrecompra: " + 
-                      DoubleToString(rsi_current, 2);
-         if(m_logger != NULL)
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
-         else
-            Print(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+            "🚫 [" + m_filterName + "] BUY bloqueado - RSI em sobrecompra: " +
+            DoubleToString(rsi_current, 2));
          return false;
       }
       return true;
    }
-   
+
    if(signal == SIGNAL_SELL)
    {
       if(rsi_current <= m_oversold)
       {
-         string msg = "🚫 [" + m_filterName + "] SELL bloqueado - RSI em sobrevenda: " +
-                      DoubleToString(rsi_current, 2);
-         if(m_logger != NULL)
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
-         else
-            Print(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+            "🚫 [" + m_filterName + "] SELL bloqueado - RSI em sobrevenda: " +
+            DoubleToString(rsi_current, 2));
          return false;
       }
       return true;
@@ -426,27 +413,21 @@ bool CRSIFilter::CheckDirectionFilter(ENUM_SIGNAL_TYPE signal)
    {
       if(rsi_current < 50.0)
       {
-         string msg = "🚫 [" + m_filterName + "] BUY bloqueado - RSI não indica força compradora: " +
-                      DoubleToString(rsi_current, 2);
-         if(m_logger != NULL)
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
-         else
-            Print(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+            "🚫 [" + m_filterName + "] BUY bloqueado - RSI não indica força compradora: " +
+            DoubleToString(rsi_current, 2));
          return false;
       }
       return true;
    }
-   
+
    if(signal == SIGNAL_SELL)
    {
       if(rsi_current > 50.0)
       {
-         string msg = "🚫 [" + m_filterName + "] SELL bloqueado - RSI não indica força vendedora: " +
-                      DoubleToString(rsi_current, 2);
-         if(m_logger != NULL)
-            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
-         else
-            Print(msg);
+         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+            "🚫 [" + m_filterName + "] SELL bloqueado - RSI não indica força vendedora: " +
+            DoubleToString(rsi_current, 2));
          return false;
       }
       return true;
@@ -467,13 +448,10 @@ bool CRSIFilter::CheckNeutralFilter(ENUM_SIGNAL_TYPE signal)
       return true;
    }
    
-   string msg = "🚫 [" + m_filterName + "] Trade bloqueado - RSI fora da zona neutra: " +
-                DoubleToString(rsi_current, 2) + " (zona: " + DoubleToString(m_lower_neutral, 0) + 
-                " a " + DoubleToString(m_upper_neutral, 0) + ")";
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
-   else
-      Print(msg);
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+      "🚫 [" + m_filterName + "] Trade bloqueado - RSI fora da zona neutra: " +
+      DoubleToString(rsi_current, 2) + " (zona: " + DoubleToString(m_lower_neutral, 0) +
+      " a " + DoubleToString(m_upper_neutral, 0) + ")");
    return false;
 }
 
@@ -489,7 +467,7 @@ void CRSIFilter::SetEnabled(bool enabled)
    bool oldValue = m_isEnabled;
    m_isEnabled = enabled;
 
-   if(oldValue != enabled && m_logger != NULL)
+   if(oldValue != enabled)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
          "🔄 [RSI Filter] Filtro: " + (enabled ? "ATIVADO" : "DESATIVADO"));
 }
@@ -517,9 +495,8 @@ void CRSIFilter::SetFilterMode(ENUM_RSI_FILTER_MODE mode)
       case RSI_FILTER_NEUTRAL: newStr = "Neutral"; break;
    }
 
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         "🔄 [RSI Filter] Modo alterado: " + oldStr + " → " + newStr);
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+      "🔄 [RSI Filter] Modo alterado: " + oldStr + " → " + newStr);
 }
 
 //+------------------------------------------------------------------+
@@ -529,14 +506,14 @@ void CRSIFilter::SetOversold(double value)
 {
    if(value <= 0 || value >= 100)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[RSI Filter] Sobrevenda invalido: " + DoubleToString(value, 1));
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD",
+         "[RSI Filter] Sobrevenda invalido: " + DoubleToString(value, 1));
       return;
      }
    double oldValue = m_oversold;
    m_oversold = value;
 
-   if(oldValue != value && m_logger != NULL)
+   if(oldValue != value)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
          StringFormat("🔄 [RSI Filter] Sobrevenda alterado: %.1f → %.1f", oldValue, value));
 }
@@ -548,14 +525,14 @@ void CRSIFilter::SetOverbought(double value)
 {
    if(value <= 0 || value >= 100)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[RSI Filter] Sobrecompra invalido: " + DoubleToString(value, 1));
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD",
+         "[RSI Filter] Sobrecompra invalido: " + DoubleToString(value, 1));
       return;
      }
    double oldValue = m_overbought;
    m_overbought = value;
 
-   if(oldValue != value && m_logger != NULL)
+   if(oldValue != value)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
          StringFormat("🔄 [RSI Filter] Sobrecompra alterado: %.1f → %.1f", oldValue, value));
 }
@@ -567,14 +544,14 @@ void CRSIFilter::SetLowerNeutral(double value)
 {
    if(value <= 0 || value >= 100)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[RSI Filter] Lower neutral invalido: " + DoubleToString(value, 1));
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD",
+         "[RSI Filter] Lower neutral invalido: " + DoubleToString(value, 1));
       return;
      }
    double oldValue = m_lower_neutral;
    m_lower_neutral = value;
 
-   if(oldValue != value && m_logger != NULL)
+   if(oldValue != value)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
          StringFormat("🔄 [RSI Filter] Lower neutral alterado: %.1f → %.1f", oldValue, value));
 }
@@ -586,14 +563,14 @@ void CRSIFilter::SetUpperNeutral(double value)
 {
    if(value <= 0 || value >= 100)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[RSI Filter] Upper neutral invalido: " + DoubleToString(value, 1));
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD",
+         "[RSI Filter] Upper neutral invalido: " + DoubleToString(value, 1));
       return;
      }
    double oldValue = m_upper_neutral;
    m_upper_neutral = value;
 
-   if(oldValue != value && m_logger != NULL)
+   if(oldValue != value)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
          StringFormat("🔄 [RSI Filter] Upper neutral alterado: %.1f → %.1f", oldValue, value));
 }
@@ -605,14 +582,14 @@ void CRSIFilter::SetShift(int value)
 {
    if(value < 0 || value > 100)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[RSI Filter] Shift invalido: " + IntegerToString(value));
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD",
+         "[RSI Filter] Shift invalido: " + IntegerToString(value));
       return;
      }
    int oldValue = m_shift;
    m_shift = value;
 
-   if(oldValue != value && m_logger != NULL)
+   if(oldValue != value)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
          StringFormat("🔄 [RSI Filter] Shift alterado: %d → %d", oldValue, value));
 }
@@ -628,14 +605,11 @@ bool CRSIFilter::SetPeriod(int value)
 {
    if(value <= 0)
    {
-      string msg = "[RSI Filter] Período inválido: " + IntegerToString(value);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD",
+         "[RSI Filter] Período inválido: " + IntegerToString(value));
       return false;
    }
-   
+
    int oldValue = m_period;
    if(oldValue == value) return true;
    m_period = value;
@@ -643,7 +617,7 @@ bool CRSIFilter::SetPeriod(int value)
    Deinitialize();
    bool success = Initialize();
 
-   if(success && m_logger != NULL)
+   if(success)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
          StringFormat("🔄 [RSI Filter] Período alterado: %d → %d (reiniciado)", oldValue, value));
 
@@ -662,7 +636,7 @@ bool CRSIFilter::SetTimeframe(ENUM_TIMEFRAMES tf)
    Deinitialize();
    bool success = Initialize();
 
-   if(success && m_logger != NULL)
+   if(success)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
          "🔄 [RSI Filter] Timeframe alterado: " + EnumToString(oldTF) + " → " + EnumToString(tf) + " (reiniciado)");
 
@@ -680,7 +654,7 @@ bool CRSIFilter::SetAppliedPrice(ENUM_APPLIED_PRICE price)
    Deinitialize();
    bool success = Initialize();
 
-   if(success && m_logger != NULL)
+   if(success)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
          "🔄 [RSI Filter] Applied price alterado (reiniciado)");
 

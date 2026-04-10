@@ -2,14 +2,12 @@
 //|                                                  RiskManager.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                       Sistema de Cálculo de Risco - EPBot Matrix |
-//|                  Versão 3.17 - Claude Parte 032 (Claude Code)    |
+//|                  Versão 3.17 - Claude Parte 031 (Claude Code)    |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "3.17"
-
-// CHANGELOG v3.17 (Parte 032):
-// * M-30: CalculatePartialTPLevels — guard lotStep <= 0 (previne divisão por zero)
-// * L-01: PrintConfiguration — versão corrigida v3.14 → v3.17
+//// CHANGELOG v3.17 (Parte 031):
+// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
@@ -787,10 +785,7 @@ bool CRiskManager::Init(
       
       if(m_handleATR == INVALID_HANDLE)
         {
-         if(m_logger != NULL)
-            m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar handle ATR");
-         else
-            Print("❌ Falha ao criar handle ATR");
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar handle ATR");
          return false;
         }
      }
@@ -812,13 +807,8 @@ void CRiskManager::SetLotSize(double newLotSize)
 
    // Só logar se houve mudança real
    if(oldValue != newLotSize)
-     {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-            StringFormat("🔄 Lote alterado: %.2f → %.2f", oldValue, newLotSize));
-      else
-         Print("🔄 Lote alterado: ", oldValue, " → ", newLotSize);
-     }
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 Lote alterado: %.2f → %.2f", oldValue, newLotSize));
   }
 
 //+------------------------------------------------------------------+
@@ -831,13 +821,8 @@ void CRiskManager::SetFixedSL(int newSL)
 
    // Só logar se houve mudança real
    if(oldValue != newSL)
-     {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-            StringFormat("🔄 SL fixo alterado: %d → %d pts", oldValue, newSL));
-      else
-         Print("🔄 SL fixo alterado: ", oldValue, " → ", newSL, " pts");
-     }
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 SL fixo alterado: %d → %d pts", oldValue, newSL));
   }
 
 //+------------------------------------------------------------------+
@@ -850,13 +835,8 @@ void CRiskManager::SetFixedTP(int newTP)
 
    // Só logar se houve mudança real
    if(oldValue != newTP)
-     {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-            StringFormat("🔄 TP fixo alterado: %d → %d pts", oldValue, newTP));
-      else
-         Print("🔄 TP fixo alterado: ", oldValue, " → ", newTP, " pts");
-     }
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 TP fixo alterado: %d → %d pts", oldValue, newTP));
   }
 
 //+------------------------------------------------------------------+
@@ -869,13 +849,8 @@ void CRiskManager::SetSLATRMultiplier(double newMult)
 
    // Só logar se houve mudança real
    if(oldValue != newMult)
-     {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-            StringFormat("🔄 SL ATR mult alterado: %.1f → %.1f×", oldValue, newMult));
-      else
-         Print("🔄 SL ATR mult alterado: ", oldValue, " → ", newMult, "×");
-     }
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 SL ATR mult alterado: %.1f → %.1f×", oldValue, newMult));
   }
 
 //+------------------------------------------------------------------+
@@ -888,13 +863,8 @@ void CRiskManager::SetTPATRMultiplier(double newMult)
 
    // Só logar se houve mudança real
    if(oldValue != newMult)
-     {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-            StringFormat("🔄 TP ATR mult alterado: %.1f → %.1f×", oldValue, newMult));
-      else
-         Print("🔄 TP ATR mult alterado: ", oldValue, " → ", newMult, "×");
-     }
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         StringFormat("🔄 TP ATR mult alterado: %.1f → %.1f×", oldValue, newMult));
   }
 
 //+------------------------------------------------------------------+

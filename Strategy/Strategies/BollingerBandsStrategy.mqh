@@ -2,10 +2,12 @@
 //|                                        BollingerBandsStrategy.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                            Estratégia Bollinger Bands - EPBot Matrix |
-//|                                   Versão 1.01 - Claude Parte 031 |
+//|                                   Versão 1.02 - Claude Parte 031 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.01"
+#property version   "1.02"
+// CHANGELOG v1.02 (Parte 031):
+// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -304,10 +306,7 @@ bool CBollingerBandsStrategy::Initialize()
    if(m_bands_handle == INVALID_HANDLE)
      {
       string msg = "[" + m_strategyName + "] Erro ao criar indicador Bollinger Bands";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", msg);
       return false;
      }
 
@@ -318,10 +317,7 @@ bool CBollingerBandsStrategy::Initialize()
                 EnumToString(m_timeframe) + " | Período: " + IntegerToString(m_period) +
                 " | Desvio: " + DoubleToString(m_deviation, 1) +
                 " | Modo: " + GetSignalModeText() + "]";
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
-   else
-      Print(msg);
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
 
    return true;
   }
@@ -370,24 +366,21 @@ bool CBollingerBandsStrategy::LoadBandsValues(int count)
    if(CopyBuffer(m_bands_handle, 0, 0, count, m_middle) < count)
      {
       string msg = "[" + m_strategyName + "] Erro ao copiar buffer Middle BB";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER", msg);
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER", msg);
       return false;
      }
 
    if(CopyBuffer(m_bands_handle, 1, 0, count, m_upper) < count)
      {
       string msg = "[" + m_strategyName + "] Erro ao copiar buffer Upper BB";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER", msg);
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER", msg);
       return false;
      }
 
    if(CopyBuffer(m_bands_handle, 2, 0, count, m_lower) < count)
      {
       string msg = "[" + m_strategyName + "] Erro ao copiar buffer Lower BB";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER", msg);
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER", msg);
       return false;
      }
 
@@ -429,8 +422,7 @@ ENUM_SIGNAL_TYPE CBollingerBandsStrategy::GetSignal()
          if(m_candlesAfterSignal >= 2)
            {
             string msg = "🎯 [BB] 2º candle após sinal - gerando sinal (E2C)";
-            if(m_logger != NULL)
-               m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
+            m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
             ENUM_SIGNAL_TYPE sig = m_lastBBSignal;
             ResetSignalControl();
             return sig;
@@ -438,8 +430,7 @@ ENUM_SIGNAL_TYPE CBollingerBandsStrategy::GetSignal()
          else
            {
             string msg = "⏳ [BB] E2C: Candle " + IntegerToString(m_candlesAfterSignal) + " após sinal";
-            if(m_logger != NULL)
-               m_logger.Log(LOG_DEBUG, THROTTLE_CANDLE, "SIGNAL", msg);
+            m_logger.Log(LOG_DEBUG, THROTTLE_CANDLE, "SIGNAL", msg);
            }
         }
       return SIGNAL_NONE;
@@ -477,8 +468,7 @@ ENUM_SIGNAL_TYPE CBollingerBandsStrategy::GetSignal()
       m_candlesAfterSignal = 0;
       m_lastCheckBarTime = iTime(m_symbol, m_timeframe, 0);
       string msg = "⏳ [BB] Sinal detectado - aguardando 2º candle (E2C)";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
+      m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
       return SIGNAL_NONE;
      }
 
@@ -500,10 +490,7 @@ ENUM_SIGNAL_TYPE CBollingerBandsStrategy::CheckFFFDSignal()
      {
       string msg = StringFormat("🎯 [BB] COMPRA (FFFD) - Close[2]: %.5f < Lower[2]: %.5f | Close[1]: %.5f >= Lower[1]: %.5f",
                                 close2, m_lower[2], close1, m_lower[1]);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
-      else
-         Print(msg);
+      m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
       return SIGNAL_BUY;
      }
 
@@ -512,10 +499,7 @@ ENUM_SIGNAL_TYPE CBollingerBandsStrategy::CheckFFFDSignal()
      {
       string msg = StringFormat("🎯 [BB] VENDA (FFFD) - Close[2]: %.5f > Upper[2]: %.5f | Close[1]: %.5f <= Upper[1]: %.5f",
                                 close2, m_upper[2], close1, m_upper[1]);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
-      else
-         Print(msg);
+      m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
       return SIGNAL_SELL;
      }
 
@@ -537,10 +521,7 @@ ENUM_SIGNAL_TYPE CBollingerBandsStrategy::CheckReboundSignal()
      {
       string msg = StringFormat("🎯 [BB] COMPRA (Rebound) - Low: %.5f <= Lower: %.5f | Close: %.5f dentro",
                                 low1, m_lower[1], close1);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
-      else
-         Print(msg);
+      m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
       return SIGNAL_BUY;
      }
 
@@ -549,10 +530,7 @@ ENUM_SIGNAL_TYPE CBollingerBandsStrategy::CheckReboundSignal()
      {
       string msg = StringFormat("🎯 [BB] VENDA (Rebound) - High: %.5f >= Upper: %.5f | Close: %.5f dentro",
                                 high1, m_upper[1], close1);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
-      else
-         Print(msg);
+      m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
       return SIGNAL_SELL;
      }
 
@@ -572,10 +550,7 @@ ENUM_SIGNAL_TYPE CBollingerBandsStrategy::CheckBreakoutSignal()
      {
       string msg = StringFormat("🎯 [BB] COMPRA (Breakout) - Close: %.5f > Upper: %.5f",
                                 close1, m_upper[1]);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
-      else
-         Print(msg);
+      m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
       return SIGNAL_BUY;
      }
 
@@ -584,10 +559,7 @@ ENUM_SIGNAL_TYPE CBollingerBandsStrategy::CheckBreakoutSignal()
      {
       string msg = StringFormat("🎯 [BB] VENDA (Breakout) - Close: %.5f < Lower: %.5f",
                                 close1, m_lower[1]);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
-      else
-         Print(msg);
+      m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
       return SIGNAL_SELL;
      }
 
@@ -614,8 +586,7 @@ ENUM_SIGNAL_TYPE CBollingerBandsStrategy::CheckExitSignal(ENUM_POSITION_TYPE cur
          if(close2 >= m_middle[2] && close1 < m_middle[1])
            {
             string msg = "🔄 [BB] EXIT (FCO) - Close cruzou middle para baixo";
-            if(m_logger != NULL)
-               m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
+            m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
             return SIGNAL_SELL;
            }
         }
@@ -625,8 +596,7 @@ ENUM_SIGNAL_TYPE CBollingerBandsStrategy::CheckExitSignal(ENUM_POSITION_TYPE cur
          if(close2 <= m_middle[2] && close1 > m_middle[1])
            {
             string msg = "🔄 [BB] EXIT (FCO) - Close cruzou middle para cima";
-            if(m_logger != NULL)
-               m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
+            m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
             return SIGNAL_BUY;
            }
         }
@@ -655,8 +625,7 @@ ENUM_SIGNAL_TYPE CBollingerBandsStrategy::CheckExitSignal(ENUM_POSITION_TYPE cur
             (currentPosition == POSITION_TYPE_SELL && signal == SIGNAL_BUY))
            {
             string msg = "🔄 [BB] EXIT (VM) - Sinal oposto detectado";
-            if(m_logger != NULL)
-               m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
+            m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
             return signal;
            }
         }
@@ -679,9 +648,8 @@ void CBollingerBandsStrategy::SetSignalMode(ENUM_BB_SIGNAL_MODE mode)
    m_signal_mode = mode;
    ResetSignalControl();
 
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         "🔄 [BB] Modo alterado: " + GetSignalModeText());
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+      "🔄 [BB] Modo alterado: " + GetSignalModeText());
   }
 
 //+------------------------------------------------------------------+
@@ -697,9 +665,8 @@ bool CBollingerBandsStrategy::SetEntryMode(ENUM_ENTRY_MODE mode)
    string oldStr = (oldMode == ENTRY_NEXT_CANDLE) ? "NEXT_CANDLE" : "E2C";
    string newStr = (mode == ENTRY_NEXT_CANDLE) ? "NEXT_CANDLE" : "E2C";
 
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         "🔄 [BB] Entry mode alterado: " + oldStr + " → " + newStr);
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+      "🔄 [BB] Entry mode alterado: " + oldStr + " → " + newStr);
 
    return true;
   }
@@ -719,9 +686,8 @@ bool CBollingerBandsStrategy::SetExitMode(ENUM_EXIT_MODE mode)
    switch(mode)
      { case EXIT_FCO: newStr = "FCO"; break; case EXIT_VM: newStr = "VM"; break; default: newStr = "TP/SL"; break; }
 
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-         "🔄 [BB] Exit mode alterado: " + oldStr + " → " + newStr);
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+      "🔄 [BB] Exit mode alterado: " + oldStr + " → " + newStr);
 
    return true;
   }
@@ -734,7 +700,7 @@ void CBollingerBandsStrategy::SetEnabled(bool value)
    bool oldValue = m_enabled;
    m_enabled = value;
 
-   if(oldValue != value && m_logger != NULL)
+   if(oldValue != value)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
          "🔄 [BB] Estratégia: " + (value ? "ATIVADA" : "DESATIVADA"));
   }
@@ -750,11 +716,8 @@ bool CBollingerBandsStrategy::SetPeriod(int value)
   {
    if(value <= 0)
      {
-      string msg = "[BB] Período inválido: " + IntegerToString(value);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD",
+         "[BB] Período inválido: " + IntegerToString(value));
       return false;
      }
 
@@ -765,7 +728,7 @@ bool CBollingerBandsStrategy::SetPeriod(int value)
    Deinitialize();
    bool success = Initialize();
 
-   if(success && m_logger != NULL)
+   if(success)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
          StringFormat("🔄 [BB] Período alterado: %d → %d (reiniciado)", oldValue, value));
 
@@ -779,9 +742,8 @@ bool CBollingerBandsStrategy::SetDeviation(double value)
   {
    if(value <= 0)
      {
-      string msg = "[BB] Desvio inválido: " + DoubleToString(value, 2);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD",
+         "[BB] Desvio inválido: " + DoubleToString(value, 2));
       return false;
      }
 
@@ -792,7 +754,7 @@ bool CBollingerBandsStrategy::SetDeviation(double value)
    Deinitialize();
    bool success = Initialize();
 
-   if(success && m_logger != NULL)
+   if(success)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
          StringFormat("🔄 [BB] Desvio alterado: %.1f → %.1f (reiniciado)", oldValue, value));
 
@@ -811,7 +773,7 @@ bool CBollingerBandsStrategy::SetTimeframe(ENUM_TIMEFRAMES tf)
    Deinitialize();
    bool success = Initialize();
 
-   if(success && m_logger != NULL)
+   if(success)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
          "🔄 [BB] Timeframe alterado: " + EnumToString(oldTF) + " → " + EnumToString(tf) + " (reiniciado)");
 
@@ -829,7 +791,7 @@ bool CBollingerBandsStrategy::SetAppliedPrice(ENUM_APPLIED_PRICE price)
    Deinitialize();
    bool success = Initialize();
 
-   if(success && m_logger != NULL)
+   if(success)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
          "🔄 [BB] Applied price alterado (reiniciado)");
 

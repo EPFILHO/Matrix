@@ -2,10 +2,12 @@
 //|                                                 RSIStrategy.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                                    Estratégia RSI - EPBot Matrix |
-//|                                   Versão 2.16 - Claude Parte 031 |
+//|                                   Versão 2.17 - Claude Parte 031 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.16"
+#property version   "2.17"
+// CHANGELOG v2.17 (Parte 031):
+// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -298,23 +300,17 @@ bool CRSIStrategy::Initialize()
 
    if(m_rsi_handle == INVALID_HANDLE)
      {
-      string msg = "[" + m_strategyName + "] Erro ao criar indicador RSI";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT",
+         "[" + m_strategyName + "] Erro ao criar indicador RSI");
       return false;
      }
 
    m_isInitialized = true;
 
-   string msg = "✅ [" + m_strategyName + "] Inicializado [" + m_symbol + " | " +
-                EnumToString(m_timeframe) + " | Período: " + IntegerToString(m_period) + " | Modo: " +
-                GetSignalModeText() + "]";
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO", msg);
-   else
-      Print(msg);
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "INFO",
+      "✅ [" + m_strategyName + "] Inicializado [" + m_symbol + " | " +
+      EnumToString(m_timeframe) + " | Período: " + IntegerToString(m_period) + " | Modo: " +
+      GetSignalModeText() + "]");
 
    return true;
   }
@@ -361,11 +357,8 @@ bool CRSIStrategy::LoadRSIValues(int count)
 
    if(CopyBuffer(m_rsi_handle, 0, 0, count, m_rsi_buffer) < count)
      {
-      string msg = "[" + m_strategyName + "] Erro ao copiar buffer RSI (solicitados: " + IntegerToString(count) + ")";
-      if(m_logger != NULL)
-         m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER", msg);
-      else
-         Print("⚠️ ", msg);
+      m_logger.Log(LOG_DEBUG, THROTTLE_NONE, "BUFFER",
+         "[" + m_strategyName + "] Erro ao copiar buffer RSI (solicitados: " + IntegerToString(count) + ")");
       return false;
      }
 
@@ -410,24 +403,18 @@ ENUM_SIGNAL_TYPE CRSIStrategy::CheckCrossoverSignal()
 // BUY: RSI cruza DE BAIXO para CIMA o nível de sobrevenda
    if(rsi_previous <= m_oversold && rsi_current > m_oversold)
      {
-      string msg = StringFormat("🎯 [RSI] COMPRA - Cruzou sobrevenda: %.1f → %.1f (limite: %.1f)", 
-                                rsi_previous, rsi_current, m_oversold);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
-      else
-         Print(msg);
+      m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL",
+         StringFormat("🎯 [RSI] COMPRA - Cruzou sobrevenda: %.1f → %.1f (limite: %.1f)",
+                      rsi_previous, rsi_current, m_oversold));
       return SIGNAL_BUY;
      }
 
 // SELL: RSI cruza DE CIMA para BAIXO o nível de sobrecompra
    if(rsi_previous >= m_overbought && rsi_current < m_overbought)
      {
-      string msg = StringFormat("🎯 [RSI] VENDA - Cruzou sobrecompra: %.1f → %.1f (limite: %.1f)", 
-                                rsi_previous, rsi_current, m_overbought);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
-      else
-         Print(msg);
+      m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL",
+         StringFormat("🎯 [RSI] VENDA - Cruzou sobrecompra: %.1f → %.1f (limite: %.1f)",
+                      rsi_previous, rsi_current, m_overbought));
       return SIGNAL_SELL;
      }
 
@@ -444,24 +431,18 @@ ENUM_SIGNAL_TYPE CRSIStrategy::CheckZoneSignal()
 // BUY: RSI está em zona de sobrevenda
    if(rsi_current <= m_oversold)
      {
-      string msg = StringFormat("🎯 [RSI] COMPRA - Em sobrevenda: %.1f (≤ %.1f)", 
-                                rsi_current, m_oversold);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
-      else
-         Print(msg);
+      m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL",
+         StringFormat("🎯 [RSI] COMPRA - Em sobrevenda: %.1f (≤ %.1f)",
+                      rsi_current, m_oversold));
       return SIGNAL_BUY;
      }
 
 // SELL: RSI está em zona de sobrecompra
    if(rsi_current >= m_overbought)
      {
-      string msg = StringFormat("🎯 [RSI] VENDA - Em sobrecompra: %.1f (≥ %.1f)", 
-                                rsi_current, m_overbought);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
-      else
-         Print(msg);
+      m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL",
+         StringFormat("🎯 [RSI] VENDA - Em sobrecompra: %.1f (≥ %.1f)",
+                      rsi_current, m_overbought));
       return SIGNAL_SELL;
      }
 
@@ -479,24 +460,18 @@ ENUM_SIGNAL_TYPE CRSIStrategy::CheckMiddleSignal()
 // BUY: RSI cruza linha média de baixo para cima
    if(rsi_previous < m_middle && rsi_current >= m_middle)
      {
-      string msg = StringFormat("🎯 [RSI] COMPRA - Cruzou linha média: %.1f → %.1f (linha: %.1f)", 
-                                rsi_previous, rsi_current, m_middle);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
-      else
-         Print(msg);
+      m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL",
+         StringFormat("🎯 [RSI] COMPRA - Cruzou linha média: %.1f → %.1f (linha: %.1f)",
+                      rsi_previous, rsi_current, m_middle));
       return SIGNAL_BUY;
      }
 
 // SELL: RSI cruza linha média de cima para baixo
    if(rsi_previous > m_middle && rsi_current <= m_middle)
      {
-      string msg = StringFormat("🎯 [RSI] VENDA - Cruzou linha média: %.1f → %.1f (linha: %.1f)", 
-                                rsi_previous, rsi_current, m_middle);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL", msg);
-      else
-         Print(msg);
+      m_logger.Log(LOG_SIGNAL, THROTTLE_CANDLE, "SIGNAL",
+         StringFormat("🎯 [RSI] VENDA - Cruzou linha média: %.1f → %.1f (linha: %.1f)",
+                      rsi_previous, rsi_current, m_middle));
       return SIGNAL_SELL;
      }
 
@@ -530,9 +505,8 @@ void CRSIStrategy::SetSignalMode(ENUM_RSI_SIGNAL_MODE mode)
       case RSI_MODE_MIDDLE:    newStr = "Middle";     break;
      }
 
-   string msg = "🔄 [RSI] Modo alterado: " + oldStr + " → " + newStr;
-   if(m_logger != NULL)
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD", msg);
+   m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+      "🔄 [RSI] Modo alterado: " + oldStr + " → " + newStr);
   }
 
 //+------------------------------------------------------------------+
@@ -542,14 +516,14 @@ void CRSIStrategy::SetOversold(double value)
   {
    if(value <= 0 || value >= 100)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[RSI] Sobrevenda invalido: " + DoubleToString(value, 1));
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD",
+         "[RSI] Sobrevenda invalido: " + DoubleToString(value, 1));
       return;
      }
    double oldValue = m_oversold;
    m_oversold = value;
 
-   if(oldValue != value && m_logger != NULL)
+   if(oldValue != value)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
          StringFormat("🔄 [RSI] Sobrevenda alterado: %.1f → %.1f", oldValue, value));
   }
@@ -561,14 +535,14 @@ void CRSIStrategy::SetOverbought(double value)
   {
    if(value <= 0 || value >= 100)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[RSI] Sobrecompra invalido: " + DoubleToString(value, 1));
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD",
+         "[RSI] Sobrecompra invalido: " + DoubleToString(value, 1));
       return;
      }
    double oldValue = m_overbought;
    m_overbought = value;
 
-   if(oldValue != value && m_logger != NULL)
+   if(oldValue != value)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
          StringFormat("🔄 [RSI] Sobrecompra alterado: %.1f → %.1f", oldValue, value));
   }
@@ -580,14 +554,14 @@ void CRSIStrategy::SetMiddle(double value)
   {
    if(value <= 0 || value >= 100)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD", "[RSI] Linha media invalida: " + DoubleToString(value, 1));
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD",
+         "[RSI] Linha media invalida: " + DoubleToString(value, 1));
       return;
      }
    double oldValue = m_middle;
    m_middle = value;
 
-   if(oldValue != value && m_logger != NULL)
+   if(oldValue != value)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
          StringFormat("🔄 [RSI] Linha média alterada: %.1f → %.1f", oldValue, value));
   }
@@ -602,7 +576,7 @@ void CRSIStrategy::SetEnabled(bool value)
    bool oldValue = m_enabled;
    m_enabled = value;
 
-   if(oldValue != value && m_logger != NULL)
+   if(oldValue != value)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
          "🔄 [RSI] Estratégia: " + (value ? "ATIVADA" : "DESATIVADA"));
   }
@@ -618,11 +592,8 @@ bool CRSIStrategy::SetPeriod(int value)
   {
    if(value <= 0)
      {
-      string msg = "[RSI] Período inválido: " + IntegerToString(value);
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD", msg);
-      else
-         Print("❌ ", msg);
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "COLD_RELOAD",
+         "[RSI] Período inválido: " + IntegerToString(value));
       return false;
      }
 
@@ -633,7 +604,7 @@ bool CRSIStrategy::SetPeriod(int value)
    Deinitialize();
    bool success = Initialize();
 
-   if(success && m_logger != NULL)
+   if(success)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
          StringFormat("🔄 [RSI] Período alterado: %d → %d (reiniciado)", oldValue, value));
 
@@ -652,7 +623,7 @@ bool CRSIStrategy::SetTimeframe(ENUM_TIMEFRAMES tf)
    Deinitialize();
    bool success = Initialize();
 
-   if(success && m_logger != NULL)
+   if(success)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
          "🔄 [RSI] Timeframe alterado: " + EnumToString(oldTF) + " → " + EnumToString(tf) + " (reiniciado)");
 
@@ -671,7 +642,7 @@ bool CRSIStrategy::SetAppliedPrice(ENUM_APPLIED_PRICE price)
    Deinitialize();
    bool success = Initialize();
 
-   if(success && m_logger != NULL)
+   if(success)
       m_logger.Log(LOG_EVENT, THROTTLE_NONE, "COLD_RELOAD",
          "🔄 [RSI] Applied price alterado (reiniciado)");
 
