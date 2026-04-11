@@ -15,6 +15,8 @@
 //   do TP2 — se posição tiver menos volume que tp2_lot (ex: TP1 foi
 //   parcialmente preenchido pelo broker), ajusta com MathRound ou cancela
 //   TP2 se residual < lote mínimo.
+// * Limpeza: guard `if(m_logger != NULL)` removido em ExecutePartialClose
+//   (corrige changelog incorreto do v1.26 que afirmava limpeza completa).
 //
 // CHANGELOG v1.26 (Parte 031):
 // * Fix CRÍTICO: ExecutePartialClose retornava Deal=0 em mercados
@@ -860,9 +862,8 @@ bool CTradeManager::ExecutePartialClose(ulong ticket, double lot, string comment
    double minLotFinal = SymbolInfoDouble(m_symbol, SYMBOL_VOLUME_MIN);
    if(lot < minLotFinal - lotStep * 0.1)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "CLOSE",
-            "❌ Lote parcial " + DoubleToString(lot, 2) + " < mínimo " + DoubleToString(minLotFinal, 2) + " após arredondamento");
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "CLOSE",
+         "❌ Lote parcial " + DoubleToString(lot, 2) + " < mínimo " + DoubleToString(minLotFinal, 2) + " após arredondamento");
       return false;
      }
 
