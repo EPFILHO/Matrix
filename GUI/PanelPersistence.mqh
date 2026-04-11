@@ -2,7 +2,7 @@
 //|                                           PanelPersistence.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel: Persistência de Config — Save/Load/Banner                |
-//|                     Versão 1.04 - Claude Parte 033 (Claude Code) |
+//|                     Versão 1.05 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para persistência de configurações.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -10,6 +10,14 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.05 (Parte 033) — fix Magic Number + timestamp:
+// * SaveCurrentConfig/HasSavedConfig/OnClickIgnoreBanner: usam
+//   m_initMagicNumber (fixo no init) em vez de m_magicNumber (mutável).
+//   Corrige bug onde mudar magic via GUI fazia save ir para um arquivo
+//   diferente do que o EA busca ao reiniciar (que usa inp_MagicNumber).
+// * CollectConfigData: usa TimeLocal() para lastModified em vez de
+//   TimeCurrent() — exibe hora local do trader no banner, não hora do broker
+//
 // v1.04 (Parte 033) — fix Issue #22:
 // * ApplyLoadedConfig step 8: chama Reload() antes de Update() em cada
 //   painel de estratégia e filtro, para que os campos GUI sejam
@@ -51,7 +59,7 @@ void CEPBotPanel::SaveCurrentConfig(void)
    ZeroMemory(data);
    CollectConfigData(data);
    m_savedConfig = data;   // Snapshot para CANCELAR
-   CConfigPersistence::Save(m_symbol, m_magicNumber, data);
+   CConfigPersistence::Save(m_symbol, m_initMagicNumber, data);
   }
 
 //+------------------------------------------------------------------+
@@ -59,7 +67,7 @@ void CEPBotPanel::SaveCurrentConfig(void)
 //+------------------------------------------------------------------+
 bool CEPBotPanel::HasSavedConfig(void)
   {
-   return CConfigPersistence::Exists(m_symbol, m_magicNumber);
+   return CConfigPersistence::Exists(m_symbol, m_initMagicNumber);
   }
 
 //+------------------------------------------------------------------+
@@ -69,7 +77,7 @@ bool CEPBotPanel::HasSavedConfig(void)
 void CEPBotPanel::CollectConfigData(SConfigData &data)
   {
    data.version = 1;
-   data.lastModified = TimeCurrent();
+   data.lastModified = TimeLocal();  // Hora local do trader (não hora do broker)
 
 // ═══════════════════════════════════════════════
 // CONFIG TAB: lê do GUI state (m_cur_*) e CEdit fields
@@ -627,7 +635,7 @@ void CEPBotPanel::OnClickIgnoreBanner(void)
   {
    HideLoadBanner();
 // Deletar o arquivo para não perguntar novamente
-   CConfigPersistence::Delete(m_symbol, m_magicNumber);
+   CConfigPersistence::Delete(m_symbol, m_initMagicNumber);
 
    m_cfg_status.Text("Config salva ignorada");
    m_cfg_status.Color(CLR_NEUTRAL);

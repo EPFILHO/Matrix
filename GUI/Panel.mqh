@@ -535,6 +535,7 @@ private:
    int                m_estratPage;    // 0=GERAL, 1..N=painel
    int                m_filtrosPage;   // 0=GERAL, 1..N=painel
    int                m_magicNumber;
+   int                m_initMagicNumber; // Magic original do input — chave do arquivo .cfg (nunca muda)
    string             m_symbol;
 
    // ── Proteção de mouse ──
@@ -1001,7 +1002,7 @@ CEPBotPanel::CEPBotPanel(void)
      m_trendFilter(NULL), m_rsiFilter(NULL), m_bbFilter(NULL),
      m_stratPanelCount(0), m_filtPanelCount(0),
      m_stratBtnCount(0), m_filtBtnCount(0),
-     m_magicNumber(0), m_symbol(""),
+     m_magicNumber(0), m_initMagicNumber(0), m_symbol(""),
      m_origDragTrade(true), m_origMouseScroll(true), m_mouseOverPanel(false),
      m_cfg_hasTP(false), m_cfg_hasTrailing(false), m_cfg_hasBE(false),
      m_cfg_hasDailyLimits(false), m_cfg_hasStreak(false), m_cfg_hasDrawdown(false),
@@ -1057,8 +1058,9 @@ bool CEPBotPanel::Init(CLogger *logger, CBlockers *blockers, CRiskManager *risk,
    m_trendFilter  = trend;
    m_rsiFilter    = rsiFilt;
    m_bbFilter     = bbFilt;
-   m_magicNumber  = magic;
-   m_symbol       = symbol;
+   m_magicNumber      = magic;
+   m_initMagicNumber  = magic;  // Fixado uma vez; usado como chave do arquivo .cfg
+   m_symbol           = symbol;
    RegisterPanels();
    return true;
   }
@@ -1223,7 +1225,7 @@ bool CEPBotPanel::CreatePanel(long chart, string name, int subwin,
      {
       SConfigData loadData;
       ZeroMemory(loadData);
-      if(CConfigPersistence::Load(m_symbol, m_magicNumber, loadData))
+      if(CConfigPersistence::Load(m_symbol, m_initMagicNumber, loadData))
         {
          m_savedConfig = loadData;
         }
