@@ -2,16 +2,24 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.59 - Claude Parte 031 (Claude Code) |
+//|                     Versão 1.60 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.59"
+#property version   "1.60"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //--- Constante centralizada de versão
-#define EA_VERSION "1.59"
+#define EA_VERSION "1.60"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.60 (Parte 033):                                     |
+//| - Issue #27: log de spread otimizado. CanTrade() chamado com     |
+//|   skipSpread=true antes do sinal — spread não gera log sozinho.  |
+//|   Após sinal detectado (≠ SIGNAL_NONE), IsSpreadOk() checa e    |
+//|   loga "⛔ Entrada bloqueada por spread alto" apenas quando sinal |
+//|   real foi bloqueado. Elimina dezenas de logs por hora em ativos |
+//|   voláteis (Gold, exóticos) sem perda de informação relevante.  |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.59 (Parte 031):                                     |
 //| - Fix: UpdateStats() passa totalPositionProfit para classificação |
@@ -1579,7 +1587,8 @@ void OnTick()
    double dailyProfit = g_logger.GetDailyProfit();
    string blockReason = "";
 
-   if(!g_blockers.CanTrade(dailyTrades, dailyProfit, blockReason))
+// skipSpread=true: spread verificado APÓS sinal (log só quando há entrada real bloqueada)
+   if(!g_blockers.CanTrade(dailyTrades, dailyProfit, blockReason, true))
      {
       g_logger.Log(LOG_DEBUG, THROTTLE_TIME, "BLOCKER", "🚫 Trading bloqueado: " + blockReason, 60);
       return;
@@ -1614,7 +1623,23 @@ void OnTick()
      }
 
 // ═══════════════════════════════════════════════════════════════
-// ETAPA 4.5: BLOQUEIO FCO - Não entrar no candle do exit
+// ETAPA 4.5: VERIFICAR SPREAD (só agora que há sinal confirmado)
+// Log ocorre apenas quando entrada real é bloqueada por spread
+// ═══════════════════════════════════════════════════════════════
+   {
+    string spreadReason = "";
+    if(!g_blockers.IsSpreadOk(spreadReason))
+      {
+       long spr = SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
+       g_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
+          StringFormat("⛔ [Bloqueio] Entrada bloqueada por spread alto: %d pts (limite: %d pts)",
+                       spr, g_blockers.GetMaxSpread()));
+       return;
+      }
+   }
+
+// ═══════════════════════════════════════════════════════════════
+// ETAPA 4.7: BLOQUEIO FCO - Não entrar no candle do exit
 // ═══════════════════════════════════════════════════════════════
 
    if(inp_ExitMode == EXIT_FCO)
