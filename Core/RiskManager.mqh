@@ -2,10 +2,18 @@
 //|                                                  RiskManager.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                       Sistema de Cálculo de Risco - EPBot Matrix |
-//|                  Versão 3.17 - Claude Parte 031 (Claude Code)    |
+//|                  Versão 3.18 - Claude Parte 033 (Claude Code)    |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.17"
+#property version   "3.18"
+// CHANGELOG v3.18 (Parte 033):
+// * H-02 fix: CalculatePartialTPLevels — validação cruzada tp1_lot +
+//   tp2_lot <= totalLotSize. Se soma exceder, tp2_lot é reduzido para
+//   o lote residual (totalLotSize - tp1_lot), preservando TP1 intacto.
+// * Lot rounding: substituído MathFloor + epsilon por MathRound em
+//   todos os cálculos de lote de TP parcial. Evita perda de step em
+//   divisões IEEE 754 (ex: 0.03/0.01 → 2.999... → floor=2 → 0.02).
+//
 //// CHANGELOG v3.17 (Parte 031):
 // * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 
@@ -1778,8 +1786,9 @@ bool CRiskManager::CalculatePartialTPLevels(
       SPartialTPLevel tp1;
       tp1.enabled = true;
       tp1.percentLot = m_tp1_percent;
-      tp1.lotSize = MathFloor((totalLotSize * m_tp1_percent / 100.0) / lotStep + 0.1) * lotStep;
-      
+      // MathRound evita perda de step por imprecisão IEEE 754 (ex: 0.03/0.01 → 2.999...)
+      tp1.lotSize = MathRound((totalLotSize * m_tp1_percent / 100.0) / lotStep) * lotStep;
+
       if(tp1.lotSize < minLot)
          tp1.lotSize = minLot;
       if(tp1.lotSize > totalLotSize)
@@ -1819,12 +1828,31 @@ bool CRiskManager::CalculatePartialTPLevels(
       SPartialTPLevel tp2;
       tp2.enabled = true;
       tp2.percentLot = m_tp2_percent;
-      tp2.lotSize = MathFloor((totalLotSize * m_tp2_percent / 100.0) / lotStep + 0.1) * lotStep;
-      
+      // MathRound evita perda de step por imprecisão IEEE 754
+      tp2.lotSize = MathRound((totalLotSize * m_tp2_percent / 100.0) / lotStep) * lotStep;
+
       if(tp2.lotSize < minLot)
          tp2.lotSize = minLot;
       if(tp2.lotSize > totalLotSize)
          tp2.lotSize = totalLotSize;
+
+      // H-02 fix: Validação cruzada — tp1_lot + tp2_lot não pode exceder lote total
+      // Se TP1 foi calculado (está no array), ajusta tp2 para o lote residual
+      if(ArraySize(levels) > 0)
+        {
+         double tp1LotUsed  = levels[0].lotSize;
+         double remainingLot = MathRound((totalLotSize - tp1LotUsed) / lotStep) * lotStep;
+
+         if(tp2.lotSize > remainingLot + lotStep * 0.01)
+           {
+            double adjustedLot = MathMax(MathRound(remainingLot / lotStep) * lotStep, minLot);
+            m_logger.Log(LOG_EVENT, THROTTLE_NONE, "RISK",
+               StringFormat("⚠️ [PartialTP] TP2 lot ajustado: %.2f → %.2f"
+                            " (tp1=%.2f, total=%.2f, residual=%.2f)",
+                            tp2.lotSize, adjustedLot, tp1LotUsed, totalLotSize, remainingLot));
+            tp2.lotSize = adjustedLot;
+           }
+        }
       
       double distance = 0;
       if(m_tp2_type == TP_FIXED)
