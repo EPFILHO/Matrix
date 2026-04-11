@@ -2,10 +2,16 @@
 //|                                           BollingerBandsPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Bollinger Bands Strategy                 |
-//|                     Versão 1.08 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.09 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.09 (Parte 033) — Issue #29:
+// * Novo método _RefreshFieldState() que respeita m_pendingEnabled
+//   como toggle mestre (todos campos cinza/desabilitados quando OFF)
+// * Update(): chama _RefreshFieldState() quando !m_locked
+// * OnClick() do toggle: chama _RefreshFieldState() após alternar
 //
 // CHANGELOG v1.07 (Parte 029):
 // * m_locked: Update() não sobrescreve visual quando EA rodando
@@ -353,7 +359,10 @@ public:
    virtual void Update(void)
      {
       if(!m_locked)
+        {
          ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+         _RefreshFieldState();
+        }
       m_lModeDesc.Text(_ModeDesc(m_cur_mode));
       m_lEntryDesc.Text(_EntryDesc(m_cur_entry));
       m_lExitDesc.Text(_ExitDesc(m_cur_exit));
@@ -390,6 +399,7 @@ public:
          m_btnToggle.Pressed(false);
          m_pendingEnabled = !m_pendingEnabled;
          ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+         _RefreshFieldState();
          return true;
         }
       if(name == m_bTF.Name())
@@ -477,6 +487,23 @@ private:
       SetRadioSel(m_bExit,  3, (ex == EXIT_FCO) ? 0 : (ex == EXIT_VM) ? 1 : 2);
      }
 
-   void _placeholder_private_end(void) {} // anchor
+   void _RefreshFieldState(void)
+     {
+      bool on = m_pendingEnabled;
+      SetEditEnabled(m_lPriority, m_iPriority, on);
+      SetEditEnabled(m_lPeriod,   m_iPeriod,   on);
+      SetEditEnabled(m_lDev,      m_iDev,      on);
+      SetButtonEnabled(m_lTF, m_bTF, on);
+      SetRadioGroupEnabled(m_lMode,  m_bMode,  3, on);
+      SetRadioGroupEnabled(m_lEntry, m_bEntry, 2, on);
+      SetRadioGroupEnabled(m_lExit,  m_bExit,  3, on);
+      if(on)
+        {
+         m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+         SetRadioSel(m_bMode,  3, (int)m_cur_mode);
+         SetRadioSel(m_bEntry, 2, (m_cur_entry == ENTRY_NEXT_CANDLE) ? 0 : 1);
+         SetRadioSel(m_bExit,  3, (m_cur_exit == EXIT_FCO) ? 0 : (m_cur_exit == EXIT_VM) ? 1 : 2);
+        }
+     }
   };
 //+------------------------------------------------------------------+

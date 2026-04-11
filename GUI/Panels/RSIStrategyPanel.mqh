@@ -2,10 +2,16 @@
 //|                                            RSIStrategyPanel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — RSI Strategy                             |
-//|                     Versão 1.08 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.09 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.09 (Parte 033) — Issue #29:
+// * _RefreshFieldState(): respeita m_pendingEnabled como toggle mestre
+//   (todos os campos cinza/desabilitados quando toggle OFF, preservando
+//   lógica interna de useMiddle só quando toggle ON)
+// * OnClick() do toggle: chama _RefreshFieldState() após alternar estado
 //
 // CHANGELOG v1.07 (Parte 029):
 // * m_locked: Update() não sobrescreve visual quando EA rodando
@@ -229,6 +235,7 @@ public:
          m_btnToggle.Pressed(false);
          m_pendingEnabled = !m_pendingEnabled;
          ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+         _RefreshFieldState();
          return true;
         }
       if(name == m_bTF.Name())
@@ -276,10 +283,20 @@ private:
 
    void _RefreshFieldState(void)
      {
+      bool on        = m_pendingEnabled;
       bool useMiddle = (m_cur_rsiMode == RSI_MODE_MIDDLE);
-      SetEditEnabled(m_lOversold, m_iOversold, !useMiddle);
-      SetEditEnabled(m_lOverbought, m_iOverbought, !useMiddle);
-      SetEditEnabled(m_lMiddle, m_iMiddle, useMiddle);
+      SetEditEnabled(m_lPriority, m_iPriority, on);
+      SetEditEnabled(m_lPeriod,   m_iPeriod,   on);
+      SetButtonEnabled(m_lTF, m_bTF, on);
+      SetRadioGroupEnabled(m_lMode2, m_bMode, 3, on);
+      SetEditEnabled(m_lOversold,   m_iOversold,   on && !useMiddle);
+      SetEditEnabled(m_lOverbought, m_iOverbought, on && !useMiddle);
+      SetEditEnabled(m_lMiddle,     m_iMiddle,     on && useMiddle);
+      if(on)
+        {
+         m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+         SetRadioSel(m_bMode, 3, RSIModeToIndex(m_cur_rsiMode));
+        }
      }
 
 public:
