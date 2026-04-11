@@ -2,7 +2,7 @@
 //|                                           PanelPersistence.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel: Persistência de Config — Save/Load/Banner                |
-//|                     Versão 1.03 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.04 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para persistência de configurações.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -10,6 +10,13 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.04 (Parte 033) — fix Issue #22:
+// * ApplyLoadedConfig step 8: chama Reload() antes de Update() em cada
+//   painel de estratégia e filtro, para que os campos GUI sejam
+//   repopulados com os valores do módulo recém-atualizado.
+//   Sem isso, ao clicar APLICAR após um load, os inp_* stagnados
+//   nos campos GUI sobrescreviam os valores corretos nos módulos.
+//
 // v1.03 (Parte 030):
 // + ApplyLoadedConfig: adaptado para nova assinatura ApplyConfig(string &outErr)
 //
@@ -552,13 +559,14 @@ void CEPBotPanel::ApplyLoadedConfig(const SConfigData &data)
 
 // ═══════════════════════════════════════════════
 // 8. Atualizar sub-painéis de estratégia e filtro
-//    (Update relê valores dos módulos atualizados)
+//    Reload() repopula campos GUI a partir dos módulos já atualizados
+//    Update() atualiza labels de display (Status, valores atuais, etc.)
 // ═══════════════════════════════════════════════
    for(int i = 0; i < m_stratPanelCount; i++)
-      if(m_stratPanels[i] != NULL) m_stratPanels[i].Update();
+      if(m_stratPanels[i] != NULL) { m_stratPanels[i].Reload(); m_stratPanels[i].Update(); }
 
    for(int i = 0; i < m_filtPanelCount; i++)
-      if(m_filtPanels[i] != NULL) m_filtPanels[i].Update();
+      if(m_filtPanels[i] != NULL) { m_filtPanels[i].Reload(); m_filtPanels[i].Update(); }
 
    ChartRedraw();
   }

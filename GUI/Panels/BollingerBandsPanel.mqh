@@ -2,10 +2,14 @@
 //|                                           BollingerBandsPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Bollinger Bands Strategy                 |
-//|                     Versão 1.09 - Claude Parte 033 (Claude Code) |
+//|                     Versão 1.10 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.10 (Parte 033) — persistência:
+// * Reload(): repopula campos GUI a partir do módulo (fix Issue #22)
+//   chamado por ApplyLoadedConfig após atualizar os módulos
 //
 // CHANGELOG v1.09 (Parte 033) — Issue #29:
 // * Novo método _RefreshFieldState() que respeita m_pendingEnabled
@@ -485,6 +489,14 @@ private:
       SetRadioSel(m_bMode, 3, (int)md);
       SetRadioSel(m_bEntry, 2, (en == ENTRY_NEXT_CANDLE) ? 0 : 1);
       SetRadioSel(m_bExit,  3, (ex == EXIT_FCO) ? 0 : (ex == EXIT_VM) ? 1 : 2);
+     }
+
+   virtual void Reload(void) override
+     {
+      m_pendingEnabled = (m_strategy != NULL) ? m_strategy.GetEnabled() : false;
+      _InitFields();
+      ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      _RefreshFieldState();
      }
 
    void _RefreshFieldState(void)

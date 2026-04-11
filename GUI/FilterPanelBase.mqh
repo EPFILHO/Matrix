@@ -2,7 +2,7 @@
 //|                                             FilterPanelBase.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Interface base para sub-páginas de filtro                 |
-//|                     Versão 1.04 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.05 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh ANTES da definição de CEPBotPanel.
 // Usa forward declaration para CEPBotPanel.
@@ -10,6 +10,10 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.05 (Parte 033):
+// + Reload(): virtual default no-op; filtros sobrescrevem para repopular
+//   campos GUI a partir do módulo (usado por ApplyLoadedConfig)
+//
 // v1.04 (Parte 030):
 // + Apply(string &outErr): retorna nomes dos campos inválidos para o header
 //
@@ -51,5 +55,7 @@ public:
    virtual bool      Apply(string &outErr) = 0;
    // Habilita/desabilita edição dos controles
    virtual void      SetEnabled(bool enable) = 0;
+   // Repopula campos GUI a partir do módulo (chamado após ApplyLoadedConfig)
+   virtual void      Reload(void) {}
   };
 //+------------------------------------------------------------------+

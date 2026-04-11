@@ -2,10 +2,14 @@
 //|                                              RSIFilterPanel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — RSI Filter                               |
-//|                     Versão 1.09 - Claude Parte 033 (Claude Code) |
+//|                     Versão 1.10 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.10 (Parte 033) — persistência:
+// * Reload(): repopula campos GUI a partir do módulo (fix Issue #22)
+//   chamado por ApplyLoadedConfig após atualizar os módulos
 //
 // CHANGELOG v1.09 (Parte 033) — Issue #29:
 // * _RefreshFieldState(): respeita m_pendingEnabled como toggle mestre
@@ -319,6 +323,22 @@ private:
          case RSI_FILTER_NEUTRAL: return "NEUTRO: bloqueia se RSI entre 40 e 60";
          default:                 return "";
         }
+     }
+
+   virtual void Reload(void) override
+     {
+      if(m_filter == NULL) return;
+      m_pendingEnabled = m_filter.IsEnabled();
+      m_cur_TF         = m_filter.GetTimeframe();
+      m_cur_mode       = m_filter.GetFilterMode();
+      m_iPeriod.Text(IntegerToString(m_filter.GetPeriod()));
+      m_iOversold.Text(DoubleToString(m_filter.GetOversold(), 1));
+      m_iOverbought.Text(DoubleToString(m_filter.GetOverbought(), 1));
+      m_bTF.Text(TFName(m_cur_TF));
+      ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      SetRadioSel(m_bMode, 3, (int)m_cur_mode);
+      m_lModeDesc.Text(_ModeDesc(m_cur_mode));
+      _RefreshFieldState();
      }
 
    void _RefreshFieldState(void)
