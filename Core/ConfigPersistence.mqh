@@ -2,14 +2,18 @@
 //|                                           ConfigPersistence.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|     Persistência de configurações GUI — EPBot Matrix              |
-//|                     Versão 1.01 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.02 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.01"
+#property version   "1.02"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
+// ═══════════════════════════════════════════════════════════════
+// v1.02 (Parte 033) — Issue #28:
+// - Removido campo tradeComment de SConfigData
+// - WriteKV e ReadKV do TradeComment eliminados
 // ═══════════════════════════════════════════════════════════════
 // v1.01 (Parte 027):
 // * Fix: SConfigData campos rsiOversold, rsiOverbought, rsiMidLevel,

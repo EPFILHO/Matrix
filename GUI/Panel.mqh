@@ -2,14 +2,18 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.61 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.62 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.59"
+#property version   "1.62"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
+// ═══════════════════════════════════════════════════════════════
+// v1.62 (Parte 033) — Issue #28:
+// - Removido m_co_lComm/m_co_iComm declaração (campo Comentario)
+// - SetEditEnabled para m_co_iComm removido de SetAllControlsEnabled
 // ═══════════════════════════════════════════════════════════════
 // v1.61 (Parte 030):
 // * ValidateAndApplyAll(): acumula erros CONFIG + sub-painéis numa mensagem só

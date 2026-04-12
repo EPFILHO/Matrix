@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.36 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.37 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -12,6 +12,11 @@
 //
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
+// ═══════════════════════════════════════════════════════════════
+// v1.37 (Parte 033) — Issue #28:
+// - Removido CreateLI para "Comentario Ordens" (m_co_lComm/m_co_iComm)
+// - Removido bloco de apply do Trade Comment
+// - Show/Hide: m_co_lComm e m_co_iComm removidos
 // ═══════════════════════════════════════════════════════════════
 // v1.36 (Parte 030):
 // * ApplyConfig(): limites dinâmicos baseados no ativo (SYMBOL_VOLUME, preço/POINT)

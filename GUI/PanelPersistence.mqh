@@ -10,6 +10,10 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.06 (Parte 033) — Issue #28:
+// * Removido CollectConfigData: data.tradeComment = ...
+// * Removido ApplyLoadedConfig: restauração de m_co_iComm.Text()
+//
 // v1.05 (Parte 033) — fix Magic Number + timestamp:
 // * SaveCurrentConfig/HasSavedConfig/OnClickIgnoreBanner: usam
 //   m_initMagicNumber (fixo no init) em vez de m_magicNumber (mutável).

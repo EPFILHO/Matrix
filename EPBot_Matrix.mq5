@@ -2,16 +2,23 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.60 - Claude Parte 033 (Claude Code) |
+//|                     Versão 1.61 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.60"
+#property version   "1.61"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //--- Constante centralizada de versão
-#define EA_VERSION "1.60"
+#define EA_VERSION "1.61"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.61 (Parte 033) — Issue #28:                         |
+//| - Comment das ordens agora usa GetLastSignalShortSource():       |
+//|   "EPBot MACross", "EPBot RSI", "EPBot BB" ao invés de           |
+//|   "EPBot Matrix" (input removido)                                 |
+//| - g_tradeComment removido; ExecuteTrade() e exit code usam       |
+//|   SignalManager.GetLastSignalShortSource()                       |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.60 (Parte 033):                                     |
 //| - Issue #27: log de spread otimizado. CanTrade() chamado com     |
