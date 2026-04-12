@@ -86,8 +86,8 @@
 // * Fix: m_bbStrategy e m_bbFilter inicializados com NULL no construtor
 //
 // v1.49 (Parte 027):
-// + OUTROS: Magic Number (CEdit + aviso warning) e Comentário das Ordens
-//   m_co_lMagic/iMagic, m_co_lMagicW, m_co_lComm/iComm
+// + OUTROS: Magic Number (CEdit + aviso warning)
+//   m_co_lMagic/iMagic, m_co_lMagicW
 //   Posicionados acima de Slippage/Conflito; Debug e Debug Cooldown por último
 // + RISCO 2: Limites Diários movidos de BLOQUEIOS com toggle ON/OFF dinâmico
 //   m_c2_hdr4, m_c2_lDLAct/bDLAct, lDLTrd/iDLTrd, lDLLoss/iDLLoss,
@@ -378,7 +378,7 @@
 //
 // v1.02 (2026-02-21):
 // + Adiciona #include de Inputs.mqh (resolve inp_MagicNumber,
-//   inp_TradeComment, inp_LotSize undeclared)
+//   inp_LotSize undeclared)
 //
 // v1.01 (2026-02-21):
 // + Autocontido: adiciona #include das dependências do projeto
@@ -738,7 +738,6 @@ private:
    CLabel   m_co_lConfl;  CButton m_co_bConfl;
    CLabel   m_co_lMagic;  CEdit   m_co_iMagic;   // Magic Number (v1.28 Parte 027)
    CLabel   m_co_lMagicW;                         // Aviso Magic Number
-   CLabel   m_co_lComm;   CEdit   m_co_iComm;    // Comentário das Ordens (v1.28 Parte 027)
    CLabel   m_co_lDbg;    CButton m_co_bDbg;
    CLabel   m_co_lDbgCd;  CEdit   m_co_iDbgCd;
 
@@ -1673,7 +1672,6 @@ void CEPBotPanel::SetAllControlsEnabled(bool enable)
 
 // ── CONFIG: OUTROS ──
    SetEditEnabled(m_co_lMagic, m_co_iMagic, enable);
-   SetEditEnabled(m_co_lComm, m_co_iComm, enable);
    SetEditEnabled(m_co_lSlip, m_co_iSlip, enable);
    SetButtonEnabled(m_co_lConfl, m_co_bConfl, enable);
    if(enable) // restaura cor original do botão Conflito ao habilitar

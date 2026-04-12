@@ -2,10 +2,12 @@
 //|                                                 RSIStrategy.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                                    Estratégia RSI - EPBot Matrix |
-//|                                   Versão 2.17 - Claude Parte 031 |
+//|                                   Versão 2.18 - Claude Parte 033 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.17"
+#property version   "2.18"
+// CHANGELOG v2.18 (Parte 033) — Issue #28:
+// + GetShortName() override → "RSI" (para comentário das ordens)
 // CHANGELOG v2.17 (Parte 031):
 // * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 #property strict
@@ -130,6 +132,9 @@ public:
    // ═══════════════════════════════════════════════════════════
                      CRSIStrategy(int priority = 5);
                     ~CRSIStrategy();
+
+   // v2.18: Nome curto para comentário de ordens (Issue #28)
+   virtual string    GetShortName() const override { return "RSI"; }
 
    // ═══════════════════════════════════════════════════════════
    // SETUP (chamado ANTES do Initialize)

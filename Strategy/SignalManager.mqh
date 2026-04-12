@@ -2,11 +2,16 @@
 //|                                               SignalManager.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                   Gerenciador de Sinais e Filtros - EPBot Matrix |
-//|                                   Versão 2.16 - Claude Parte 031 |
+//|                                   Versão 2.17 - Claude Parte 033 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.16"
+#property version   "2.17"
 //
+// ═══════════════════════════════════════════════════════════════
+// NOVIDADES v2.17 (Parte 033) — Issue #28:
+// + m_lastSignalShortSource + GetLastSignalShortSource()
+//   Rastreia GetShortName() da estratégia que gerou o sinal
+//   Usado pelo ExecuteTrade() para preencher request.comment
 // ═══════════════════════════════════════════════════════════════
 // NOVIDADES v2.16 (Parte 031):
 // * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
@@ -102,6 +107,7 @@ private:
    // DEBUG/LOG (não são parâmetros, não precisam duplicação)
    // ═══════════════════════════════════════════════════════════
    string            m_lastSignalSource;
+   string            m_lastSignalShortSource;   // v2.17: GetShortName() da estratégia
    string            m_lastBlockedBy;
 
    // ═══════════════════════════════════════════════════════════
@@ -160,6 +166,7 @@ public:
    ENUM_SIGNAL_TYPE  GetExitSignal(ENUM_POSITION_TYPE currentPosition)
      {
       m_lastSignalSource = "";
+      m_lastSignalShortSource = "";
 
       // Percorrer strategies e verificar se alguma quer sair
       for(int i = 0; i < m_strategyCount; i++)
@@ -171,6 +178,7 @@ public:
             if(exitSignal != SIGNAL_NONE)
               {
                m_lastSignalSource = m_strategies[i].strategy.GetName();
+               m_lastSignalShortSource = m_strategies[i].strategy.GetShortName();
 
                string msg = "🔄 [Signal Manager] Exit signal de '" + m_lastSignalSource +
                             "': " + EnumToString(exitSignal);
@@ -188,6 +196,7 @@ public:
    // GETTERS - Working values
    // ═══════════════════════════════════════════════════════════
    string            GetLastSignalSource() const { return m_lastSignalSource; }
+   string            GetLastSignalShortSource() const { return m_lastSignalShortSource; }  // v2.17
    string            GetLastBlockedBy() const { return m_lastBlockedBy; }
    int               GetStrategyCount() const { return m_strategyCount; }
    int               GetFilterCount() const { return m_filterCount; }
@@ -248,6 +257,7 @@ CSignalManager::CSignalManager()
    m_conflictMode = CONFLICT_PRIORITY;
 
    m_lastSignalSource = "";
+   m_lastSignalShortSource = "";
    m_lastBlockedBy = "";
 
    ArrayResize(m_strategies, 0);
@@ -754,6 +764,7 @@ ENUM_SIGNAL_TYPE CSignalManager::GetRawSignal()
 ENUM_SIGNAL_TYPE CSignalManager::GetSignal()
   {
    m_lastSignalSource = "";
+   m_lastSignalShortSource = "";
    m_lastBlockedBy = "";
 
 // Coletar sinais de todas as estratégias ativas
@@ -771,9 +782,15 @@ ENUM_SIGNAL_TYPE CSignalManager::GetSignal()
            {
             validSignals++;
             if(m_lastSignalSource == "")
+              {
                m_lastSignalSource = m_strategies[i].strategy.GetName();
+               m_lastSignalShortSource = m_strategies[i].strategy.GetShortName();
+              }
             else
+              {
                m_lastSignalSource += ", " + m_strategies[i].strategy.GetName();
+               m_lastSignalShortSource += "+" + m_strategies[i].strategy.GetShortName();
+              }
            }
         }
       else

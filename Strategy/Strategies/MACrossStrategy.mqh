@@ -2,10 +2,12 @@
 //|                                             MACrossStrategy.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                   Estratégia de Cruzamento de MAs - EPBot Matrix |
-//|                                   Versão 2.28 - Claude Parte 031 |
+//|                                   Versão 2.29 - Claude Parte 033 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.28"
+#property version   "2.29"
+// CHANGELOG v2.29 (Parte 033) — Issue #28:
+// + GetShortName() override → "MACross" (para comentário das ordens)
 // CHANGELOG v2.28 (Parte 031):
 // * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 #property strict
@@ -139,6 +141,9 @@ public:
    // ═══════════════════════════════════════════════════════════
                      CMACrossStrategy(int priority = 0);
                     ~CMACrossStrategy();
+
+   // v2.03: Nome curto para comentário de ordens (Issue #28)
+   virtual string    GetShortName() const override { return "MACross"; }
 
    // ═══════════════════════════════════════════════════════════
    // CONFIGURAÇÃO INICIAL

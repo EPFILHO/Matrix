@@ -2,10 +2,12 @@
 //|                                        BollingerBandsStrategy.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                            Estratégia Bollinger Bands - EPBot Matrix |
-//|                                   Versão 1.02 - Claude Parte 031 |
+//|                                   Versão 1.03 - Claude Parte 033 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.02"
+#property version   "1.03"
+// CHANGELOG v1.03 (Parte 033) — Issue #28:
+// + GetShortName() override → "BB" (para comentário das ordens)
 // CHANGELOG v1.02 (Parte 031):
 // * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 #property strict
@@ -125,6 +127,9 @@ public:
    // ═══════════════════════════════════════════════════════════
                      CBollingerBandsStrategy(int priority = 3);
                     ~CBollingerBandsStrategy();
+
+   // v1.03: Nome curto para comentário de ordens (Issue #28)
+   virtual string    GetShortName() const override { return "BB"; }
 
    // ═══════════════════════════════════════════════════════════
    // SETUP (chamado ANTES do Initialize)

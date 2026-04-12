@@ -54,10 +54,8 @@
 //|   CFG_APPLY_Y 520→546, todas as coordenadas parametrizadas        |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.55 (Parte 027):                                     |
-//| - Runtime vars: g_magicNumber, g_slippage, g_tradeComment        |
-//|   substituem inp_* (read-only) para suportar hot reload           |
-//| - Todas as referências a inp_MagicNumber, inp_Slippage e         |
-//|   inp_TradeComment no EA principal agora usam as vars editáveis   |
+//| - Runtime vars: g_magicNumber, g_slippage substituem inp_*       |
+//|   (read-only) para suportar hot reload                            |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.54 (Parte 027):                                     |
 //| - Config Persistence: banner redesenhado com caixa de destaque,  |
@@ -344,7 +342,6 @@
 //    Declaradas antes dos includes para serem visíveis nos .mqh
 int    g_magicNumber   = 0;
 int    g_slippage      = 0;
-string g_tradeComment  = "";
 
 // 1️⃣ INPUTS CENTRALIZADOS (primeiro!)
 #include "Core/Inputs.mqh"
@@ -469,7 +466,6 @@ int OnInit()
 // ═══════════════════════════════════════════════════════════════
    g_magicNumber  = inp_MagicNumber;
    g_slippage     = inp_Slippage;
-   g_tradeComment = inp_TradeComment;
 
 // ═══════════════════════════════════════════════════════════════
 // ETAPA 1: INICIALIZAR LOGGER (sempre primeiro!)
@@ -1914,7 +1910,7 @@ if(g_riskManager.ShouldActivateTrailing(tp1Executed, tp2Executed))
       request.price = currentPrice;
       request.deviation = g_slippage;
       request.magic = g_magicNumber;
-      request.comment = "Exit: " + g_signalManager.GetLastSignalSource();
+      request.comment = "EPBot Exit " + g_signalManager.GetLastSignalShortSource();
       request.type_filling = GetTypeFilling(_Symbol);
 
       if(OrderSend(request, result))
@@ -2043,7 +2039,7 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
    request.tp = tpPrice;  // 0 se usar Partial TP
    request.deviation = g_slippage;
    request.magic = g_magicNumber;
-   request.comment = g_tradeComment;
+   request.comment = "EPBot " + g_signalManager.GetLastSignalShortSource();
    request.type_filling = GetTypeFilling(_Symbol);
 
 // Log dos parâmetros

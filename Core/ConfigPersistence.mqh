@@ -131,7 +131,6 @@ struct SConfigData
 
    // ── OUTROS ──
    int               magicNumber;         // Hot-reload magic
-   string            tradeComment;        // Hot-reload comment
    int               slippage;
    ENUM_CONFLICT_RESOLUTION conflictMode;
    bool              showDebug;
@@ -426,7 +425,6 @@ bool CConfigPersistence::Save(string symbol, int magic, const SConfigData &data)
 // ── Outros ──
    FileWriteString(h, "# OUTROS\n");
    WriteKV(h, "MagicNumber",        IntegerToString(data.magicNumber));
-   WriteKV(h, "TradeComment",       data.tradeComment);
    WriteKV(h, "Slippage",           IntegerToString(data.slippage));
    WriteKV(h, "ConflictMode",       IntegerToString((int)data.conflictMode));
    WriteKV(h, "ShowDebug",          IntegerToString(data.showDebug));
@@ -645,7 +643,6 @@ bool CConfigPersistence::Load(string symbol, int magic, SConfigData &data)
       else if(key == "News3EM")            data.news3EM = (int)StringToInteger(val);
       // Outros
       else if(key == "MagicNumber")        data.magicNumber = (int)StringToInteger(val);
-      else if(key == "TradeComment")       data.tradeComment = val;
       else if(key == "Slippage")           data.slippage = (int)StringToInteger(val);
       else if(key == "ConflictMode")       data.conflictMode = (ENUM_CONFLICT_RESOLUTION)StringToInteger(val);
       else if(key == "ShowDebug")          data.showDebug = (bool)StringToInteger(val);

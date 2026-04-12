@@ -64,7 +64,6 @@
 //+------------------------------------------------------------------+
 input group "═══════════════ ⚙️ CONFIGURAÇÕES GERAIS ═══════════════"
 input int    inp_MagicNumber = 123456;              // Magic Number
-input string inp_TradeComment = "EPBot Matrix";     // Comentário das Ordens
 
 //+------------------------------------------------------------------+
 //| SEÇÃO 001 - LOGGER                                               |

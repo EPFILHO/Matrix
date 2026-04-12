@@ -30,7 +30,7 @@
 //
 // v1.02 (Parte 027) — Fase 2: Controle de Estado:
 // + SaveCurrentConfig: snapshot m_savedConfig para rollback
-// + CollectConfigData: inclui magicNumber/tradeComment/trailingType/beType
+// + CollectConfigData: inclui magicNumber/trailingType/beType
 // + ApplyLoadedConfig: aplica m_cur_trailingType/m_cur_beType
 // + Substituição de inp_TrailingType/inp_BEType por runtime vars
 //
@@ -194,7 +194,6 @@ void CEPBotPanel::CollectConfigData(SConfigData &data)
 
 // ── Outros ──
    data.magicNumber       = m_magicNumber;
-   data.tradeComment      = m_co_iComm.Text();
    data.slippage          = (int)StringToInteger(m_co_iSlip.Text());
    data.conflictMode      = m_cur_conflict;
    data.showDebug         = m_cur_debug;
@@ -434,8 +433,6 @@ void CEPBotPanel::ApplyLoadedConfig(const SConfigData &data)
    // Outros
    if(data.magicNumber > 0)
       m_co_iMagic.Text(IntegerToString(data.magicNumber));
-   if(data.tradeComment != "")
-      m_co_iComm.Text(data.tradeComment);
    m_co_iSlip.Text(IntegerToString(data.slippage));
    m_co_iDbgCd.Text(IntegerToString(data.debugCooldown));
 
