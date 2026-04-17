@@ -782,6 +782,14 @@ private:
    ENUM_PROFIT_TARGET_ACTION m_cur_profitTargetAction;
    ENUM_TRAILING_TYPE        m_cur_trailingType;   // runtime (inp_ é read-only)
    ENUM_BE_TYPE              m_cur_beType;          // runtime (inp_ é read-only)
+   // Working values por tipo de SL/TP (Parte 033 — fix issue #34 H-15).
+   // Preservam o valor de cada tipo separadamente, para que trocar radio
+   // não apague a edição do usuário com inp_*.
+   int                       m_cur_fixedSL;
+   double                    m_cur_slATRMult;
+   double                    m_cur_rangeMult;
+   int                       m_cur_fixedTP;
+   double                    m_cur_tpATRMult;
    // Filtro de Notícias (v1.22)
    bool                      m_cur_newsOn1;
    bool                      m_cur_newsOn2;
@@ -1019,6 +1027,11 @@ CEPBotPanel::CEPBotPanel(void)
      m_cur_profitTargetAction(PROFIT_ACTION_STOP),
      m_cur_trailingType(TRAILING_FIXED),
      m_cur_beType(BE_FIXED),
+     m_cur_fixedSL(inp_FixedSL),
+     m_cur_slATRMult(inp_SL_ATRMultiplier),
+     m_cur_rangeMult(inp_RangeMultiplier),
+     m_cur_fixedTP(inp_FixedTP),
+     m_cur_tpATRMult(inp_TP_ATRMultiplier),
      m_cfgStatusExpiry(0),
      m_loadBannerVisible(false),
      m_eaStarted(false)

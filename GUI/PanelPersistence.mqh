@@ -2,7 +2,7 @@
 //|                                           PanelPersistence.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel: Persistência de Config — Save/Load/Banner                |
-//|                     Versão 1.03 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.04 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para persistência de configurações.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -10,6 +10,18 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.04 (Parte 033):
+// + ApplyLoadedConfig step 8: chama Reload() ANTES de Update() nos
+//   sub-painéis. Fixa bug crítico onde CEdit/radio/toggle da GUI ficavam
+//   stagnados com inp_* após load do .cfg; ao clicar APLICAR em seguida,
+//   Apply() lia valores antigos da GUI e sobrescrevia o módulo —
+//   corrompendo o próprio .cfg. Reload() repopula a GUI a partir do
+//   módulo já atualizado pelos setters dos steps 6 e 7.
+// + ApplyLoadedConfig: sincroniza working vars por tipo
+//   (m_cur_fixedSL/m_cur_slATRMult/m_cur_rangeMult/m_cur_fixedTP/m_cur_tpATRMult)
+//   a partir de SConfigData. Sem isso, ao carregar .cfg e clicar no radio
+//   SL/TP, OnClickSLType/OnClickTPType voltava aos valores de inp_* do .set.
+//
 // v1.03 (Parte 030):
 // + ApplyLoadedConfig: adaptado para nova assinatura ApplyConfig(string &outErr)
 //
@@ -318,6 +330,13 @@ void CEPBotPanel::ApplyLoadedConfig(const SConfigData &data)
    m_cur_trailingType      = data.trailingType;
    m_cur_beType            = data.beType;
 
+   // Working vars por tipo (preserva valor ao alternar radio SL/TP)
+   m_cur_fixedSL           = data.fixedSL;
+   m_cur_slATRMult         = data.slATRMultiplier;
+   m_cur_rangeMult         = data.rangeMultiplier;
+   m_cur_fixedTP           = data.fixedTP;
+   m_cur_tpATRMult         = data.tpATRMultiplier;
+
    // Recalcular feature flags
    m_cfg_hasTP    = (m_cur_tpType != TP_NONE);
    m_cfg_hasATR   = (m_cur_slType == SL_ATR || m_cur_tpType == TP_ATR ||
@@ -552,13 +571,15 @@ void CEPBotPanel::ApplyLoadedConfig(const SConfigData &data)
 
 // ═══════════════════════════════════════════════
 // 8. Atualizar sub-painéis de estratégia e filtro
-//    (Update relê valores dos módulos atualizados)
+//    Reload() repopula CEdit/radio/toggle a partir do módulo —
+//    obrigatório para não sobrescrever o .cfg com valores antigos da
+//    GUI no próximo APLICAR. Update() atualiza apenas o display.
 // ═══════════════════════════════════════════════
    for(int i = 0; i < m_stratPanelCount; i++)
-      if(m_stratPanels[i] != NULL) m_stratPanels[i].Update();
+      if(m_stratPanels[i] != NULL) { m_stratPanels[i].Reload(); m_stratPanels[i].Update(); }
 
    for(int i = 0; i < m_filtPanelCount; i++)
-      if(m_filtPanels[i] != NULL) m_filtPanels[i].Update();
+      if(m_filtPanels[i] != NULL) { m_filtPanels[i].Reload(); m_filtPanels[i].Update(); }
 
    ChartRedraw();
   }

@@ -2,10 +2,15 @@
 //|                                             TrendFilterPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Trend Filter                             |
-//|                     Versão 1.07 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.08 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.08 (Parte 033):
+// + Reload(): repopula CEdit (Period, NeutDist), radios (Method),
+//   TF/Price buttons e toggle com valores atuais do módulo. Fixa bug
+//   de GUI stagnada sobrescrever o módulo no próximo APLICAR após load.
 //
 // CHANGELOG v1.06 (Parte 029):
 // * m_locked: Update() não sobrescreve visual quando EA rodando
@@ -169,6 +174,24 @@ public:
       m_lTF.Hide(); m_bTF.Hide();
       m_lPrice.Hide(); m_bPrice.Hide();
       m_lNeutDist.Hide(); m_iNeutDist.Hide();
+     }
+
+   virtual void Reload(void)
+     {
+      if(m_filter == NULL) return;
+      m_pendingEnabled = m_filter.IsEnabled();
+      m_cur_method = m_filter.GetMAMethod();
+      m_cur_TF     = m_filter.GetMATimeframe();
+      m_cur_price  = m_filter.GetMAApplied();
+      m_iPeriod.Text(IntegerToString(m_filter.GetMAPeriod()));
+      m_iNeutDist.Text(DoubleToString(m_filter.GetNeutralDistance(), 0));
+      SetRadioSel(m_bMethod, 4, MAMethodToIndex(m_cur_method));
+      m_bTF.Text(TFName(m_cur_TF));
+      m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+      m_bPrice.Text(AppliedPriceShortText(m_cur_price));
+      m_bPrice.ColorBackground(C'50,80,140'); m_bPrice.Color(clrWhite);
+      ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      _RefreshFieldState();
      }
 
    virtual void Update(void)

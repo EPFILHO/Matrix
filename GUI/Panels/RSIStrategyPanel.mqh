@@ -2,10 +2,16 @@
 //|                                            RSIStrategyPanel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — RSI Strategy                             |
-//|                     Versão 1.08 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.09 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.09 (Parte 033):
+// + Reload(): sincroniza m_pendingEnabled + chama _InitFields() para
+//   repopular todos os CEdit/radio/toggle com valores atuais do módulo.
+//   Fixa bug: após load do .cfg, CEdit ficava stagnado com inp_* e o
+//   próximo APLICAR sobrescrevia o módulo com valores antigos.
 //
 // CHANGELOG v1.07 (Parte 029):
 // * m_locked: Update() não sobrescreve visual quando EA rodando
@@ -189,6 +195,15 @@ public:
       m_lOverbought.Hide(); m_iOverbought.Hide();
       m_lMiddle.Hide(); m_iMiddle.Hide();
       m_lblStatus.Hide();
+     }
+
+   virtual void Reload(void)
+     {
+      if(m_strategy != NULL)
+         m_pendingEnabled = m_strategy.GetEnabled();
+      _InitFields();
+      ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      _RefreshFieldState();
      }
 
    virtual void Update(void)

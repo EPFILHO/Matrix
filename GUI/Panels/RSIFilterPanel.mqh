@@ -2,10 +2,15 @@
 //|                                              RSIFilterPanel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — RSI Filter                               |
-//|                     Versão 1.08 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.09 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.09 (Parte 033):
+// + Reload(): repopula CEdit (Period, OS, OB), radios (Mode), TF button
+//   e toggle com valores atuais do módulo. Fixa bug de GUI stagnada
+//   sobrescrever o módulo no próximo APLICAR após load.
 //
 // CHANGELOG v1.07 (Parte 029):
 // * m_locked: Update() não sobrescreve visual quando EA rodando
@@ -181,6 +186,23 @@ public:
       m_lModeDesc.Hide();
       m_lOversold.Hide(); m_iOversold.Hide();
       m_lOverbought.Hide(); m_iOverbought.Hide();
+     }
+
+   virtual void Reload(void)
+     {
+      if(m_filter == NULL) return;
+      m_pendingEnabled = m_filter.IsEnabled();
+      m_cur_TF   = m_filter.GetTimeframe();
+      m_cur_mode = m_filter.GetFilterMode();
+      m_iPeriod.Text(IntegerToString(m_filter.GetPeriod()));
+      m_iOversold.Text(DoubleToString(m_filter.GetOversold(), 1));
+      m_iOverbought.Text(DoubleToString(m_filter.GetOverbought(), 1));
+      m_bTF.Text(TFName(m_cur_TF));
+      m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+      SetRadioSel(m_bMode, 3, (int)m_cur_mode);
+      m_lModeDesc.Text(_ModeDesc(m_cur_mode));
+      ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      _RefreshFieldState();
      }
 
    virtual void Update(void)

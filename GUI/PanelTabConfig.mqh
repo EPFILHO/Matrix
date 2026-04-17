@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.36 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.37 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -13,6 +13,15 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.37 (Parte 033) — Fix #2 H-15: Radio SL/TP preserva valor por tipo:
+// * OnClickSLType/OnClickTPType agora salvam CEdit no working var do tipo
+//   anterior ANTES de trocar, e populam CEdit com working var do novo tipo
+// * Antes usava inp_FixedSL/inp_SL_ATRMultiplier/inp_RangeMultiplier/inp_FixedTP/
+//   inp_TP_ATRMultiplier (constantes do .set), sobrescrevendo valor editado
+//   pelo usuário ou carregado do .cfg ao clicar no radio
+// * Working vars m_cur_fixedSL/m_cur_slATRMult/m_cur_rangeMult/m_cur_fixedTP/
+//   m_cur_tpATRMult sincronizados em ApplyLoadedConfig (persistência do .cfg)
+//
 // v1.36 (Parte 030):
 // * ApplyConfig(): limites dinâmicos baseados no ativo (SYMBOL_VOLUME, preço/POINT)
 // * Feedback por campo: "Invalido: Lote, SL, TP..." + highlight rosa (CLR_FIELD_ERROR)
@@ -1511,20 +1520,33 @@ void CEPBotPanel::OnClickBEToggle(void)
 void CEPBotPanel::OnClickSLType(int selected)
   {
    if(m_eaStarted) return;
-   m_cur_slType = IndexToSLType(selected);
+   ENUM_SL_TYPE oldType = m_cur_slType;
+   ENUM_SL_TYPE newType = IndexToSLType(selected);
+
+// Preserva valor atual do CEdit no slot do tipo ANTERIOR (fix H-15).
+// Só persiste se for número válido para evitar gravar "" ou "---".
+   string curText = m_cr_iSL.Text();
+   if(curText != "" && curText != "---")
+     {
+      if(oldType == SL_FIXED)      m_cur_fixedSL   = (int)StringToInteger(curText);
+      else if(oldType == SL_ATR)   m_cur_slATRMult = StringToDouble(curText);
+      else if(oldType == SL_RANGE) m_cur_rangeMult = StringToDouble(curText);
+     }
+
+   m_cur_slType = newType;
    SetRadioSelection(m_cr_bSLT, 3, selected);
 
-// Atualizar label + valor do SL
+// Atualizar label + valor do SL (usa working var, não inp_*)
    string slLabel = (m_cur_slType == SL_FIXED) ? "SL (Fixo pts):" :
                     (m_cur_slType == SL_ATR)   ? "SL (ATR x):" : "SL (Range x):";
    m_cr_lSL.Text(slLabel);
 
    if(m_cur_slType == SL_FIXED)
-      m_cr_iSL.Text(IntegerToString(inp_FixedSL));
+      m_cr_iSL.Text(IntegerToString(m_cur_fixedSL));
    else if(m_cur_slType == SL_ATR)
-      m_cr_iSL.Text(DoubleToString(inp_SL_ATRMultiplier, 1));
+      m_cr_iSL.Text(DoubleToString(m_cur_slATRMult, 1));
    else
-      m_cr_iSL.Text(DoubleToString(inp_RangeMultiplier, 1));
+      m_cr_iSL.Text(DoubleToString(m_cur_rangeMult, 1));
 
 // Recalcular flags e atualizar estado visual
    m_cfg_hasATR   = (m_cur_slType == SL_ATR || m_cur_tpType == TP_ATR ||
@@ -1541,7 +1563,18 @@ void CEPBotPanel::OnClickSLType(int selected)
 void CEPBotPanel::OnClickTPType(int selected)
   {
    if(m_eaStarted) return;
-   m_cur_tpType = IndexToTPType(selected);
+   ENUM_TP_TYPE oldType = m_cur_tpType;
+   ENUM_TP_TYPE newType = IndexToTPType(selected);
+
+// Preservar valor atual do CEdit no working var do tipo anterior
+   string curText = m_cr_iTP.Text();
+   if(curText != "" && curText != "---")
+     {
+      if(oldType == TP_FIXED)    m_cur_fixedTP   = (int)StringToInteger(curText);
+      else if(oldType == TP_ATR) m_cur_tpATRMult = StringToDouble(curText);
+     }
+
+   m_cur_tpType = newType;
    SetRadioSelection(m_cr_bTPT, 3, selected);
 
 // Recalcular flags
@@ -1549,15 +1582,15 @@ void CEPBotPanel::OnClickTPType(int selected)
    m_cfg_hasATR = (m_cur_slType == SL_ATR || m_cur_tpType == TP_ATR ||
                    m_cur_trailingType == TRAILING_ATR || m_cur_beType == BE_ATR);
 
-// TP value + label
+// TP value + label (usa working var, não inp_*)
    if(m_cfg_hasTP)
      {
       string tpLabel = (m_cur_tpType == TP_FIXED) ? "TP (Fixo pts):" : "TP (ATR x):";
       m_cr_lTP.Text(tpLabel);
       if(m_cur_tpType == TP_FIXED)
-         m_cr_iTP.Text(IntegerToString(inp_FixedTP));
+         m_cr_iTP.Text(IntegerToString(m_cur_fixedTP));
       else
-         m_cr_iTP.Text(DoubleToString(inp_TP_ATRMultiplier, 1));
+         m_cr_iTP.Text(DoubleToString(m_cur_tpATRMult, 1));
      }
    else
      {

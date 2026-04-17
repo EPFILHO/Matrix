@@ -2,7 +2,13 @@
 //|                                                 MACrossPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — MA Cross Strategy                        |
-//|                     Versão 1.08 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.09 - Claude Parte 033 (Claude Code) |
+//+------------------------------------------------------------------+
+// CHANGELOG v1.09 (Parte 033):
+// + Reload(): sincroniza m_pendingEnabled + chama _InitFields() para
+//   repopular CEdit/radio/toggle com valores atuais do módulo. Fixa bug
+//   de GUI stagnada sobrescrever o módulo no próximo APLICAR após load.
+//
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
@@ -257,6 +263,14 @@ public:
       m_lExit.Hide();  for(int i = 0; i < 3; i++) m_bExit[i].Hide();
       m_lExitDesc.Hide();
       m_lblStatus.Hide();
+     }
+
+   virtual void Reload(void)
+     {
+      if(m_strategy != NULL)
+         m_pendingEnabled = m_strategy.GetEnabled();
+      _InitFields();
+      ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
      }
 
    virtual void Update(void)

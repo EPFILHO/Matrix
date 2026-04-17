@@ -2,10 +2,16 @@
 //|                                     BollingerBandsFilterPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Bollinger Bands Filter (Anti-Squeeze)   |
-//|                     Versão 1.08 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.09 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.09 (Parte 033):
+// + Reload(): repopula CEdit (Period, Dev, Threshold, PercPeriod),
+//   radios (Metric), TF button e toggle com valores atuais do módulo.
+//   Fixa bug de GUI stagnada sobrescrever o módulo no próximo APLICAR
+//   após load.
 //
 // CHANGELOG v1.07 (Parte 029):
 // * m_locked: Update() não sobrescreve visual quando EA rodando
@@ -217,6 +223,25 @@ public:
       m_lModeDesc.Hide();
       m_lThreshold.Hide(); m_iThreshold.Hide(); m_lThreshHint.Hide();
       m_lPercPeriod.Hide(); m_iPercPeriod.Hide(); m_lPercHint.Hide();
+     }
+
+   virtual void Reload(void)
+     {
+      if(m_filter == NULL) return;
+      m_pendingEnabled = m_filter.IsEnabled();
+      m_cur_TF     = m_filter.GetTimeframe();
+      m_cur_metric = m_filter.GetSqueezeMetric();
+      m_iPeriod.Text(IntegerToString(m_filter.GetPeriod()));
+      m_iDev.Text(DoubleToString(m_filter.GetDeviation(), 1));
+      m_iThreshold.Text(DoubleToString(m_filter.GetSqueezeThreshold(), 2));
+      m_iPercPeriod.Text(IntegerToString(m_filter.GetPercentilePeriod()));
+      m_bTF.Text(TFName(m_cur_TF));
+      m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+      SetRadioSel(m_bMode, 3, (int)m_cur_metric);
+      m_lModeDesc.Text(_ModeDesc(m_cur_metric));
+      m_lThreshHint.Text(_ThreshHint(m_cur_metric));
+      ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      _RefreshFieldState();
      }
 
    virtual void Update(void)
