@@ -2,15 +2,26 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.61 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.62 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.59"
+#property version   "1.62"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.62 (Parte 033):
+// + GUI Trailing Activation: novo radio (SEMPRE / APOS 1a TP / APOS 2a TP)
+//   na aba RISCO 2. Permite escolher gatilho do trailing (ENUM_TRAILING_ACTIVATION)
+//   em vez de colapsar para ALWAYS/NEVER como antes.
+// + m_c2_lTrlMd + m_c2_bTrlMd[3]: controles visuais
+// + m_cur_trailActivation: working state var (TRAILING_ALWAYS/AFTER_TP1/AFTER_TP2)
+// + OnClickTrailActivation(): handler de click (respeita m_eaStarted, bloqueia se Trail OFF)
+// + SetAllControlsEnabled: adiciona radio m_c2_bTrlMd à lista de bloqueio
+// + Dispatcher de OnChartEvent: loop para 3 botões do radio
+// + TrailActToIndex/IndexToTrailAct: helpers de mapeamento enum↔índice
+//
 // v1.61 (Parte 030):
 // * ValidateAndApplyAll(): acumula erros CONFIG + sub-painéis numa mensagem só
 // * ApplyConfig() assinatura: void → string &outErr (retorna campos inválidos)
@@ -658,6 +669,7 @@ private:
    // --- Risco 2 sub-page (Trailing/BE/DrawDown) ---
    CLabel   m_c2_hdr1;
    CLabel   m_c2_lTrlAct;  CButton m_c2_bTrlAct;  // Trailing ON/OFF
+   CLabel   m_c2_lTrlMd;   CButton m_c2_bTrlMd[3]; // Radio: SEMPRE | APOS 1a TP | APOS 2a TP
    CLabel   m_c2_lTrlSt;   CEdit   m_c2_iTrlSt;
    CLabel   m_c2_lTrlSp;   CEdit   m_c2_iTrlSp;
    CLabel   m_c2_lCTrl;    CButton m_c2_bCTrl;     // Comp Spread Trail
@@ -782,6 +794,7 @@ private:
    ENUM_PROFIT_TARGET_ACTION m_cur_profitTargetAction;
    ENUM_TRAILING_TYPE        m_cur_trailingType;   // runtime (inp_ é read-only)
    ENUM_BE_TYPE              m_cur_beType;          // runtime (inp_ é read-only)
+   ENUM_TRAILING_ACTIVATION  m_cur_trailActivation; // SEMPRE / APOS 1a TP / APOS 2a TP
    // Working values por tipo de SL/TP (Parte 033 — fix issue #34 H-15).
    // Preservam o valor de cada tipo separadamente, para que trocar radio
    // não apague a edição do usuário com inp_*.
@@ -840,6 +853,8 @@ private:
    ENUM_SL_TYPE      IndexToSLType(int i);
    int               TPTypeToIndex(ENUM_TP_TYPE t);
    ENUM_TP_TYPE      IndexToTPType(int i);
+   int               TrailActToIndex(ENUM_TRAILING_ACTIVATION t);
+   ENUM_TRAILING_ACTIVATION IndexToTrailAct(int i);
 
    bool              CreateStartButton(void);
    void              OnClickStart(void);
@@ -919,6 +934,7 @@ private:
    void              OnClickCompTP(void);
    void              OnClickCompTrail(void);
    void              OnClickTrailToggle(void);
+   void              OnClickTrailActivation(int selected);
    void              OnClickBEToggle(void);
    void              OnClickDailyLimitsToggle(void);  // Parte 027
    void              RefreshDailyLimitsState(void);    // Parte 027
@@ -1027,6 +1043,7 @@ CEPBotPanel::CEPBotPanel(void)
      m_cur_profitTargetAction(PROFIT_ACTION_STOP),
      m_cur_trailingType(TRAILING_FIXED),
      m_cur_beType(BE_FIXED),
+     m_cur_trailActivation(TRAILING_ALWAYS),
      m_cur_fixedSL(inp_FixedSL),
      m_cur_slATRMult(inp_SL_ATRMultiplier),
      m_cur_rangeMult(inp_RangeMultiplier),
@@ -1597,6 +1614,7 @@ void CEPBotPanel::SetAllControlsEnabled(bool enable)
    SetRadioGroupEnabled(m_c2_lDLPTA, m_c2_bDLPTA, 2, enable);
    SetRadioGroupEnabled(m_c2_lDDT, m_c2_bDDT, 2, enable);
    SetRadioGroupEnabled(m_c2_lDDPk, m_c2_bDDPk, 2, enable);
+   SetRadioGroupEnabled(m_c2_lTrlMd, m_c2_bTrlMd, 3, enable);
    if(enable)
      {
       m_c2_bTrlAct.ColorBackground(m_cur_trailOn ? C'30,120,70' : C'120,50,50');
@@ -1890,6 +1908,9 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
             if(sparam == m_c2_bDDT[i].Name())    { OnClickDDType(i);               ChartRedraw(); return; }
             if(sparam == m_c2_bDDPk[i].Name())   { OnClickDDPeakMode(i);           ChartRedraw(); return; }
            }
+         // CONFIG: RISCO 2 — Trailing Activation (3 opções)
+         for(int i = 0; i < 3; i++)
+            if(sparam == m_c2_bTrlMd[i].Name()) { OnClickTrailActivation(i); ChartRedraw(); return; }
 
          // CONFIG: BLOQUEIO 2 — news window toggles
          if(sparam == m_cb2_bN1On.Name()) { m_cb2_bN1On.Pressed(false); OnClickNewsOn1(); ChartRedraw(); return; }

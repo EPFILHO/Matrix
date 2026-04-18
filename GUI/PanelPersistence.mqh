@@ -2,7 +2,7 @@
 //|                                           PanelPersistence.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel: Persistência de Config — Save/Load/Banner                |
-//|                     Versão 1.04 - Claude Parte 033 (Claude Code) |
+//|                     Versão 1.05 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para persistência de configurações.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -10,6 +10,10 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.05 (Parte 033):
+// + CollectConfigData: salva m_cur_trailActivation em data.trailActivation
+// + ApplyLoadedConfig: restaura m_cur_trailActivation e radio m_c2_bTrlMd
+//
 // v1.04 (Parte 033):
 // + ApplyLoadedConfig step 8: chama Reload() ANTES de Update() nos
 //   sub-painéis. Fixa bug crítico onde CEdit/radio/toggle da GUI ficavam
@@ -112,6 +116,7 @@ void CEPBotPanel::CollectConfigData(SConfigData &data)
       data.trailStepATR       = StringToDouble(m_c2_iTrlSp.Text());
      }
    data.trailCompensateSpread = m_cur_compTrail;
+   data.trailActivation       = m_cur_trailActivation;
 
 // ── Breakeven ──
    data.beOn              = m_cur_beOn;
@@ -307,6 +312,7 @@ void CEPBotPanel::ApplyLoadedConfig(const SConfigData &data)
    m_cur_compTP            = data.tpCompensateSpread;
    m_cur_compTrail         = data.trailCompensateSpread;
    m_cur_trailOn           = data.trailOn;
+   m_cur_trailActivation   = (data.trailActivation == TRAILING_NEVER) ? TRAILING_ALWAYS : data.trailActivation;
    m_cur_beOn              = data.beOn;
    m_cur_partialTP         = data.partialTP;
    m_cur_dailyLimitsOn     = data.dailyLimitsOn;
@@ -452,6 +458,7 @@ void CEPBotPanel::ApplyLoadedConfig(const SConfigData &data)
    SetRadioSelection(m_c2_bDLPTA, 2, (int)data.profitTargetAction);
    SetRadioSelection(m_c2_bDDT, 2, (int)data.ddType);
    SetRadioSelection(m_c2_bDDPk, 2, (int)data.ddPeakMode);
+   SetRadioSelection(m_c2_bTrlMd, 3, TrailActToIndex(m_cur_trailActivation));
    SetRadioSelection(m_cb_bLStrA, 2, (int)data.lossStreakAction);
    SetRadioSelection(m_cb_bWStrA, 2, (int)data.winStreakAction);
 

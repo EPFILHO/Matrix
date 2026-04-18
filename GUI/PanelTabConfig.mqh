@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.37 - Claude Parte 033 (Claude Code) |
+//|                     Versão 1.38 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -13,6 +13,19 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.38 (Parte 033) — Trailing Activation radio:
+// * CreateRisco2Tab: novo radio 3-way (SEMPRE / APOS 1a TP / APOS 2a TP)
+//   após o toggle Trailing ON/OFF
+// * PopulateConfig: inicializa m_cur_trailActivation de inp_TrailingActivation
+//   (TRAILING_NEVER é colapsado para TRAILING_ALWAYS pois o toggle OFF já cobre)
+// * OnClickTrailActivation: handler do radio, bloqueia se EA rodando ou Trail OFF
+// * RefreshRisco2State: habilita/desabilita radio conforme m_cur_trailOn,
+//   e restaura seleção atual ao reativar
+// * SetCfgPageVis(CFG_RISCO2): Show/Hide do novo radio
+// * ApplyConfig: SetTrailingActivation(trailOn ? m_cur_trailActivation : NEVER)
+//   — antes colapsava para ALWAYS/NEVER perdendo AFTER_TP1/AFTER_TP2
+// * TrailActToIndex/IndexToTrailAct: helpers enum↔índice
+//
 // v1.37 (Parte 033) — Fix #2 H-15: Radio SL/TP preserva valor por tipo:
 // * OnClickSLType/OnClickTPType agora salvam CEdit no working var do tipo
 //   anterior ANTES de trocar, e populam CEdit com working var do novo tipo
@@ -310,6 +323,12 @@ int CEPBotPanel::TPTypeToIndex(ENUM_TP_TYPE t)
 ENUM_TP_TYPE CEPBotPanel::IndexToTPType(int i)
   { return (i == 0) ? TP_NONE : (i == 1) ? TP_FIXED : TP_ATR; }
 
+int CEPBotPanel::TrailActToIndex(ENUM_TRAILING_ACTIVATION t)
+  { return (t == TRAILING_ALWAYS) ? 0 : (t == TRAILING_AFTER_TP1) ? 1 : 2; }
+
+ENUM_TRAILING_ACTIVATION CEPBotPanel::IndexToTrailAct(int i)
+  { return (i == 0) ? TRAILING_ALWAYS : (i == 1) ? TRAILING_AFTER_TP1 : TRAILING_AFTER_TP2; }
+
 //+------------------------------------------------------------------+
 //| SetEditEnabled — habilita/desabilita visualmente label+edit        |
 //+------------------------------------------------------------------+
@@ -520,6 +539,12 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!CreateHdr(m_c2_hdr1, "c2_h1", "TRAILING", y)) return false;
    y += PANEL_GAP_Y + 2;
    if(!CreateLB(m_c2_lTrlAct, m_c2_bTrlAct, "c2_lTA", "c2_bTA", "Trailing:", y)) return false;
+   y += PANEL_GAP_Y + 2;
+   {
+    string trmTexts[3] = {"SEMPRE", "APOS 1a TP", "APOS 2a TP"};
+    if(!CreateRadioGroup(m_c2_lTrlMd, m_c2_bTrlMd, "c2_lTM", "c2_bTM", "Ativar:", trmTexts, 3, y))
+       return false;
+   }
    y += PANEL_GAP_Y + 2;
    {
     string trSuffix = (m_cur_trailingType == TRAILING_FIXED) ? " (pts):" : " (ATR x):";
@@ -825,6 +850,9 @@ void CEPBotPanel::PopulateConfig(void)
    m_c2_bTrlAct.ColorBackground(m_cur_trailOn ? C'30,120,70' : C'120,50,50');
    m_c2_bTrlAct.Color(clrWhite);
 
+   m_cur_trailActivation = (inp_TrailingActivation == TRAILING_NEVER) ? TRAILING_ALWAYS : inp_TrailingActivation;
+   SetRadioSelection(m_c2_bTrlMd, 3, TrailActToIndex(m_cur_trailActivation));
+
    if(m_cur_trailingType == TRAILING_FIXED)
      {
       m_c2_iTrlSt.Text(IntegerToString(inp_TrailingStart));
@@ -1068,6 +1096,11 @@ void CEPBotPanel::RefreshRisco2State(void)
       m_c2_bCTrl.Color(clrWhite);
      }
 
+// Trailing activation radio: habilitado se toggle ON
+   SetRadioGroupEnabled(m_c2_lTrlMd, m_c2_bTrlMd, 3, m_cur_trailOn);
+   if(m_cur_trailOn)
+      SetRadioSelection(m_c2_bTrlMd, 3, TrailActToIndex(m_cur_trailActivation));
+
 // BE fields: habilitado se toggle ON
    SetEditEnabled(m_c2_lBEVal, m_c2_iBEVal, m_cur_beOn);
    SetEditEnabled(m_c2_lBEOff, m_c2_iBEOff, m_cur_beOn);
@@ -1232,6 +1265,7 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_c2_lDLPTA.Show(); for(int i=0;i<2;i++) m_c2_bDLPTA[i].Show();
             // Trailing
             m_c2_hdr1.Show(); m_c2_lTrlAct.Show(); m_c2_bTrlAct.Show();
+            m_c2_lTrlMd.Show(); for(int i=0;i<3;i++) m_c2_bTrlMd[i].Show();
             m_c2_lTrlSt.Show(); m_c2_iTrlSt.Show();
             m_c2_lTrlSp.Show(); m_c2_iTrlSp.Show();
             m_c2_lCTrl.Show(); m_c2_bCTrl.Show();
@@ -1256,6 +1290,7 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_c2_lDLPTA.Hide(); for(int i=0;i<2;i++) m_c2_bDLPTA[i].Hide();
             // Trailing
             m_c2_hdr1.Hide(); m_c2_lTrlAct.Hide(); m_c2_bTrlAct.Hide();
+            m_c2_lTrlMd.Hide(); for(int i=0;i<3;i++) m_c2_bTrlMd[i].Hide();
             m_c2_lTrlSt.Hide(); m_c2_iTrlSt.Hide();
             m_c2_lTrlSp.Hide(); m_c2_iTrlSp.Hide();
             m_c2_lCTrl.Hide(); m_c2_bCTrl.Hide();
@@ -1499,6 +1534,17 @@ void CEPBotPanel::OnClickTrailToggle(void)
    m_c2_bTrlAct.Text(m_cur_trailOn ? "ON" : "OFF");
    m_c2_bTrlAct.ColorBackground(m_cur_trailOn ? C'30,120,70' : C'120,50,50');
    RefreshRisco2State();
+  }
+
+//+------------------------------------------------------------------+
+//| OnClickTrailActivation — escolhe gatilho do Trailing (033)         |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickTrailActivation(int selected)
+  {
+   if(m_eaStarted) return;
+   if(!m_cur_trailOn) return;
+   m_cur_trailActivation = IndexToTrailAct(selected);
+   SetRadioSelection(m_c2_bTrlMd, 3, selected);
   }
 
 //+------------------------------------------------------------------+
@@ -1760,8 +1806,8 @@ bool CEPBotPanel::ApplyConfig(string &outErr)
            }
         }
 
-      // Trailing activation (toggle ON/OFF)
-      m_riskManager.SetTrailingActivation(m_cur_trailOn ? TRAILING_ALWAYS : TRAILING_NEVER);
+      // Trailing activation (toggle ON/OFF + gatilho: SEMPRE / APOS 1a TP / APOS 2a TP)
+      m_riskManager.SetTrailingActivation(m_cur_trailOn ? m_cur_trailActivation : TRAILING_NEVER);
 
       // Trailing params (só se toggle ON)
       if(m_cur_trailOn)

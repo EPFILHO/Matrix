@@ -2,15 +2,21 @@
 //|                                           ConfigPersistence.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|     Persistência de configurações GUI — EPBot Matrix              |
-//|                     Versão 1.01 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.02 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.01"
+#property version   "1.02"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.02 (Parte 033):
+// + SConfigData: novo campo trailActivation (ENUM_TRAILING_ACTIVATION):
+//   TRAILING_ALWAYS / TRAILING_AFTER_TP1 / TRAILING_AFTER_TP2
+// + Save/Load: chave "TrailActivation" + validação de range
+// + Retrocompat: .cfg sem essa chave mantém default TRAILING_ALWAYS
+//
 // v1.01 (Parte 027):
 // * Fix: SConfigData campos rsiOversold, rsiOverbought, rsiMidLevel,
 //   trendMinDistance, rsiFiltOversold, rsiFiltOverbought alterados
@@ -67,6 +73,7 @@ struct SConfigData
    double            trailStartATR;
    double            trailStepATR;
    bool              trailCompensateSpread;
+   ENUM_TRAILING_ACTIVATION trailActivation;   // SEMPRE / APÓS 1ª TP / APÓS 2ª TP
 
    // ── RISCO 2: Breakeven ──
    bool              beOn;
@@ -344,6 +351,7 @@ bool CConfigPersistence::Save(string symbol, int magic, const SConfigData &data)
    WriteKV(h, "TrailStartATR",      DoubleToString(data.trailStartATR, 2));
    WriteKV(h, "TrailStepATR",       DoubleToString(data.trailStepATR, 2));
    WriteKV(h, "TrailCompSpread",    IntegerToString(data.trailCompensateSpread));
+   WriteKV(h, "TrailActivation",    IntegerToString((int)data.trailActivation));
 
 // ── Breakeven ──
    FileWriteString(h, "# BREAKEVEN\n");
@@ -582,6 +590,7 @@ bool CConfigPersistence::Load(string symbol, int magic, SConfigData &data)
       else if(key == "TrailStartATR")      data.trailStartATR = StringToDouble(val);
       else if(key == "TrailStepATR")       data.trailStepATR = StringToDouble(val);
       else if(key == "TrailCompSpread")    data.trailCompensateSpread = (bool)StringToInteger(val);
+      else if(key == "TrailActivation")    data.trailActivation = (ENUM_TRAILING_ACTIVATION)StringToInteger(val);
       // Breakeven
       else if(key == "BEOn")               data.beOn = (bool)StringToInteger(val);
       else if(key == "BEActivationFixed")  data.beActivationFixed = (int)StringToInteger(val);
@@ -728,10 +737,12 @@ bool CConfigPersistence::Load(string symbol, int magic, SConfigData &data)
       data.beType = BE_FIXED;
    if(data.tradeDirection < DIRECTION_BOTH || data.tradeDirection > DIRECTION_SELL_ONLY)
       data.tradeDirection = DIRECTION_BOTH;
+   if(data.trailActivation < TRAILING_ALWAYS || data.trailActivation > TRAILING_NEVER)
+      data.trailActivation = TRAILING_ALWAYS;
 
    return true;
   }
 
 //+------------------------------------------------------------------+
-//| FIM DO ARQUIVO ConfigPersistence.mqh v1.01                        |
+//| FIM DO ARQUIVO ConfigPersistence.mqh v1.02                        |
 //+------------------------------------------------------------------+
