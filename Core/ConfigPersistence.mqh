@@ -2,7 +2,7 @@
 //|                                           ConfigPersistence.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|     Persistência de configurações GUI — EPBot Matrix              |
-//|                     Versão 1.02 - Claude Parte 033 (Claude Code) |
+//|                     Versão 1.02 - Claude Parte 034 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.02"
@@ -11,7 +11,7 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.02 (Parte 033):
+// v1.02 (Parte 034):
 // + SConfigData: novo campo trailActivation (ENUM_TRAILING_ACTIVATION):
 //   TRAILING_ALWAYS / TRAILING_AFTER_TP1 / TRAILING_AFTER_TP2
 // + Save/Load: chave "TrailActivation" + validação de range

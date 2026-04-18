@@ -2,7 +2,7 @@
 //|                                           PanelPersistence.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel: Persistência de Config — Save/Load/Banner                |
-//|                     Versão 1.05 - Claude Parte 033 (Claude Code) |
+//|                     Versão 1.05 - Claude Parte 034 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para persistência de configurações.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -10,7 +10,7 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.05 (Parte 033):
+// v1.05 (Parte 034):
 // + CollectConfigData: salva m_cur_trailActivation em data.trailActivation
 // + ApplyLoadedConfig: restaura m_cur_trailActivation e radio m_c2_bTrlMd
 //

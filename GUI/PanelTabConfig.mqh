@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.38 - Claude Parte 033 (Claude Code) |
+//|                     Versão 1.38 - Claude Parte 034 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -13,7 +13,7 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.38 (Parte 033) — Trailing Activation radio:
+// v1.38 (Parte 034) — Trailing Activation radio:
 // * CreateRisco2Tab: novo radio 3-way (SEMPRE / APOS 1a TP / APOS 2a TP)
 //   após o toggle Trailing ON/OFF
 // * PopulateConfig: inicializa m_cur_trailActivation de inp_TrailingActivation

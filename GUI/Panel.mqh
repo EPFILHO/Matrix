@@ -2,7 +2,7 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.62 - Claude Parte 033 (Claude Code) |
+//|                     Versão 1.62 - Claude Parte 034 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.62"
@@ -11,7 +11,7 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.62 (Parte 033):
+// v1.62 (Parte 034):
 // + GUI Trailing Activation: novo radio (SEMPRE / APOS 1a TP / APOS 2a TP)
 //   na aba RISCO 2. Permite escolher gatilho do trailing (ENUM_TRAILING_ACTIVATION)
 //   em vez de colapsar para ALWAYS/NEVER como antes.
