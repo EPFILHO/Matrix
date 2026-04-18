@@ -2,7 +2,7 @@
 //|                                           PanelPersistence.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel: Persistência de Config — Save/Load/Banner                |
-//|                     Versão 1.03 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.05 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para persistência de configurações.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -10,12 +10,31 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.06 (Parte 033) — Issue #28:
+// * Removido CollectConfigData: data.tradeComment = ...
+// * Removido ApplyLoadedConfig: restauração de m_co_iComm.Text()
+//
+// v1.05 (Parte 033) — fix Magic Number + timestamp:
+// * SaveCurrentConfig/HasSavedConfig/OnClickIgnoreBanner: usam
+//   m_initMagicNumber (fixo no init) em vez de m_magicNumber (mutável).
+//   Corrige bug onde mudar magic via GUI fazia save ir para um arquivo
+//   diferente do que o EA busca ao reiniciar (que usa inp_MagicNumber).
+// * CollectConfigData: usa TimeLocal() para lastModified em vez de
+//   TimeCurrent() — exibe hora local do trader no banner, não hora do broker
+//
+// v1.04 (Parte 033) — fix Issue #22:
+// * ApplyLoadedConfig step 8: chama Reload() antes de Update() em cada
+//   painel de estratégia e filtro, para que os campos GUI sejam
+//   repopulados com os valores do módulo recém-atualizado.
+//   Sem isso, ao clicar APLICAR após um load, os inp_* stagnados
+//   nos campos GUI sobrescreviam os valores corretos nos módulos.
+//
 // v1.03 (Parte 030):
 // + ApplyLoadedConfig: adaptado para nova assinatura ApplyConfig(string &outErr)
 //
 // v1.02 (Parte 027) — Fase 2: Controle de Estado:
 // + SaveCurrentConfig: snapshot m_savedConfig para rollback
-// + CollectConfigData: inclui magicNumber/tradeComment/trailingType/beType
+// + CollectConfigData: inclui magicNumber/trailingType/beType
 // + ApplyLoadedConfig: aplica m_cur_trailingType/m_cur_beType
 // + Substituição de inp_TrailingType/inp_BEType por runtime vars
 //
@@ -44,7 +63,7 @@ void CEPBotPanel::SaveCurrentConfig(void)
    ZeroMemory(data);
    CollectConfigData(data);
    m_savedConfig = data;   // Snapshot para CANCELAR
-   CConfigPersistence::Save(m_symbol, m_magicNumber, data);
+   CConfigPersistence::Save(m_symbol, m_initMagicNumber, data);
   }
 
 //+------------------------------------------------------------------+
@@ -52,7 +71,7 @@ void CEPBotPanel::SaveCurrentConfig(void)
 //+------------------------------------------------------------------+
 bool CEPBotPanel::HasSavedConfig(void)
   {
-   return CConfigPersistence::Exists(m_symbol, m_magicNumber);
+   return CConfigPersistence::Exists(m_symbol, m_initMagicNumber);
   }
 
 //+------------------------------------------------------------------+
@@ -62,7 +81,7 @@ bool CEPBotPanel::HasSavedConfig(void)
 void CEPBotPanel::CollectConfigData(SConfigData &data)
   {
    data.version = 1;
-   data.lastModified = TimeCurrent();
+   data.lastModified = TimeLocal();  // Hora local do trader (não hora do broker)
 
 // ═══════════════════════════════════════════════
 // CONFIG TAB: lê do GUI state (m_cur_*) e CEdit fields
@@ -179,7 +198,6 @@ void CEPBotPanel::CollectConfigData(SConfigData &data)
 
 // ── Outros ──
    data.magicNumber       = m_magicNumber;
-   data.tradeComment      = m_co_iComm.Text();
    data.slippage          = (int)StringToInteger(m_co_iSlip.Text());
    data.conflictMode      = m_cur_conflict;
    data.showDebug         = m_cur_debug;
@@ -419,8 +437,6 @@ void CEPBotPanel::ApplyLoadedConfig(const SConfigData &data)
    // Outros
    if(data.magicNumber > 0)
       m_co_iMagic.Text(IntegerToString(data.magicNumber));
-   if(data.tradeComment != "")
-      m_co_iComm.Text(data.tradeComment);
    m_co_iSlip.Text(IntegerToString(data.slippage));
    m_co_iDbgCd.Text(IntegerToString(data.debugCooldown));
 
@@ -552,13 +568,14 @@ void CEPBotPanel::ApplyLoadedConfig(const SConfigData &data)
 
 // ═══════════════════════════════════════════════
 // 8. Atualizar sub-painéis de estratégia e filtro
-//    (Update relê valores dos módulos atualizados)
+//    Reload() repopula campos GUI a partir dos módulos já atualizados
+//    Update() atualiza labels de display (Status, valores atuais, etc.)
 // ═══════════════════════════════════════════════
    for(int i = 0; i < m_stratPanelCount; i++)
-      if(m_stratPanels[i] != NULL) m_stratPanels[i].Update();
+      if(m_stratPanels[i] != NULL) { m_stratPanels[i].Reload(); m_stratPanels[i].Update(); }
 
    for(int i = 0; i < m_filtPanelCount; i++)
-      if(m_filtPanels[i] != NULL) m_filtPanels[i].Update();
+      if(m_filtPanels[i] != NULL) { m_filtPanels[i].Reload(); m_filtPanels[i].Update(); }
 
    ChartRedraw();
   }
@@ -619,7 +636,7 @@ void CEPBotPanel::OnClickIgnoreBanner(void)
   {
    HideLoadBanner();
 // Deletar o arquivo para não perguntar novamente
-   CConfigPersistence::Delete(m_symbol, m_magicNumber);
+   CConfigPersistence::Delete(m_symbol, m_initMagicNumber);
 
    m_cfg_status.Text("Config salva ignorada");
    m_cfg_status.Color(CLR_NEUTRAL);

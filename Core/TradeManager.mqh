@@ -2,11 +2,22 @@
 //|                                                 TradeManager.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|             Gerenciamento de Posições Individuais - EPBot Matrix |
-//|                     Versão 1.26 - Claude Parte 031 (Claude Code) |
+//|                     Versão 1.27 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.26"
+#property version   "1.27"
 
+// CHANGELOG v1.27 (Parte 033):
+// * C-07 fix: MonitorPartialTP — re-valida índice e re-obtém preço atual
+//   entre execução de TP1 e avaliação de TP2. Garante que TP2 sempre use
+//   dados frescos quando ambos os níveis são atingidos no mesmo tick.
+// * C-07 fix: verificação de lote residual antes de ExecutePartialClose
+//   do TP2 — se posição tiver menos volume que tp2_lot (ex: TP1 foi
+//   parcialmente preenchido pelo broker), ajusta com MathRound ou cancela
+//   TP2 se residual < lote mínimo.
+// * Limpeza: guard `if(m_logger != NULL)` removido em ExecutePartialClose
+//   (corrige changelog incorreto do v1.26 que afirmava limpeza completa).
+//
 // CHANGELOG v1.26 (Parte 031):
 // * Fix CRÍTICO: ExecutePartialClose retornava Deal=0 em mercados
 //   voláteis (Gold). Guard `dealTicket > 0` no MonitorPartialTP
@@ -525,8 +536,10 @@ void CTradeManager::SetTP2Executed(ulong ticket, bool state)
   }
 
 //+------------------------------------------------------------------+
-//| Monitorar Partial TP (v1.22)                                     |
-//| CORREÇÃO: Agora busca valores REAIS do deal no histórico         |
+//| Monitorar Partial TP (v1.27)                                     |
+//| - Busca valores REAIS do deal no histórico (v1.22)               |
+//| - Re-valida índice e preço entre TP1 e TP2 (C-07, v1.27)        |
+//| - Verifica lote residual antes de executar TP2 (C-07, v1.27)    |
 //+------------------------------------------------------------------+
 void CTradeManager::MonitorPartialTP(ulong ticket)
   {
@@ -638,6 +651,20 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
      }
 
    // ═══════════════════════════════════════════════════════════════
+   // C-07 fix: Re-validar antes de avaliar TP2
+   // ExecutePartialClose do TP1 não modifica m_positions[], mas
+   // re-fazemos GetPositionIndex e re-lemos preço para garantir
+   // dados frescos em qualquer cenário (mesmo tick ou não).
+   // ═══════════════════════════════════════════════════════════════
+   index = GetPositionIndex(ticket);
+   if(index < 0 || !m_positions[index].hasPartialTP)
+      return;
+
+   currentPrice = (m_positions[index].posType == POSITION_TYPE_BUY) ?
+                  SymbolInfoDouble(m_symbol, SYMBOL_BID) :
+                  SymbolInfoDouble(m_symbol, SYMBOL_ASK);
+
+   // ═══════════════════════════════════════════════════════════════
    // TP2
    // ═══════════════════════════════════════════════════════════════
    if(m_positions[index].tp2_enabled && !m_positions[index].tp2_executed)
@@ -657,6 +684,38 @@ void CTradeManager::MonitorPartialTP(ulong ticket)
             "   Fechando: " + DoubleToString(m_positions[index].tp2_lot, 2) + " lote(s)");
 
          double lotToClose = m_positions[index].tp2_lot;
+
+         // C-07 fix: Verificar lote residual real da posição antes de executar TP2.
+         // Protege contra o caso onde TP1 foi preenchido parcialmente pelo broker
+         // (raro, mas possível em mercados voláteis), deixando menos lote do que
+         // o esperado. MathRound garante step correto sem perda por IEEE 754.
+         if(PositionSelectByTicket(ticket))
+           {
+            double remainingLot = PositionGetDouble(POSITION_VOLUME);
+            double lotStep2     = SymbolInfoDouble(m_symbol, SYMBOL_VOLUME_STEP);
+            if(lotStep2 <= 0) lotStep2 = 0.01;
+            double minLot2 = SymbolInfoDouble(m_symbol, SYMBOL_VOLUME_MIN);
+
+            if(lotToClose > remainingLot + lotStep2 * 0.5)
+              {
+               double adjusted = MathRound(remainingLot / lotStep2) * lotStep2;
+               if(adjusted >= minLot2)
+                 {
+                  m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
+                     StringFormat("⚠️ TP2 lot ajustado: %.2f → %.2f (lote residual da posição)",
+                                  lotToClose, adjusted));
+                  lotToClose = adjusted;
+                 }
+               else
+                 {
+                  m_logger.Log(LOG_EVENT, THROTTLE_NONE, "PARTIAL_TP",
+                     StringFormat("⚠️ Lote residual (%.2f lot) < mínimo (%.2f) — TP2 cancelado",
+                                  remainingLot, minLot2));
+                  return;
+                 }
+              }
+           }
+
          ulong dealTicket = 0;
 
          if(ExecutePartialClose(ticket, lotToClose, "Partial TP2", dealTicket))
@@ -803,9 +862,8 @@ bool CTradeManager::ExecutePartialClose(ulong ticket, double lot, string comment
    double minLotFinal = SymbolInfoDouble(m_symbol, SYMBOL_VOLUME_MIN);
    if(lot < minLotFinal - lotStep * 0.1)
      {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "CLOSE",
-            "❌ Lote parcial " + DoubleToString(lot, 2) + " < mínimo " + DoubleToString(minLotFinal, 2) + " após arredondamento");
+      m_logger.Log(LOG_ERROR, THROTTLE_NONE, "CLOSE",
+         "❌ Lote parcial " + DoubleToString(lot, 2) + " < mínimo " + DoubleToString(minLotFinal, 2) + " após arredondamento");
       return false;
      }
 

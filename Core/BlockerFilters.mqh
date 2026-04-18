@@ -2,7 +2,14 @@
 //|                                             BlockerFilters.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|              Filtros de Condição de Mercado - EPBot Matrix       |
-//|                     Versão 1.02 - Claude Parte 031 (Claude Code) |
+//|                     Versão 1.03 - Claude Parte 033 (Claude Code) |
+// CHANGELOG v1.03 (Parte 033):
+// * Issue #27: log de spread removido de CheckSpreadWithLog()
+//   Logs de "SPREAD ALTO"/"NORMALIZADO" eram gerados em toda transição
+//   de spread, mesmo sem sinal de entrada. Agora CheckSpreadWithLog()
+//   é verificação silenciosa; log ocorre no EA apenas quando há sinal.
+//   m_sSfWasBlocked removido (era usado só para throttle dos logs).
+//
 // CHANGELOG v1.02 (Parte 031):
 // * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
 //
@@ -101,7 +108,6 @@ private:
    ENUM_SESSION_STATE m_sLastSessionState;
    bool               m_sTfWasBlocked;
    bool               m_sNfWasBlocked;
-   bool               m_sSfWasBlocked;
    ulong              m_sCloseOnEndLastTicket;
    ulong              m_sCloseBeforeSessionLastTicket;
 
@@ -216,7 +222,6 @@ CBlockerFilters::CBlockerFilters()
    m_sLastSessionState            = SESSION_ACTIVE;
    m_sTfWasBlocked                = false;
    m_sNfWasBlocked                = false;
-   m_sSfWasBlocked                = false;
    m_sCloseOnEndLastTicket        = 0;
    m_sCloseBeforeSessionLastTicket = 0;
   }
@@ -524,28 +529,16 @@ bool CBlockerFilters::CheckNewsWithLog(ENUM_BLOCKER_REASON &blocker, string &blo
   }
 
 //+------------------------------------------------------------------+
-//| Verifica filtro de spread com logging de transição               |
+//| Verifica filtro de spread (silencioso — log feito pelo chamador) |
 //+------------------------------------------------------------------+
 bool CBlockerFilters::CheckSpreadWithLog(ENUM_BLOCKER_REASON &blocker, string &blockReason)
   {
-   bool blocked = !CheckSpreadFilter();
-   if(blocked)
+   if(!CheckSpreadFilter())
      {
       blocker = BLOCKER_SPREAD;
       long spread = SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
       blockReason = StringFormat("Spread alto (%d > %d)", spread, m_maxSpread);
-      if(!m_sSfWasBlocked)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
-            StringFormat("⛔ SPREAD ALTO: %d pts (máx: %d pts) — operações bloqueadas", spread, m_maxSpread));
-      m_sSfWasBlocked = true;
       return false;
-     }
-   else if(m_sSfWasBlocked)
-     {
-      m_sSfWasBlocked = false;
-      long spread = SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
-      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
-         StringFormat("✅ SPREAD NORMALIZADO: %d pts — operações liberadas", spread));
      }
    return true;
   }

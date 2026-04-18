@@ -2,11 +2,19 @@
 //|                                                     Blockers.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                              Sistema de Bloqueios - EPBot Matrix |
-//|                     Versão 3.25 - Claude Parte 031 (Claude Code) |
+//|                     Versão 3.26 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.25"
+#property version   "3.26"
 //
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v3.26 (Parte 033):
+// * Issue #27: CanTrade() recebe parâmetro skipSpread (default false).
+//   Quando true, pula verificação de spread (usado pelo EA antes do
+//   sinal ser detectado). Log de spread passa a ocorrer somente após
+//   sinal detectado, via IsSpreadOk() chamado no EA.
+// * IsSpreadOk(blockReason): wrapper público para checar spread sem log
+//   (usado pelo EA para logar bloqueio apenas quando há sinal).
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v3.25 (Parte 031):
 // * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
@@ -196,7 +204,8 @@ public:
    // ═══════════════════════════════════════════════════════════════
    // MÉTODOS PRINCIPAIS
    // ═══════════════════════════════════════════════════════════════
-   bool              CanTrade(int dailyTrades, double dailyProfit, string &blockReason);
+   bool              CanTrade(int dailyTrades, double dailyProfit, string &blockReason, bool skipSpread = false);
+   bool              IsSpreadOk(string &blockReason);
    bool              CanTradeDirection(int orderType, string &blockReason);
    bool              ShouldCloseOnEndTime(ulong positionTicket);
    bool              ShouldCloseBeforeSessionEnd(ulong positionTicket);
@@ -384,9 +393,18 @@ bool CBlockers::Init(
   }
 
 //+------------------------------------------------------------------+
+//| Verifica spread: true=OK, false=bloqueado (sem log)              |
+//+------------------------------------------------------------------+
+bool CBlockers::IsSpreadOk(string &blockReason)
+  {
+   ENUM_BLOCKER_REASON dummy = BLOCKER_NONE;
+   return m_filters.CheckSpreadWithLog(dummy, blockReason);
+  }
+
+//+------------------------------------------------------------------+
 //| Verifica se pode operar (método principal)                       |
 //+------------------------------------------------------------------+
-bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReason)
+bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReason, bool skipSpread)
   {
 // Reset diário se necessário
    if(IsNewDay())
@@ -409,7 +427,8 @@ bool CBlockers::CanTrade(int dailyTrades, double dailyProfit, string &blockReaso
       return false;
 
 // ── FILTRO DE SPREAD ──────────────────────────────────────────────
-   if(!m_filters.CheckSpreadWithLog(m_currentBlocker, blockReason))
+// skipSpread=true quando chamado antes do sinal (log feito pelo EA após sinal)
+   if(!skipSpread && !m_filters.CheckSpreadWithLog(m_currentBlocker, blockReason))
       return false;
 
 // ── LIMITES DIÁRIOS (v3.22: antes do Streak para diagnóstico correto) ──

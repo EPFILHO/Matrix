@@ -2,10 +2,19 @@
 //|                                     BollingerBandsFilterPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Bollinger Bands Filter (Anti-Squeeze)   |
-//|                     Versão 1.08 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.10 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.10 (Parte 033) — persistência:
+// * Reload(): repopula campos GUI a partir do módulo (fix Issue #22)
+//   chamado por ApplyLoadedConfig após atualizar os módulos
+//
+// CHANGELOG v1.09 (Parte 033) — Issue #29:
+// * _RefreshFieldState(): respeita m_pendingEnabled como toggle mestre
+//   (todos campos cinza/desabilitados quando toggle OFF)
+// * OnClick() do toggle: chama _RefreshFieldState() após alternar
 //
 // CHANGELOG v1.07 (Parte 029):
 // * m_locked: Update() não sobrescreve visual quando EA rodando
@@ -255,6 +264,7 @@ public:
          m_btnToggle.Pressed(false);
          m_pendingEnabled = !m_pendingEnabled;
          ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+         _RefreshFieldState();
          return true;
         }
       if(name == m_bTF.Name())
@@ -375,14 +385,42 @@ private:
         }
      }
 
+   virtual void Reload(void) override
+     {
+      if(m_filter == NULL) return;
+      m_pendingEnabled = m_filter.IsEnabled();
+      m_cur_TF         = m_filter.GetTimeframe();
+      m_cur_metric     = m_filter.GetSqueezeMetric();
+      m_iPeriod.Text(IntegerToString(m_filter.GetPeriod()));
+      m_iDev.Text(DoubleToString(m_filter.GetDeviation(), 1));
+      m_iThreshold.Text(DoubleToString(m_filter.GetSqueezeThreshold(), 2));
+      m_iPercPeriod.Text(IntegerToString(m_filter.GetPercentilePeriod()));
+      m_bTF.Text(TFName(m_cur_TF));
+      ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      SetRadioSel(m_bMode, 3, (int)m_cur_metric);
+      m_lModeDesc.Text(_ModeDesc(m_cur_metric));
+      m_lThreshHint.Text(_ThreshHint(m_cur_metric));
+      _RefreshFieldState();
+     }
+
    void _RefreshFieldState(void)
      {
+      bool on       = m_pendingEnabled;
       bool percMode = (m_cur_metric == BB_SQUEEZE_PERCENTILE);
-      SetEditEnabled(m_lPercPeriod, m_iPercPeriod, percMode);
-      if(!percMode)
-        { m_lPercHint.Color(C'180,180,180'); }
+      SetEditEnabled(m_lPeriod,    m_iPeriod,    on);
+      SetEditEnabled(m_lDev,       m_iDev,       on);
+      SetEditEnabled(m_lThreshold, m_iThreshold, on);
+      SetButtonEnabled(m_lTF, m_bTF, on);
+      SetRadioGroupEnabled(m_lMode2, m_bMode, 3, on);
+      SetEditEnabled(m_lPercPeriod, m_iPercPeriod, on && percMode);
+      if(on)
+        {
+         m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+         SetRadioSel(m_bMode, 3, (int)m_cur_metric);
+         m_lPercHint.Color(percMode ? CLR_NEUTRAL : C'180,180,180');
+        }
       else
-        { m_lPercHint.Color(CLR_NEUTRAL); }
+        { m_lPercHint.Color(C'180,180,180'); }
      }
 
   };

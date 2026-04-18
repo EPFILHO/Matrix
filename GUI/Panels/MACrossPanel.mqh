@@ -2,10 +2,17 @@
 //|                                                 MACrossPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — MA Cross Strategy                        |
-//|                     Versão 1.08 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.09 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.09 (Parte 033):
+// * _RefreshFieldState(): respeita m_pendingEnabled como toggle mestre
+//   (todos campos cinza/desabilitados quando toggle OFF) — Issue #29
+// * Update(): chama _RefreshFieldState() quando !m_locked
+// * OnClick() do toggle: chama _RefreshFieldState() após alternar
+// * Reload(): repopula campos GUI a partir do módulo (fix persistência)
 //
 // CHANGELOG v1.08 (Parte 030):
 // * Apply(): highlight rosa por campo + mensagem "Invalido: Fast, Slow..."
@@ -262,7 +269,10 @@ public:
    virtual void Update(void)
      {
       if(!m_locked)
+        {
          ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+         _RefreshFieldState();
+        }
       m_lEntryDesc.Text(_EntryDesc(m_cur_entry));
       m_lExitDesc.Text(_ExitDesc(m_cur_exit));
       if(m_strategy != NULL && m_strategy.IsInitialized() && m_strategy.GetEnabled())
@@ -301,6 +311,7 @@ public:
          m_btnToggle.Pressed(false);
          m_pendingEnabled = !m_pendingEnabled;
          ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+         _RefreshFieldState();
          return true;
         }
       // Fast Method radio
@@ -355,6 +366,33 @@ public:
      }
 
 private:
+   void _RefreshFieldState(void)
+     {
+      bool on = m_pendingEnabled;
+      SetEditEnabled(m_lPriority, m_iPriority, on);
+      SetEditEnabled(m_lFastP,    m_iFastP,    on);
+      SetEditEnabled(m_lSlowP,    m_iSlowP,    on);
+      SetRadioGroupEnabled(m_lFastM, m_bFastM, 4, on);
+      SetButtonEnabled(m_lFastTF, m_bFastTF, on);
+      SetButtonEnabled(m_lFastPr, m_bFastPr, on);
+      SetRadioGroupEnabled(m_lSlowM, m_bSlowM, 4, on);
+      SetButtonEnabled(m_lSlowTF, m_bSlowTF, on);
+      SetButtonEnabled(m_lSlowPr, m_bSlowPr, on);
+      SetRadioGroupEnabled(m_lEntry, m_bEntry, 2, on);
+      SetRadioGroupEnabled(m_lExit,  m_bExit,  3, on);
+      if(on)
+        {
+         SetRadioSel(m_bFastM, 4, MAMethodToIndex(m_cur_fastMethod));
+         m_bFastTF.ColorBackground(C'50,80,140'); m_bFastTF.Color(clrWhite);
+         m_bFastPr.ColorBackground(C'50,80,140'); m_bFastPr.Color(clrWhite);
+         SetRadioSel(m_bSlowM, 4, MAMethodToIndex(m_cur_slowMethod));
+         m_bSlowTF.ColorBackground(C'50,80,140'); m_bSlowTF.Color(clrWhite);
+         m_bSlowPr.ColorBackground(C'50,80,140'); m_bSlowPr.Color(clrWhite);
+         SetRadioSel(m_bEntry, 2, (m_cur_entry == ENTRY_NEXT_CANDLE) ? 0 : 1);
+         SetRadioSel(m_bExit,  3, (m_cur_exit == EXIT_FCO) ? 0 : (m_cur_exit == EXIT_VM) ? 1 : 2);
+        }
+     }
+
    string _EntryDesc(ENUM_ENTRY_MODE mode)
      {
       switch(mode)
@@ -406,6 +444,14 @@ private:
       m_bSlowPr.Text(AppliedPriceShortText(spr)); m_bSlowPr.ColorBackground(C'50,80,140'); m_bSlowPr.Color(clrWhite);
       SetRadioSel(m_bEntry, 2, (en == ENTRY_NEXT_CANDLE) ? 0 : 1);
       SetRadioSel(m_bExit,  3, (ex == EXIT_FCO) ? 0 : (ex == EXIT_VM) ? 1 : 2);
+     }
+
+   virtual void Reload(void) override
+     {
+      m_pendingEnabled = (m_strategy != NULL) ? m_strategy.GetEnabled() : false;
+      _InitFields();
+      ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      _RefreshFieldState();
      }
 
 public:

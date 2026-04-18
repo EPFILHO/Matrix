@@ -2,14 +2,18 @@
 //|                                                 StrategyBase.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                                Interface Base para Estratégias   |
-//|                                   Versão 2.02 - Claude Parte 025 |
+//|                                   Versão 2.03 - Claude Parte 033 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.02"
+#property version   "2.03"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
+// v2.03 (Parte 033) — Issue #28:
+// + GetShortName(): virtual — retorna nome curto da estratégia
+//   Usado no comentário das ordens (limite ~31 chars do MQL5)
+//   Default: m_strategyName (override nas filhas para encurtar)
 // v2.02 (Parte 025):
 // + GetStatusSummary(): virtual — retorna string de status para
 //   sub-página GERAL do painel GUI
@@ -107,6 +111,8 @@ public:
    // ═══════════════════════════════════════════════════════════
 
    string            GetName() const { return m_strategyName; }
+   // v2.03: Nome curto para comentário de ordens (override nas filhas)
+   virtual string    GetShortName() const { return m_strategyName; }
    bool              IsInitialized() const { return m_isInitialized; }
 
    // Prioridade (usado no SignalManager para resolver conflitos)

@@ -2,10 +2,19 @@
 //|                                              RSIFilterPanel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — RSI Filter                               |
-//|                     Versão 1.08 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.10 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.10 (Parte 033) — persistência:
+// * Reload(): repopula campos GUI a partir do módulo (fix Issue #22)
+//   chamado por ApplyLoadedConfig após atualizar os módulos
+//
+// CHANGELOG v1.09 (Parte 033) — Issue #29:
+// * _RefreshFieldState(): respeita m_pendingEnabled como toggle mestre
+//   (todos campos cinza/desabilitados quando toggle OFF)
+// * OnClick() do toggle: chama _RefreshFieldState() após alternar
 //
 // CHANGELOG v1.07 (Parte 029):
 // * m_locked: Update() não sobrescreve visual quando EA rodando
@@ -216,6 +225,7 @@ public:
          m_btnToggle.Pressed(false);
          m_pendingEnabled = !m_pendingEnabled;
          ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+         _RefreshFieldState();
          return true;
         }
       if(name == m_bTF.Name())
@@ -315,11 +325,36 @@ private:
         }
      }
 
+   virtual void Reload(void) override
+     {
+      if(m_filter == NULL) return;
+      m_pendingEnabled = m_filter.IsEnabled();
+      m_cur_TF         = m_filter.GetTimeframe();
+      m_cur_mode       = m_filter.GetFilterMode();
+      m_iPeriod.Text(IntegerToString(m_filter.GetPeriod()));
+      m_iOversold.Text(DoubleToString(m_filter.GetOversold(), 1));
+      m_iOverbought.Text(DoubleToString(m_filter.GetOverbought(), 1));
+      m_bTF.Text(TFName(m_cur_TF));
+      ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
+      SetRadioSel(m_bMode, 3, (int)m_cur_mode);
+      m_lModeDesc.Text(_ModeDesc(m_cur_mode));
+      _RefreshFieldState();
+     }
+
    void _RefreshFieldState(void)
      {
+      bool on         = m_pendingEnabled;
       bool showLevels = (m_cur_mode != RSI_FILTER_NEUTRAL);
-      SetEditEnabled(m_lOversold, m_iOversold, showLevels);
-      SetEditEnabled(m_lOverbought, m_iOverbought, showLevels);
+      SetEditEnabled(m_lPeriod, m_iPeriod, on);
+      SetButtonEnabled(m_lTF, m_bTF, on);
+      SetRadioGroupEnabled(m_lMode2, m_bMode, 3, on);
+      SetEditEnabled(m_lOversold,   m_iOversold,   on && showLevels);
+      SetEditEnabled(m_lOverbought, m_iOverbought, on && showLevels);
+      if(on)
+        {
+         m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+         SetRadioSel(m_bMode, 3, (int)m_cur_mode);
+        }
      }
 
   };

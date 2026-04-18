@@ -603,6 +603,22 @@ bool CTrendFilter::SetTrendFilterEnabled(bool enabled)
    if(oldValue == enabled) return true;
    m_useTrendFilter = enabled;
 
+   // H-12: Se habilitando e não existe handle, disparar cold reload
+   if(enabled && m_handleMA == INVALID_HANDLE && m_isInitialized)
+     {
+      m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
+         "🔄 [Trend Filter] Filtro direcional ativado sem handle – reinicializando");
+      Deinitialize();
+      if(!Initialize())
+        {
+         m_useTrendFilter = false;  // reverter se falhar
+         m_logger.Log(LOG_ERROR, THROTTLE_NONE, "HOT_RELOAD",
+            "❌ [Trend Filter] Falha ao reinicializar – filtro direcional revertido para DESATIVADO");
+         return false;
+        }
+      return true;
+     }
+
    m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
       "🔄 [Trend Filter] Filtro direcional: " +
       (oldValue ? "ATIVADO" : "DESATIVADO") + " → " +

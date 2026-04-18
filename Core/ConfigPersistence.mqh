@@ -2,14 +2,18 @@
 //|                                           ConfigPersistence.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|     Persistência de configurações GUI — EPBot Matrix              |
-//|                     Versão 1.01 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.02 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.01"
+#property version   "1.02"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
+// ═══════════════════════════════════════════════════════════════
+// v1.02 (Parte 033) — Issue #28:
+// - Removido campo tradeComment de SConfigData
+// - WriteKV e ReadKV do TradeComment eliminados
 // ═══════════════════════════════════════════════════════════════
 // v1.01 (Parte 027):
 // * Fix: SConfigData campos rsiOversold, rsiOverbought, rsiMidLevel,
@@ -131,7 +135,6 @@ struct SConfigData
 
    // ── OUTROS ──
    int               magicNumber;         // Hot-reload magic
-   string            tradeComment;        // Hot-reload comment
    int               slippage;
    ENUM_CONFLICT_RESOLUTION conflictMode;
    bool              showDebug;
@@ -426,7 +429,6 @@ bool CConfigPersistence::Save(string symbol, int magic, const SConfigData &data)
 // ── Outros ──
    FileWriteString(h, "# OUTROS\n");
    WriteKV(h, "MagicNumber",        IntegerToString(data.magicNumber));
-   WriteKV(h, "TradeComment",       data.tradeComment);
    WriteKV(h, "Slippage",           IntegerToString(data.slippage));
    WriteKV(h, "ConflictMode",       IntegerToString((int)data.conflictMode));
    WriteKV(h, "ShowDebug",          IntegerToString(data.showDebug));
@@ -645,7 +647,6 @@ bool CConfigPersistence::Load(string symbol, int magic, SConfigData &data)
       else if(key == "News3EM")            data.news3EM = (int)StringToInteger(val);
       // Outros
       else if(key == "MagicNumber")        data.magicNumber = (int)StringToInteger(val);
-      else if(key == "TradeComment")       data.tradeComment = val;
       else if(key == "Slippage")           data.slippage = (int)StringToInteger(val);
       else if(key == "ConflictMode")       data.conflictMode = (ENUM_CONFLICT_RESOLUTION)StringToInteger(val);
       else if(key == "ShowDebug")          data.showDebug = (bool)StringToInteger(val);

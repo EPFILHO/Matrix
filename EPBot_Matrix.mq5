@@ -2,16 +2,31 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.59 - Claude Parte 031 (Claude Code) |
+//|                     Versão 1.61 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.59"
+#property version   "1.61"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //--- Constante centralizada de versão
-#define EA_VERSION "1.59"
+#define EA_VERSION "1.61"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.61 (Parte 033) — Issue #28:                         |
+//| - Comment das ordens agora usa GetLastSignalShortSource():       |
+//|   "EPBot MACross", "EPBot RSI", "EPBot BB" ao invés de           |
+//|   "EPBot Matrix" (input removido)                                 |
+//| - g_tradeComment removido; ExecuteTrade() e exit code usam       |
+//|   SignalManager.GetLastSignalShortSource()                       |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.60 (Parte 033):                                     |
+//| - Issue #27: log de spread otimizado. CanTrade() chamado com     |
+//|   skipSpread=true antes do sinal — spread não gera log sozinho.  |
+//|   Após sinal detectado (≠ SIGNAL_NONE), IsSpreadOk() checa e    |
+//|   loga "⛔ Entrada bloqueada por spread alto" apenas quando sinal |
+//|   real foi bloqueado. Elimina dezenas de logs por hora em ativos |
+//|   voláteis (Gold, exóticos) sem perda de informação relevante.  |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.59 (Parte 031):                                     |
 //| - Fix: UpdateStats() passa totalPositionProfit para classificação |
@@ -46,10 +61,8 @@
 //|   CFG_APPLY_Y 520→546, todas as coordenadas parametrizadas        |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.55 (Parte 027):                                     |
-//| - Runtime vars: g_magicNumber, g_slippage, g_tradeComment        |
-//|   substituem inp_* (read-only) para suportar hot reload           |
-//| - Todas as referências a inp_MagicNumber, inp_Slippage e         |
-//|   inp_TradeComment no EA principal agora usam as vars editáveis   |
+//| - Runtime vars: g_magicNumber, g_slippage substituem inp_*       |
+//|   (read-only) para suportar hot reload                            |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.54 (Parte 027):                                     |
 //| - Config Persistence: banner redesenhado com caixa de destaque,  |
@@ -336,7 +349,6 @@
 //    Declaradas antes dos includes para serem visíveis nos .mqh
 int    g_magicNumber   = 0;
 int    g_slippage      = 0;
-string g_tradeComment  = "";
 
 // 1️⃣ INPUTS CENTRALIZADOS (primeiro!)
 #include "Core/Inputs.mqh"
@@ -461,7 +473,6 @@ int OnInit()
 // ═══════════════════════════════════════════════════════════════
    g_magicNumber  = inp_MagicNumber;
    g_slippage     = inp_Slippage;
-   g_tradeComment = inp_TradeComment;
 
 // ═══════════════════════════════════════════════════════════════
 // ETAPA 1: INICIALIZAR LOGGER (sempre primeiro!)
@@ -1579,7 +1590,8 @@ void OnTick()
    double dailyProfit = g_logger.GetDailyProfit();
    string blockReason = "";
 
-   if(!g_blockers.CanTrade(dailyTrades, dailyProfit, blockReason))
+// skipSpread=true: spread verificado APÓS sinal (log só quando há entrada real bloqueada)
+   if(!g_blockers.CanTrade(dailyTrades, dailyProfit, blockReason, true))
      {
       g_logger.Log(LOG_DEBUG, THROTTLE_TIME, "BLOCKER", "🚫 Trading bloqueado: " + blockReason, 60);
       return;
@@ -1614,7 +1626,23 @@ void OnTick()
      }
 
 // ═══════════════════════════════════════════════════════════════
-// ETAPA 4.5: BLOQUEIO FCO - Não entrar no candle do exit
+// ETAPA 4.5: VERIFICAR SPREAD (só agora que há sinal confirmado)
+// Log ocorre apenas quando entrada real é bloqueada por spread
+// ═══════════════════════════════════════════════════════════════
+   {
+    string spreadReason = "";
+    if(!g_blockers.IsSpreadOk(spreadReason))
+      {
+       long spr = SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
+       g_logger.Log(LOG_EVENT, THROTTLE_NONE, "BLOCK",
+          StringFormat("⛔ [Bloqueio] Entrada bloqueada por spread alto: %d pts (limite: %d pts)",
+                       spr, g_blockers.GetMaxSpread()));
+       return;
+      }
+   }
+
+// ═══════════════════════════════════════════════════════════════
+// ETAPA 4.7: BLOQUEIO FCO - Não entrar no candle do exit
 // ═══════════════════════════════════════════════════════════════
 
    if(inp_ExitMode == EXIT_FCO)
@@ -1889,7 +1917,7 @@ if(g_riskManager.ShouldActivateTrailing(tp1Executed, tp2Executed))
       request.price = currentPrice;
       request.deviation = g_slippage;
       request.magic = g_magicNumber;
-      request.comment = "Exit: " + g_signalManager.GetLastSignalSource();
+      request.comment = "EPBot Exit " + g_signalManager.GetLastSignalShortSource();
       request.type_filling = GetTypeFilling(_Symbol);
 
       if(OrderSend(request, result))
@@ -2018,7 +2046,7 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
    request.tp = tpPrice;  // 0 se usar Partial TP
    request.deviation = g_slippage;
    request.magic = g_magicNumber;
-   request.comment = g_tradeComment;
+   request.comment = "EPBot " + g_signalManager.GetLastSignalShortSource();
    request.type_filling = GetTypeFilling(_Symbol);
 
 // Log dos parâmetros

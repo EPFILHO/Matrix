@@ -2,12 +2,16 @@
 //|                                                       Inputs.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                   Sistema de Inputs Centralizados - EPBot Matrix |
-//|                     Versão 1.09 - Claude Parte 027 (Claude Code) |
+//|                     Versão 1.10 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.09"
+#property version   "1.10"
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v1.10 (Parte 033) — Issue #28:
+// - Removido inp_TradeComment (comment da ordem agora vem do
+//   SignalManager.GetLastSignalShortSource() via ExecuteTrade)
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v1.09 (Parte 027):
 // ✅ Sem novos inputs (apenas GUI expõe campos existentes)
@@ -64,7 +68,6 @@
 //+------------------------------------------------------------------+
 input group "═══════════════ ⚙️ CONFIGURAÇÕES GERAIS ═══════════════"
 input int    inp_MagicNumber = 123456;              // Magic Number
-input string inp_TradeComment = "EPBot Matrix";     // Comentário das Ordens
 
 //+------------------------------------------------------------------+
 //| SEÇÃO 001 - LOGGER                                               |

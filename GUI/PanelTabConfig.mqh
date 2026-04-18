@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.36 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.37 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -12,6 +12,11 @@
 //
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
+// ═══════════════════════════════════════════════════════════════
+// v1.37 (Parte 033) — Issue #28:
+// - Removido CreateLI para "Comentario Ordens" (m_co_lComm/m_co_iComm)
+// - Removido bloco de apply do Trade Comment
+// - Show/Hide: m_co_lComm e m_co_iComm removidos
 // ═══════════════════════════════════════════════════════════════
 // v1.36 (Parte 030):
 // * ApplyConfig(): limites dinâmicos baseados no ativo (SYMBOL_VOLUME, preço/POINT)
@@ -51,11 +56,10 @@
 // * Removidos m_cfg_btnApply (criação) e OnClickApply (handler)
 //
 // v1.30 (Parte 027):
-// * Hot Reload: Magic Number, Trade Comment e Slippage (runtime vars)
+// * Hot Reload: Magic Number e Slippage (runtime vars)
 //   - Magic Number aplicado em TradeManager + BlockerFilters + g_magicNumber
-//   - Trade Comment aplicado em g_tradeComment
 //   - Slippage aplicado em g_slippage (+ TradeManager que já existia)
-//   - Variáveis globais g_magicNumber/g_slippage/g_tradeComment substituem
+//   - Variáveis globais g_magicNumber/g_slippage substituem
 //     inp_* no EA principal para serem editáveis em runtime
 //
 // v1.29 (Parte 027):
@@ -667,9 +671,6 @@ bool CEPBotPanel::CreateTabConfig(void)
    if(!Add(m_co_lMagicW)) return false;
    y += PANEL_GAP_Y;
 
-   if(!CreateLI(m_co_lComm, m_co_iComm, "co_lCm", "co_iCm", "Comentario Ordens:", y)) return false;
-   y += PANEL_GAP_Y + 2;
-
    if(!CreateLI(m_co_lSlip, m_co_iSlip, "co_lSl", "co_iSl", "Slippage (pts):", y)) return false;
    y += PANEL_GAP_Y;
    if(!CreateLB(m_co_lConfl, m_co_bConfl, "co_lCf", "co_bCf", "Conflito Sinais:", y)) return false;
@@ -962,7 +963,6 @@ void CEPBotPanel::PopulateConfig(void)
 
 // ── Outros ──
    m_co_iMagic.Text(IntegerToString(inp_MagicNumber));
-   m_co_iComm.Text(inp_TradeComment);
    m_co_iSlip.Text(IntegerToString(inp_Slippage));
 
    string conflTxt = (m_cur_conflict == CONFLICT_PRIORITY) ? "PRIORIDADE" : "CANCELAR";
@@ -1331,7 +1331,6 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_co_hdr1.Show();
             m_co_lMagic.Show(); m_co_iMagic.Show();
             m_co_lMagicW.Show();
-            m_co_lComm.Show(); m_co_iComm.Show();
             m_co_lSlip.Show(); m_co_iSlip.Show();
             m_co_lConfl.Show(); m_co_bConfl.Show();
             m_co_lDbg.Show(); m_co_bDbg.Show();
@@ -1342,7 +1341,6 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_co_hdr1.Hide();
             m_co_lMagic.Hide(); m_co_iMagic.Hide();
             m_co_lMagicW.Hide();
-            m_co_lComm.Hide(); m_co_iComm.Hide();
             m_co_lSlip.Hide(); m_co_iSlip.Hide();
             m_co_lConfl.Hide(); m_co_bConfl.Hide();
             m_co_lDbg.Hide(); m_co_bDbg.Hide();
@@ -2040,16 +2038,6 @@ bool CEPBotPanel::ApplyConfig(string &outErr)
          ApplyMagicNumberChange(magic);
       else
         { errors++; errFields += "Magic, "; MarkFieldError(m_co_iMagic); }
-     }
-
-   // Trade Comment
-   string newComment = m_co_iComm.Text();
-   if(newComment != g_tradeComment)
-     {
-      if(m_logger != NULL)
-         m_logger.Log(LOG_EVENT, THROTTLE_NONE, "HOT_RELOAD",
-            "🔄 Trade Comment: \"" + g_tradeComment + "\" → \"" + newComment + "\"");
-      g_tradeComment = newComment;
      }
 
    if(m_signalManager != NULL)

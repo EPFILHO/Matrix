@@ -2,14 +2,18 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.61 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.62 - Claude Parte 033 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.59"
+#property version   "1.62"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
+// ═══════════════════════════════════════════════════════════════
+// v1.62 (Parte 033) — Issue #28:
+// - Removido m_co_lComm/m_co_iComm declaração (campo Comentario)
+// - SetEditEnabled para m_co_iComm removido de SetAllControlsEnabled
 // ═══════════════════════════════════════════════════════════════
 // v1.61 (Parte 030):
 // * ValidateAndApplyAll(): acumula erros CONFIG + sub-painéis numa mensagem só
@@ -86,8 +90,8 @@
 // * Fix: m_bbStrategy e m_bbFilter inicializados com NULL no construtor
 //
 // v1.49 (Parte 027):
-// + OUTROS: Magic Number (CEdit + aviso warning) e Comentário das Ordens
-//   m_co_lMagic/iMagic, m_co_lMagicW, m_co_lComm/iComm
+// + OUTROS: Magic Number (CEdit + aviso warning)
+//   m_co_lMagic/iMagic, m_co_lMagicW
 //   Posicionados acima de Slippage/Conflito; Debug e Debug Cooldown por último
 // + RISCO 2: Limites Diários movidos de BLOQUEIOS com toggle ON/OFF dinâmico
 //   m_c2_hdr4, m_c2_lDLAct/bDLAct, lDLTrd/iDLTrd, lDLLoss/iDLLoss,
@@ -378,7 +382,7 @@
 //
 // v1.02 (2026-02-21):
 // + Adiciona #include de Inputs.mqh (resolve inp_MagicNumber,
-//   inp_TradeComment, inp_LotSize undeclared)
+//   inp_LotSize undeclared)
 //
 // v1.01 (2026-02-21):
 // + Autocontido: adiciona #include das dependências do projeto
@@ -535,6 +539,7 @@ private:
    int                m_estratPage;    // 0=GERAL, 1..N=painel
    int                m_filtrosPage;   // 0=GERAL, 1..N=painel
    int                m_magicNumber;
+   int                m_initMagicNumber; // Magic original do input — chave do arquivo .cfg (nunca muda)
    string             m_symbol;
 
    // ── Proteção de mouse ──
@@ -737,7 +742,6 @@ private:
    CLabel   m_co_lConfl;  CButton m_co_bConfl;
    CLabel   m_co_lMagic;  CEdit   m_co_iMagic;   // Magic Number (v1.28 Parte 027)
    CLabel   m_co_lMagicW;                         // Aviso Magic Number
-   CLabel   m_co_lComm;   CEdit   m_co_iComm;    // Comentário das Ordens (v1.28 Parte 027)
    CLabel   m_co_lDbg;    CButton m_co_bDbg;
    CLabel   m_co_lDbgCd;  CEdit   m_co_iDbgCd;
 
@@ -1001,7 +1005,7 @@ CEPBotPanel::CEPBotPanel(void)
      m_trendFilter(NULL), m_rsiFilter(NULL), m_bbFilter(NULL),
      m_stratPanelCount(0), m_filtPanelCount(0),
      m_stratBtnCount(0), m_filtBtnCount(0),
-     m_magicNumber(0), m_symbol(""),
+     m_magicNumber(0), m_initMagicNumber(0), m_symbol(""),
      m_origDragTrade(true), m_origMouseScroll(true), m_mouseOverPanel(false),
      m_cfg_hasTP(false), m_cfg_hasTrailing(false), m_cfg_hasBE(false),
      m_cfg_hasDailyLimits(false), m_cfg_hasStreak(false), m_cfg_hasDrawdown(false),
@@ -1057,8 +1061,9 @@ bool CEPBotPanel::Init(CLogger *logger, CBlockers *blockers, CRiskManager *risk,
    m_trendFilter  = trend;
    m_rsiFilter    = rsiFilt;
    m_bbFilter     = bbFilt;
-   m_magicNumber  = magic;
-   m_symbol       = symbol;
+   m_magicNumber      = magic;
+   m_initMagicNumber  = magic;  // Fixado uma vez; usado como chave do arquivo .cfg
+   m_symbol           = symbol;
    RegisterPanels();
    return true;
   }
@@ -1223,7 +1228,7 @@ bool CEPBotPanel::CreatePanel(long chart, string name, int subwin,
      {
       SConfigData loadData;
       ZeroMemory(loadData);
-      if(CConfigPersistence::Load(m_symbol, m_magicNumber, loadData))
+      if(CConfigPersistence::Load(m_symbol, m_initMagicNumber, loadData))
         {
          m_savedConfig = loadData;
         }
@@ -1671,7 +1676,6 @@ void CEPBotPanel::SetAllControlsEnabled(bool enable)
 
 // ── CONFIG: OUTROS ──
    SetEditEnabled(m_co_lMagic, m_co_iMagic, enable);
-   SetEditEnabled(m_co_lComm, m_co_iComm, enable);
    SetEditEnabled(m_co_lSlip, m_co_iSlip, enable);
    SetButtonEnabled(m_co_lConfl, m_co_bConfl, enable);
    if(enable) // restaura cor original do botão Conflito ao habilitar
