@@ -13,6 +13,16 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.38 (Parte 034):
+// * H-14 fix — ApplyConfig agora é ATÔMICO: refatorado em duas passadas
+//   (valida todos os campos → se houver QUALQUER erro, retorna sem
+//   aplicar nada nos módulos). Antes, erros tardios deixavam estado
+//   inconsistente (setters parciais já haviam tocado módulos).
+// * H-15 fix — OnClickSLType/OnClickTPType agora lêem o valor corrente
+//   do RiskManager via getters (GetFixedSL/SLATRMultiplier/RangeMultiplier
+//   e GetFixedTP/TPATRMultiplier) em vez de inp_*. Preserva edições do
+//   usuário entre trocas de tipo (antes eram sobrescritas por inp_*).
+//
 // v1.37 (Parte 033) — Issue #28:
 // - Removido CreateLI para "Comentario Ordens" (m_co_lComm/m_co_iComm)
 // - Removido bloco de apply do Trade Comment

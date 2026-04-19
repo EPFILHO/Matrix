@@ -2,10 +2,17 @@
 //|                                                  RiskManager.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                       Sistema de Cálculo de Risco - EPBot Matrix |
-//|                  Versão 3.18 - Claude Parte 033 (Claude Code)    |
+//|                  Versão 3.19 - Claude Parte 034 (Claude Code)    |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.18"
+#property version   "3.19"
+// CHANGELOG v3.19 (Parte 034):
+// * Adiciona getters para persistência completa de SL/TP/Trailing/BE por
+//   tipo (GetSLATRMultiplier, GetTPATRMultiplier, GetRangeMultiplier,
+//   GetTrailingStart/Step/ATRStart/ATRStep, GetBEActivation/Offset/
+//   ATRActivation/ATROffset). Necessário para que CollectConfigData leia
+//   os 3 valores por tipo (antes só o tipo ativo era persistido).
+//
 // CHANGELOG v3.18 (Parte 033):
 // * H-02 fix: CalculatePartialTPLevels — validação cruzada tp1_lot +
 //   tp2_lot <= totalLotSize. Se soma exceder, tp2_lot é reduzido para

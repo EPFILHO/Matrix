@@ -2,7 +2,7 @@
 //|                                           PanelPersistence.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel: Persistência de Config — Save/Load/Banner                |
-//|                     Versão 1.06 - Claude Parte 034 (Claude Code) |
+//|                     Versão 1.07 - Claude Parte 034 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para persistência de configurações.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -10,6 +10,16 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
+// v1.07 (Parte 034) — fix arquitetural de persistência por tipo:
+// * CollectConfigData: antes só gravava o valor do tipo ATIVO (SL/TP/
+//   Trailing/BE); os inativos ficavam em 0 por ZeroMemory, fazendo o
+//   usuário perder silenciosamente edições ao trocar de tipo. Agora lê
+//   os 3 valores de SL, 2 de TP, 2×2 de Trailing e 2×2 de BE via getters
+//   do RiskManager e só sobrescreve o ATIVO com o CEdit.
+// * ApplyLoadedConfig: novo bloco aplica setters para TODOS os tipos no
+//   RiskManager (não só o ativo). Usa 0 como sentinela de "não
+//   sobrescrever" para compat com .cfg antigos gerados antes deste fix.
+//
 // v1.06 (Parte 033) — Issue #28:
 // * Removido CollectConfigData: data.tradeComment = ...
 // * Removido ApplyLoadedConfig: restauração de m_co_iComm.Text()
