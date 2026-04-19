@@ -1517,12 +1517,14 @@ void CEPBotPanel::OnClickSLType(int selected)
                     (m_cur_slType == SL_ATR)   ? "SL (ATR x):" : "SL (Range x):";
    m_cr_lSL.Text(slLabel);
 
+   // Parte 034 (H-15): lê valor ATUAL do módulo (não de inp_*)
+   // para preservar edições do usuário salvas no .cfg
    if(m_cur_slType == SL_FIXED)
-      m_cr_iSL.Text(IntegerToString(inp_FixedSL));
+      m_cr_iSL.Text(IntegerToString(m_riskManager != NULL ? m_riskManager.GetFixedSL() : inp_FixedSL));
    else if(m_cur_slType == SL_ATR)
-      m_cr_iSL.Text(DoubleToString(inp_SL_ATRMultiplier, 1));
+      m_cr_iSL.Text(DoubleToString(m_riskManager != NULL ? m_riskManager.GetSLATRMultiplier() : inp_SL_ATRMultiplier, 1));
    else
-      m_cr_iSL.Text(DoubleToString(inp_RangeMultiplier, 1));
+      m_cr_iSL.Text(DoubleToString(m_riskManager != NULL ? m_riskManager.GetRangeMultiplier() : inp_RangeMultiplier, 1));
 
 // Recalcular flags e atualizar estado visual
    m_cfg_hasATR   = (m_cur_slType == SL_ATR || m_cur_tpType == TP_ATR ||
@@ -1552,10 +1554,11 @@ void CEPBotPanel::OnClickTPType(int selected)
      {
       string tpLabel = (m_cur_tpType == TP_FIXED) ? "TP (Fixo pts):" : "TP (ATR x):";
       m_cr_lTP.Text(tpLabel);
+      // Parte 034 (H-15): lê valor ATUAL do módulo (não de inp_*)
       if(m_cur_tpType == TP_FIXED)
-         m_cr_iTP.Text(IntegerToString(inp_FixedTP));
+         m_cr_iTP.Text(IntegerToString(m_riskManager != NULL ? m_riskManager.GetFixedTP() : inp_FixedTP));
       else
-         m_cr_iTP.Text(DoubleToString(inp_TP_ATRMultiplier, 1));
+         m_cr_iTP.Text(DoubleToString(m_riskManager != NULL ? m_riskManager.GetTPATRMultiplier() : inp_TP_ATRMultiplier, 1));
      }
    else
      {

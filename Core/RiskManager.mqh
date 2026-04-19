@@ -476,6 +476,9 @@ public:
    bool              IsPartialTPEnabled() const { return m_usePartialTP; }
    int               GetFixedSL() const { return m_fixedSL; }
    int               GetFixedTP() const { return m_fixedTP; }
+   double            GetSLATRMultiplier() const { return m_slATRMultiplier; }
+   double            GetTPATRMultiplier() const { return m_tpATRMultiplier; }
+   double            GetRangeMultiplier() const { return m_rangeMultiplier; }
 
    // ═══════════════════════════════════════════════════════════════
    // GETTERS DE CONFIGURAÇÃO (Input values - valores originais)
