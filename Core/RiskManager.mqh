@@ -476,6 +476,19 @@ public:
    bool              IsPartialTPEnabled() const { return m_usePartialTP; }
    int               GetFixedSL() const { return m_fixedSL; }
    int               GetFixedTP() const { return m_fixedTP; }
+   double            GetSLATRMultiplier() const { return m_slATRMultiplier; }
+   double            GetTPATRMultiplier() const { return m_tpATRMultiplier; }
+   double            GetRangeMultiplier() const { return m_rangeMultiplier; }
+   // Trailing (Parte 034 — getters para persistir os 2 tipos)
+   int               GetTrailingStart() const { return m_trailingStart; }
+   int               GetTrailingStep() const { return m_trailingStep; }
+   double            GetTrailingATRStart() const { return m_trailingATRStart; }
+   double            GetTrailingATRStep() const { return m_trailingATRStep; }
+   // Breakeven (Parte 034 — getters para persistir os 2 tipos)
+   int               GetBEActivation() const { return m_beActivation; }
+   int               GetBEOffset() const { return m_beOffset; }
+   double            GetBEATRActivation() const { return m_beATRActivation; }
+   double            GetBEATROffset() const { return m_beATROffset; }
 
    // ═══════════════════════════════════════════════════════════════
    // GETTERS DE CONFIGURAÇÃO (Input values - valores originais)

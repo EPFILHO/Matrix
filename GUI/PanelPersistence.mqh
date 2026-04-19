@@ -2,7 +2,7 @@
 //|                                           PanelPersistence.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel: Persistência de Config — Save/Load/Banner                |
-//|                     Versão 1.05 - Claude Parte 033 (Claude Code) |
+//|                     Versão 1.06 - Claude Parte 034 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para persistência de configurações.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -90,47 +90,82 @@ void CEPBotPanel::CollectConfigData(SConfigData &data)
 // ── RISCO ──
    data.lotSize           = StringToDouble(m_cr_iLot.Text());
    data.slType            = m_cur_slType;
-   if(m_cur_slType == SL_FIXED)
-      data.fixedSL        = (int)StringToInteger(m_cr_iSL.Text());
-   else if(m_cur_slType == SL_ATR)
-      data.slATRMultiplier = StringToDouble(m_cr_iSL.Text());
-   else // SL_RANGE
-      data.rangeMultiplier = StringToDouble(m_cr_iSL.Text());
    data.slCompensateSpread = m_cur_compSL;
    data.tpType            = m_cur_tpType;
-   if(m_cur_tpType == TP_FIXED)
-      data.fixedTP        = (int)StringToInteger(m_cr_iTP.Text());
-   else
-      data.tpATRMultiplier = StringToDouble(m_cr_iTP.Text());
    data.tpCompensateSpread = m_cur_compTP;
    data.atrPeriod         = (int)StringToInteger(m_cr_iATRp.Text());
    data.rangePeriod       = (int)StringToInteger(m_cr_iRngP.Text());
 
-// ── Trailing ──
+// ── Trailing / Breakeven (toggles) ──
    data.trailOn               = m_cur_trailOn;
-   if(m_cur_trailingType == TRAILING_FIXED)
-     {
-      data.trailStartFixed    = (int)StringToInteger(m_c2_iTrlSt.Text());
-      data.trailStepFixed     = (int)StringToInteger(m_c2_iTrlSp.Text());
-     }
-   else
-     {
-      data.trailStartATR      = StringToDouble(m_c2_iTrlSt.Text());
-      data.trailStepATR       = StringToDouble(m_c2_iTrlSp.Text());
-     }
    data.trailCompensateSpread = m_cur_compTrail;
-
-// ── Breakeven ──
    data.beOn              = m_cur_beOn;
-   if(m_cur_beType == BE_FIXED)
+
+// ═══════════════════════════════════════════════
+// Parte 034 — persiste TODOS os valores por tipo
+// Lê do módulo (estado corrente) e sobrescreve o tipo ATIVO com o CEdit
+// (captura a última edição do usuário antes do Save)
+// ═══════════════════════════════════════════════
+   if(m_riskManager != NULL)
      {
-      data.beActivationFixed = (int)StringToInteger(m_c2_iBEVal.Text());
-      data.beOffsetFixed     = (int)StringToInteger(m_c2_iBEOff.Text());
+      // SL — 3 tipos
+      data.fixedSL          = m_riskManager.GetFixedSL();
+      data.slATRMultiplier  = m_riskManager.GetSLATRMultiplier();
+      data.rangeMultiplier  = m_riskManager.GetRangeMultiplier();
+      // TP — 2 tipos
+      data.fixedTP          = m_riskManager.GetFixedTP();
+      data.tpATRMultiplier  = m_riskManager.GetTPATRMultiplier();
+      // Trailing — 2 tipos
+      data.trailStartFixed  = m_riskManager.GetTrailingStart();
+      data.trailStepFixed   = m_riskManager.GetTrailingStep();
+      data.trailStartATR    = m_riskManager.GetTrailingATRStart();
+      data.trailStepATR     = m_riskManager.GetTrailingATRStep();
+      // Breakeven — 2 tipos
+      data.beActivationFixed = m_riskManager.GetBEActivation();
+      data.beOffsetFixed     = m_riskManager.GetBEOffset();
+      data.beActivationATR   = m_riskManager.GetBEATRActivation();
+      data.beOffsetATR       = m_riskManager.GetBEATROffset();
      }
+
+   // Override: tipo ATIVO vem do CEdit (captura edição mais recente)
+   if(m_cur_slType == SL_FIXED)
+      data.fixedSL         = (int)StringToInteger(m_cr_iSL.Text());
+   else if(m_cur_slType == SL_ATR)
+      data.slATRMultiplier = StringToDouble(m_cr_iSL.Text());
    else
+      data.rangeMultiplier = StringToDouble(m_cr_iSL.Text());
+
+   if(m_cur_tpType == TP_FIXED)
+      data.fixedTP         = (int)StringToInteger(m_cr_iTP.Text());
+   else if(m_cur_tpType == TP_ATR)
+      data.tpATRMultiplier = StringToDouble(m_cr_iTP.Text());
+
+   if(m_cur_trailOn)
      {
-      data.beActivationATR   = StringToDouble(m_c2_iBEVal.Text());
-      data.beOffsetATR       = StringToDouble(m_c2_iBEOff.Text());
+      if(m_cur_trailingType == TRAILING_FIXED)
+        {
+         data.trailStartFixed = (int)StringToInteger(m_c2_iTrlSt.Text());
+         data.trailStepFixed  = (int)StringToInteger(m_c2_iTrlSp.Text());
+        }
+      else
+        {
+         data.trailStartATR   = StringToDouble(m_c2_iTrlSt.Text());
+         data.trailStepATR    = StringToDouble(m_c2_iTrlSp.Text());
+        }
+     }
+
+   if(m_cur_beOn)
+     {
+      if(m_cur_beType == BE_FIXED)
+        {
+         data.beActivationFixed = (int)StringToInteger(m_c2_iBEVal.Text());
+         data.beOffsetFixed     = (int)StringToInteger(m_c2_iBEOff.Text());
+        }
+      else
+        {
+         data.beActivationATR   = StringToDouble(m_c2_iBEVal.Text());
+         data.beOffsetATR       = StringToDouble(m_c2_iBEOff.Text());
+        }
      }
 
 // ── Partial TP ──
@@ -479,6 +514,32 @@ void CEPBotPanel::ApplyLoadedConfig(const SConfigData &data)
    RefreshNewsState(1);
    RefreshNewsState(2);
    RefreshNewsState(3);
+
+// ═══════════════════════════════════════════════
+// Parte 034 — Aplicar valores de TODOS os tipos no módulo
+// (ApplyConfig só cobre o tipo ATIVO via CEdit; aqui cobrimos os inativos)
+// 0 = não sobrescreve → compat com .cfg antigos (fix 3)
+// ═══════════════════════════════════════════════
+   if(m_riskManager != NULL)
+     {
+      // SL (3 tipos)
+      if(data.fixedSL > 0)          m_riskManager.SetFixedSL(data.fixedSL);
+      if(data.slATRMultiplier > 0)  m_riskManager.SetSLATRMultiplier(data.slATRMultiplier);
+      if(data.rangeMultiplier > 0)  m_riskManager.SetRangeMultiplier(data.rangeMultiplier);
+      // TP (2 tipos)
+      if(data.fixedTP > 0)          m_riskManager.SetFixedTP(data.fixedTP);
+      if(data.tpATRMultiplier > 0)  m_riskManager.SetTPATRMultiplier(data.tpATRMultiplier);
+      // Trailing (2 tipos) — start E step > 0 juntos, offset pode ser 0
+      if(data.trailStartFixed > 0 && data.trailStepFixed > 0)
+         m_riskManager.SetTrailingParams(data.trailStartFixed, data.trailStepFixed);
+      if(data.trailStartATR > 0 && data.trailStepATR > 0)
+         m_riskManager.SetTrailingATRParams(data.trailStartATR, data.trailStepATR);
+      // BE (2 tipos) — gate por activation > 0 (offset pode ser 0)
+      if(data.beActivationFixed > 0)
+         m_riskManager.SetBreakevenParams(data.beActivationFixed, data.beOffsetFixed);
+      if(data.beActivationATR > 0)
+         m_riskManager.SetBreakevenATRParams(data.beActivationATR, data.beOffsetATR);
+     }
 
 // ═══════════════════════════════════════════════
 // 5. Aplicar nos MÓDULOS — chama ApplyConfig() que lê os CEdit/m_cur_*
