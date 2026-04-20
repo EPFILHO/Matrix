@@ -2,16 +2,22 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.61 - Claude Parte 033 (Claude Code) |
+//|                     Versão 1.62 - Claude Parte 034 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.61"
+#property version   "1.62"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //--- Constante centralizada de versão
-#define EA_VERSION "1.61"
+#define EA_VERSION "1.62"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.62 (Parte 034) — fix hot-reload do Partial TP:      |
+//| - OnTick (MonitorPartialTP) e OnTrade (RegisterPosition) liam    |
+//|   inp_UsePartialTP (estático). Se usuário ativasse via GUI com   |
+//|   inp_UsePartialTP=false, o partial TP nunca disparava em        |
+//|   execução. Agora usa g_riskManager.IsPartialTPEnabled().        |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.61 (Parte 033) — Issue #28:                         |
 //| - Comment das ordens agora usa GetLastSignalShortSource():       |
@@ -1810,8 +1816,9 @@ void ManageOpenPosition(ulong ticket)
 
 // ═══════════════════════════════════════════════════════════════
 // MONITORAR PARTIAL TP (se habilitado)
+// Parte 034: usa IsPartialTPEnabled() para refletir hot-reload
 // ═══════════════════════════════════════════════════════════════
-   if(inp_UsePartialTP)
+   if(g_riskManager != NULL && g_riskManager.IsPartialTPEnabled())
      {
       g_tradeManager.MonitorPartialTP(ticket);
      }
@@ -2182,7 +2189,8 @@ void ExecuteTrade(ENUM_SIGNAL_TYPE signal)
       // REGISTRAR POSIÇÃO NO TRADEMANAGER
       // ═══════════════════════════════════════════════════════════════
       SPartialTPLevel tpLevels[];
-      bool hasPartialTP = inp_UsePartialTP;
+      // Parte 034: usa IsPartialTPEnabled() para refletir hot-reload
+      bool hasPartialTP = (g_riskManager != NULL) ? g_riskManager.IsPartialTPEnabled() : inp_UsePartialTP;
 
       // 🎯 CALCULAR NÍVEIS DE PARTIAL TP
       if(hasPartialTP)
