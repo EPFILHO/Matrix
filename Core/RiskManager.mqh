@@ -2,10 +2,14 @@
 //|                                                  RiskManager.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                       Sistema de Cálculo de Risco - EPBot Matrix |
-//|                  Versão 3.19 - Claude Parte 034 (Claude Code)    |
+//|                  Versão 3.20 - Claude Parte 036 (Claude Code)    |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "3.19"
+#property version   "3.20"
+// CHANGELOG v3.20 (Parte 036):
+// * Novo getter GetTrailingActivation() — necessário para exposição
+//   do enum ENUM_TRAILING_ACTIVATION à camada GUI/Persistência.
+//
 // CHANGELOG v3.19 (Parte 034):
 // * Adiciona getters para persistência completa de SL/TP/Trailing/BE por
 //   tipo (GetSLATRMultiplier, GetTPATRMultiplier, GetRangeMultiplier,
@@ -496,6 +500,8 @@ public:
    int               GetBEOffset() const { return m_beOffset; }
    double            GetBEATRActivation() const { return m_beATRActivation; }
    double            GetBEATROffset() const { return m_beATROffset; }
+   // Parte 036 — getter para TrailingActivation (ALWAYS/AFTER_TP1/AFTER_TP2/NEVER)
+   ENUM_TRAILING_ACTIVATION GetTrailingActivation() const { return m_trailingActivation; }
 
    // ═══════════════════════════════════════════════════════════════
    // GETTERS DE CONFIGURAÇÃO (Input values - valores originais)

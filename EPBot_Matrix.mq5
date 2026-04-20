@@ -2,16 +2,26 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.64 - Claude Parte 035 (Claude Code) |
+//|                     Versão 1.65 - Claude Parte 036 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.64"
+#property version   "1.65"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //--- Constante centralizada de versão
-#define EA_VERSION "1.64"
+#define EA_VERSION "1.65"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.65 (Parte 036) — TrailingActivation na GUI:         |
+//| - Radio "Ativar em: SEMPRE | APOS TP1 | APOS TP2" em RISCO 2,    |
+//|   entre toggle Trailing e Trail Start. Radio fica inativo        |
+//|   (grayed) quando toggle Trailing = OFF. Hot-reload via          |
+//|   SetTrailingActivation (Deinit+Init). Persistência em .cfg via  |
+//|   nova chave TrailingActivation; .cfg antigos são retrocompat.   |
+//| - Fix: antes o toggle colapsava 4 modos em ALWAYS/NEVER. Agora   |
+//|   preserva os 4 modos (ALWAYS/AFTER_TP1/AFTER_TP2/NEVER).        |
+//| - Novo getter: CRiskManager::GetTrailingActivation().            |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.64 (Parte 035) — AppliedPrice em RSI/BB Filter GUI: |
 //| - RSIFilterPanel e BollingerBandsFilterPanel ganharam botão      |
