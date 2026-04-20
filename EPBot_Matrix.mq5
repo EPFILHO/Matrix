@@ -18,10 +18,6 @@
 //|   (inputs estáticos). Após hot-reload via GUI, decisões de       |
 //|   lock de candle, FCO block e "virar a mão" ficavam defasadas.   |
 //|   Agora leem g_maCrossStrategy.GetExitMode()/GetEnabled().       |
-//| ⚠️ TODO urgente próxima sessão: auditar RiskManager para setters |
-//|    de inp_PartialTP1/2_Percent e _Distance. A ATIVAÇÃO do        |
-//|    partial TP respeita hot-reload (v1.62), mas os VALORES dos    |
-//|    níveis podem ainda vir de inputs estáticos.                   |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.62 (Parte 034) — fix hot-reload do Partial TP:      |
 //| - OnTick (MonitorPartialTP) e OnTrade (RegisterPosition) liam    |
