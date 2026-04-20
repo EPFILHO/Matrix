@@ -2,10 +2,15 @@
 //|                                     BollingerBandsFilterPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Bollinger Bands Filter (Anti-Squeeze)   |
-//|                     Versão 1.10 - Claude Parte 033 (Claude Code) |
+//|                     Versão 1.11 - Claude Parte 035 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.11 (Parte 035) — AppliedPrice:
+// * Novo botão "Preço" ciclando CLOSE/OPEN/HIGH/LOW/MEDIAN/TYPICAL
+// * Apply(): chama SetAppliedPrice() (hot-reload via Deinit+Init)
+// * Reload()/_RefreshFieldState(): sincroniza visual e toggle
 //
 // CHANGELOG v1.10 (Parte 033) — persistência:
 // * Reload(): repopula campos GUI a partir do módulo (fix Issue #22)
@@ -40,6 +45,7 @@ private:
    // Estado pendente
    bool               m_pendingEnabled;
    ENUM_TIMEFRAMES    m_cur_TF;
+   ENUM_APPLIED_PRICE m_cur_price;
    ENUM_BB_SQUEEZE_METRIC m_cur_metric;
 
    // Controles — display
@@ -55,6 +61,7 @@ private:
    CLabel   m_lPeriod;   CEdit   m_iPeriod;
    CLabel   m_lDev;      CEdit   m_iDev;
    CLabel   m_lTF;       CButton m_bTF;
+   CLabel   m_lPrice;    CButton m_bPrice;
    CLabel   m_lMode2;    CButton m_bMode[3];
    CLabel   m_lModeDesc;
    CLabel   m_lThreshold; CEdit  m_iThreshold;
@@ -67,6 +74,7 @@ public:
       : m_filter(filter),
         m_pendingEnabled(false),
         m_cur_TF(PERIOD_CURRENT),
+        m_cur_price(PRICE_CLOSE),
         m_cur_metric(BB_SQUEEZE_RELATIVE)
      {}
 
@@ -139,6 +147,16 @@ public:
       }
       y += PANEL_GAP_Y + 2;
 
+      // Applied Price
+      {
+       ENUM_APPLIED_PRICE pr = (m_filter != NULL) ? m_filter.GetAppliedPrice() : PRICE_CLOSE;
+       m_cur_price = pr;
+       if(!parent.CreateLB(m_lPrice, m_bPrice, "fbf_lPr", "fbf_bPr", "Preco:", y)) return false;
+       m_bPrice.Text(AppliedPriceShortText(pr));
+       m_bPrice.ColorBackground(C'50,80,140'); m_bPrice.Color(clrWhite);
+      }
+      y += PANEL_GAP_Y + 2;
+
       // Métrica Squeeze (radio 3)
       y += PANEL_GAP_SECTION;
       {
@@ -206,6 +224,7 @@ public:
       m_lPeriod.Show(); m_iPeriod.Show();
       m_lDev.Show(); m_iDev.Show();
       m_lTF.Show(); m_bTF.Show();
+      m_lPrice.Show(); m_bPrice.Show();
       m_lMode2.Show(); for(int i = 0; i < 3; i++) m_bMode[i].Show();
       m_lModeDesc.Show();
       m_lThreshold.Show(); m_iThreshold.Show(); m_lThreshHint.Show();
@@ -222,6 +241,7 @@ public:
       m_lPeriod.Hide(); m_iPeriod.Hide();
       m_lDev.Hide(); m_iDev.Hide();
       m_lTF.Hide(); m_bTF.Hide();
+      m_lPrice.Hide(); m_bPrice.Hide();
       m_lMode2.Hide(); for(int i = 0; i < 3; i++) m_bMode[i].Hide();
       m_lModeDesc.Hide();
       m_lThreshold.Hide(); m_iThreshold.Hide(); m_lThreshHint.Hide();
@@ -274,6 +294,13 @@ public:
          m_bTF.Text(TFName(m_cur_TF));
          return true;
         }
+      if(name == m_bPrice.Name())
+        {
+         m_bPrice.Pressed(false);
+         m_cur_price = CycleAppliedPrice(m_cur_price);
+         m_bPrice.Text(AppliedPriceShortText(m_cur_price));
+         return true;
+        }
       for(int i = 0; i < 3; i++)
          if(name == m_bMode[i].Name())
            {
@@ -319,6 +346,7 @@ public:
       m_filter.SetPeriod(period);
       m_filter.SetDeviation(deviation);
       m_filter.SetTimeframe(m_cur_TF);
+      m_filter.SetAppliedPrice(m_cur_price);
       return true;
      }
 
@@ -354,10 +382,12 @@ public:
          ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
       // Buttons + radios
       SetButtonEnabled(m_lTF, m_bTF, enable);
+      SetButtonEnabled(m_lPrice, m_bPrice, enable);
       SetRadioGroupEnabled(m_lMode2, m_bMode, 3, enable);
       if(enable)
         {
          m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+         m_bPrice.ColorBackground(C'50,80,140'); m_bPrice.Color(clrWhite);
          SetRadioSel(m_bMode, 3, (int)m_cur_metric);
         }
      }
@@ -390,12 +420,14 @@ private:
       if(m_filter == NULL) return;
       m_pendingEnabled = m_filter.IsEnabled();
       m_cur_TF         = m_filter.GetTimeframe();
+      m_cur_price      = m_filter.GetAppliedPrice();
       m_cur_metric     = m_filter.GetSqueezeMetric();
       m_iPeriod.Text(IntegerToString(m_filter.GetPeriod()));
       m_iDev.Text(DoubleToString(m_filter.GetDeviation(), 1));
       m_iThreshold.Text(DoubleToString(m_filter.GetSqueezeThreshold(), 2));
       m_iPercPeriod.Text(IntegerToString(m_filter.GetPercentilePeriod()));
       m_bTF.Text(TFName(m_cur_TF));
+      m_bPrice.Text(AppliedPriceShortText(m_cur_price));
       ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
       SetRadioSel(m_bMode, 3, (int)m_cur_metric);
       m_lModeDesc.Text(_ModeDesc(m_cur_metric));
@@ -411,11 +443,13 @@ private:
       SetEditEnabled(m_lDev,       m_iDev,       on);
       SetEditEnabled(m_lThreshold, m_iThreshold, on);
       SetButtonEnabled(m_lTF, m_bTF, on);
+      SetButtonEnabled(m_lPrice, m_bPrice, on);
       SetRadioGroupEnabled(m_lMode2, m_bMode, 3, on);
       SetEditEnabled(m_lPercPeriod, m_iPercPeriod, on && percMode);
       if(on)
         {
          m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+         m_bPrice.ColorBackground(C'50,80,140'); m_bPrice.Color(clrWhite);
          SetRadioSel(m_bMode, 3, (int)m_cur_metric);
          m_lPercHint.Color(percMode ? CLR_NEUTRAL : C'180,180,180');
         }

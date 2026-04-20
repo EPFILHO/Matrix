@@ -2,16 +2,22 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.63 - Claude Parte 034 (Claude Code) |
+//|                     Versão 1.64 - Claude Parte 035 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.63"
+#property version   "1.64"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //--- Constante centralizada de versão
-#define EA_VERSION "1.63"
+#define EA_VERSION "1.64"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.64 (Parte 035) — AppliedPrice em RSI/BB Filter GUI: |
+//| - RSIFilterPanel e BollingerBandsFilterPanel ganharam botão      |
+//|   "Preço" que cicla CLOSE/OPEN/HIGH/LOW/MEDIAN/TYPICAL.          |
+//|   Apply() chama SetAppliedPrice() (hot-reload via Deinit+Init).  |
+//|   Persistência já suportada via SConfigData.rsi/bbFiltApplied.   |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.63 (Parte 034) — fix hot-reload de ExitMode/UseMA:  |
 //| - Linhas 1465/1610/1654/1938 liam inp_ExitMode e inp_UseMACross  |
