@@ -2,16 +2,26 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.62 - Claude Parte 034 (Claude Code) |
+//|                     Versão 1.63 - Claude Parte 034 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.62"
+#property version   "1.63"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //--- Constante centralizada de versão
-#define EA_VERSION "1.62"
+#define EA_VERSION "1.63"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.63 (Parte 034) — fix hot-reload de ExitMode/UseMA:  |
+//| - Linhas 1465/1610/1654/1938 liam inp_ExitMode e inp_UseMACross  |
+//|   (inputs estáticos). Após hot-reload via GUI, decisões de       |
+//|   lock de candle, FCO block e "virar a mão" ficavam defasadas.   |
+//|   Agora leem g_maCrossStrategy.GetExitMode()/GetEnabled().       |
+//| ⚠️ TODO urgente próxima sessão: auditar RiskManager para setters |
+//|    de inp_PartialTP1/2_Percent e _Distance. A ATIVAÇÃO do        |
+//|    partial TP respeita hot-reload (v1.62), mas os VALORES dos    |
+//|    níveis podem ainda vir de inputs estáticos.                   |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.62 (Parte 034) — fix hot-reload do Partial TP:      |
 //| - OnTick (MonitorPartialTP) e OnTrade (RegisterPosition) liam    |
@@ -1462,7 +1472,9 @@ void OnTick()
       g_tradeManager.UnregisterPosition(g_lastPositionTicket);
 
       // Bloquear re-entrada no mesmo candle ao fechar posição (exceto no modo VM)
-      if(inp_ExitMode != EXIT_VM)
+      // Parte 034: lê ExitMode do módulo (reflete hot-reload via GUI)
+      ENUM_EXIT_MODE curExitMode_1465 = (g_maCrossStrategy != NULL) ? g_maCrossStrategy.GetExitMode() : inp_ExitMode;
+      if(curExitMode_1465 != EXIT_VM)
         {
          g_lastTradeBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
          g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "RESET", "🔄 Controle de candle atualizado - aguardando próximo candle para novo trade");
@@ -1607,7 +1619,10 @@ void OnTick()
 // ETAPA 3.5: VERIFICAR SE JÁ OPEROU NESTE CANDLE
 // ═══════════════════════════════════════════════════════════════
 
-   bool isVMActive = (inp_UseMACross && inp_ExitMode == EXIT_VM);
+   // Parte 034: UseMACross e ExitMode lidos do módulo (reflete hot-reload via GUI)
+   bool curUseMACross_1610 = (g_maCrossStrategy != NULL) ? g_maCrossStrategy.GetEnabled() : inp_UseMACross;
+   ENUM_EXIT_MODE curExitMode_1610 = (g_maCrossStrategy != NULL) ? g_maCrossStrategy.GetExitMode() : inp_ExitMode;
+   bool isVMActive = (curUseMACross_1610 && curExitMode_1610 == EXIT_VM);
 
    if(!isVMActive)
      {
@@ -1651,7 +1666,9 @@ void OnTick()
 // ETAPA 4.7: BLOQUEIO FCO - Não entrar no candle do exit
 // ═══════════════════════════════════════════════════════════════
 
-   if(inp_ExitMode == EXIT_FCO)
+   // Parte 034: ExitMode lido do módulo (reflete hot-reload via GUI)
+   ENUM_EXIT_MODE curExitMode_1654 = (g_maCrossStrategy != NULL) ? g_maCrossStrategy.GetExitMode() : inp_ExitMode;
+   if(curExitMode_1654 == EXIT_FCO)
      {
       datetime currentBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
 
@@ -1935,7 +1952,9 @@ if(g_riskManager.ShouldActivateTrailing(tp1Executed, tp2Executed))
             g_logger.Log(LOG_TRADE, THROTTLE_NONE, "EXIT", "   Fonte: " + g_signalManager.GetLastSignalSource());
             g_logger.Log(LOG_TRADE, THROTTLE_NONE, "EXIT", "   Preço: " + DoubleToString(result.price, _Digits));
 
-            if(inp_ExitMode == EXIT_VM)
+            // Parte 034: ExitMode lido do módulo (reflete hot-reload via GUI)
+            ENUM_EXIT_MODE curExitMode_1938 = (g_maCrossStrategy != NULL) ? g_maCrossStrategy.GetExitMode() : inp_ExitMode;
+            if(curExitMode_1938 == EXIT_VM)
               {
                g_logger.Log(LOG_TRADE, THROTTLE_NONE, "VM", "🔄 VIRAR A MÃO - Executando entrada oposta IMEDIATAMENTE");
                ExecuteTrade(exitSignal);
