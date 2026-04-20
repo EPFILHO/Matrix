@@ -17,7 +17,7 @@
 //   - grossProfit acumula finalDealProfit só quando classifyProfit > 0
 //   - Parâmetro omitido = comportamento antigo (sem partial TP)
 // * LIMITAÇÃO CONHECIDA: LoadDailyStats() ainda classifica pelo
-//   finalDealProfit do CSV no reinício do EA (ver issue #TODO).
+//   finalDealProfit do CSV no reinício do EA (ver KNOWN LIMITATION em EPBot_Matrix.mq5).
 // ═══════════════════════════════════════════════════════════════════
 // CHANGELOG v3.28 (Parte 028):
 // * SetShowDebug(): log removido — alterações de debug não são logadas
