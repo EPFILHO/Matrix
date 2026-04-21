@@ -2,10 +2,15 @@
 //|                                              RSIFilterPanel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — RSI Filter                               |
-//|                     Versão 1.10 - Claude Parte 033 (Claude Code) |
+//|                     Versão 1.11 - Claude Parte 035 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.11 (Parte 035) — AppliedPrice:
+// * Novo botão "Preço" ciclando CLOSE/OPEN/HIGH/LOW/MEDIAN/TYPICAL
+// * Apply(): chama SetAppliedPrice() (hot-reload via Deinit+Init)
+// * Reload()/_RefreshFieldState(): sincroniza visual e toggle
 //
 // CHANGELOG v1.10 (Parte 033) — persistência:
 // * Reload(): repopula campos GUI a partir do módulo (fix Issue #22)
@@ -43,6 +48,7 @@ private:
    // Estado pendente
    bool               m_pendingEnabled;
    ENUM_TIMEFRAMES    m_cur_TF;
+   ENUM_APPLIED_PRICE m_cur_price;
    ENUM_RSI_FILTER_MODE m_cur_mode;
 
    // Controles — display
@@ -56,6 +62,7 @@ private:
    CButton  m_btnToggle;
    CLabel   m_lPeriod;   CEdit   m_iPeriod;
    CLabel   m_lTF;       CButton m_bTF;
+   CLabel   m_lPrice;    CButton m_bPrice;
    CLabel   m_lMode2;    CButton m_bMode[3];
    CLabel   m_lModeDesc;
    CLabel   m_lOversold;   CEdit m_iOversold;
@@ -66,6 +73,7 @@ public:
       : m_filter(filter),
         m_pendingEnabled(false),
         m_cur_TF(PERIOD_CURRENT),
+        m_cur_price(PRICE_CLOSE),
         m_cur_mode(RSI_FILTER_ZONE)
      {}
 
@@ -122,6 +130,16 @@ public:
       }
       y += PANEL_GAP_Y + 2;
 
+      // Applied Price
+      {
+       ENUM_APPLIED_PRICE pr = (m_filter != NULL) ? m_filter.GetAppliedPrice() : PRICE_CLOSE;
+       m_cur_price = pr;
+       if(!parent.CreateLB(m_lPrice, m_bPrice, "frf_lPr", "frf_bPr", "Preco:", y)) return false;
+       m_bPrice.Text(AppliedPriceShortText(pr));
+       m_bPrice.ColorBackground(C'50,80,140'); m_bPrice.Color(clrWhite);
+      }
+      y += PANEL_GAP_Y + 2;
+
       // Modo (radio 3)
       y += PANEL_GAP_SECTION;
       {
@@ -171,6 +189,7 @@ public:
       m_hdrConf.Show(); m_btnToggle.Show();
       m_lPeriod.Show(); m_iPeriod.Show();
       m_lTF.Show(); m_bTF.Show();
+      m_lPrice.Show(); m_bPrice.Show();
       m_lMode2.Show(); for(int i = 0; i < 3; i++) m_bMode[i].Show();
       m_lModeDesc.Show();
       m_lOversold.Show(); m_iOversold.Show();
@@ -186,6 +205,7 @@ public:
       m_hdrConf.Hide(); m_btnToggle.Hide();
       m_lPeriod.Hide(); m_iPeriod.Hide();
       m_lTF.Hide(); m_bTF.Hide();
+      m_lPrice.Hide(); m_bPrice.Hide();
       m_lMode2.Hide(); for(int i = 0; i < 3; i++) m_bMode[i].Hide();
       m_lModeDesc.Hide();
       m_lOversold.Hide(); m_iOversold.Hide();
@@ -235,6 +255,13 @@ public:
          m_bTF.Text(TFName(m_cur_TF));
          return true;
         }
+      if(name == m_bPrice.Name())
+        {
+         m_bPrice.Pressed(false);
+         m_cur_price = CycleAppliedPrice(m_cur_price);
+         m_bPrice.Text(AppliedPriceShortText(m_cur_price));
+         return true;
+        }
       for(int i = 0; i < 3; i++)
          if(name == m_bMode[i].Name())
            { m_cur_mode = (ENUM_RSI_FILTER_MODE)i; SetRadioSel(m_bMode, 3, i); m_lModeDesc.Text(_ModeDesc(m_cur_mode)); _RefreshFieldState(); return true; }
@@ -273,6 +300,7 @@ public:
       m_filter.SetOverbought(overbought);
       m_filter.SetPeriod(period);
       m_filter.SetTimeframe(m_cur_TF);
+      m_filter.SetAppliedPrice(m_cur_price);
       return true;
      }
 
@@ -305,10 +333,12 @@ public:
          ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
       // Buttons + radios
       SetButtonEnabled(m_lTF, m_bTF, enable);
+      SetButtonEnabled(m_lPrice, m_bPrice, enable);
       SetRadioGroupEnabled(m_lMode2, m_bMode, 3, enable);
       if(enable)
         {
          m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+         m_bPrice.ColorBackground(C'50,80,140'); m_bPrice.Color(clrWhite);
          SetRadioSel(m_bMode, 3, (int)m_cur_mode);
         }
      }
@@ -330,11 +360,13 @@ private:
       if(m_filter == NULL) return;
       m_pendingEnabled = m_filter.IsEnabled();
       m_cur_TF         = m_filter.GetTimeframe();
+      m_cur_price      = m_filter.GetAppliedPrice();
       m_cur_mode       = m_filter.GetFilterMode();
       m_iPeriod.Text(IntegerToString(m_filter.GetPeriod()));
       m_iOversold.Text(DoubleToString(m_filter.GetOversold(), 1));
       m_iOverbought.Text(DoubleToString(m_filter.GetOverbought(), 1));
       m_bTF.Text(TFName(m_cur_TF));
+      m_bPrice.Text(AppliedPriceShortText(m_cur_price));
       ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
       SetRadioSel(m_bMode, 3, (int)m_cur_mode);
       m_lModeDesc.Text(_ModeDesc(m_cur_mode));
@@ -347,12 +379,14 @@ private:
       bool showLevels = (m_cur_mode != RSI_FILTER_NEUTRAL);
       SetEditEnabled(m_lPeriod, m_iPeriod, on);
       SetButtonEnabled(m_lTF, m_bTF, on);
+      SetButtonEnabled(m_lPrice, m_bPrice, on);
       SetRadioGroupEnabled(m_lMode2, m_bMode, 3, on);
       SetEditEnabled(m_lOversold,   m_iOversold,   on && showLevels);
       SetEditEnabled(m_lOverbought, m_iOverbought, on && showLevels);
       if(on)
         {
          m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+         m_bPrice.ColorBackground(C'50,80,140'); m_bPrice.Color(clrWhite);
          SetRadioSel(m_bMode, 3, (int)m_cur_mode);
         }
      }

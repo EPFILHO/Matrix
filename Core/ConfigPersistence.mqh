@@ -2,14 +2,19 @@
 //|                                           ConfigPersistence.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|     Persistência de configurações GUI — EPBot Matrix              |
-//|                     Versão 1.02 - Claude Parte 033 (Claude Code) |
+//|                     Versão 1.03 - Claude Parte 036 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.02"
+#property version   "1.03"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
+// ═══════════════════════════════════════════════════════════════
+// v1.03 (Parte 036) — Trailing Activation:
+// + SConfigData.trailingActivation (ENUM_TRAILING_ACTIVATION).
+// + Save/Load chave "TrailingActivation"; retrocompat: .cfg antigos sem
+//   a chave derivam o modo do trailOn (ON→ALWAYS / OFF→NEVER).
 // ═══════════════════════════════════════════════════════════════
 // v1.02 (Parte 033) — Issue #28:
 // - Removido campo tradeComment de SConfigData
@@ -71,6 +76,7 @@ struct SConfigData
    double            trailStartATR;
    double            trailStepATR;
    bool              trailCompensateSpread;
+   ENUM_TRAILING_ACTIVATION trailingActivation; // Parte 036 — ALWAYS/AFTER_TP1/AFTER_TP2/NEVER
 
    // ── RISCO 2: Breakeven ──
    bool              beOn;
@@ -347,6 +353,7 @@ bool CConfigPersistence::Save(string symbol, int magic, const SConfigData &data)
    WriteKV(h, "TrailStartATR",      DoubleToString(data.trailStartATR, 2));
    WriteKV(h, "TrailStepATR",       DoubleToString(data.trailStepATR, 2));
    WriteKV(h, "TrailCompSpread",    IntegerToString(data.trailCompensateSpread));
+   WriteKV(h, "TrailingActivation", IntegerToString((int)data.trailingActivation));
 
 // ── Breakeven ──
    FileWriteString(h, "# BREAKEVEN\n");
@@ -584,6 +591,7 @@ bool CConfigPersistence::Load(string symbol, int magic, SConfigData &data)
       else if(key == "TrailStartATR")      data.trailStartATR = StringToDouble(val);
       else if(key == "TrailStepATR")       data.trailStepATR = StringToDouble(val);
       else if(key == "TrailCompSpread")    data.trailCompensateSpread = (bool)StringToInteger(val);
+      else if(key == "TrailingActivation") data.trailingActivation = (ENUM_TRAILING_ACTIVATION)StringToInteger(val);
       // Breakeven
       else if(key == "BEOn")               data.beOn = (bool)StringToInteger(val);
       else if(key == "BEActivationFixed")  data.beActivationFixed = (int)StringToInteger(val);
@@ -725,6 +733,9 @@ bool CConfigPersistence::Load(string symbol, int magic, SConfigData &data)
       data.tpType = TP_FIXED;
    if(data.trailingType < TRAILING_FIXED || data.trailingType > TRAILING_ATR)
       data.trailingType = TRAILING_FIXED;
+   // Parte 036 — retrocompat: .cfg antigos sem TrailingActivation derivam do trailOn
+   if(data.trailingActivation < TRAILING_ALWAYS || data.trailingActivation > TRAILING_NEVER)
+      data.trailingActivation = data.trailOn ? TRAILING_ALWAYS : TRAILING_NEVER;
    if(data.beType < BE_FIXED || data.beType > BE_ATR)
       data.beType = BE_FIXED;
    if(data.tradeDirection < DIRECTION_BOTH || data.tradeDirection > DIRECTION_SELL_ONLY)

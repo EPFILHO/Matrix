@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.38 - Claude Parte 034 (Claude Code) |
+//|                     Versão 1.39 - Claude Parte 036 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -12,6 +12,16 @@
 //
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
+// ═══════════════════════════════════════════════════════════════
+// v1.39 (Parte 036) — Trailing Activation:
+// + Radio "Ativar em: SEMPRE | APOS TP1 | APOS TP2" em RISCO 2
+//   (entre toggle Trailing e Trail Start).
+// + RefreshRisco2State: radio grayed/inativo quando toggle Trailing OFF.
+// + OnClickTrailMode handler (guard: ignora clique se toggle OFF).
+// + Populate: m_cur_trailMode lê inp_TrailingActivation; NEVER → ALWAYS (radio default).
+// * ApplyConfig: SetTrailingActivation(m_cur_trailOn ? m_cur_trailMode : TRAILING_NEVER)
+//   — preserva os 4 modos do enum ao invés de colapsar em ALWAYS/NEVER.
+// * Show/Hide blocks de RISCO 2 incluem m_c2_lTrlMode/m_c2_bTrlMode[3].
 // ═══════════════════════════════════════════════════════════════
 // v1.38 (Parte 034):
 // * H-14 fix — ApplyConfig agora é ATÔMICO: refatorado em duas passadas
@@ -526,6 +536,13 @@ bool CEPBotPanel::CreateTabConfig(void)
    y += PANEL_GAP_Y + 2;
    if(!CreateLB(m_c2_lTrlAct, m_c2_bTrlAct, "c2_lTA", "c2_bTA", "Trailing:", y)) return false;
    y += PANEL_GAP_Y + 2;
+   // Parte 036 — radio 3 opções: SEMPRE | APOS TP1 | APOS TP2 (quando toggle ON)
+   {
+    string trModeTexts[] = {"SEMPRE", "APOS TP1", "APOS TP2"};
+    if(!CreateRadioGroup(m_c2_lTrlMode, m_c2_bTrlMode, "c2_lTM", "c2_bTM", "Ativar em:", trModeTexts, 3, y))
+       return false;
+   }
+   y += PANEL_GAP_Y + 2;
    {
     string trSuffix = (m_cur_trailingType == TRAILING_FIXED) ? " (pts):" : " (ATR x):";
     if(!CreateLI(m_c2_lTrlSt, m_c2_iTrlSt, "c2_lTS", "c2_iTS", "Trail Start" + trSuffix, y)) return false;
@@ -827,6 +844,13 @@ void CEPBotPanel::PopulateConfig(void)
    m_c2_bTrlAct.ColorBackground(m_cur_trailOn ? C'30,120,70' : C'120,50,50');
    m_c2_bTrlAct.Color(clrWhite);
 
+// Parte 036 — radio Trailing Mode: se input == NEVER, default radio para ALWAYS (preserva escolha ao ligar toggle)
+   if(inp_TrailingActivation == TRAILING_NEVER)
+      m_cur_trailMode = TRAILING_ALWAYS;
+   else
+      m_cur_trailMode = inp_TrailingActivation;
+   SetRadioSelection(m_c2_bTrlMode, 3, (int)m_cur_trailMode);
+
    if(m_cur_trailingType == TRAILING_FIXED)
      {
       m_c2_iTrlSt.Text(IntegerToString(inp_TrailingStart));
@@ -1069,6 +1093,18 @@ void CEPBotPanel::RefreshRisco2State(void)
       m_c2_bCTrl.Color(clrWhite);
      }
 
+// Parte 036 — Trailing Mode radio: habilitado se toggle ON, senão grayed
+   if(m_cur_trailOn)
+     {
+      m_c2_lTrlMode.Color(CLR_LABEL);
+      SetRadioSelection(m_c2_bTrlMode, 3, (int)m_cur_trailMode);
+     }
+   else
+     {
+      m_c2_lTrlMode.Color(C'180,180,180');
+      for(int i=0;i<3;i++) { m_c2_bTrlMode[i].ColorBackground(C'160,160,160'); m_c2_bTrlMode[i].Color(C'200,200,200'); }
+     }
+
 // BE fields: habilitado se toggle ON
    SetEditEnabled(m_c2_lBEVal, m_c2_iBEVal, m_cur_beOn);
    SetEditEnabled(m_c2_lBEOff, m_c2_iBEOff, m_cur_beOn);
@@ -1233,6 +1269,7 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_c2_lDLPTA.Show(); for(int i=0;i<2;i++) m_c2_bDLPTA[i].Show();
             // Trailing
             m_c2_hdr1.Show(); m_c2_lTrlAct.Show(); m_c2_bTrlAct.Show();
+            m_c2_lTrlMode.Show(); for(int i=0;i<3;i++) m_c2_bTrlMode[i].Show();
             m_c2_lTrlSt.Show(); m_c2_iTrlSt.Show();
             m_c2_lTrlSp.Show(); m_c2_iTrlSp.Show();
             m_c2_lCTrl.Show(); m_c2_bCTrl.Show();
@@ -1257,6 +1294,7 @@ void CEPBotPanel::SetCfgPageVis(ENUM_CONFIG_PAGE page, bool vis)
             m_c2_lDLPTA.Hide(); for(int i=0;i<2;i++) m_c2_bDLPTA[i].Hide();
             // Trailing
             m_c2_hdr1.Hide(); m_c2_lTrlAct.Hide(); m_c2_bTrlAct.Hide();
+            m_c2_lTrlMode.Hide(); for(int i=0;i<3;i++) m_c2_bTrlMode[i].Hide();
             m_c2_lTrlSt.Hide(); m_c2_iTrlSt.Hide();
             m_c2_lTrlSp.Hide(); m_c2_iTrlSp.Hide();
             m_c2_lCTrl.Hide(); m_c2_bCTrl.Hide();
@@ -1987,7 +2025,8 @@ bool CEPBotPanel::ApplyConfig(string &outErr)
          else if(m_cur_tpType == TP_ATR)  m_riskManager.SetTPATRMultiplier(v_tpATR);
         }
 
-      m_riskManager.SetTrailingActivation(m_cur_trailOn ? TRAILING_ALWAYS : TRAILING_NEVER);
+      // Parte 036 — compõe enum a partir do toggle + radio (radio ignorado quando toggle OFF)
+      m_riskManager.SetTrailingActivation(m_cur_trailOn ? m_cur_trailMode : TRAILING_NEVER);
       if(m_cur_trailOn)
         {
          if(m_cur_trailingType == TRAILING_FIXED)
@@ -2363,6 +2402,19 @@ void CEPBotPanel::OnClickDDPeakMode(int selected)
    if(!m_cur_ddOn) return;
    m_cur_ddPeakMode = (ENUM_DRAWDOWN_PEAK_MODE)selected;
    SetRadioSelection(m_c2_bDDPk, 2, selected);
+   ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
+//| OnClickTrailMode — Parte 036 — SEMPRE/APOS_TP1/APOS_TP2           |
+//+------------------------------------------------------------------+
+void CEPBotPanel::OnClickTrailMode(int selected)
+  {
+   if(m_eaStarted) return;
+   if(!m_cur_trailOn) return;  // radio inativo quando toggle OFF
+   // Mapeia índice 0/1/2 → TRAILING_ALWAYS/AFTER_TP1/AFTER_TP2
+   m_cur_trailMode = (ENUM_TRAILING_ACTIVATION)selected;
+   SetRadioSelection(m_c2_bTrlMode, 3, selected);
    ChartRedraw();
   }
 

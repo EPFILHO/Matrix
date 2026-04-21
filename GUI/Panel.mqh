@@ -2,14 +2,19 @@
 //|                                                       Panel.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                          Painel GUI com Abas - EPBot Matrix      |
-//|                     Versão 1.62 - Claude Parte 033 (Claude Code) |
+//|                     Versão 1.63 - Claude Parte 036 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "1.62"
+#property version   "1.63"
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
+// ═══════════════════════════════════════════════════════════════
+// v1.63 (Parte 036) — Trailing Activation:
+// - Novos membros: m_c2_lTrlMode + m_c2_bTrlMode[3] (radio SEMPRE/AFTER_TP1/AFTER_TP2)
+// - Novo state var: m_cur_trailMode (ENUM_TRAILING_ACTIVATION)
+// - Handler OnClickTrailMode declarado + dispatcher atualizado
 // ═══════════════════════════════════════════════════════════════
 // v1.62 (Parte 033) — Issue #28:
 // - Removido m_co_lComm/m_co_iComm declaração (campo Comentario)
@@ -663,6 +668,7 @@ private:
    // --- Risco 2 sub-page (Trailing/BE/DrawDown) ---
    CLabel   m_c2_hdr1;
    CLabel   m_c2_lTrlAct;  CButton m_c2_bTrlAct;  // Trailing ON/OFF
+   CLabel   m_c2_lTrlMode; CButton m_c2_bTrlMode[3]; // Parte 036 — Radio: SEMPRE | APOS TP1 | APOS TP2
    CLabel   m_c2_lTrlSt;   CEdit   m_c2_iTrlSt;
    CLabel   m_c2_lTrlSp;   CEdit   m_c2_iTrlSp;
    CLabel   m_c2_lCTrl;    CButton m_c2_bCTrl;     // Comp Spread Trail
@@ -770,6 +776,7 @@ private:
    bool                      m_cur_compTP;
    bool                      m_cur_compTrail;
    bool                      m_cur_trailOn;
+   ENUM_TRAILING_ACTIVATION  m_cur_trailMode;      // Parte 036 — ALWAYS/AFTER_TP1/AFTER_TP2 (quando toggle ON)
    bool                      m_cur_beOn;
    bool                      m_cur_dailyLimitsOn;  // Daily Limits toggle (Parte 027)
    bool                      m_cur_ddOn;
@@ -915,6 +922,7 @@ private:
    void              OnClickCompTP(void);
    void              OnClickCompTrail(void);
    void              OnClickTrailToggle(void);
+   void              OnClickTrailMode(int selected);  // Parte 036 — radio SEMPRE/AFTER_TP1/AFTER_TP2
    void              OnClickBEToggle(void);
    void              OnClickDailyLimitsToggle(void);  // Parte 027
    void              RefreshDailyLimitsState(void);    // Parte 027
@@ -1880,6 +1888,11 @@ void CEPBotPanel::ChartEvent(const int id, const long &lparam,
             if(sparam == m_c2_bDLPTA[i].Name())  { OnClickDLProfitTargetAction(i); ChartRedraw(); return; }
             if(sparam == m_c2_bDDT[i].Name())    { OnClickDDType(i);               ChartRedraw(); return; }
             if(sparam == m_c2_bDDPk[i].Name())   { OnClickDDPeakMode(i);           ChartRedraw(); return; }
+           }
+         // Parte 036 — RISCO 2: Trailing Mode (3 opções: SEMPRE | APOS TP1 | APOS TP2)
+         for(int i = 0; i < 3; i++)
+           {
+            if(sparam == m_c2_bTrlMode[i].Name()) { OnClickTrailMode(i); ChartRedraw(); return; }
            }
 
          // CONFIG: BLOQUEIO 2 — news window toggles
