@@ -2,16 +2,35 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.65 - Claude Parte 036 (Claude Code) |
+//|                     Versão 1.67 - Claude Parte 035 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.65"
+#property version   "1.67"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //--- Constante centralizada de versão
-#define EA_VERSION "1.65"
+#define EA_VERSION "1.67"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.67 (Parte 035) — AppliedPrice em RSI/BB Strategy:   |
+//| - Adicionado botão "Preco" entre Time Frame e Modo nos painéis   |
+//|   RSIStrategyPanel e BollingerBandsPanel, cicla                  |
+//|   CLOSE→OPEN→HIGH→LOW→MEDIAN→TYPICAL.                            |
+//| - Apply() chama SetAppliedPrice() (hot-reload via Deinit+Init).  |
+//| - Reload/_InitFields lêem GetAppliedPrice(); _RefreshFieldState  |
+//|   e SetEnabled cobrem o novo botão com gray-out pelo toggle.     |
+//| - Paridade com os filtros RSI/BB (Parte 035).                    |
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.66 (Parte 037) — Fix TF "ATUAL" nas estratégias/    |
+//| filtros RSI e Bollinger Bands:                                   |
+//| - Setup() de RSIStrategy/BBStrategy/RSIFilter/BBFilter convertia |
+//|   PERIOD_CURRENT (0) em Period() (ex: PERIOD_M5). O painel GUI  |
+//|   chamava GetTimeframe() e recebia M5 em vez de PERIOD_CURRENT, |
+//|   exibindo "M5" em vez de "ATUAL". MACross e TrendFilter já      |
+//|   preservavam o valor original — agora todos ficam consistentes.|
+//| - iRSI/iBands aceitam PERIOD_CURRENT diretamente; sem impacto no |
+//|   runtime.                                                        |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.65 (Parte 036) — TrailingActivation na GUI:         |
 //| - Radio "Ativar em: SEMPRE | APOS TP1 | APOS TP2" em RISCO 2,    |

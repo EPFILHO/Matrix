@@ -2,10 +2,14 @@
 //|                                                 RSIStrategy.mqh  |
 //|                                         Copyright 2026, EP Filho |
 //|                                    Estratégia RSI - EPBot Matrix |
-//|                                   Versão 2.18 - Claude Parte 033 |
+//|                                   Versão 2.19 - Claude Parte 037 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
-#property version   "2.18"
+#property version   "2.19"
+// CHANGELOG v2.19 (Parte 037):
+// * Fix GUI: Setup() não converte mais PERIOD_CURRENT para Period().
+//   Antes o painel RSI mostrava "M5" em vez de "ATUAL" porque
+//   GetTimeframe() retornava o TF do chart, não PERIOD_CURRENT (0).
 // CHANGELOG v2.18 (Parte 033) — Issue #28:
 // + GetShortName() override → "RSI" (para comentário das ordens)
 // CHANGELOG v2.17 (Parte 031):
@@ -266,7 +270,7 @@ bool CRSIStrategy::Setup(CLogger* logger, string symbol, ENUM_TIMEFRAMES timefra
 // SALVAR INPUT PARAMETERS (valores originais)
 // ═══════════════════════════════════════════════════════════
    m_inputSymbol = symbol;
-   m_inputTimeframe = (timeframe == PERIOD_CURRENT) ? Period() : timeframe;
+   m_inputTimeframe = timeframe;  // Parte 037 — preserva PERIOD_CURRENT (antes convertia p/ Period() e GUI mostrava M5)
    m_inputPeriod = period;
    m_inputAppliedPrice = applied_price;
    m_inputSignalMode = signal_mode;
@@ -280,7 +284,7 @@ bool CRSIStrategy::Setup(CLogger* logger, string symbol, ENUM_TIMEFRAMES timefra
 // INICIALIZAR WORKING PARAMETERS (começam iguais aos inputs)
 // ═══════════════════════════════════════════════════════════
    m_symbol = symbol;
-   m_timeframe = (timeframe == PERIOD_CURRENT) ? Period() : timeframe;
+   m_timeframe = timeframe;  // Parte 037 — preserva PERIOD_CURRENT
    m_period = period;
    m_applied_price = applied_price;
    m_signal_mode = signal_mode;
