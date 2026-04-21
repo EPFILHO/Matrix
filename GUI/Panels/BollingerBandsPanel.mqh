@@ -2,10 +2,15 @@
 //|                                           BollingerBandsPanel.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Sub-página GUI — Bollinger Bands Strategy                 |
-//|                     Versão 1.10 - Claude Parte 033 (Claude Code) |
+//|                     Versão 1.11 - Claude Parte 035 (Claude Code) |
 //+------------------------------------------------------------------+
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
+//
+// CHANGELOG v1.11 (Parte 035) — AppliedPrice:
+// + Botão "Preço" entre Time Frame e bloco SINAIS, cicla CLOSE→OPEN→HIGH→LOW→MEDIAN→TYPICAL
+// + Apply() chama m_strategy.SetAppliedPrice(m_cur_price) — hot-reload via Deinit+Init
+// + Reload/InitFields lêem GetAppliedPrice(); _RefreshFieldState/SetEnabled cobrem m_bPrice
 //
 // CHANGELOG v1.10 (Parte 033) — persistência:
 // * Reload(): repopula campos GUI a partir do módulo (fix Issue #22)
@@ -41,6 +46,7 @@ private:
    // Estado pendente (aplicado via APLICAR)
    bool               m_pendingEnabled;
    ENUM_TIMEFRAMES    m_cur_TF;
+   ENUM_APPLIED_PRICE m_cur_price;   // Parte 035 — AppliedPrice
    ENUM_BB_SIGNAL_MODE m_cur_mode;
    ENUM_ENTRY_MODE    m_cur_entry;
    ENUM_EXIT_MODE     m_cur_exit;
@@ -63,6 +69,7 @@ private:
    CLabel   m_lDev;      CEdit   m_iDev;
    CLabel   m_lDevHint;  // Legenda desvio
    CLabel   m_lTF;       CButton m_bTF;
+   CLabel   m_lPrice;    CButton m_bPrice;   // Parte 038 — AppliedPrice
    CLabel   m_hdrSig;
    CLabel   m_lMode;     CButton m_bMode[3];
    CLabel   m_lModeDesc;
@@ -77,6 +84,7 @@ public:
       : m_strategy(strategy),
         m_pendingEnabled(false),
         m_cur_TF(PERIOD_CURRENT),
+        m_cur_price(PRICE_CLOSE),
         m_cur_mode(BB_MODE_FFFD),
         m_cur_entry(ENTRY_NEXT_CANDLE),
         m_cur_exit(EXIT_TP_SL),
@@ -130,6 +138,7 @@ public:
 
       m_strategy.SetPriority(prio);
       m_strategy.SetTimeframe(m_cur_TF);
+      m_strategy.SetAppliedPrice(m_cur_price);
       m_strategy.SetSignalMode(m_cur_mode);
       m_strategy.SetEntryMode(m_cur_entry);
       m_strategy.SetExitMode(m_cur_exit);
@@ -167,12 +176,14 @@ public:
          ApplyToggleStyle(m_btnToggle, m_pendingEnabled);
       // Buttons + radios
       SetButtonEnabled(m_lTF, m_bTF, enable);
+      SetButtonEnabled(m_lPrice, m_bPrice, enable);
       SetRadioGroupEnabled(m_lMode, m_bMode, 3, enable);
       SetRadioGroupEnabled(m_lEntry, m_bEntry, 2, enable);
       SetRadioGroupEnabled(m_lExit, m_bExit, 3, enable);
       if(enable)
         {
          m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+         m_bPrice.ColorBackground(C'50,80,140'); m_bPrice.Color(clrWhite);
          SetRadioSel(m_bMode, 3, (int)m_cur_mode);
          SetRadioSel(m_bEntry, 2, (int)m_cur_entry);
          SetRadioSel(m_bExit, 3, (int)m_cur_exit);
@@ -246,6 +257,16 @@ public:
       if(!parent.AddControl(m_lDevHint)) return false;
       y += 15;
       if(!parent.CreateLB(m_lTF, m_bTF, "bb_lTF", "bb_bTF", "Time Frame:", y)) return false;
+      y += PANEL_GAP_Y + 2;
+
+      // Parte 035 — Applied Price
+      {
+       ENUM_APPLIED_PRICE pr = (m_strategy != NULL) ? m_strategy.GetAppliedPrice() : PRICE_CLOSE;
+       m_cur_price = pr;
+       if(!parent.CreateLB(m_lPrice, m_bPrice, "bb_lPr", "bb_bPr", "Preco:", y)) return false;
+       m_bPrice.Text(AppliedPriceShortText(pr));
+       m_bPrice.ColorBackground(C'50,80,140'); m_bPrice.Color(clrWhite);
+      }
       y += PANEL_GAP_Y + 2;
 
       // Modo de sinal (radio 3)
@@ -327,6 +348,7 @@ public:
       m_lPeriod.Show(); m_iPeriod.Show();
       m_lDev.Show(); m_iDev.Show(); m_lDevHint.Show();
       m_lTF.Show(); m_bTF.Show();
+      m_lPrice.Show(); m_bPrice.Show();
       m_hdrSig.Show();
       m_lMode.Show(); for(int i = 0; i < 3; i++) m_bMode[i].Show();
       m_lModeDesc.Show();
@@ -350,6 +372,7 @@ public:
       m_lPeriod.Hide(); m_iPeriod.Hide();
       m_lDev.Hide(); m_iDev.Hide(); m_lDevHint.Hide();
       m_lTF.Hide(); m_bTF.Hide();
+      m_lPrice.Hide(); m_bPrice.Hide();
       m_hdrSig.Hide();
       m_lMode.Hide(); for(int i = 0; i < 3; i++) m_bMode[i].Hide();
       m_lModeDesc.Hide();
@@ -413,6 +436,13 @@ public:
          m_bTF.Text(TFName(m_cur_TF));
          return true;
         }
+      if(name == m_bPrice.Name())
+        {
+         m_bPrice.Pressed(false);
+         m_cur_price = CycleAppliedPrice(m_cur_price);
+         m_bPrice.Text(AppliedPriceShortText(m_cur_price));
+         return true;
+        }
       // Modo radio
       for(int i = 0; i < 3; i++)
          if(name == m_bMode[i].Name())
@@ -472,11 +502,13 @@ private:
       int              pd  = (m_strategy != NULL) ? m_strategy.GetPeriod()      : 20;
       double           dv  = (m_strategy != NULL) ? m_strategy.GetDeviation()   : 2.0;
       ENUM_TIMEFRAMES  tf  = (m_strategy != NULL) ? m_strategy.GetTimeframe()   : PERIOD_CURRENT;
+      ENUM_APPLIED_PRICE px = (m_strategy != NULL) ? m_strategy.GetAppliedPrice(): PRICE_CLOSE;
       ENUM_BB_SIGNAL_MODE md = (m_strategy != NULL) ? m_strategy.GetSignalMode() : BB_MODE_FFFD;
       ENUM_ENTRY_MODE  en  = (m_strategy != NULL) ? m_strategy.GetEntryMode()   : ENTRY_NEXT_CANDLE;
       ENUM_EXIT_MODE   ex  = (m_strategy != NULL) ? m_strategy.GetExitMode()    : EXIT_TP_SL;
 
       m_cur_TF    = tf;
+      m_cur_price = px;
       m_cur_mode  = md;
       m_cur_entry = en;
       m_cur_exit  = ex;
@@ -486,6 +518,8 @@ private:
       m_iDev.Text(DoubleToString(dv, 1));
       m_bTF.Text(TFName(tf));
       m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+      m_bPrice.Text(AppliedPriceShortText(px));
+      m_bPrice.ColorBackground(C'50,80,140'); m_bPrice.Color(clrWhite);
       SetRadioSel(m_bMode, 3, (int)md);
       SetRadioSel(m_bEntry, 2, (en == ENTRY_NEXT_CANDLE) ? 0 : 1);
       SetRadioSel(m_bExit,  3, (ex == EXIT_FCO) ? 0 : (ex == EXIT_VM) ? 1 : 2);
@@ -506,12 +540,14 @@ private:
       SetEditEnabled(m_lPeriod,   m_iPeriod,   on);
       SetEditEnabled(m_lDev,      m_iDev,      on);
       SetButtonEnabled(m_lTF, m_bTF, on);
+      SetButtonEnabled(m_lPrice, m_bPrice, on);
       SetRadioGroupEnabled(m_lMode,  m_bMode,  3, on);
       SetRadioGroupEnabled(m_lEntry, m_bEntry, 2, on);
       SetRadioGroupEnabled(m_lExit,  m_bExit,  3, on);
       if(on)
         {
          m_bTF.ColorBackground(C'50,80,140'); m_bTF.Color(clrWhite);
+         m_bPrice.ColorBackground(C'50,80,140'); m_bPrice.Color(clrWhite);
          SetRadioSel(m_bMode,  3, (int)m_cur_mode);
          SetRadioSel(m_bEntry, 2, (m_cur_entry == ENTRY_NEXT_CANDLE) ? 0 : 1);
          SetRadioSel(m_bExit,  3, (m_cur_exit == EXIT_FCO) ? 0 : (m_cur_exit == EXIT_VM) ? 1 : 2);

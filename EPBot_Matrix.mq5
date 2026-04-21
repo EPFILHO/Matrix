@@ -2,16 +2,25 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.66 - Claude Parte 037 (Claude Code) |
+//|                     Versão 1.67 - Claude Parte 035 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.66"
+#property version   "1.67"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //--- Constante centralizada de versão
-#define EA_VERSION "1.66"
+#define EA_VERSION "1.67"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.67 (Parte 035) — AppliedPrice em RSI/BB Strategy:   |
+//| - Adicionado botão "Preco" entre Time Frame e Modo nos painéis   |
+//|   RSIStrategyPanel e BollingerBandsPanel, cicla                  |
+//|   CLOSE→OPEN→HIGH→LOW→MEDIAN→TYPICAL.                            |
+//| - Apply() chama SetAppliedPrice() (hot-reload via Deinit+Init).  |
+//| - Reload/_InitFields lêem GetAppliedPrice(); _RefreshFieldState  |
+//|   e SetEnabled cobrem o novo botão com gray-out pelo toggle.     |
+//| - Paridade com os filtros RSI/BB (Parte 035).                    |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.66 (Parte 037) — Fix TF "ATUAL" nas estratégias/    |
 //| filtros RSI e Bollinger Bands:                                   |
