@@ -22,7 +22,7 @@
 //|   e SetEnabled cobrem o novo botão com gray-out pelo toggle.     |
 //| - Paridade com os filtros RSI/BB (Parte 035).                    |
 //+------------------------------------------------------------------+
-//| CHANGELOG v1.66 (Parte 037) — Fix TF "ATUAL" nas estratégias/    |
+//| CHANGELOG v1.66 (Parte 035) — Fix TF "ATUAL" nas estratégias/    |
 //| filtros RSI e Bollinger Bands:                                   |
 //| - Setup() de RSIStrategy/BBStrategy/RSIFilter/BBFilter convertia |
 //|   PERIOD_CURRENT (0) em Period() (ex: PERIOD_M5). O painel GUI  |
@@ -32,7 +32,7 @@
 //| - iRSI/iBands aceitam PERIOD_CURRENT diretamente; sem impacto no |
 //|   runtime.                                                        |
 //+------------------------------------------------------------------+
-//| CHANGELOG v1.65 (Parte 036) — TrailingActivation na GUI:         |
+//| CHANGELOG v1.65 (Parte 035) — TrailingActivation na GUI:         |
 //| - Radio "Ativar em: SEMPRE | APOS TP1 | APOS TP2" em RISCO 2,    |
 //|   entre toggle Trailing e Trail Start. Radio fica inativo        |
 //|   (grayed) quando toggle Trailing = OFF. Hot-reload via          |

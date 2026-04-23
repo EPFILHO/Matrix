@@ -2,11 +2,11 @@
 //|                                                    RSIFilter.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                                        Filtro RSI - EPBot Matrix |
-//|                                   Versão 1.14 - Claude Parte 037 |
+//|                                   Versão 1.14 - Claude Parte 035 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.14"
-// CHANGELOG v1.14 (Parte 037):
+// CHANGELOG v1.14 (Parte 035):
 // * Fix GUI: Setup() não converte mais PERIOD_CURRENT para Period().
 //   Painel RSI Filter agora mostra "ATUAL" quando input é PERIOD_CURRENT.
 // CHANGELOG v1.13 (Parte 031):
@@ -239,7 +239,7 @@ bool CRSIFilter::Setup(CLogger* logger, string symbol, ENUM_TIMEFRAMES timeframe
    // SALVAR INPUT PARAMETERS (valores originais)
    // ═══════════════════════════════════════════════════════════
    m_inputSymbol = symbol;
-   m_inputTimeframe = timeframe;  // Parte 037 — preserva PERIOD_CURRENT
+   m_inputTimeframe = timeframe;  // Parte 035 — preserva PERIOD_CURRENT
    m_inputPeriod = period;
    m_inputAppliedPrice = applied_price;
    m_inputFilterMode = filter_mode;
@@ -253,7 +253,7 @@ bool CRSIFilter::Setup(CLogger* logger, string symbol, ENUM_TIMEFRAMES timeframe
    // INICIALIZAR WORKING PARAMETERS (começam iguais aos inputs)
    // ═══════════════════════════════════════════════════════════
    m_symbol = symbol;
-   m_timeframe = timeframe;  // Parte 037 — preserva PERIOD_CURRENT
+   m_timeframe = timeframe;  // Parte 035 — preserva PERIOD_CURRENT
    m_period = period;
    m_applied_price = applied_price;
    m_filter_mode = filter_mode;

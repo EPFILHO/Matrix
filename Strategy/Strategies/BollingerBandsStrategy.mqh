@@ -2,11 +2,11 @@
 //|                                        BollingerBandsStrategy.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                            Estratégia Bollinger Bands - EPBot Matrix |
-//|                                   Versão 1.04 - Claude Parte 037 |
+//|                                   Versão 1.04 - Claude Parte 035 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.04"
-// CHANGELOG v1.04 (Parte 037):
+// CHANGELOG v1.04 (Parte 035):
 // * Fix GUI: Setup() não converte mais PERIOD_CURRENT para Period().
 //   Painel BB Strategy agora mostra "ATUAL" quando input é PERIOD_CURRENT.
 // CHANGELOG v1.03 (Parte 033) — Issue #28:
@@ -276,7 +276,7 @@ bool CBollingerBandsStrategy::Setup(CLogger* logger, string symbol, ENUM_TIMEFRA
 // SALVAR INPUT PARAMETERS (valores originais)
 // ═══════════════════════════════════════════════════════════
    m_inputSymbol = symbol;
-   m_inputTimeframe = timeframe;  // Parte 037 — preserva PERIOD_CURRENT
+   m_inputTimeframe = timeframe;  // Parte 035 — preserva PERIOD_CURRENT
    m_inputPeriod = period;
    m_inputDeviation = deviation;
    m_inputAppliedPrice = applied_price;
@@ -289,7 +289,7 @@ bool CBollingerBandsStrategy::Setup(CLogger* logger, string symbol, ENUM_TIMEFRA
 // INICIALIZAR WORKING PARAMETERS (começam iguais aos inputs)
 // ═══════════════════════════════════════════════════════════
    m_symbol = symbol;
-   m_timeframe = timeframe;  // Parte 037 — preserva PERIOD_CURRENT
+   m_timeframe = timeframe;  // Parte 035 — preserva PERIOD_CURRENT
    m_period = period;
    m_deviation = deviation;
    m_applied_price = applied_price;

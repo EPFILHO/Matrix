@@ -2,11 +2,11 @@
 //|                                         BollingerBandsFilter.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                          Filtro Bollinger Bands - EPBot Matrix   |
-//|                                   Versão 1.03 - Claude Parte 037 |
+//|                                   Versão 1.03 - Claude Parte 035 |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.03"
-// CHANGELOG v1.03 (Parte 037):
+// CHANGELOG v1.03 (Parte 035):
 // * Fix GUI: Setup() não converte mais PERIOD_CURRENT para Period().
 //   Painel BB Filter agora mostra "ATUAL" quando input é PERIOD_CURRENT.
 // CHANGELOG v1.02 (Parte 031):
@@ -232,7 +232,7 @@ bool CBollingerBandsFilter::Setup(CLogger* logger, string symbol, ENUM_TIMEFRAME
 // SALVAR INPUT PARAMETERS (valores originais)
 // ═══════════════════════════════════════════════════════════
    m_inputSymbol = symbol;
-   m_inputTimeframe = timeframe;  // Parte 037 — preserva PERIOD_CURRENT
+   m_inputTimeframe = timeframe;  // Parte 035 — preserva PERIOD_CURRENT
    m_inputPeriod = period;
    m_inputDeviation = deviation;
    m_inputAppliedPrice = applied_price;
@@ -244,7 +244,7 @@ bool CBollingerBandsFilter::Setup(CLogger* logger, string symbol, ENUM_TIMEFRAME
 // INICIALIZAR WORKING PARAMETERS (começam iguais aos inputs)
 // ═══════════════════════════════════════════════════════════
    m_symbol = symbol;
-   m_timeframe = timeframe;  // Parte 037 — preserva PERIOD_CURRENT
+   m_timeframe = timeframe;  // Parte 035 — preserva PERIOD_CURRENT
    m_period = period;
    m_deviation = deviation;
    m_applied_price = applied_price;

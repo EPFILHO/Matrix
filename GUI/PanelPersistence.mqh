@@ -2,7 +2,7 @@
 //|                                           PanelPersistence.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel: Persistência de Config — Save/Load/Banner                |
-//|                     Versão 1.08 - Claude Parte 036 (Claude Code) |
+//|                     Versão 1.08 - Claude Parte 035 (Claude Code) |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para persistência de configurações.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -10,7 +10,7 @@
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG
 // ═══════════════════════════════════════════════════════════════
-// v1.08 (Parte 036) — Trailing Activation:
+// v1.08 (Parte 035) — Trailing Activation:
 // * CollectConfigData: grava data.trailingActivation = (trailOn ? m_cur_trailMode : NEVER).
 // * ApplyLoadedConfig: deriva m_cur_trailMode do enum (NEVER → ALWAYS como default radio).
 //
@@ -113,7 +113,7 @@ void CEPBotPanel::CollectConfigData(SConfigData &data)
 // ── Trailing / Breakeven (toggles) ──
    data.trailOn               = m_cur_trailOn;
    data.trailCompensateSpread = m_cur_compTrail;
-   // Parte 036 — enum composto: toggle OFF → NEVER, toggle ON → radio mode
+   // Parte 035 — enum composto: toggle OFF → NEVER, toggle ON → radio mode
    data.trailingActivation    = m_cur_trailOn ? m_cur_trailMode : TRAILING_NEVER;
    data.beOn              = m_cur_beOn;
 
@@ -364,7 +364,7 @@ void CEPBotPanel::ApplyLoadedConfig(const SConfigData &data)
    m_cur_compTP            = data.tpCompensateSpread;
    m_cur_compTrail         = data.trailCompensateSpread;
    m_cur_trailOn           = data.trailOn;
-   // Parte 036 — deriva m_cur_trailMode do enum persistido (NEVER → mantém último radio = ALWAYS)
+   // Parte 035 — deriva m_cur_trailMode do enum persistido (NEVER → mantém último radio = ALWAYS)
    m_cur_trailMode         = (data.trailingActivation == TRAILING_NEVER) ? TRAILING_ALWAYS : data.trailingActivation;
    m_cur_beOn              = data.beOn;
    m_cur_partialTP         = data.partialTP;

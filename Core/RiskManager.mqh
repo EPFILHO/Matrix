@@ -2,11 +2,11 @@
 //|                                                  RiskManager.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                       Sistema de Cálculo de Risco - EPBot Matrix |
-//|                  Versão 3.20 - Claude Parte 036 (Claude Code)    |
+//|                  Versão 3.20 - Claude Parte 035 (Claude Code)    |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "3.20"
-// CHANGELOG v3.20 (Parte 036):
+// CHANGELOG v3.20 (Parte 035):
 // * Novo getter GetTrailingActivation() — necessário para exposição
 //   do enum ENUM_TRAILING_ACTIVATION à camada GUI/Persistência.
 //
@@ -500,7 +500,7 @@ public:
    int               GetBEOffset() const { return m_beOffset; }
    double            GetBEATRActivation() const { return m_beATRActivation; }
    double            GetBEATROffset() const { return m_beATROffset; }
-   // Parte 036 — getter para TrailingActivation (ALWAYS/AFTER_TP1/AFTER_TP2/NEVER)
+   // Parte 035 — getter para TrailingActivation (ALWAYS/AFTER_TP1/AFTER_TP2/NEVER)
    ENUM_TRAILING_ACTIVATION GetTrailingActivation() const { return m_trailingActivation; }
 
    // ═══════════════════════════════════════════════════════════════
