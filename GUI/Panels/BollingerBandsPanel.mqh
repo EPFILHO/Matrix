@@ -69,7 +69,7 @@ private:
    CLabel   m_lDev;      CEdit   m_iDev;
    CLabel   m_lDevHint;  // Legenda desvio
    CLabel   m_lTF;       CButton m_bTF;
-   CLabel   m_lPrice;    CButton m_bPrice;   // Parte 038 — AppliedPrice
+   CLabel   m_lPrice;    CButton m_bPrice;   // Parte 035 — AppliedPrice
    CLabel   m_hdrSig;
    CLabel   m_lMode;     CButton m_bMode[3];
    CLabel   m_lModeDesc;

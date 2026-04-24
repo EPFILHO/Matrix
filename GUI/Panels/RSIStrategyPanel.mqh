@@ -63,7 +63,7 @@ private:
    CLabel   m_lPriority; CEdit   m_iPriority;
    CLabel   m_lPeriod;   CEdit   m_iPeriod;
    CLabel   m_lTF;       CButton m_bTF;
-   CLabel   m_lPrice;    CButton m_bPrice;  // Parte 038 — AppliedPrice
+   CLabel   m_lPrice;    CButton m_bPrice;  // Parte 035 — AppliedPrice
    CLabel   m_lMode2;    CButton m_bMode[3];
    CLabel   m_lModeDesc;
    CLabel   m_lOversold;   CEdit m_iOversold;
