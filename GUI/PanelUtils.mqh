@@ -28,7 +28,6 @@ string TFName(ENUM_TIMEFRAMES tf)
   {
    switch(tf)
      {
-      case PERIOD_CURRENT: return "ATUAL";
       case PERIOD_M1:      return "M1";
       case PERIOD_M2:      return "M2";
       case PERIOD_M3:      return "M3";
@@ -57,7 +56,7 @@ string TFName(ENUM_TIMEFRAMES tf)
 ENUM_TIMEFRAMES CycleTF(ENUM_TIMEFRAMES tf)
   {
    static const ENUM_TIMEFRAMES tfs[] =
-     {PERIOD_CURRENT, PERIOD_M1, PERIOD_M2, PERIOD_M3, PERIOD_M4,
+     {PERIOD_M1, PERIOD_M2, PERIOD_M3, PERIOD_M4,
       PERIOD_M5, PERIOD_M6, PERIOD_M10, PERIOD_M12, PERIOD_M15,
       PERIOD_M20, PERIOD_M30, PERIOD_H1, PERIOD_H2, PERIOD_H3,
       PERIOD_H4, PERIOD_H6, PERIOD_H8, PERIOD_H12, PERIOD_D1,
@@ -65,7 +64,7 @@ ENUM_TIMEFRAMES CycleTF(ENUM_TIMEFRAMES tf)
    int count = ArraySize(tfs);
    for(int i = 0; i < count; i++)
       if(tfs[i] == tf) return tfs[(i + 1) % count];
-   return PERIOD_CURRENT;
+   return PERIOD_M1;
   }
 
 //── MA Method ──────────────────────────────────────────────────────

@@ -470,6 +470,12 @@ datetime g_lastTradeBarTime = 0;     // Controle de último trade executado
 datetime g_lastExitBarTime = 0;      // Controle de último exit (para FCO)
 ulong    g_lastPositionTicket = 0;   // Ticket da última posição (global - sobrevive a restarts)
 
+// Grace period: bloqueia novas entradas no candle atual após OnInit ou
+// transição "Iniciar" do painel. Evita trade imediato logo após anexar
+// o EA, trocar TF, recompilar ou clicar Iniciar no painel.
+datetime g_graceBarTime     = 0;     // Candle em grace period (0 = sem grace)
+bool     g_lastPanelStarted = false; // Estado anterior do painel (para detectar transição)
+
 // ═══════════════════════════════════════════════════════════════
 // VARIÁVEIS DE ESTADO
 // ═══════════════════════════════════════════════════════════════
@@ -1103,6 +1109,12 @@ int OnInit()
 // Inicializar controle de candles
    g_lastBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
 
+// Grace period: bloqueia entrada de trade no candle em que o EA foi
+// inicializado. Cobre todos os cenários de OnInit (primeira carga,
+// REASON_CHARTCHANGE, REASON_RECOMPILE, REASON_PARAMETERS).
+   g_graceBarTime = g_lastBarTime;
+   g_lastPanelStarted = false;  // forçar detecção de transição no 1º tick
+
 // ═══════════════════════════════════════════════════════════════
 // ETAPA 9: PAINEL GUI (opcional)
 // ═══════════════════════════════════════════════════════════════
@@ -1585,7 +1597,39 @@ void OnTick()
 // (gerenciamento de posições abertas já foi feito acima)
 // ═══════════════════════════════════════════════════════════════
    if(g_panel != NULL && !g_panel.IsStarted())
+     {
+      // Mantém g_lastPanelStarted = false para que, ao iniciar,
+      // a transição false→true seja detectada e dispare grace period.
+      g_lastPanelStarted = false;
       return;
+     }
+
+// ═══════════════════════════════════════════════════════════════
+// GRACE PERIOD: bloqueia novas entradas no candle do init/start
+// ═══════════════════════════════════════════════════════════════
+// Detectar transição "Iniciar" no painel (false → true)
+   bool curPanelStarted = (g_panel != NULL) ? g_panel.IsStarted() : true;
+   if(curPanelStarted && !g_lastPanelStarted)
+     {
+      g_graceBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
+      if(g_logger != NULL)
+         g_logger.Log(LOG_EVENT, THROTTLE_NONE, "GRACE",
+                      "⏳ Grace period iniciado - aguardando próximo candle para operar");
+     }
+   g_lastPanelStarted = curPanelStarted;
+
+// Aplicar grace: bloqueia novas entradas se ainda no candle do grace
+   if(g_graceBarTime != 0)
+     {
+      datetime curBar = iTime(_Symbol, PERIOD_CURRENT, 0);
+      if(curBar == g_graceBarTime)
+        {
+         g_logger.Log(LOG_DEBUG, THROTTLE_CANDLE, "GRACE",
+                      "⏳ Grace period ativo - aguardando próximo candle");
+         return;
+        }
+      g_graceBarTime = 0;  // candle mudou - grace expirou
+     }
 
 // ═══════════════════════════════════════════════════════════════
 // ETAPA 2: VERIFICAR BLOCKERS (só se NÃO tem posição!)
