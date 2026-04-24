@@ -2,12 +2,22 @@
 //|                                                       Inputs.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                   Sistema de Inputs Centralizados - EPBot Matrix |
-//|                     Versão 1.10 - Claude Parte 033 (Claude Code) |
+//|                     Versão 1.11 - Claude Parte 039 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.10"
+#property version   "1.11"
 
+// ═══════════════════════════════════════════════════════════════
+// CHANGELOG v1.11 (Parte 039) — Trava de TFs:
+// - Defaults dos 7 inputs de timeframe trocados de PERIOD_CURRENT
+//   para PERIOD_M1 (inp_FastTF, inp_SlowTF, inp_RSITF, inp_BBTF,
+//   inp_TrendMATF, inp_RSIFilterTF, inp_BBFiltTF).
+// - Elimina o risco de a estratégia mudar silenciosamente quando o
+//   usuário troca o TF do gráfico. Estratégia/filtros agora têm TF
+//   próprio independente do gráfico.
+// - Presets antigos preservam o que estava salvo; só novas
+//   instâncias sem config recebem o default novo.
 // ═══════════════════════════════════════════════════════════════
 // CHANGELOG v1.10 (Parte 033) — Issue #28:
 // - Removido inp_TradeComment (comment da ordem agora vem do

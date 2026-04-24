@@ -2,13 +2,20 @@
 //|                                                   PanelUtils.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|          Funções utilitárias livres para sub-páginas do painel    |
-//|                     Versão 1.03 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.04 - Claude Parte 039 (Claude Code) |
 //|          + free-function Enable/Disable helpers para painéis      |
 //+------------------------------------------------------------------+
 // NOTA: Incluído por Panel.mqh APÓS #include das dependências de
 //       Strategy/Filters e <Controls\Button.mqh>.
 //       NÃO incluir diretamente — os tipos ENUM_RSI_* devem estar
 //       definidos antes deste arquivo.
+//
+// CHANGELOG v1.04 (Parte 039) — Trava de TFs na GUI:
+// * TFName(): removido case PERIOD_CURRENT (não exibe mais "ATUAL").
+// * CycleTF(): PERIOD_CURRENT removido do array; fallback agora é
+//   PERIOD_M1 em vez de PERIOD_CURRENT.
+// * Coerente com Inputs.mqh v1.11 (Parte 039) que travou os
+//   defaults de TF em PERIOD_M1.
 //
 // CHANGELOG v1.02 (Parte 029):
 // * TFName(): adicionados todos os timeframes MQL5 (M2-M20, H2-H12)

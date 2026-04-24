@@ -2,16 +2,39 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.67 - Claude Parte 035 (Claude Code) |
+//|                     Versão 1.68 - Claude Parte 039 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.67"
+#property version   "1.68"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //--- Constante centralizada de versão
-#define EA_VERSION "1.67"
+#define EA_VERSION "1.68"
 
+//+------------------------------------------------------------------+
+//| CHANGELOG v1.68 (Parte 039) — Refatoração + Segurança Operacional |
+//| 1) HistoryProcessor (Fatia 1 da refatoração do god file):         |
+//|    - Extraído bloco de detecção de fechamento de posição do       |
+//|      OnTick para Core/HistoryProcessor.mqh (CHistoryProcessor).   |
+//|    - OnTick fica ~82 linhas menor; lógica de soma de deals        |
+//|      OUT/OUT_BY (padrão ouro MQL5) agora isolada e reutilizável.  |
+//| 2) Trava de TFs (eliminação do PERIOD_CURRENT operacional):       |
+//|    - Inputs.mqh: defaults dos 7 TFs (Fast/Slow/RSI/BB/Trend/      |
+//|      RSIFilter/BBFilt) trocados de PERIOD_CURRENT para PERIOD_M1. |
+//|    - GUI/PanelUtils.mqh: PERIOD_CURRENT removido de TFName() e    |
+//|      CycleTF() — botão de ciclar TF não gera mais "ATUAL".        |
+//|    - Elimina o risco de a estratégia mudar silenciosamente quando |
+//|      o usuário troca o TF do gráfico.                             |
+//| 3) Grace period unificado:                                        |
+//|    - Globais g_graceBarTime e g_lastPanelStarted bloqueiam novas  |
+//|      entradas no candle do init/start. Cobre primeira carga,      |
+//|      REASON_CHARTCHANGE, REASON_RECOMPILE e clique "Iniciar" no   |
+//|      painel. Gerência de posição aberta segue normalmente.       |
+//| 4) Fix cosmético:                                                 |
+//|    - Log "⏰ Timeframe:" usa EnumToString(Period()) em vez de     |
+//|      EnumToString(PERIOD_CURRENT) — agora mostra TF real do       |
+//|      gráfico em vez do texto literal "PERIOD_CURRENT".            |
 //+------------------------------------------------------------------+
 //| CHANGELOG v1.67 (Parte 035) — AppliedPrice em RSI/BB Strategy:   |
 //| - Adicionado botão "Preco" entre Time Frame e Modo nos painéis   |
@@ -1254,7 +1277,7 @@ int OnInit()
 
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v" + EA_VERSION + " - PRONTO PARA OPERAR!");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Símbolo: " + _Symbol);
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(Period()));
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(g_magicNumber));
 
    if(inp_UsePartialTP)

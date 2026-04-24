@@ -2,14 +2,14 @@
 //|                                             HistoryProcessor.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|         Processador de Fechamento de Posições - EPBot Matrix     |
-//|                     Versão 1.00 - Refatoração (Fatia 1)          |
+//|                     Versão 1.00 - Claude Parte 039 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
 #property version   "1.00"
 
 // ═══════════════════════════════════════════════════════════════════
-// CHANGELOG v1.00:
+// CHANGELOG v1.00 (Parte 039) — Fatia 1 da refatoração do god file:
 // + Extraído de EPBot_Matrix.mq5 OnTick() (linhas 1432–1515 originais).
 // + Detecta fechamento de posição comparando ticket anterior x atual.
 // + Padrão MQL5: soma TODOS os deals de saída (partial + final)
