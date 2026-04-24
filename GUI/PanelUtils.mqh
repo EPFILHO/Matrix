@@ -14,7 +14,7 @@
 // * TFName(): removido case PERIOD_CURRENT (não exibe mais "ATUAL").
 // * CycleTF(): PERIOD_CURRENT removido do array; fallback agora é
 //   PERIOD_M1 em vez de PERIOD_CURRENT.
-// * Coerente com Inputs.mqh v1.11 (Parte 039) que travou os
+// * Coerente com Inputs.mqh v1.11 (Parte 36) que travou os
 //   defaults de TF em PERIOD_M1.
 //
 // CHANGELOG v1.02 (Parte 029):
