@@ -2,7 +2,7 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.68 - Claude Parte 039 (Claude Code) |
+//|                     Versão 1.68 - Claude Parte 36 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
@@ -13,7 +13,7 @@
 #define EA_VERSION "1.68"
 
 //+------------------------------------------------------------------+
-//| CHANGELOG v1.68 (Parte 039) — Refatoração + Segurança Operacional |
+//| CHANGELOG v1.68 (Parte 36) — Refatoração + Segurança Operacional |
 //| 1) HistoryProcessor (Fatia 1 da refatoração do god file):         |
 //|    - Extraído bloco de detecção de fechamento de posição do       |
 //|      OnTick para Core/HistoryProcessor.mqh (CHistoryProcessor).   |

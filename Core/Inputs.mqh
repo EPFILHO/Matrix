@@ -2,14 +2,14 @@
 //|                                                       Inputs.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                   Sistema de Inputs Centralizados - EPBot Matrix |
-//|                     Versão 1.11 - Claude Parte 039 (Claude Code) |
+//|                     Versão 1.11 - Claude Parte 36 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
 #property version   "1.11"
 
 // ═══════════════════════════════════════════════════════════════
-// CHANGELOG v1.11 (Parte 039) — Trava de TFs:
+// CHANGELOG v1.11 (Parte 36) — Trava de TFs:
 // - Defaults dos 7 inputs de timeframe trocados de PERIOD_CURRENT
 //   para PERIOD_M1 (inp_FastTF, inp_SlowTF, inp_RSITF, inp_BBTF,
 //   inp_TrendMATF, inp_RSIFilterTF, inp_BBFiltTF).

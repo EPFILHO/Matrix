@@ -2,7 +2,7 @@
 //|                                                   PanelUtils.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|          Funções utilitárias livres para sub-páginas do painel    |
-//|                     Versão 1.04 - Claude Parte 039 (Claude Code) |
+//|                     Versão 1.04 - Claude Parte 36 (Claude Code) |
 //|          + free-function Enable/Disable helpers para painéis      |
 //+------------------------------------------------------------------+
 // NOTA: Incluído por Panel.mqh APÓS #include das dependências de
@@ -10,7 +10,7 @@
 //       NÃO incluir diretamente — os tipos ENUM_RSI_* devem estar
 //       definidos antes deste arquivo.
 //
-// CHANGELOG v1.04 (Parte 039) — Trava de TFs na GUI:
+// CHANGELOG v1.04 (Parte 36) — Trava de TFs na GUI:
 // * TFName(): removido case PERIOD_CURRENT (não exibe mais "ATUAL").
 // * CycleTF(): PERIOD_CURRENT removido do array; fallback agora é
 //   PERIOD_M1 em vez de PERIOD_CURRENT.
