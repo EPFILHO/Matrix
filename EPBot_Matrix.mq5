@@ -411,6 +411,7 @@ int    g_slippage      = 0;
 // RiskManager já incluído via Inputs.mqh
 // #include "Core/RiskManager.mqh"   // ✅ Já incluído
 #include "Core/TradeManager.mqh"
+#include "Core/HistoryProcessor.mqh"
 
 // 3️⃣ SIGNAL MANAGER
 // SignalManager já incluído via Inputs.mqh
@@ -439,6 +440,7 @@ CLogger*        g_logger        = NULL;  // Sistema de logging centralizado
 CBlockers*      g_blockers      = NULL;  // Gerenciador de bloqueios
 CRiskManager*   g_riskManager   = NULL;  // Gerenciador de risco
 CTradeManager*  g_tradeManager  = NULL;  // Gerenciador de posições (v1.22)
+CHistoryProcessor* g_historyProcessor = NULL;  // Processador de fechamento de posições
 CSignalManager* g_signalManager = NULL;  // Orquestrador de sinais
 
 // ═══════════════════════════════════════════════════════════════
@@ -501,6 +503,7 @@ void CleanupAll()
    if(g_maCrossStrategy != NULL)  { delete g_maCrossStrategy;  g_maCrossStrategy  = NULL; }
    if(g_signalManager != NULL)    { delete g_signalManager;    g_signalManager    = NULL; }
    if(g_riskManager != NULL)      { delete g_riskManager;      g_riskManager      = NULL; }
+   if(g_historyProcessor != NULL) { delete g_historyProcessor; g_historyProcessor = NULL; }
    if(g_tradeManager != NULL)     { delete g_tradeManager;     g_tradeManager     = NULL; }
    if(g_blockers != NULL)         { delete g_blockers;         g_blockers         = NULL; }
    if(g_logger != NULL)           { delete g_logger;           g_logger           = NULL; }
@@ -762,6 +765,26 @@ int OnInit()
            }
         }
      }
+
+// ═══════════════════════════════════════════════════════════════
+// ETAPA 4.7: INICIALIZAR HISTORY PROCESSOR
+// ═══════════════════════════════════════════════════════════════
+   g_historyProcessor = new CHistoryProcessor();
+   if(g_historyProcessor == NULL)
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar HistoryProcessor!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   if(!g_historyProcessor.Init(g_logger, g_blockers, g_tradeManager))
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar HistoryProcessor!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "HistoryProcessor inicializado com sucesso!");
 
 // ═══════════════════════════════════════════════════════════════
 // ETAPA 5: INICIALIZAR SIGNAL MANAGER
@@ -1331,6 +1354,11 @@ void OnDeinit(const int reason)
       delete g_riskManager;
       g_riskManager = NULL;
      }
+   if(g_historyProcessor != NULL)
+     {
+      delete g_historyProcessor;
+      g_historyProcessor = NULL;
+     }
    if(g_tradeManager != NULL)
      {
       delete g_tradeManager;
@@ -1429,90 +1457,18 @@ void OnTick()
         }
      }
 
-// Se tinha posição e agora não tem mais = fechou!
-   if(g_lastPositionTicket > 0 && !hasMyPosition)
-     {
-      // Buscar informação do fechamento no histórico
-      if(HistorySelectByPosition(g_lastPositionTicket))
-        {
-         // ═══════════════════════════════════════════════════════════════
-         // v1.26: PADRÃO OURO MQL5 - Calcular lucro total da posição
-         // somando TODOS os deals de saída diretamente do histórico
-         // Referência: https://www.mql5.com/en/forum/439334
-         // ═══════════════════════════════════════════════════════════════
-         double totalPositionProfit = 0;  // Soma de TODOS os deals de saída desta posição
-         double finalDealProfit = 0;      // Apenas o deal final (para salvar no CSV)
-         ulong  finalDealTicket = 0;
-         bool   foundFinalDeal = false;
+// Detectar fechamento de posição (delegado ao HistoryProcessor)
+// Parte 034: lê ExitMode do módulo (reflete hot-reload via GUI)
+   {
+    ENUM_EXIT_MODE curExitMode_close = (g_maCrossStrategy != NULL) ? g_maCrossStrategy.GetExitMode() : inp_ExitMode;
+    bool lockTradeCandle = (curExitMode_close != EXIT_VM);
 
-         // Iterar por TODOS os deals desta posição
-         for(int i = 0; i < HistoryDealsTotal(); i++)
-           {
-            ulong dealTicket = HistoryDealGetTicket(i);
-            if(HistoryDealGetInteger(dealTicket, DEAL_POSITION_ID) == g_lastPositionTicket)
-              {
-               long dealEntry = HistoryDealGetInteger(dealTicket, DEAL_ENTRY);
-               if(dealEntry == DEAL_ENTRY_OUT || dealEntry == DEAL_ENTRY_OUT_BY)
-                 {
-                  // Somar lucro de TODOS os deals de saída (parciais + final)
-                  double dealProfit = HistoryDealGetDouble(dealTicket, DEAL_PROFIT);
-                  totalPositionProfit += dealProfit;
-
-                  string dealComment = HistoryDealGetString(dealTicket, DEAL_COMMENT);
-
-                  // TPs parciais já foram salvos por SavePartialTrade()
-                  if(StringFind(dealComment, "Partial") >= 0)
-                     continue;
-
-                  // Este é um deal final (SL, TP fixo, trailing, etc)
-                  finalDealProfit = dealProfit;
-                  finalDealTicket = dealTicket;
-                  foundFinalDeal = true;
-                  // NÃO usar break - continuar para pegar o último
-                 }
-              }
-           }
-
-         // Processar o deal final (se encontrado)
-         if(foundFinalDeal)
-           {
-            // Salvar trade no Logger (apenas o deal final)
-            g_logger.SaveTrade(g_lastPositionTicket, finalDealProfit);
-
-            // Atualizar estatísticas
-            // ✅ Fix Parte 031b: passa totalPositionProfit para classificação win/loss
-            // correta (soma parciais + final). m_dailyProfit acumula só finalDealProfit.
-            g_logger.UpdateStats(finalDealProfit, totalPositionProfit);
-
-            // Registrar no Blockers - usar totalPositionProfit para determinar win/loss
-            bool isWin = (totalPositionProfit > 0);
-            g_blockers.UpdateAfterTrade(isWin, finalDealProfit);
-
-            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "CLOSE",
-                         "📊 Posição #" + IntegerToString(g_lastPositionTicket) +
-                         " fechada | P/L final: $" + DoubleToString(finalDealProfit, 2) +
-                         " | Total posição: $" + DoubleToString(totalPositionProfit, 2));
-
-            // Gerar relatório TXT atualizado após cada trade
-            g_logger.SaveDailyReport();
-            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "REPORT", "📄 Relatório diário atualizado");
-           }
-        }
-
-      // Remover do TradeManager
-      g_tradeManager.UnregisterPosition(g_lastPositionTicket);
-
-      // Bloquear re-entrada no mesmo candle ao fechar posição (exceto no modo VM)
-      // Parte 034: lê ExitMode do módulo (reflete hot-reload via GUI)
-      ENUM_EXIT_MODE curExitMode_1465 = (g_maCrossStrategy != NULL) ? g_maCrossStrategy.GetExitMode() : inp_ExitMode;
-      if(curExitMode_1465 != EXIT_VM)
-        {
-         g_lastTradeBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
-         g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "RESET", "🔄 Controle de candle atualizado - aguardando próximo candle para novo trade");
-        }
-
-      g_lastPositionTicket = 0;
-     }
+    if(g_historyProcessor != NULL &&
+       g_historyProcessor.ProcessClosure(g_lastPositionTicket, hasMyPosition, lockTradeCandle, g_lastTradeBarTime))
+      {
+       g_lastPositionTicket = 0;
+      }
+   }
 
 // ═══════════════════════════════════════════════════════════════
 // SE EXISTE POSIÇÃO DESTE EA: GERENCIAR
