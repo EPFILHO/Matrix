@@ -43,6 +43,34 @@ bloqueios coincidem.
 - Variáveis runtime (`g_magicNumber`, `g_slippage`) substituem leituras
   de `inp_*` em código vivo, porque inputs são read-only.
 
+## 3.1 RiskManager — calculadora stateless
+
+- `Core/RiskManager.mqh` **apenas calcula** valores (SL/TP/Trailing/BE/
+  Partial TP). Não gerencia tickets nem estado de posição.
+- Padrão **Input + Working variables**: `m_inputX` preserva o valor
+  original do `.set`/`inp_*`; `m_X` é o valor "vivo" usado pelo cálculo.
+  Hot reload escreve em `m_X` via `SetX(...)`.
+- **Cache de ATR por barra**: `GetATRValue()` usa `m_cachedATR` +
+  `m_lastATRBar` para evitar `CopyBuffer()` a cada tick; releitura
+  apenas na abertura de nova barra.
+- Validação cruzada no `Init()`: rejeita se `TP2_Distance <= TP1_Distance`
+  (configuração silenciosamente errada onde TP2 nunca seria atingido).
+- Quem **executa** ordens é `Core/TradeManager` (e `ExecuteTrade()` no EA).
+
+## 3.2 TradeManager — rastreio por posição
+
+- Rastreia **cada posição individualmente** com seu próprio estado
+  (`SPositionState`): BE acionado, trailing acionado, TP1/TP2 executados.
+- Gerencia Breakeven, Trailing e Partial TP **por posição** (não global).
+- Hot reload completo (Input + Working variables, igual RiskManager).
+- `ResyncExistingPositions()` no Init reconstrói o estado a partir das
+  posições abertas + arquivo `.state` (se existir).
+- **Particularidade MQL5**: usa ÍNDICES de array ao invés de ponteiros
+  para `SPositionState` — MQL5 não permite ponteiros para structs simples.
+- Persistência de estado em `MQL5/Files/Matrix_{symbol}_{magic}.state`
+  (auto-save em `RegisterPosition`/`UnregisterPosition`/setters; guard
+  de backtest via `MQL_TESTER`).
+
 ## 4. Persistência de configuração (.cfg)
 
 - `Core/ConfigPersistence.mqh` salva/carrega `SConfigData` em

@@ -9,22 +9,10 @@
 
 // Changelog: ver CHANGELOG.md
 
-// ═══════════════════════════════════════════════════════════════════
-// INCLUDES
-// ═══════════════════════════════════════════════════════════════════
+// Arquitetura: ver ARCHITECTURE.md (§3.2 TradeManager — rastreio por posição)
+
 #include "Logger.mqh"
 #include "RiskManager.mqh"
-
-// ═══════════════════════════════════════════════════════════════════
-// ARQUITETURA TRADEMANAGER:
-// - Rastreia CADA posição individualmente com seu próprio estado
-// - Gerencia Breakeven, Trailing e Partial TP por posição (não global)
-// - Hot Reload completo (Input + Working variables)
-// - Integração com Logger e RiskManager; ResyncExistingPositions
-//
-// IMPORTANTE MQL5: usa ÍNDICES ao invés de ponteiros (MQL5 não permite
-// ponteiros para structs simples).
-// ═══════════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
 //| Estrutura: Estado de uma Posição Individual                      |

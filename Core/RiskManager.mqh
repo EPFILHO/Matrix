@@ -8,19 +8,9 @@
 #property version   "3.20"
 // Changelog: ver CHANGELOG.md
 
-// ═══════════════════════════════════════════════════════════════════
-// INCLUDES
-// ═══════════════════════════════════════════════════════════════════
-#include "Logger.mqh"
+// Arquitetura: ver ARCHITECTURE.md (§3.1 RiskManager — calculadora stateless)
 
-// ═══════════════════════════════════════════════════════════════════
-// ARQUITETURA LIMPA:
-// - RiskManager APENAS CALCULA valores (stateless)
-// - Core/TradeExecutor EXECUTA as operações
-// - Padrão Input + Working variables para hot reload (setters Set*())
-// - Cache de ATR por barra (m_cachedATR / m_lastATRBar) para evitar
-//   CopyBuffer() a cada tick.
-// ═══════════════════════════════════════════════════════════════════
+#include "Logger.mqh"
 
 //+------------------------------------------------------------------+
 //| Enumerações - Tipos de Gestão de Risco                           |
