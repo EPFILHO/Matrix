@@ -3,18 +3,7 @@
 //|                                         Copyright 2026, EP Filho |
 //|              Filtros de Condição de Mercado - EPBot Matrix       |
 //|                     Versão 1.03 - Claude Parte 033 (Claude Code) |
-// CHANGELOG v1.03 (Parte 033):
-// * Issue #27: log de spread removido de CheckSpreadWithLog()
-//   Logs de "SPREAD ALTO"/"NORMALIZADO" eram gerados em toda transição
-//   de spread, mesmo sem sinal de entrada. Agora CheckSpreadWithLog()
-//   é verificação silenciosa; log ocorre no EA apenas quando há sinal.
-//   m_sSfWasBlocked removido (era usado só para throttle dos logs).
-//
-// CHANGELOG v1.02 (Parte 031):
-// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
-//
-// CHANGELOG v1.01 (Parte 027):
-// + SetMagicNumber() / GetMagicNumber() — hot reload do Magic Number
+// Changelog: ver CHANGELOG.md
 //+------------------------------------------------------------------+
 // NOTA: Enums (ENUM_BLOCKER_REASON, ENUM_SESSION_STATE, etc.) e
 // Logger.mqh são incluídos por Blockers.mqh ANTES deste arquivo.

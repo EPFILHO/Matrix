@@ -6,17 +6,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "2.17"
-//
-// ═══════════════════════════════════════════════════════════════
-// NOVIDADES v2.17 (Parte 033) — Issue #28:
-// + m_lastSignalShortSource + GetLastSignalShortSource()
-//   Rastreia GetShortName() da estratégia que gerou o sinal
-//   Usado pelo ExecuteTrade() para preencher request.comment
-// ═══════════════════════════════════════════════════════════════
-// NOVIDADES v2.16 (Parte 031):
-// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
-// * PrintStatus(): bloco else com Print() removido (era dead code)
-// ═══════════════════════════════════════════════════════════════
+// Changelog: ver CHANGELOG.md
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -26,34 +16,6 @@
 #include "Base/StrategyBase.mqh"
 #include "Base/FilterBase.mqh"
 
-// ═══════════════════════════════════════════════════════════════
-// NOVIDADES v2.15 (Parte 028):
-// + GetActiveStrategyCount(): conta apenas estratégias com GetEnabled()==true
-// + GetActiveFilterCount(): conta apenas filtros com GetEnabled()==true
-// ═══════════════════════════════════════════════════════════════
-// NOVIDADES v2.14 (Parte 025):
-// + GetStrategy(int index): acesso indexado a estratégias registradas
-// + GetFilter(int index): acesso indexado a filtros registrados
-//   Ambos usados pelo painel GERAL para iterar via SignalManager
-// ═══════════════════════════════════════════════════════════════
-// NOVIDADES v2.13 (Parte 024):
-// + StrategyItem.enabled removido — usa strategy.GetEnabled()
-// + Enable/DisableStrategy agora chamam strategy.SetEnabled()
-// + Flags unificados: GUI e SignalManager usam o mesmo m_enabled
-// ═══════════════════════════════════════════════════════════════
-// NOVIDADES v2.12:
-// + Fix: ResolveConflict() agora usa parâmetro 'count' no loop de
-//   CONFLICT_PRIORITY (antes usava m_strategyCount incorretamente)
-// ═══════════════════════════════════════════════════════════════
-// NOVIDADES v2.11:
-// + Fix: SetConflictResolution() só loga quando há mudança real
-// + Evita logs redundantes "Prioridade → Prioridade" na inicialização
-// ═══════════════════════════════════════════════════════════════
-// NOVIDADES v2.10:
-// + Migração para Logger v3.00 (5 níveis + throttle inteligente)
-// + Todas as mensagens classificadas (ERROR/EVENT/INFO)
-// + GetExitSignal() para saídas de posição
-// ═══════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
 //| Enum para resolução de conflitos entre estratégias               |

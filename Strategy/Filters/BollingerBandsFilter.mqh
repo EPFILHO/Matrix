@@ -6,11 +6,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.03"
-// CHANGELOG v1.03 (Parte 035):
-// * Fix GUI: Setup() não converte mais PERIOD_CURRENT para Period().
-//   Painel BB Filter agora mostra "ATUAL" quando input é PERIOD_CURRENT.
-// CHANGELOG v1.02 (Parte 031):
-// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
+// Changelog: ver CHANGELOG.md
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -19,26 +15,7 @@
 #include "../../Core/Logger.mqh"
 #include "../Base/FilterBase.mqh"
 
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG
-// v1.01 (Parte 031):
-// + SetEnabled override: loga "Filtro: ATIVADO/DESATIVADO" se mudar
-// + SetSqueezeMetric, SetSqueezeThreshold, SetPercentilePeriod:
-//   só logam se valor realmente mudar
-// + SetPeriod, SetDeviation, SetTimeframe, SetAppliedPrice:
-//   skip Deinitialize+Initialize se parâmetros forem idênticos
-// + Removidos fallbacks else Print(...) — m_logger nunca é NULL
-//
-// v1.00 (Parte 026):
-// + Filtro Anti-Squeeze para Bollinger Bands
-//   Bloqueia trades quando bandas estão estreitas (mercado em range)
-//   Ideal para proteger MACross de sinais falsos em consolidação
-// + 3 métricas configuráveis pelo usuário:
-//   - BB_SQUEEZE_ABSOLUTE: (upper - lower) em pontos
-//   - BB_SQUEEZE_RELATIVE: (upper - lower) / middle * 100 (%)
-//   - BB_SQUEEZE_PERCENTILE: compara com últimas N barras
-// + Hot/Cold reload completo seguindo padrão Matrix
-// ═══════════════════════════════════════════════════════════════
+// (Histórico de versões em CHANGELOG.md)
 
 //+------------------------------------------------------------------+
 //| Enumeração de Modos de Métrica do Squeeze                        |

@@ -7,37 +7,7 @@
 // Incluído por Panel.mqh APÓS a definição completa de CEPBotPanel.
 // NÃO incluir diretamente.
 //
-// CHANGELOG v1.11 (Parte 035) — AppliedPrice:
-// * Novo botão "Preço" ciclando CLOSE/OPEN/HIGH/LOW/MEDIAN/TYPICAL
-// * Apply(): chama SetAppliedPrice() (hot-reload via Deinit+Init)
-// * Reload()/_RefreshFieldState(): sincroniza visual e toggle
-//
-// CHANGELOG v1.10 (Parte 033) — persistência:
-// * Reload(): repopula campos GUI a partir do módulo (fix Issue #22)
-//   chamado por ApplyLoadedConfig após atualizar os módulos
-//
-// CHANGELOG v1.09 (Parte 033) — Issue #29:
-// * _RefreshFieldState(): respeita m_pendingEnabled como toggle mestre
-//   (todos campos cinza/desabilitados quando toggle OFF)
-// * OnClick() do toggle: chama _RefreshFieldState() após alternar
-//
-// CHANGELOG v1.07 (Parte 029):
-// * m_locked: Update() não sobrescreve visual quando EA rodando
-//
-// CHANGELOG v1.06 (Parte 029):
-// * SetEnabled(): toggle ON/OFF cinza, campos fundo branco/cinza,
-//   labels dim, TF + Mode radios cobertos
-//
-// CHANGELOG v1.05 (Parte 027) — Bugfix:
-// * Fix: trailing comma na lista de inicialização do construtor
-//
-// CHANGELOG v1.04 (Parte 027) — Fase 2: Controle de Estado:
-// * Removido botão APLICAR (m_btnApply) — aplicação centralizada
-// * _OnApply convertido para Apply() público; adicionado SetEnabled()
-//
-// CHANGELOG v1.03 (Parte 027):
-// + SetFilter(): setter tipado para re-injeção de ponteiro
-//   (usado por ReconnectModules e config persistence)
+// Changelog: ver CHANGELOG.md
 //+------------------------------------------------------------------+
 
 class CRSIFilterPanel : public CFilterPanelBase

@@ -8,57 +8,7 @@
 #property link      "https://github.com/EPFILHO"
 #property version   "1.11"
 
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v1.11 (Parte 36) — Trava de TFs:
-// - Defaults dos 7 inputs de timeframe trocados de PERIOD_CURRENT
-//   para PERIOD_M1 (inp_FastTF, inp_SlowTF, inp_RSITF, inp_BBTF,
-//   inp_TrendMATF, inp_RSIFilterTF, inp_BBFiltTF).
-// - Elimina o risco de a estratégia mudar silenciosamente quando o
-//   usuário troca o TF do gráfico. Estratégia/filtros agora têm TF
-//   próprio independente do gráfico.
-// - Presets antigos preservam o que estava salvo; só novas
-//   instâncias sem config recebem o default novo.
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v1.10 (Parte 033) — Issue #28:
-// - Removido inp_TradeComment (comment da ordem agora vem do
-//   SignalManager.GetLastSignalShortSource() via ExecuteTrade)
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v1.09 (Parte 027):
-// ✅ Sem novos inputs (apenas GUI expõe campos existentes)
-//    Magic Number, Trade Comment, Daily Limits agora na GUI
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v1.08 (Parte 026):
-// ✅ Novos inputs para BB Strategy (Bollinger Bands):
-//    inp_UseBB, inp_BBPriority, inp_BBPeriod, inp_BBDeviation,
-//    inp_BBApplied, inp_BBTF, inp_BBMode, inp_BBEntryMode, inp_BBExitMode
-// ✅ Novos inputs para BB Filter (Anti-Squeeze):
-//    inp_UseBBFilter, inp_BBFiltPeriod, inp_BBFiltDeviation,
-//    inp_BBFiltApplied, inp_BBFiltTF, inp_BBFiltMetric,
-//    inp_BBFiltThreshold, inp_BBFiltPercPeriod
-// ✅ Includes: BollingerBandsStrategy.mqh, BollingerBandsFilter.mqh
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v1.07:
-// ✅ inp_MACrossMinDistance integrado ao MACrossStrategy::Setup() (v2.26)
-//    Filtro de força do cruzamento: sinal só gerado se dist(MA rápida, MA lenta) >= N pontos
-// ✅ inp_RSISignalShift removido — RSIStrategy usa shift=1 fixo (v2.15)
-// ✅ Seção 007 TRADE MANAGER removida (grupo vazio no MT5 — era desnecessário)
-// CHANGELOG v1.06:
-// ✅ TODO (resolvido em v1.07): inp_MACrossMinDistance agora passado ao Setup()
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v1.05:
-// ✅ Novo input inp_ShowPanel (Seção 008 - Painel GUI):
-//    - Controla exibição do painel GUI no gráfico
-//    - Default: true (painel visível)
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v1.04:
-// ✅ Novo input inp_DrawdownPeakMode:
-//    - Permite escolher entre pico Realizado ou com Flutuante
-//    - Enum ENUM_DRAWDOWN_PEAK_MODE (definido em Blockers.mqh)
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v1.03:
-// ✅ Remoção de inp_InitialBalance:
-//    - Input manual removido (auto-detectado via AccountBalance)
-// ═══════════════════════════════════════════════════════════════
+// Changelog: ver CHANGELOG.md
 
 //+------------------------------------------------------------------+
 //| INCLUDES NECESSÁRIOS PARA ENUMS                                  |

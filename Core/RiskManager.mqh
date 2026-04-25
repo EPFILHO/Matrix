@@ -6,29 +6,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "3.20"
-// CHANGELOG v3.20 (Parte 035):
-// * Novo getter GetTrailingActivation() — necessário para exposição
-//   do enum ENUM_TRAILING_ACTIVATION à camada GUI/Persistência.
-//
-// CHANGELOG v3.19 (Parte 034):
-// * Adiciona getters para persistência completa de SL/TP/Trailing/BE por
-//   tipo (GetSLATRMultiplier, GetTPATRMultiplier, GetRangeMultiplier,
-//   GetTrailingStart/Step/ATRStart/ATRStep, GetBEActivation/Offset/
-//   ATRActivation/ATROffset). Necessário para que CollectConfigData leia
-//   os 3 valores por tipo (antes só o tipo ativo era persistido).
-//
-// CHANGELOG v3.18 (Parte 033):
-// * H-02 fix: CalculatePartialTPLevels — validação cruzada tp1_lot +
-//   tp2_lot <= totalLotSize. Se soma exceder, tp2_lot é reduzido para
-//   o lote residual (totalLotSize - tp1_lot), preservando TP1 intacto.
-// * Lot rounding: substituído MathFloor + epsilon por MathRound em
-//   todos os cálculos de lote de TP parcial. Evita perda de step em
-//   divisões IEEE 754 (ex: 0.03/0.01 → 2.999... → floor=2 → 0.02).
-// * Limpeza: removidos 14 guards `if(m_logger != NULL)` + `else Print()`
-//   (corrige changelog incorreto do v3.17 que afirmava limpeza completa).
-//
-//// CHANGELOG v3.17 (Parte 031):
-// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
+// Changelog: ver CHANGELOG.md
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
@@ -36,60 +14,12 @@
 #include "Logger.mqh"
 
 // ═══════════════════════════════════════════════════════════════════
-// ARQUITETURA LIMPA v3.0:
-// - RiskManager APENAS CALCULA valores
+// ARQUITETURA LIMPA:
+// - RiskManager APENAS CALCULA valores (stateless)
 // - Core/TradeExecutor EXECUTA as operações
-// - Stateless - sem gerenciar tickets ou estado de posições
-// 
-// NOVIDADES v3.0:
-// + Partial Take Profit (até 3 níveis configuráveis)
-// + Trailing/Breakeven com ativação condicional (ALWAYS/AFTER_TP1/AFTER_TP2/NEVER)
-//
-// NOVIDADES v3.01:
-// + Padrão Input + Working variables para hot reload
-// + Métodos Set para alterar parâmetros em runtime
-// + Getters para Input e Working values
-// + ValidateSLTP() - Validação contra níveis mínimos do broker
-//
-// NOVIDADES v3.02:
-// + REMOVIDO: inp_UseTrailing e inp_UseBreakeven (redundância)
-// + SIMPLIFICADO: Trailing/BE ativados via enum (NEVER = desligado)
-//
-// NOVIDADES v3.10:
-// + Migração para Logger v3.00 (5 níveis + throttle inteligente)
-// + Todas as mensagens classificadas (ERROR/EVENT/DEBUG)
-// + PrintConfiguration() agora usa LOG_DEBUG
-//
-// NOVIDADES v3.11:
-// + TP FALLBACK: Quando Partial TP ativo, usa TP Fixo como proteção
-// + Protege contra falha de conexão/PC desligado
-// + TP será removido pelo TradeManager após TP2
-//
-// NOVIDADES v3.12:
-// + Fix: Funções Hot Reload só logam quando há mudança real nos valores
-// + Evita logs redundantes na inicialização/recarregamento
-//
-// NOVIDADES v3.13:
-// + SetATRPeriod, SetRangePeriod hot reload setters
-// + SetSLCompensateSpread, SetTPCompensateSpread, SetTrailingCompensateSpread
-// + 5 novos setters para campos expandidos da aba RISCO do painel
-//
-// NOVIDADES v3.14:
-// + SetSLType(ENUM_SL_TYPE) — troca tipo SL em runtime (FIXO/ATR/RANGE)
-// + SetTPType(ENUM_TP_TYPE) — troca tipo TP em runtime (NENHUM/FIXO/ATR)
-// + SetRangeMultiplier(double) — altera multiplicador Range em runtime
-// + Criação automática de handle ATR quando tipo muda para ATR
-//
-// NOVIDADES v3.15 (Parte 024):
-// + Fix: TP_NONE é agora sempre respeitado em CalculateTPPrice()
-//   Antes: Partial TP ativo forçava TP fixo como fallback, ignorando TP=NENHUM
-//   Agora: TP_NONE retorna 0 independente do Partial TP; log de info emitido
-//
-// NOVIDADES v3.16 (Parte 025):
-// + Validação cruzada no Init(): rejeita se TP2_Distance <= TP1_Distance
-//   Previne configuração silenciosamente errada onde TP2 nunca seria atingido
-// + Cache de ATR por barra: GetATRValue() usa m_cachedATR/m_lastATRBar
-//   Evita CopyBuffer() a cada tick; releitura apenas na abertura de nova barra
+// - Padrão Input + Working variables para hot reload (setters Set*())
+// - Cache de ATR por barra (m_cachedATR / m_lastATRBar) para evitar
+//   CopyBuffer() a cada tick.
 // ═══════════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+

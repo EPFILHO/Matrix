@@ -10,24 +10,7 @@
 //       NÃO incluir diretamente — os tipos ENUM_RSI_* devem estar
 //       definidos antes deste arquivo.
 //
-// CHANGELOG v1.04 (Parte 36) — Trava de TFs na GUI:
-// * TFName(): removido case PERIOD_CURRENT (não exibe mais "ATUAL").
-// * CycleTF(): PERIOD_CURRENT removido do array; fallback agora é
-//   PERIOD_M1 em vez de PERIOD_CURRENT.
-// * Coerente com Inputs.mqh v1.11 (Parte 36) que travou os
-//   defaults de TF em PERIOD_M1.
-//
-// CHANGELOG v1.02 (Parte 029):
-// * TFName(): adicionados todos os timeframes MQL5 (M2-M20, H2-H12)
-// * CycleTF(): adicionados todos os timeframes MQL5
-//
-// CHANGELOG v1.03 (Parte 030):
-// * CLR_FIELD_ERROR: constante para highlight de campos inválidos
-// * MarkFieldError(): pinta fundo do CEdit vermelho claro
-// * ClearFieldError(): restaura fundo branco (se campo habilitado)
-// * CalcMaxPoints(): calcula limite max de pontos baseado no ativo
-// * CalcMinSLTP(): calcula SL/TP mínimo do broker (STOPS_LEVEL)
-// * CalcSymbolLotLimits(): obtém min/max/step de lote do ativo
+// Changelog: ver CHANGELOG.md
 //+------------------------------------------------------------------+
 
 //── Timeframe ──────────────────────────────────────────────────────

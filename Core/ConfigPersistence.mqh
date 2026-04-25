@@ -8,32 +8,7 @@
 #property version   "1.03"
 #property strict
 
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG
-// ═══════════════════════════════════════════════════════════════
-// v1.03 (Parte 035) — Trailing Activation:
-// + SConfigData.trailingActivation (ENUM_TRAILING_ACTIVATION).
-// + Save/Load chave "TrailingActivation"; retrocompat: .cfg antigos sem
-//   a chave derivam o modo do trailOn (ON→ALWAYS / OFF→NEVER).
-// ═══════════════════════════════════════════════════════════════
-// v1.02 (Parte 033) — Issue #28:
-// - Removido campo tradeComment de SConfigData
-// - WriteKV e ReadKV do TradeComment eliminados
-// ═══════════════════════════════════════════════════════════════
-// v1.01 (Parte 027):
-// * Fix: SConfigData campos rsiOversold, rsiOverbought, rsiMidLevel,
-//   trendMinDistance, rsiFiltOversold, rsiFiltOverbought alterados
-//   de int para double (evita truncamento de valores fracionários)
-// * Fix: Save/Load usa DoubleToString/StringToDouble para esses campos
-//
-// v1.00 (Parte 027):
-// + SConfigData: struct com TODOS os parâmetros configuráveis via GUI
-// + CConfigPersistence: Save/Load/Delete/Exists/GetLastModified
-//   - Formato: key=value (legível e forward-compatible)
-//   - Escrita atômica via .tmp + rename
-//   - Guard de backtest (MQL_TESTER)
-//   - Arquivo: MQL5/Files/Matrix_{symbol}_{magic}.cfg
-// ═══════════════════════════════════════════════════════════════
+// Changelog: ver CHANGELOG.md
 
 //+------------------------------------------------------------------+
 //| Includes necessários para enums                                   |

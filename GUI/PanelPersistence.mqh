@@ -7,64 +7,7 @@
 // Implementações de CEPBotPanel para persistência de configurações.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
 //
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG
-// ═══════════════════════════════════════════════════════════════
-// v1.08 (Parte 035) — Trailing Activation:
-// * CollectConfigData: grava data.trailingActivation = (trailOn ? m_cur_trailMode : NEVER).
-// * ApplyLoadedConfig: deriva m_cur_trailMode do enum (NEVER → ALWAYS como default radio).
-//
-// v1.07 (Parte 034) — fix arquitetural de persistência por tipo:
-// * CollectConfigData: antes só gravava o valor do tipo ATIVO (SL/TP/
-//   Trailing/BE); os inativos ficavam em 0 por ZeroMemory, fazendo o
-//   usuário perder silenciosamente edições ao trocar de tipo. Agora lê
-//   os 3 valores de SL, 2 de TP, 2×2 de Trailing e 2×2 de BE via getters
-//   do RiskManager e só sobrescreve o ATIVO com o CEdit.
-// * ApplyLoadedConfig: novo bloco aplica setters para TODOS os tipos no
-//   RiskManager (não só o ativo). Usa 0 como sentinela de "não
-//   sobrescrever" para compat com .cfg antigos gerados antes deste fix.
-//
-// v1.06 (Parte 033) — Issue #28:
-// * Removido CollectConfigData: data.tradeComment = ...
-// * Removido ApplyLoadedConfig: restauração de m_co_iComm.Text()
-//
-// v1.05 (Parte 033) — fix Magic Number + timestamp:
-// * SaveCurrentConfig/HasSavedConfig/OnClickIgnoreBanner: usam
-//   m_initMagicNumber (fixo no init) em vez de m_magicNumber (mutável).
-//   Corrige bug onde mudar magic via GUI fazia save ir para um arquivo
-//   diferente do que o EA busca ao reiniciar (que usa inp_MagicNumber).
-// * CollectConfigData: usa TimeLocal() para lastModified em vez de
-//   TimeCurrent() — exibe hora local do trader no banner, não hora do broker
-//
-// v1.04 (Parte 033) — fix Issue #22:
-// * ApplyLoadedConfig step 8: chama Reload() antes de Update() em cada
-//   painel de estratégia e filtro, para que os campos GUI sejam
-//   repopulados com os valores do módulo recém-atualizado.
-//   Sem isso, ao clicar APLICAR após um load, os inp_* stagnados
-//   nos campos GUI sobrescreviam os valores corretos nos módulos.
-//
-// v1.03 (Parte 030):
-// + ApplyLoadedConfig: adaptado para nova assinatura ApplyConfig(string &outErr)
-//
-// v1.02 (Parte 027) — Fase 2: Controle de Estado:
-// + SaveCurrentConfig: snapshot m_savedConfig para rollback
-// + CollectConfigData: inclui magicNumber/trailingType/beType
-// + ApplyLoadedConfig: aplica m_cur_trailingType/m_cur_beType
-// + Substituição de inp_TrailingType/inp_BEType por runtime vars
-//
-// v1.01 (Parte 027):
-// + ShowLoadBanner: atualizado para exibir novos controles do banner
-//   redesenhado (m_lb_bg, m_lb_descLoad, m_lb_descIgnore)
-// + HideLoadBanner: atualizado para esconder todos os 6 controles do banner
-//
-// v1.00 (Parte 027):
-// + SaveCurrentConfig: coleta dados dos módulos e salva em .cfg
-// + CollectConfigData: preenche SConfigData a partir dos módulos e GUI state
-// + ApplyLoadedConfig: aplica SConfigData nos módulos + atualiza GUI
-// + ShowLoadBanner/HideLoadBanner: banner de confirmação no painel
-// + OnClickLoadBanner/OnClickIgnoreBanner: handlers dos botões
-// + HasSavedConfig: verifica se existe arquivo de config salvo
-// ═══════════════════════════════════════════════════════════════
+// Changelog: ver CHANGELOG.md
 
 //+------------------------------------------------------------------+
 //| SaveCurrentConfig — coleta e salva configuração atual              |

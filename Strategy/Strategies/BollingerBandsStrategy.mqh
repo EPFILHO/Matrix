@@ -6,13 +6,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.04"
-// CHANGELOG v1.04 (Parte 035):
-// * Fix GUI: Setup() não converte mais PERIOD_CURRENT para Period().
-//   Painel BB Strategy agora mostra "ATUAL" quando input é PERIOD_CURRENT.
-// CHANGELOG v1.03 (Parte 033) — Issue #28:
-// + GetShortName() override → "BB" (para comentário das ordens)
-// CHANGELOG v1.02 (Parte 031):
-// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
+// Changelog: ver CHANGELOG.md
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -21,28 +15,7 @@
 #include "../../Core/Logger.mqh"
 #include "../Base/StrategyBase.mqh"
 
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG
-// v1.01 (Parte 031):
-// + SetSignalMode, SetEntryMode, SetExitMode, SetEnabled:
-//   só logam se valor realmente mudar
-// + SetPeriod, SetDeviation, SetTimeframe, SetAppliedPrice:
-//   skip Deinitialize+Initialize se parâmetros forem idênticos
-// + Removidos fallbacks else Print(...) — m_logger nunca é NULL
-//
-// v1.00 (Parte 026):
-// + Estratégia Bollinger Bands com 3 modos de operação:
-//   - BB_MODE_FFFD: Fechou Fora, Fechou Dentro (reversão confirmada)
-//     Candle[2] fecha fora da banda, Candle[1] fecha de volta para dentro
-//   - BB_MODE_REBOUND: Toque + reversão na banda (mais agressivo)
-//     Candle[1] tocou a banda e reverteu (close dentro)
-//   - BB_MODE_BREAKOUT: Rompimento da banda (trend-following)
-//     Candle[1] fecha fora da banda → sinal na direção do rompimento
-// + Indicador iBands() com período, desvio, applied price, timeframe
-// + Suporte a entry mode (NEXT_CANDLE / E2C) e exit mode (FCO/VM/TP_SL)
-// + FCO em BB: sai quando preço cruza a banda central (middle)
-// + Hot/Cold reload completo seguindo padrão Matrix
-// ═══════════════════════════════════════════════════════════════
+// (Histórico de versões em CHANGELOG.md)
 
 //+------------------------------------------------------------------+
 //| Enumeração de Modos de Sinal BB                                  |

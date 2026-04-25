@@ -6,11 +6,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.14"
-// CHANGELOG v1.14 (Parte 035):
-// * Fix GUI: Setup() não converte mais PERIOD_CURRENT para Period().
-//   Painel RSI Filter agora mostra "ATUAL" quando input é PERIOD_CURRENT.
-// CHANGELOG v1.13 (Parte 031):
-// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
+// Changelog: ver CHANGELOG.md
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -19,23 +15,7 @@
 #include "../../Core/Logger.mqh"
 #include "../Base/FilterBase.mqh"
 
-// ═══════════════════════════════════════════════════════════════
-// NOVIDADES v1.12 (Parte 031):
-// + SetEnabled override: loga "Filtro: ATIVADO/DESATIVADO" se mudar
-// + SetFilterMode, SetOversold, SetOverbought, SetLowerNeutral,
-//   SetUpperNeutral, SetShift: só logam se valor realmente mudar
-// + SetPeriod, SetTimeframe, SetAppliedPrice:
-//   skip Deinitialize+Initialize se parâmetros forem idênticos
-// + Removidos fallbacks else Print(...) — m_logger nunca é NULL
-//
-// NOVIDADES v1.11:
-// + Fix: CopyBuffer validação alterada de <= 0 para < count
-//   (previne acesso fora dos limites se indicador retorna dados incompletos)
-// ═══════════════════════════════════════════════════════════════
-// NOVIDADES v1.10:
-// + Migração para Logger v3.00 (5 níveis + throttle inteligente)
-// + Todas as mensagens classificadas (ERROR/EVENT/DEBUG)
-// ═══════════════════════════════════════════════════════════════
+// (Histórico de versões em CHANGELOG.md)
 
 //+------------------------------------------------------------------+
 //| Enumeração de Modos de Filtro RSI                                |

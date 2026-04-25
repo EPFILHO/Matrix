@@ -8,15 +8,7 @@
 #property link      "https://github.com/EPFILHO"
 #property version   "1.00"
 
-// ═══════════════════════════════════════════════════════════════════
-// CHANGELOG v1.00 (Parte 36) — Fatia 1 da refatoração do god file:
-// + Extraído de EPBot_Matrix.mq5 OnTick() (linhas 1432–1515 originais).
-// + Detecta fechamento de posição comparando ticket anterior x atual.
-// + Padrão MQL5: soma TODOS os deals de saída (partial + final)
-//   para classificar win/loss corretamente (ver referência interna
-//   em https://www.mql5.com/en/forum/439334).
-// + Depende de CLogger, CBlockers, CTradeManager via DI (Init).
-// ═══════════════════════════════════════════════════════════════════
+// Changelog: ver CHANGELOG.md
 
 #include "Logger.mqh"
 #include "Blockers.mqh"

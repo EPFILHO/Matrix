@@ -7,43 +7,7 @@
 #property copyright "Copyright 2026, EP Filho"
 #property version   "1.27"
 
-// CHANGELOG v1.27 (Parte 033):
-// * C-07 fix: MonitorPartialTP — re-valida índice e re-obtém preço atual
-//   entre execução de TP1 e avaliação de TP2. Garante que TP2 sempre use
-//   dados frescos quando ambos os níveis são atingidos no mesmo tick.
-// * C-07 fix: verificação de lote residual antes de ExecutePartialClose
-//   do TP2 — se posição tiver menos volume que tp2_lot (ex: TP1 foi
-//   parcialmente preenchido pelo broker), ajusta com MathRound ou cancela
-//   TP2 se residual < lote mínimo.
-// * Limpeza: guard `if(m_logger != NULL)` removido em ExecutePartialClose
-//   (corrige changelog incorreto do v1.26 que afirmava limpeza completa).
-//
-// CHANGELOG v1.26 (Parte 031):
-// * Fix CRÍTICO: ExecutePartialClose retornava Deal=0 em mercados
-//   voláteis (Gold). Guard `dealTicket > 0` no MonitorPartialTP
-//   impedia AddPartialTPProfit() e SavePartialTrade() de executar
-//   → lucro parcial desaparecia do sistema, P/L errado, win/loss errado,
-//   Daily Limits com valor subdimensionado, CSV sem linha da parcial.
-// * ExecutePartialClose: retry 5x × 100ms para buscar deal via
-//   DEAL_ORDER no histórico (mesmo padrão do ExecuteTrade v1.58).
-// * MonitorPartialTP: guard `dealTicket > 0` removido. AddPartialTPProfit
-//   e SavePartialTrade sempre executam — se retry falhar, usa estimativa
-//   por preço como fallback.
-// * Limpeza: todos os `if(m_logger != NULL)` removidos (dead code).
-//
-// CHANGELOG v1.25 (Parte 028):
-// * SetSlippage(): só loga/aplica quando valor realmente muda
-//
-// CHANGELOG v1.24 (Parte 027):
-// + SaveState() / LoadState() / DeleteState() — persistência do estado
-//   das posições (BE, Trailing, TP1/TP2 executed) em arquivo .state
-// + Arquivo: MQL5/Files/Matrix_{symbol}_{magic}.state
-// + Auto-save em: RegisterPosition, UnregisterPosition, Set*() mutators
-// + Auto-load em: ResyncExistingPositions (restaura flags após restart)
-// + Guard de backtest (MQL_TESTER) — não grava em otimização
-//
-// CHANGELOG v1.23 (Parte 027):
-// + SetMagicNumber() / GetMagicNumber() — hot reload do Magic Number
+// Changelog: ver CHANGELOG.md
 
 // ═══════════════════════════════════════════════════════════════════
 // INCLUDES
@@ -52,41 +16,14 @@
 #include "RiskManager.mqh"
 
 // ═══════════════════════════════════════════════════════════════════
-// ARQUITETURA TRADEMANAGER v1.22:
+// ARQUITETURA TRADEMANAGER:
 // - Rastreia CADA posição individualmente com seu próprio estado
-// - Gerencia Breakeven por posição (não global)
-// - Gerencia Trailing por posição (não global)
-// - Gerencia Partial TP por posição (TP1, TP2)
+// - Gerencia Breakeven, Trailing e Partial TP por posição (não global)
 // - Hot Reload completo (Input + Working variables)
-// - Integração total com Logger e RiskManager
-// - ReSync
+// - Integração com Logger e RiskManager; ResyncExistingPositions
 //
-// NOVIDADES v1.22:
-// + CORREÇÃO: TPs parciais agora usam valores REAIS do deal (não estimados)
-// + Busca DEAL_PROFIT e DEAL_PRICE do histórico após execução
-// + Elimina discrepâncias por slippage em mercados voláteis
-// + ExecutePartialClose agora retorna deal ticket por referência
-//
-// NOVIDADES v1.21:
-// + Chama Logger.SavePartialTrade() após cada TP parcial executado
-// + TPs parciais agora salvos no CSV imediatamente (3 linhas por trade)
-// + Habilita ressincronização ao reiniciar EA
-//
-// NOVIDADES v1.20:
-// + CORREÇÃO CRÍTICA: Lucro de TPs parciais agora é registrado no Logger
-// + Após cada TP parcial, calcula lucro e chama Logger.AddPartialTPProfit()
-// + Garante que limites diários considerem lucros parciais realizados
-//
-// NOVIDADES v1.11:
-// + Remove TP Fixo após TP2 (deixa trailing livre)
-//
-// NOVIDADES v1.10:
-// + Migração para Logger v3.00 (5 níveis + throttle inteligente)
-// + Todas as mensagens classificadas (ERROR/EVENT/DEBUG)
-// + PrintAllPositions() agora usa LOG_DEBUG
-//
-// IMPORTANTE MQL5: Usa ÍNDICES ao invés de ponteiros!
-// MQL5 não permite ponteiros para structs simples
+// IMPORTANTE MQL5: usa ÍNDICES ao invés de ponteiros (MQL5 não permite
+// ponteiros para structs simples).
 // ═══════════════════════════════════════════════════════════════════
 
 //+------------------------------------------------------------------+
