@@ -12,6 +12,20 @@ de trabalho). Cada Parte lista as mudanças por arquivo com a versão alvo.
 
 ## Parte 36 — Refatoração + Segurança Operacional
 
+**GUI/PanelPersistence.mqh v1.09** — fix Magic Number ao auto-carregar config
+- `ApplyLoadedConfig`: quando `data.magicNumber > 0`, chama
+  `ApplyMagicNumberChange(data.magicNumber)` em vez de só atualizar o
+  texto do CEdit `m_co_iMagic`.
+- Bug observado: após `REASON_CHARTCHANGE` (troca de TF/ativo no gráfico
+  com EA já anexado), o painel mostrava o magic salvo, mas
+  `g_magicNumber`, `g_logger`, `g_blockers` e `g_tradeManager`
+  continuavam usando `inp_MagicNumber` (valor estático do input). EA
+  seguia abrindo posições com magic antigo e ignorando posições com o
+  magic salvo.
+- Fix cobre todos os caminhos de auto-load: REASON_CHARTCHANGE,
+  REASON_TEMPLATE, REASON_RECOMPILE, REASON_ACCOUNT e clique em
+  "Carregar" no banner pós-REASON_CLOSE/REMOVE/PROGRAM.
+
 **EPBot_Matrix.mq5 v1.68**
 - HistoryProcessor (Fatia 1 da refatoração do god file): bloco de detecção
   de fechamento de posição extraído do OnTick para

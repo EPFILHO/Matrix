@@ -2,7 +2,7 @@
 //|                                           PanelPersistence.mqh   |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel: Persistência de Config — Save/Load/Banner                |
-//|                     Versão 1.08 - Claude Parte 035 (Claude Code) |
+//|                     Versão 1.09 - Claude Parte 36 (Claude Code)  |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para persistência de configurações.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -432,7 +432,14 @@ void CEPBotPanel::ApplyLoadedConfig(const SConfigData &data)
 
    // Outros
    if(data.magicNumber > 0)
+     {
       m_co_iMagic.Text(IntegerToString(data.magicNumber));
+      // Propaga o magic carregado para todos os módulos (Logger, Blockers,
+      // TradeManager) e para a global g_magicNumber. Sem isso o EA seguiria
+      // operando com inp_MagicNumber após auto-carregar config (REASON_
+      // CHARTCHANGE/TEMPLATE/RECOMPILE/ACCOUNT).
+      ApplyMagicNumberChange(data.magicNumber);
+     }
    m_co_iSlip.Text(IntegerToString(data.slippage));
    m_co_iDbgCd.Text(IntegerToString(data.debugCooldown));
 
