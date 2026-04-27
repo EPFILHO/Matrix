@@ -4,8 +4,7 @@
 //|                  Limites de Trading (Daily + Streak) - EPBot Matrix |
 //|                     Versão 1.01 - Claude Parte 031 (Claude Code) |
 //+------------------------------------------------------------------+
-// CHANGELOG v1.01 (Parte 031):
-// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
+// Changelog: ver CHANGELOG.md
 //
 // NOTA: Enums (ENUM_STREAK_ACTION, ENUM_PROFIT_TARGET_ACTION, etc.) e
 // Logger.mqh são incluídos por Blockers.mqh ANTES deste arquivo.

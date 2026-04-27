@@ -2,7 +2,7 @@
 //|                                                   PanelUtils.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|          Funções utilitárias livres para sub-páginas do painel    |
-//|                     Versão 1.03 - Claude Parte 030 (Claude Code) |
+//|                     Versão 1.04 - Claude Parte 36 (Claude Code) |
 //|          + free-function Enable/Disable helpers para painéis      |
 //+------------------------------------------------------------------+
 // NOTA: Incluído por Panel.mqh APÓS #include das dependências de
@@ -10,17 +10,7 @@
 //       NÃO incluir diretamente — os tipos ENUM_RSI_* devem estar
 //       definidos antes deste arquivo.
 //
-// CHANGELOG v1.02 (Parte 029):
-// * TFName(): adicionados todos os timeframes MQL5 (M2-M20, H2-H12)
-// * CycleTF(): adicionados todos os timeframes MQL5
-//
-// CHANGELOG v1.03 (Parte 030):
-// * CLR_FIELD_ERROR: constante para highlight de campos inválidos
-// * MarkFieldError(): pinta fundo do CEdit vermelho claro
-// * ClearFieldError(): restaura fundo branco (se campo habilitado)
-// * CalcMaxPoints(): calcula limite max de pontos baseado no ativo
-// * CalcMinSLTP(): calcula SL/TP mínimo do broker (STOPS_LEVEL)
-// * CalcSymbolLotLimits(): obtém min/max/step de lote do ativo
+// Changelog: ver CHANGELOG.md
 //+------------------------------------------------------------------+
 
 //── Timeframe ──────────────────────────────────────────────────────
@@ -28,7 +18,6 @@ string TFName(ENUM_TIMEFRAMES tf)
   {
    switch(tf)
      {
-      case PERIOD_CURRENT: return "ATUAL";
       case PERIOD_M1:      return "M1";
       case PERIOD_M2:      return "M2";
       case PERIOD_M3:      return "M3";
@@ -57,7 +46,7 @@ string TFName(ENUM_TIMEFRAMES tf)
 ENUM_TIMEFRAMES CycleTF(ENUM_TIMEFRAMES tf)
   {
    static const ENUM_TIMEFRAMES tfs[] =
-     {PERIOD_CURRENT, PERIOD_M1, PERIOD_M2, PERIOD_M3, PERIOD_M4,
+     {PERIOD_M1, PERIOD_M2, PERIOD_M3, PERIOD_M4,
       PERIOD_M5, PERIOD_M6, PERIOD_M10, PERIOD_M12, PERIOD_M15,
       PERIOD_M20, PERIOD_M30, PERIOD_H1, PERIOD_H2, PERIOD_H3,
       PERIOD_H4, PERIOD_H6, PERIOD_H8, PERIOD_H12, PERIOD_D1,
@@ -65,7 +54,7 @@ ENUM_TIMEFRAMES CycleTF(ENUM_TIMEFRAMES tf)
    int count = ArraySize(tfs);
    for(int i = 0; i < count; i++)
       if(tfs[i] == tf) return tfs[(i + 1) % count];
-   return PERIOD_CURRENT;
+   return PERIOD_M1;
   }
 
 //── MA Method ──────────────────────────────────────────────────────

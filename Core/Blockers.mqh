@@ -6,55 +6,8 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "3.26"
-//
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v3.26 (Parte 033):
-// * Issue #27: CanTrade() recebe parâmetro skipSpread (default false).
-//   Quando true, pula verificação de spread (usado pelo EA antes do
-//   sinal ser detectado). Log de spread passa a ocorrer somente após
-//   sinal detectado, via IsSpreadOk() chamado no EA.
-// * IsSpreadOk(blockReason): wrapper público para checar spread sem log
-//   (usado pelo EA para logar bloqueio apenas quando há sinal).
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v3.25 (Parte 031):
-// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
-// ═══════════════════════════════════════════════════════════════
+// Changelog: ver CHANGELOG.md
 #property strict
-
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v3.24 (Parte 027):
-// + SetMagicNumber() — facade para BlockerFilters.SetMagicNumber()
-// ═══════════════════════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v3.23 (Parte 025):
-// + Refatoração: CBlockers dividido em 3 módulos coesos:
-//   - BlockerFilters.mqh: TimeFilter + NewsFilter + SpreadFilter
-//   - BlockerDrawdown.mqh: DrawdownProtection
-//   - BlockerLimits.mqh: DailyLimits + StreakControl
-// + CBlockers passa a ser orchestrator — API pública inalterada
-// + Statics locais em CanTrade/ShouldClose* convertidas em membros
-//   de instância nas classes correspondentes (sem side effects)
-// + CheckDailyLimits: dependência cruzada com DrawdownProtection
-//   eliminada via flag activateDD (out param) — sem circular deps
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v3.22 (Parte 025):
-// + CanTrade(): DailyLimits verificado ANTES do Streak
-//   Diagnóstico correto quando ambos bloqueiam simultaneamente
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v3.21 (Parte 024):
-// + Getters públicos para GUI RESULTADOS:
-//   DD: GetDrawdownType(), GetDrawdownValue(), GetDrawdownPeakMode()
-//   Streak: IsStreakControlEnabled(), GetMaxLossStreak(), GetMaxWinStreak(),
-//   GetLossStreakAction(), GetWinStreakAction(), GetLoss/WinPauseMinutes()
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v3.20 (Parte 024):
-// ✅ Fix: CheckDrawdownLimit() usa m_logger.GetDailyProfit() + floating
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v3.19 (Parte 024):
-// + TryActivateDrawdownNow(dailyProfit)
-// ✅ Fix: GetCurrentDrawdown() inclui floating
-// ═══════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════
 // INCLUDES

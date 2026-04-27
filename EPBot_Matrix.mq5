@@ -2,390 +2,18 @@
 //|                                                 EPBot_Matrix.mq5 |
 //|                                         Copyright 2026, EP Filho |
 //|                          EA Modular Multistrategy - EPBot Matrix |
-//|                     Versão 1.67 - Claude Parte 035 (Claude Code) |
+//|                     Versão 1.68 - Claude Parte 36 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.67"
+#property version   "1.68"
 #property description "EPBot Matrix - Sistema de Trading Modular Multi Estratégias"
 
 //--- Constante centralizada de versão
-#define EA_VERSION "1.67"
+#define EA_VERSION "1.68"
 
 //+------------------------------------------------------------------+
-//| CHANGELOG v1.67 (Parte 035) — AppliedPrice em RSI/BB Strategy:   |
-//| - Adicionado botão "Preco" entre Time Frame e Modo nos painéis   |
-//|   RSIStrategyPanel e BollingerBandsPanel, cicla                  |
-//|   CLOSE→OPEN→HIGH→LOW→MEDIAN→TYPICAL.                            |
-//| - Apply() chama SetAppliedPrice() (hot-reload via Deinit+Init).  |
-//| - Reload/_InitFields lêem GetAppliedPrice(); _RefreshFieldState  |
-//|   e SetEnabled cobrem o novo botão com gray-out pelo toggle.     |
-//| - Paridade com os filtros RSI/BB (Parte 035).                    |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.66 (Parte 035) — Fix TF "ATUAL" nas estratégias/    |
-//| filtros RSI e Bollinger Bands:                                   |
-//| - Setup() de RSIStrategy/BBStrategy/RSIFilter/BBFilter convertia |
-//|   PERIOD_CURRENT (0) em Period() (ex: PERIOD_M5). O painel GUI  |
-//|   chamava GetTimeframe() e recebia M5 em vez de PERIOD_CURRENT, |
-//|   exibindo "M5" em vez de "ATUAL". MACross e TrendFilter já      |
-//|   preservavam o valor original — agora todos ficam consistentes.|
-//| - iRSI/iBands aceitam PERIOD_CURRENT diretamente; sem impacto no |
-//|   runtime.                                                        |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.65 (Parte 035) — TrailingActivation na GUI:         |
-//| - Radio "Ativar em: SEMPRE | APOS TP1 | APOS TP2" em RISCO 2,    |
-//|   entre toggle Trailing e Trail Start. Radio fica inativo        |
-//|   (grayed) quando toggle Trailing = OFF. Hot-reload via          |
-//|   SetTrailingActivation (Deinit+Init). Persistência em .cfg via  |
-//|   nova chave TrailingActivation; .cfg antigos são retrocompat.   |
-//| - Fix: antes o toggle colapsava 4 modos em ALWAYS/NEVER. Agora   |
-//|   preserva os 4 modos (ALWAYS/AFTER_TP1/AFTER_TP2/NEVER).        |
-//| - Novo getter: CRiskManager::GetTrailingActivation().            |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.64 (Parte 035) — AppliedPrice em RSI/BB Filter GUI: |
-//| - RSIFilterPanel e BollingerBandsFilterPanel ganharam botão      |
-//|   "Preço" que cicla CLOSE/OPEN/HIGH/LOW/MEDIAN/TYPICAL.          |
-//|   Apply() chama SetAppliedPrice() (hot-reload via Deinit+Init).  |
-//|   Persistência já suportada via SConfigData.rsi/bbFiltApplied.   |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.63 (Parte 034) — fix hot-reload de ExitMode/UseMA:  |
-//| - Linhas 1465/1610/1654/1938 liam inp_ExitMode e inp_UseMACross  |
-//|   (inputs estáticos). Após hot-reload via GUI, decisões de       |
-//|   lock de candle, FCO block e "virar a mão" ficavam defasadas.   |
-//|   Agora leem g_maCrossStrategy.GetExitMode()/GetEnabled().       |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.62 (Parte 034) — fix hot-reload do Partial TP:      |
-//| - OnTick (MonitorPartialTP) e OnTrade (RegisterPosition) liam    |
-//|   inp_UsePartialTP (estático). Se usuário ativasse via GUI com   |
-//|   inp_UsePartialTP=false, o partial TP nunca disparava em        |
-//|   execução. Agora usa g_riskManager.IsPartialTPEnabled().        |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.61 (Parte 033) — Issue #28:                         |
-//| - Comment das ordens agora usa GetLastSignalShortSource():       |
-//|   "EPBot MACross", "EPBot RSI", "EPBot BB" ao invés de           |
-//|   "EPBot Matrix" (input removido)                                 |
-//| - g_tradeComment removido; ExecuteTrade() e exit code usam       |
-//|   SignalManager.GetLastSignalShortSource()                       |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.60 (Parte 033):                                     |
-//| - Issue #27: log de spread otimizado. CanTrade() chamado com     |
-//|   skipSpread=true antes do sinal — spread não gera log sozinho.  |
-//|   Após sinal detectado (≠ SIGNAL_NONE), IsSpreadOk() checa e    |
-//|   loga "⛔ Entrada bloqueada por spread alto" apenas quando sinal |
-//|   real foi bloqueado. Elimina dezenas de logs por hora em ativos |
-//|   voláteis (Gold, exóticos) sem perda de informação relevante.  |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.59 (Parte 031):                                     |
-//| - Fix: UpdateStats() passa totalPositionProfit para classificação |
-//|   win/loss correta (soma parciais + deal final). Antes, trade de  |
-//|   +$2.25 era contado como LOSS porque só via o deal final -$0.75  |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.58 (Parte 031):                                     |
-//| - Fix CRÍTICO: race condition em ExecuteTrade quando broker       |
-//|   retorna result.deal=0 e result.price=0 (comum no Gold sob       |
-//|   spread volátil). Posição abria na conta mas EA não rastreava    |
-//|   → trailing/BE/PartialTP não funcionavam                          |
-//| - Retry loop (5x × 100ms) para localizar posição após OrderSend   |
-//| - Novo MÉTODO 1.5: busca via HistoryOrderSelect + iteração de     |
-//|   deals filtrados por DEAL_ORDER (resolve result.deal=0)           |
-//| - RegisterPosition + CalculatePartialTPLevels agora usam          |
-//|   POSITION_PRICE_OPEN/POSITION_VOLUME (dados reais da posição)    |
-//|   em vez de result.price/result.volume (que podem vir zerados)    |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.57 (Parte 031):                                     |
-//| - Fix: memory leak no OnDeinit — g_bbStrategy e g_bbFilter não   |
-//|   eram deletados na ETAPA 2 (CleanupAll só roda em INIT_FAILED)  |                                     |
-//| - Botão INICIAR/PAUSAR no topo do painel (acima das tabs)         |
-//|   Visível em TODAS as abas, sempre acessível                      |
-//|   Estado inicial: PAUSADO (verde "INICIAR EA")                    |
-//|   Ao clicar: alterna para ATIVO (amarelo "PAUSAR EA")            |
-//| - Guard no OnTick: bloqueia abertura de novas posições quando     |
-//|   pausado, mas NÃO afeta gerenciamento de posições abertas        |
-//|   (trailing, breakeven, partial TP continuam funcionando)          |
-//| - Tester: g_panel==NULL → guard bypassed, trading funciona normal |
-//| - STATUS tab: mostra "PAUSADO" (amarelo) quando EA não iniciado   |
-//| - Layout: PANEL_HEIGHT 600→626, CONTENT_TOP +26px (START_BTN_H)   |
-//|   CFG_APPLY_Y 520→546, todas as coordenadas parametrizadas        |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.55 (Parte 027):                                     |
-//| - Runtime vars: g_magicNumber, g_slippage substituem inp_*       |
-//|   (read-only) para suportar hot reload                            |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.54 (Parte 027):                                     |
-//| - Config Persistence: banner redesenhado com caixa de destaque,  |
-//|   descrições explicativas e bloqueio de navegação enquanto visível|
-//| - Fix: banner reaparecendo após minimize/restore do painel       |
-//| - Fix: banner exibido para REASON_PROGRAM (EA adicionado fresh)  |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.53 (Parte 027):                                     |
-//| - Config Persistence: salva/carrega configurações GUI entre      |
-//|   restarts do EA (arquivo .cfg por símbolo+magic)                |
-//|   REASON_PARAMETERS: deleta config salva (preset alterado)       |
-//|   REASON_CHARTCHANGE/TEMPLATE: auto-carrega silenciosamente      |
-//|   REASON_CLOSE/REMOVE: mostra banner Carregar/Ignorar            |
-//|   REASON_RECOMPILE/ACCOUNT: auto-carrega silenciosamente         |
-//| - Panel v1.52: banner com caixa de destaque + bloqueio de abas   |
-//| - PanelPersistence v1.01: Show/Hide banner atualizados           |
-//| - PanelTabConfig v1.28: Magic Number, Comentário, Limites Diários|
-//| - Inputs v1.09: inp_MagicNumber e inp_OrderComment               |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.52 (Parte 026):                                     |
-//| - Fix GUI na troca de TF (solução padrão ouro MQL5):             |
-//|   OnDeinit(REASON_CHARTCHANGE) NÃO destrói o painel.             |
-//|   OnInit detecta g_panel != NULL e chama ReconnectModules()      |
-//|   que re-injeta ponteiros novos sem recriar objetos gráficos.    |
-//|   Sub-painéis recebem ponteiros via SetStrategy/SetFilter tipados|
-//|   com dynamic_cast no ReconnectModules().                        |
-//|   if(!m_minimized) ShowTab() evita controles soltos ao trocar TF |
-//|   com painel minimizado.                                         |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.47 (Parte 026):                                     |
-//| - Bollinger Bands Strategy (FFFD, Rebound, Breakout)             |
-//|   Novo módulo: Strategy/Strategies/BollingerBandsStrategy.mqh    |
-//|   3 modos: FFFD (Fechou Fora, Fechou Dentro), Rebound, Breakout |
-//|   Suporte completo a Entry/Exit modes (E2C, FCO, VM, TP/SL)     |
-//| - Bollinger Bands Filter (Anti-Squeeze)                          |
-//|   Novo módulo: Strategy/Filters/BollingerBandsFilter.mqh         |
-//|   3 métricas: Absoluto (pts), Relativo (%), Percentil            |
-//|   Protege MACross de sinais falsos em mercado em range           |
-//| - GUI: BollingerBandsPanel.mqh + BollingerBandsFilterPanel.mqh   |
-//| - GUI: Legendas/instruções nos painéis BB Strategy e BB Filter    |
-//|   Descrições de modos, entrada, saída e métricas mais detalhadas  |
-//| - GUI: Campo Prioridade editável em TODOS os painéis de estratégia|
-//|   MA Cross, RSI e BB agora permitem alterar prioridade via painel |
-//|   Auto-ajuste: se prioridade conflita, incrementa automaticamente |
-//| - GUI cleanup: removida linha ref prioridade, legendas estaticas  |
-//|   Descrições dinâmicas de entrada/saída ao clicar nos botões     |
-//|   Labels traduzidos para português (Oversold→Sobrevendido, etc)  |
-//|   Status "P:" alterado para "Prioridade:" na pag GERAL           |
-//| - Inputs v1.08: novos inputs BB Strategy + BB Filter             |
-//| - Panel v1.41: removido GetPriorityMapText (não mais utilizado)  |
-//| - StrategyPanelBase v1.01: m_parent para acesso ao painel         |
-//| - Panel v1.39: BB Strategy/Filter registrados em RegisterPanels  |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.45 (Parte 025):                                     |
-//| - inp_RSISignalShift removido do RSIStrategy.Setup()             |
-//|   (sempre usa shift=1, barra fechada)                            |
-//| - Blockers v3.22: DailyLimits verificado ANTES do Streak         |
-//|   em CanTrade()                                                  |
-//| - Inputs v1.07: Seção 007 TRADE MANAGER removida (grupo vazio)   |
-//| - Inputs v1.07: inp_RSISignalShift removido                      |
-//| - inp_MACrossMinDistance integrado ao MACrossStrategy.Setup()     |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.44 (Parte 024):                                     |
-//| "Sempre criar" estratégias e filtros no OnInit:                  |
-//| inp_Use* define estado inicial (ativo/inativo), não a criação    |
-//| Toggle ON/OFF via GUI funciona sempre, sem hot-create            |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.43 (Parte 024):                                     |
-//| Removido hot-create de RSI: sync de ponteiro em OnDeinit e       |
-//| OnChartEvent eliminado — padrão igual ao MACross                 |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.42 (Parte 024 - fix compilação):                   |
-//| FIX: removido &g_rsiStrategy (MQL5 não suporta address-of ptr)  |
-//| FIX: sincronização RSI via getters em OnChartEvent e OnDeinit   |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.41 (atualizado — Parte 024 revisão):               |
-//| Fix: CleanupAll() — previne memory leak em INIT_FAILED           |
-//| Fix: RSIStrategy v2.13 — Setup() não força m_enabled=true        |
-//| Fix: m_e_statusMAExpiry inicializado no construtor do Panel       |
-//| Fix: strings de versão unificadas em v1.41                        |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.41 (original — Parte 024):                          |
-//| PANEL v1.24 + BLOCKERS v3.19 — SUB-PÁGINAS ESTRAT./FILTROS (Parte 024): |
-//|    - Sub-páginas em ESTRAT.: [MA CROSS] [RSI]                    |
-//|    - Sub-páginas em FILTROS: [TREND] [RSI]                       |
-//|    - SIGNAL MANAGER movido de ESTRAT. → STATUS (abaixo de SINAIS)|
-//|    - Fix: DD não fechava posição ao ativar via hot reload         |
-//|      (TryActivateDrawdownNow chama ActivateDrawdownProtection     |
-//|       imediatamente com lucro diário atual como pico inicial)     |
-//|    - Fix: GetCurrentDrawdown() inclui floating P/L (consistente  |
-//|      com ShouldCloseByDrawdown)                                   |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.40:                                                 |
-//| PANEL v1.17 + BLOCKERS v3.09 — CONFIG BLOQUEIOS EXPANDIDO (Parte 023): |
-//|    - Partial TP movido de RISCO 2 → RISCO (m_cr_bPTP etc.)       |
-//|    - BLOQUEIOS: radio Profit Target Action (PARAR|ATIVAR DD)      |
-//|    - BLOQUEIOS: radio Streak Action (PAUSAR|PARAR DIA) + pause min|
-//|    - BLOQUEIOS: radio DD Type (FINANCEIRO|PERCENTUAL)             |
-//|    - BLOQUEIOS: radio DD Peak Mode (SO REAL.|C/FLUTUANTE)         |
-//|    - Blockers v3.09: SetDrawdownType + SetDrawdownPeakMode        |
-//|    - RefreshStreakState: pausa fields visíveis só se PAUSAR ativo  |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.39:                                                 |
-//| PANEL v1.16 — RADIO BUTTONS + RISCO 2 (Claude Code):             |
-//|    - Cycle buttons -> CButton[] horizontais (SL Type, TP Type,    |
-//|      Direcao) — clique determinisico, sem ciclo                   |
-//|    - Sub-pagina RISCO 2: Trailing ON/OFF, BE ON/OFF, Partial TP   |
-//|    - SetTrailingActivation/SetBEActivation: hot-reload toggles    |
-//|    - RefreshRisco2State: enable/disable campos Trail/BE/Partial    |
-//|    - 4 sub-paginas CONFIG: RISCO | RISCO 2 | BLOQUEIOS | OUTROS   |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.38:                                                 |
-//| PANEL v1.15 — FIX CLICKS (Claude Code):                          |
-//|    - OnEvent: CAppDialog::OnEvent() agora processa PRIMEIRO       |
-//|      (gera ON_CLICK a partir de CHARTEVENT_OBJECT_CLICK)          |
-//|    - Fix: SL Type, Direction e demais botões agora respondem      |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.37:                                                 |
-//| 🖥️ PANEL v1.14 — POSIÇÕES FIXAS + ENABLE/DISABLE (Claude Code):  |
-//|    - Abandonado Move(): campos em posições fixas, sempre visíveis  |
-//|    - RefreshRiscoState(): enable/disable visual por tipo SL/TP    |
-//|    - Campos desabilitados: label cinza, CEdit ReadOnly + fundo    |
-//|    - Conflito TP ATR vs Partial TP: bloqueio mútuo com "BLOQ."   |
-//|    - Fix: clicks em Direction/SL Type agora funcionam             |
-//|    - Fix: minimize/maximize sem encavalamento de texto            |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.36:                                                 |
-//| 🖥️ PANEL v1.13 — LAYOUT RISCO DINÂMICO (Claude Code):             |
-//|    - LayoutRisco() com Move() — campos se reposicionam sem gaps   |
-//|    - ATR Period, Range Period, Comp Spread inline com SL/TP       |
-//|    - Eliminada seção CONFIGURACAO separada                         |
-//|    - Todos controles RISCO criados incondicionalmente              |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.35:                                                 |
-//| 🖥️ PANEL v1.12 — SELETORES DE TIPO SL/TP (Claude Code):          |
-//|    - SL Type: cycle button FIXO → ATR → RANGE (label dinâmico)   |
-//|    - TP Type: cycle button NENHUM → FIXO → ATR (show/hide)       |
-//|    - TP, ATR Period, Range Period, Comp TP sempre criados         |
-//|    - RiskManager v3.14: SetSLType, SetTPType, SetRangeMultiplier |
-//|    - PANEL_HEIGHT 540→600, CFG_APPLY_Y 420→520                   |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.34:                                                 |
-//| 🖥️ PANEL v1.11 — FIX + RISCO EXPANDIDO (Claude Code):            |
-//|    - Fix: ChartRedraw() nos toggles (Direção não atualizava)     |
-//|    - Fix: encavalamento sub-páginas CONFIG                        |
-//|    - RISCO: ATR Period, Range Period, Compensar Spread SL/TP/Trail|
-//|    - RiskManager: 5 novos setters hot-reload                      |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.33:                                                 |
-//| 🖥️ HOT RELOAD + PARTIÇÃO DO PAINEL (Claude Code):                |
-//|    - Panel.mqh v1.10: aba CONFIG redesenhada com campos editáveis|
-//|      3 sub-páginas (RISCO | BLOQUEIOS | OUTROS)                  |
-//|      CEdit para valores numéricos, CButton para toggles/cycles   |
-//|      Botão APLICAR chama setters hot-reload nos módulos           |
-//|      Campos condicionais (só aparecem se feature está ativa)      |
-//|    - Código do painel dividido em 6 arquivos por aba:            |
-//|      Panel.mqh (core), PanelTab{Status,Resultados,Estrategias,   |
-//|      Filtros,Config}.mqh                                         |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.32:                                                 |
-//| 🖥️ PAINEL GUI (Claude Code):                                     |
-//|    - Novo módulo GUI/Panel.mqh (v1.09) com 5 abas               |
-//|    - Integração: include, global, OnInit, OnDeinit, OnChartEvent |
-//|    - Timer 1.5s para atualização seletiva da aba ativa           |
-//|    - Proteção de mouse: MouseProtection() desabilita             |
-//|      CHART_DRAG_TRADE_LEVELS e CHART_MOUSE_SCROLL sobre painel   |
-//|    - Input inp_ShowPanel para habilitar/desabilitar               |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.31:                                                 |
-//| 🎯 CORREÇÃO: Revisão completa de bugs (Claude Code):             |
-//|    - CopyBuffer: validação alterada de <= 0 para < count         |
-//|    - HistorySelect: janela ampliada de 10s para 60s              |
-//|    - Log adicionado quando PositionSelectByTicket falha           |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.30:                                                 |
-//| 🎯 CORREÇÃO: Entrada no mesmo CANDLE                             |
-//| 🎯 CORREÇÃO: Filtro de Direção não funcionava:                   |
-//|    - CanTradeDirection() existia mas nunca era chamada            |
-//|    - Adicionada verificação em ExecuteTrade() antes do OrderSend  |
-//|    - inp_TradeDirection (SELL_ONLY/BUY_ONLY) agora respeitado    |
-//|    - Log com LOG_EVENT quando direção é bloqueada                |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.29:                                                 |
-//| 🔧 Modo de Cálculo do Pico de Drawdown configurável:             |
-//|    - Init() passa inp_DrawdownPeakMode para Blockers             |
-//|    - ActivateDrawdownProtection() recebe closedProfit e          |
-//|      projectedProfit separados                                   |
-//|    - Compatível com Blockers v3.06                               |
-//+------------------------------------------------------------------+
-//+------------------------------------------------------------------+
-//| KNOWN LIMITATION (documentado em 2026-03):                      |
-//| ⚠️  INCONSISTÊNCIA: Logger.m_dailyWins/Losses vs Streak          |
-//|                                                                  |
-//|  Quando TP1+TP2 executam E o deal final fecha no prejuízo:       |
-//|    - Streak (isWin): usa totalPositionProfit → WIN ✅            |
-//|    - Logger UpdateStats(): usa finalDealProfit → LOSS ❌         |
-//|                                                                  |
-//|  Consequências:                                                  |
-//|    1. Win rate no relatório TXT pode ficar errado (cosmético)    |
-//|    2. Após reinício do EA, LoadDailyStats() lê o deal final      |
-//|       como LOSS e reconstrói o streak incorretamente             |
-//|                                                                  |
-//|  O que NÃO é afetado:                                           |
-//|    - Limites diários (gain/loss): GetDailyProfit() = correto     |
-//|    - Streak durante operação normal (sem reinício): correto      |
-//|                                                                  |
-//|  Por que não foi corrigido:                                      |
-//|    - Cenário muito raro (TP1+TP2 hit + trailing + SL posterior)  |
-//|    - Impacto: streak off-by-1 por 1 trade, autocorrigido logo    |
-//|    - Custo da correção: mudança no formato CSV (área sensível)   |
-//|    - Risco de regressão > benefício real                         |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.28:                                                 |
-//| 🔧 Remoção de inp_InitialBalance:                                |
-//|    - Saldo inicial agora auto-detectado via AccountBalance()     |
-//|    - Removido parâmetro da chamada g_blockers.Init()             |
-//|    - Compatível com Blockers v3.05                               |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.27:                                                 |
-//| 🎯 CORREÇÃO: TPs Parciais agora usam valores REAIS do deal:      |
-//|    - TradeManager v1.22 busca DEAL_PROFIT/DEAL_PRICE do histórico|
-//|    - Elimina discrepâncias por slippage em mercados voláteis     |
-//|    - Logger v3.22 compatível com novos valores reais             |
-//|    - Fallback para estimativa se deal não encontrado             |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.26:                                                 |
-//| 📊 TPs Parciais agora salvos no CSV (3 linhas por trade):        |
-//|    - Logger v3.20 com SavePartialTrade()                         |
-//|    - TradeManager v1.21 chama SavePartialTrade() após TP1/TP2    |
-//|    - LoadDailyStats() reconhece linhas "Partial TP"              |
-//|    - Habilita ressincronização de TPs parciais ao reiniciar      |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.24:                                                 |
-//| 🎯 CORREÇÃO CRÍTICA - TPs Parciais no Daily Profit:              |
-//|    - Lucro de TP1/TP2 agora contabilizado em tempo real         |
-//|    - GetDailyProfit() inclui m_partialTPProfit                  |
-//|    - Limites diários (ganho/perda) consideram TPs parciais      |
-//|    - Drawdown protection considera TPs parciais realizados      |
-//|    - Logger v3.10 com AddPartialTPProfit()                      |
-//|    - TradeManager v1.20 registra lucro após cada TP parcial     |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.23:                                                 |
-//| 🛡️ VERIFICAÇÃO DE DRAWDOWN EM TEMPO REAL:                       |
-//|    - Calcula drawdown com lucro PROJETADO (fechados + aberta)   |
-//|    - Fecha NO EXATO MOMENTO que atinge limite de drawdown       |
-//|    - Atualiza pico de lucro em tempo real                       |
-//|    - Mantém coerência com verificação de limites diários        |
-//|    - Compatível com Blockers v3.04                              |
-//+------------------------------------------------------------------+
-//| CHANGELOG v1.22:                                                 |
-//| 🚨 CORREÇÃO CRÍTICA - Verificação de Limites em Tempo Real:     |
-//|    - Calcula lucro PROJETADO (fechados + posição aberta)        |
-//|    - Fecha NO EXATO MOMENTO que atinge limite diário            |
-//|    - Não deixa "dinheiro na mesa"                               |
-//|    - Compatível com Blockers v3.03                              |
-//|    - Verifica ANTES de trailing/breakeven/exit signals          |
-//+------------------------------------------------------------------+
-
-//+------------------------------------------------------------------+
-//| NOTAS TÉCNICAS / DÉBITOS TÉCNICOS                                |
-//+------------------------------------------------------------------+
-// [1] GAP Init/CreatePanel — Parte 025
-//     RegisterPanels() é chamado em Init(), mas os controles GUI dos
-//     painéis só são criados em CreatePanel(). Se Update() fosse
-//     chamado nesse intervalo, tentaria atualizar controles que ainda
-//     não existem. Atualmente não é um bug porque o timer só é
-//     ativado após CreatePanel() retornar, mas se o ciclo de vida
-//     for refatorado, garantir que Update() nunca precede CreatePanel().
-//
-// [2] Assimetria de API StrategyBase x FilterBase — Parte 025
-//     CStrategyBase usa GetEnabled() / SetEnabled()
-//     CFilterBase   usa IsEnabled()  / SetEnabled()
-//     Nomes diferentes para o mesmo conceito — herdado das versões
-//     anteriores. Código atual usa o método correto em cada lugar.
-//     Ao criar novas estratégias/filtros, lembrar dessa diferença.
-//     (Unificar para GetEnabled() em ambas as bases quando conveniente)
+//| Changelog: ver CHANGELOG.md  |  Arquitetura: ver ARCHITECTURE.md  |
 //+------------------------------------------------------------------+
 
 //+------------------------------------------------------------------+
@@ -411,6 +39,7 @@ int    g_slippage      = 0;
 // RiskManager já incluído via Inputs.mqh
 // #include "Core/RiskManager.mqh"   // ✅ Já incluído
 #include "Core/TradeManager.mqh"
+#include "Core/HistoryProcessor.mqh"
 
 // 3️⃣ SIGNAL MANAGER
 // SignalManager já incluído via Inputs.mqh
@@ -439,6 +68,7 @@ CLogger*        g_logger        = NULL;  // Sistema de logging centralizado
 CBlockers*      g_blockers      = NULL;  // Gerenciador de bloqueios
 CRiskManager*   g_riskManager   = NULL;  // Gerenciador de risco
 CTradeManager*  g_tradeManager  = NULL;  // Gerenciador de posições (v1.22)
+CHistoryProcessor* g_historyProcessor = NULL;  // Processador de fechamento de posições
 CSignalManager* g_signalManager = NULL;  // Orquestrador de sinais
 
 // ═══════════════════════════════════════════════════════════════
@@ -467,6 +97,12 @@ datetime g_lastBarTime = 0;          // Controle de novo candle
 datetime g_lastTradeBarTime = 0;     // Controle de último trade executado
 datetime g_lastExitBarTime = 0;      // Controle de último exit (para FCO)
 ulong    g_lastPositionTicket = 0;   // Ticket da última posição (global - sobrevive a restarts)
+
+// Grace period: bloqueia novas entradas no candle atual após OnInit ou
+// transição "Iniciar" do painel. Evita trade imediato logo após anexar
+// o EA, trocar TF, recompilar ou clicar Iniciar no painel.
+datetime g_graceBarTime     = 0;     // Candle em grace period (0 = sem grace)
+bool     g_lastPanelStarted = false; // Estado anterior do painel (para detectar transição)
 
 // ═══════════════════════════════════════════════════════════════
 // VARIÁVEIS DE ESTADO
@@ -501,6 +137,7 @@ void CleanupAll()
    if(g_maCrossStrategy != NULL)  { delete g_maCrossStrategy;  g_maCrossStrategy  = NULL; }
    if(g_signalManager != NULL)    { delete g_signalManager;    g_signalManager    = NULL; }
    if(g_riskManager != NULL)      { delete g_riskManager;      g_riskManager      = NULL; }
+   if(g_historyProcessor != NULL) { delete g_historyProcessor; g_historyProcessor = NULL; }
    if(g_tradeManager != NULL)     { delete g_tradeManager;     g_tradeManager     = NULL; }
    if(g_blockers != NULL)         { delete g_blockers;         g_blockers         = NULL; }
    if(g_logger != NULL)           { delete g_logger;           g_logger           = NULL; }
@@ -762,6 +399,26 @@ int OnInit()
            }
         }
      }
+
+// ═══════════════════════════════════════════════════════════════
+// ETAPA 4.7: INICIALIZAR HISTORY PROCESSOR
+// ═══════════════════════════════════════════════════════════════
+   g_historyProcessor = new CHistoryProcessor();
+   if(g_historyProcessor == NULL)
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao criar HistoryProcessor!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   if(!g_historyProcessor.Init(g_logger, g_blockers, g_tradeManager))
+     {
+      g_logger.Log(LOG_ERROR, THROTTLE_NONE, "INIT", "Falha ao inicializar HistoryProcessor!");
+      CleanupAll();
+      return INIT_FAILED;
+     }
+
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "HistoryProcessor inicializado com sucesso!");
 
 // ═══════════════════════════════════════════════════════════════
 // ETAPA 5: INICIALIZAR SIGNAL MANAGER
@@ -1080,6 +737,12 @@ int OnInit()
 // Inicializar controle de candles
    g_lastBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
 
+// Grace period: bloqueia entrada de trade no candle em que o EA foi
+// inicializado. Cobre todos os cenários de OnInit (primeira carga,
+// REASON_CHARTCHANGE, REASON_RECOMPILE, REASON_PARAMETERS).
+   g_graceBarTime = g_lastBarTime;
+   g_lastPanelStarted = false;  // forçar detecção de transição no 1º tick
+
 // ═══════════════════════════════════════════════════════════════
 // ETAPA 9: PAINEL GUI (opcional)
 // ═══════════════════════════════════════════════════════════════
@@ -1219,7 +882,7 @@ int OnInit()
 
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🚀 EPBot Matrix v" + EA_VERSION + " - PRONTO PARA OPERAR!");
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "📊 Símbolo: " + _Symbol);
-   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(PERIOD_CURRENT));
+   g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "⏰ Timeframe: " + EnumToString(Period()));
    g_logger.Log(LOG_EVENT, THROTTLE_NONE, "INIT", "🎯 Magic Number: " + IntegerToString(g_magicNumber));
 
    if(inp_UsePartialTP)
@@ -1331,6 +994,11 @@ void OnDeinit(const int reason)
       delete g_riskManager;
       g_riskManager = NULL;
      }
+   if(g_historyProcessor != NULL)
+     {
+      delete g_historyProcessor;
+      g_historyProcessor = NULL;
+     }
    if(g_tradeManager != NULL)
      {
       delete g_tradeManager;
@@ -1429,90 +1097,18 @@ void OnTick()
         }
      }
 
-// Se tinha posição e agora não tem mais = fechou!
-   if(g_lastPositionTicket > 0 && !hasMyPosition)
-     {
-      // Buscar informação do fechamento no histórico
-      if(HistorySelectByPosition(g_lastPositionTicket))
-        {
-         // ═══════════════════════════════════════════════════════════════
-         // v1.26: PADRÃO OURO MQL5 - Calcular lucro total da posição
-         // somando TODOS os deals de saída diretamente do histórico
-         // Referência: https://www.mql5.com/en/forum/439334
-         // ═══════════════════════════════════════════════════════════════
-         double totalPositionProfit = 0;  // Soma de TODOS os deals de saída desta posição
-         double finalDealProfit = 0;      // Apenas o deal final (para salvar no CSV)
-         ulong  finalDealTicket = 0;
-         bool   foundFinalDeal = false;
+// Detectar fechamento de posição (delegado ao HistoryProcessor)
+// Parte 034: lê ExitMode do módulo (reflete hot-reload via GUI)
+   {
+    ENUM_EXIT_MODE curExitMode_close = (g_maCrossStrategy != NULL) ? g_maCrossStrategy.GetExitMode() : inp_ExitMode;
+    bool lockTradeCandle = (curExitMode_close != EXIT_VM);
 
-         // Iterar por TODOS os deals desta posição
-         for(int i = 0; i < HistoryDealsTotal(); i++)
-           {
-            ulong dealTicket = HistoryDealGetTicket(i);
-            if(HistoryDealGetInteger(dealTicket, DEAL_POSITION_ID) == g_lastPositionTicket)
-              {
-               long dealEntry = HistoryDealGetInteger(dealTicket, DEAL_ENTRY);
-               if(dealEntry == DEAL_ENTRY_OUT || dealEntry == DEAL_ENTRY_OUT_BY)
-                 {
-                  // Somar lucro de TODOS os deals de saída (parciais + final)
-                  double dealProfit = HistoryDealGetDouble(dealTicket, DEAL_PROFIT);
-                  totalPositionProfit += dealProfit;
-
-                  string dealComment = HistoryDealGetString(dealTicket, DEAL_COMMENT);
-
-                  // TPs parciais já foram salvos por SavePartialTrade()
-                  if(StringFind(dealComment, "Partial") >= 0)
-                     continue;
-
-                  // Este é um deal final (SL, TP fixo, trailing, etc)
-                  finalDealProfit = dealProfit;
-                  finalDealTicket = dealTicket;
-                  foundFinalDeal = true;
-                  // NÃO usar break - continuar para pegar o último
-                 }
-              }
-           }
-
-         // Processar o deal final (se encontrado)
-         if(foundFinalDeal)
-           {
-            // Salvar trade no Logger (apenas o deal final)
-            g_logger.SaveTrade(g_lastPositionTicket, finalDealProfit);
-
-            // Atualizar estatísticas
-            // ✅ Fix Parte 031b: passa totalPositionProfit para classificação win/loss
-            // correta (soma parciais + final). m_dailyProfit acumula só finalDealProfit.
-            g_logger.UpdateStats(finalDealProfit, totalPositionProfit);
-
-            // Registrar no Blockers - usar totalPositionProfit para determinar win/loss
-            bool isWin = (totalPositionProfit > 0);
-            g_blockers.UpdateAfterTrade(isWin, finalDealProfit);
-
-            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "CLOSE",
-                         "📊 Posição #" + IntegerToString(g_lastPositionTicket) +
-                         " fechada | P/L final: $" + DoubleToString(finalDealProfit, 2) +
-                         " | Total posição: $" + DoubleToString(totalPositionProfit, 2));
-
-            // Gerar relatório TXT atualizado após cada trade
-            g_logger.SaveDailyReport();
-            g_logger.Log(LOG_TRADE, THROTTLE_NONE, "REPORT", "📄 Relatório diário atualizado");
-           }
-        }
-
-      // Remover do TradeManager
-      g_tradeManager.UnregisterPosition(g_lastPositionTicket);
-
-      // Bloquear re-entrada no mesmo candle ao fechar posição (exceto no modo VM)
-      // Parte 034: lê ExitMode do módulo (reflete hot-reload via GUI)
-      ENUM_EXIT_MODE curExitMode_1465 = (g_maCrossStrategy != NULL) ? g_maCrossStrategy.GetExitMode() : inp_ExitMode;
-      if(curExitMode_1465 != EXIT_VM)
-        {
-         g_lastTradeBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
-         g_logger.Log(LOG_DEBUG, THROTTLE_NONE, "RESET", "🔄 Controle de candle atualizado - aguardando próximo candle para novo trade");
-        }
-
-      g_lastPositionTicket = 0;
-     }
+    if(g_historyProcessor != NULL &&
+       g_historyProcessor.ProcessClosure(g_lastPositionTicket, hasMyPosition, lockTradeCandle, g_lastTradeBarTime))
+      {
+       g_lastPositionTicket = 0;
+      }
+   }
 
 // ═══════════════════════════════════════════════════════════════
 // SE EXISTE POSIÇÃO DESTE EA: GERENCIAR
@@ -1629,7 +1225,39 @@ void OnTick()
 // (gerenciamento de posições abertas já foi feito acima)
 // ═══════════════════════════════════════════════════════════════
    if(g_panel != NULL && !g_panel.IsStarted())
+     {
+      // Mantém g_lastPanelStarted = false para que, ao iniciar,
+      // a transição false→true seja detectada e dispare grace period.
+      g_lastPanelStarted = false;
       return;
+     }
+
+// ═══════════════════════════════════════════════════════════════
+// GRACE PERIOD: bloqueia novas entradas no candle do init/start
+// ═══════════════════════════════════════════════════════════════
+// Detectar transição "Iniciar" no painel (false → true)
+   bool curPanelStarted = (g_panel != NULL) ? g_panel.IsStarted() : true;
+   if(curPanelStarted && !g_lastPanelStarted)
+     {
+      g_graceBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
+      if(g_logger != NULL)
+         g_logger.Log(LOG_EVENT, THROTTLE_NONE, "GRACE",
+                      "⏳ Grace period iniciado - aguardando próximo candle para operar");
+     }
+   g_lastPanelStarted = curPanelStarted;
+
+// Aplicar grace: bloqueia novas entradas se ainda no candle do grace
+   if(g_graceBarTime != 0)
+     {
+      datetime curBar = iTime(_Symbol, PERIOD_CURRENT, 0);
+      if(curBar == g_graceBarTime)
+        {
+         g_logger.Log(LOG_DEBUG, THROTTLE_CANDLE, "GRACE",
+                      "⏳ Grace period ativo - aguardando próximo candle");
+         return;
+        }
+      g_graceBarTime = 0;  // candle mudou - grace expirou
+     }
 
 // ═══════════════════════════════════════════════════════════════
 // ETAPA 2: VERIFICAR BLOCKERS (só se NÃO tem posição!)

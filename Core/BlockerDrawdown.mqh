@@ -7,12 +7,7 @@
 // NOTA: Enums (ENUM_DRAWDOWN_TYPE, ENUM_DRAWDOWN_PEAK_MODE, etc.) e
 // Logger.mqh são incluídos por Blockers.mqh ANTES deste arquivo.
 //
-// CHANGELOG v1.02 (Parte 031):
-// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
-//
-// CHANGELOG v1.01 (Parte 027):
-// + SetMagicNumber(int newMagic): hot reload do Magic Number
-//   Reseta peak/drawdown state (peak calculado com magic antigo é inválido)
+// Changelog: ver CHANGELOG.md
 #ifndef BLOCKER_DRAWDOWN_MQH
 #define BLOCKER_DRAWDOWN_MQH
 

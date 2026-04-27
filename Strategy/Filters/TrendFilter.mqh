@@ -6,13 +6,8 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "2.25"
-// CHANGELOG v2.25 (Parte 031):
-// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
+// Changelog: ver CHANGELOG.md
 #property strict
-
-// CHANGELOG v2.25 (Parte 032):
-// * H-12: SetTrendFilterEnabled — cold reload ao habilitar sem handle MA
-//         (previne estado inválido onde filtro bloqueia tudo permanentemente)
 
 // ═══════════════════════════════════════════════════════════════
 // INCLUDES
@@ -20,84 +15,7 @@
 #include "../../Core/Logger.mqh"
 #include "../Base/FilterBase.mqh"
 
-// ═══════════════════════════════════════════════════════════════
-// NOVIDADES v2.24 (Parte 031):
-// + SetEnabled override: loga "Filtro: ATIVADO/DESATIVADO" se mudar
-// + SetTrendFilterEnabled, SetNeutralDistance: só logam se valor mudar
-// + SetMAPeriod, SetMAMethod, SetMATimeframe, SetMAApplied, SetMACold:
-//   skip Deinitialize+Initialize se parâmetros forem idênticos
-// + Removidos fallbacks else Print(...) — m_logger nunca é NULL
-//
-// NOVIDADES v2.23 (Parte 027):
-// + Override GetStatusSummary(): retorna "Ativo"/"Inativo" baseado em
-//   m_useTrendFilter/m_neutralDistance (não em m_isEnabled que é sempre true)
-// * Fix: tela GERAL e sub-página TREND agora mostram status correto
-//
-// NOVIDADES v2.22 (Parte 027):
-// * Fix: ValidateSignal() — early return true quando filtro desabilitado
-//   (!m_useTrendFilter && m_neutralDistance==0). Evita deadlock permanente
-// * Fix: UpdateIndicators() — revertido INVALID_HANDLE para return true
-//   (v2.19 behavior). Quando filtro desabilitado, Initialize() não cria
-//   handle → INVALID_HANDLE é estado válido, não erro
-//
-// NOVIDADES v2.21 (Parte 027):
-// * Fix: GetDistanceFromMA() — guard !m_maReady em vez de !UpdateIndicators()
-//   Evita chamar UpdateIndicators() fora do fluxo OnTick (timer do painel GUI)
-//   + validação m_ma[0] <= 0 antes de usar
-// * Fix: GetMA() — adicionado guard !m_maReady
-//
-// NOVIDADES v2.20 (Parte 027):
-// * Fix: UpdateIndicators() retorna false quando handle é inválido
-//   (antes retornava true, mascarando ausência de dados)
-// * Fix: ValidateSignal() verifica ArraySize(m_ma) < 2 antes de acessar
-//   m_ma[0]/m_ma[1] (previne array out of range)
-//
-// NOVIDADES v2.19 (Parte 024):
-// + SetMAApplied(ENUM_APPLIED_PRICE): cold reload do applied price
-// + SetMACold(period, method, tf, applied): setter combinado — 1 única reinicialização
-//   Reverte todos os parâmetros se Initialize() falhar
-//
-// NOVIDADES v2.18 (Parte 024):
-// + SetMATimeframe(ENUM_TIMEFRAMES tf): cold reload do timeframe da MA
-//   Segue padrão de SetMAPeriod/SetMAMethod: Deinitialize→Initialize
-//   Reverte para valor anterior se Initialize() falhar
-//
-// NOVIDADES v2.17 (Parte 024):
-// + Fix: GetDistanceFromMA() guard ArraySize(m_ma)==0
-//   Quando filtro desativado, handle=INVALID_HANDLE, UpdateIndicators()
-//   retorna true sem popular m_ma[] → acesso a m_ma[0] causava
-//   "array out of range" ao abrir sub-página TREND no painel.
-//
-// NOVIDADES v2.16 (Parte 022):
-// + Fix: CopyBuffer validação alterada de <= 0 para < 3
-// + Fix: m_maReady resetado para false quando CopyBuffer falha
-//   (evita uso de dados antigos se indicador ficar temporariamente indisponível)
-// ═══════════════════════════════════════════════════════════════
-// NOVIDADES v2.10:
-// + Migração para Logger v3.00 (5 níveis + throttle inteligente)
-// + Todas as mensagens classificadas (ERROR/EVENT/DEBUG)
-// + REMOVIDO throttle manual (m_lastLogBar) - usa THROTTLE_CANDLE
-// + Código 75% mais limpo e profissional
-//
-// NOVIDADES v2.11:
-// + CORREÇÃO DE SEGURANÇA: Bloqueia trades se MA não estiver calculada
-// + Desabilita filtro automaticamente se dados inválidos no Initialize()
-// + Reabilita filtro automaticamente quando MA fica pronta
-// + Validação extra em ValidateSignal() para dados zerados
-//
-// NOVIDADES v2.12:
-// + CORREÇÃO CRÍTICA: Flag interna m_maReady para controle de MA pronta
-// + m_isEnabled SEMPRE true (SignalManager não pula o filtro)
-// + m_maReady controla se MA está calculada (lógica interna)
-// + ValidateSignal() verifica m_maReady ANTES de qualquer validação
-//
-// NOVIDADES v2.15:
-// + SOLUÇÃO DEFINITIVA: Padrão SmartCross (que funcionava!)
-// + Initialize() SÓ cria handle (NÃO tenta copiar buffer)
-// + ValidateSignal() SEMPRE chama UpdateIndicators() PRIMEIRO
-// + UpdateIndicators() copia dados no primeiro tick disponível
-// + RESOLVE DEADLOCK: Não bloqueia antes de tentar copiar!
-// ═══════════════════════════════════════════════════════════════
+// (Histórico de versões em CHANGELOG.md)
 
 //+------------------------------------------------------------------+
 //| Filtro de Tendência                                              |

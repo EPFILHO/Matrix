@@ -6,10 +6,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "2.29"
-// CHANGELOG v2.29 (Parte 033) — Issue #28:
-// + GetShortName() override → "MACross" (para comentário das ordens)
-// CHANGELOG v2.28 (Parte 031):
-// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
+// Changelog: ver CHANGELOG.md
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -18,49 +15,7 @@
 #include "../../Core/Logger.mqh"
 #include "../Base/StrategyBase.mqh"
 
-// ═══════════════════════════════════════════════════════════════
-// NOVIDADES v2.27 (Parte 031):
-// + SetEnabled override: loga "Estratégia: ATIVADA/DESATIVADA" se mudar
-// + SetEntryMode, SetExitMode: só logam se modo realmente mudar
-// + SetMAPeriods, SetMAMethods, SetMATimeframes, SetMAParams:
-//   skip Deinitialize+Initialize se parâmetros forem idênticos
-// + Removidos fallbacks else Print(...) — m_logger nunca é NULL
-//
-// NOVIDADES v2.26 (Parte 025):
-// + minDistance: filtro de força do cruzamento (pontos entre MA rápida e lenta)
-//   Se 0, filtro desativado (comportamento anterior mantido)
-//   Setup() recebe novo parâmetro opcional minDistance (default 0)
-//   SetMinDistance() para hot reload via painel
-//
-// NOVIDADES v2.25 (Parte 024):
-// + SetMAParams: novos parâmetros fastApplied/slowApplied (default PRICE_CLOSE)
-//   Compatível com chamadas antigas (parâmetros opcionais)
-//   Permite configurar o preço (CLOSE/OPEN/HIGH/LOW/MEDIAN/TYPICAL)
-//   via painel de controle sem reinit extra.
-//
-// NOVIDADES v2.24 (Parte 024):
-// + m_enabled removido — herdado de CStrategyBase v2.01
-// + SetEnabled/GetEnabled herdados (polimorfismo via base)
-// ═══════════════════════════════════════════════════════════════════
-// NOVIDADES v2.23 (Parte 024):
-// + m_enabled: toggle ON/OFF da estratégia em runtime
-// + SetEnabled(bool), GetEnabled(): getter/setter para o painel GUI
-// ═══════════════════════════════════════════════════════════════════
-// NOVIDADES v2.22 (Parte 024):
-// + SetMAParams(): setter combina periods + methods + timeframes
-//   (single Deinitialize/Initialize em vez de 3 chama separadas)
-// + Novo estado (m_cur_*): armazena current fast/slow method/TF
-//   para hot-reload via GUI sem reini indicadores
-// ═══════════════════════════════════════════════════════════════
-// NOVIDADES v2.21:
-// + Fix: CopyBuffer validação alterada de <= 0 para < 3
-//   (previne acesso fora dos limites se indicador retorna dados incompletos)
-// ═══════════════════════════════════════════════════════════════
-// NOVIDADES v2.20:
-// + Migração para Logger v3.00 (5 níveis + throttle inteligente)
-// + Todas as mensagens classificadas (ERROR/EVENT/SIGNAL/DEBUG)
-// + Mantém correção E2C v2.11 (m_lastCheckBarTime)
-// ═══════════════════════════════════════════════════════════════
+// (Histórico de versões em CHANGELOG.md)
 
 //+------------------------------------------------------------------+
 //| Estratégia de Cruzamento de Médias Móveis                        |

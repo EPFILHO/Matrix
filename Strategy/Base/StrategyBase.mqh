@@ -8,18 +8,7 @@
 #property version   "2.03"
 #property strict
 
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG
-// v2.03 (Parte 033) — Issue #28:
-// + GetShortName(): virtual — retorna nome curto da estratégia
-//   Usado no comentário das ordens (limite ~31 chars do MQL5)
-//   Default: m_strategyName (override nas filhas para encurtar)
-// v2.02 (Parte 025):
-// + GetStatusSummary(): virtual — retorna string de status para
-//   sub-página GERAL do painel GUI
-//   Default: "Nao iniciado" / "Ativo (P:N)" / "Inativo"
-//   Estratégias específicas podem sobrescrever para info extra
-// ═══════════════════════════════════════════════════════════════
+// Changelog: ver CHANGELOG.md
 
 //+------------------------------------------------------------------+
 //| Enum para tipo de sinal                                          |

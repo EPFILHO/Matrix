@@ -8,78 +8,7 @@
 #property link      "https://github.com/EPFILHO"
 #property version   "3.29"
 
-// ═══════════════════════════════════════════════════════════════════
-// CHANGELOG v3.29 (Parte 031):
-// * UpdateStats() recebe 2º parâmetro opcional totalPositionProfit
-//   para classificação win/loss correta quando há partial TPs.
-//   - m_dailyProfit acumula apenas finalDealProfit (sem double-count)
-//   - Win/loss/draw classificado pelo resultado TOTAL da posição
-//   - grossProfit acumula finalDealProfit só quando classifyProfit > 0
-//   - Parâmetro omitido = comportamento antigo (sem partial TP)
-// * LIMITAÇÃO CONHECIDA: LoadDailyStats() ainda classifica pelo
-//   finalDealProfit do CSV no reinício do EA (ver KNOWN LIMITATION em EPBot_Matrix.mq5).
-// ═══════════════════════════════════════════════════════════════════
-// CHANGELOG v3.28 (Parte 028):
-// * SetShowDebug(): log removido — alterações de debug não são logadas
-// * SetDebugCooldown(): log removido — alterações de debug não são logadas
-//
-// CHANGELOG v3.27 (Parte 027):
-// + ReloadForMagic(int newMagic): hot reload do Magic Number
-//   Salva relatório do magic atual, atualiza filenames CSV/TXT,
-//   reconstrói stats via LoadDailyStats()
-//
-// CHANGELOG v3.26 (Parte 023):
-// ✅ Novo: m_dailyTradeResults[] armazena sequência ordenada win/loss
-// ✅ Novo: GetDailyTradeResults() expõe sequência para Blockers
-// ✅ LoadDailyStats() popula sequência para reconstrução de streak
-// ✅ ResetDaily() e construtor limpam a sequência
-//
-// CHANGELOG v3.25:
-// ✅ Novos getters públicos GetGrossProfit() e GetGrossLoss():
-//    - Necessários para cálculo de Profit Factor e Payoff no Painel GUI
-//
-// CHANGELOG v3.24:
-// ✅ Fix: SaveDailyReport() agora extrai data do nome do arquivo
-// ✅ Corrige bug onde relatório do dia anterior mostrava data do dia atual
-// ✅ Rodapé usa dtNow separado para timestamp de geração
-//
-// CHANGELOG v3.23:
-// ✅ Fix: Usa TimeTradeServer() para determinação de data (evita bug pré-mercado)
-// ✅ Fix: ResetDaily() agora atualiza m_txtFileName para o novo dia
-// ✅ Novo: GetReliableDate() centraliza obtenção de data confiável
-//
-// CHANGELOG v3.22:
-// ✅ Compatível com TradeManager v1.22 que agora passa valores REAIS
-// ✅ SavePartialTrade() agora recebe valores REAIS do deal (não estimados)
-// ✅ Elimina discrepâncias por slippage em mercados voláteis
-// ═══════════════════════════════════════════════════════════════════
-// CHANGELOG v3.21:
-// ✅ Fix: AddPartialTPProfit() agora atualiza m_grossProfit
-// ✅ Fix: SaveDailyReport() usa GetDailyProfit() para incluir TPs parciais
-// ✅ Relatório diário agora mostra valores corretos (igual MT5)
-// ═══════════════════════════════════════════════════════════════════
-// CHANGELOG v3.20:
-// ✅ Novo: SavePartialTrade() salva cada TP parcial imediatamente no CSV
-// ✅ Ajustado: LoadDailyStats() reconhece linhas "Partial TP" e acumula
-//    em m_partialTPProfit (não conta como trade separado)
-// ✅ Habilita ressincronização de TPs parciais ao reiniciar EA
-// ═══════════════════════════════════════════════════════════════════
-// CHANGELOG v3.10:
-// ✅ CORREÇÃO CRÍTICA: TPs parciais agora contabilizados no dailyProfit
-// ✅ Novo: m_partialTPProfit rastreia lucros de TPs parciais
-// ✅ Novo: AddPartialTPProfit() para registrar lucro de TP parcial
-// ✅ Novo: GetPartialTPProfit() para consultar lucro parcial acumulado
-// ✅ GetDailyProfit() agora inclui m_partialTPProfit
-// ✅ ResetDaily() limpa m_partialTPProfit
-// ═══════════════════════════════════════════════════════════════════
-// CHANGELOG v3.00:
-// ✅ NOVA ARQUITETURA DE LOGGING FOCADA EM TRADING
-// ✅ Níveis orientados ao negócio (ERROR/TRADE/EVENT/SIGNAL/DEBUG)
-// ✅ Throttle inteligente separado por contexto
-// ✅ ERROR/TRADE/EVENT/SIGNAL SEMPRE aparecem
-// ✅ DEBUG condicional (controlado por input)
-// ✅ Mantém compatibilidade com versão anterior
-// ═══════════════════════════════════════════════════════════════════
+// Changelog: ver CHANGELOG.md
 
 //+------------------------------------------------------------------+
 //| Enumerações - Nova Arquitetura v3.00                             |

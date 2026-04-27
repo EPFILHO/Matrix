@@ -2,53 +2,13 @@
 //|                                                       Inputs.mqh |
 //|                                         Copyright 2026, EP Filho |
 //|                   Sistema de Inputs Centralizados - EPBot Matrix |
-//|                     Versão 1.10 - Claude Parte 033 (Claude Code) |
+//|                     Versão 1.11 - Claude Parte 36 (Claude Code) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property link      "https://github.com/EPFILHO"
-#property version   "1.10"
+#property version   "1.11"
 
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v1.10 (Parte 033) — Issue #28:
-// - Removido inp_TradeComment (comment da ordem agora vem do
-//   SignalManager.GetLastSignalShortSource() via ExecuteTrade)
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v1.09 (Parte 027):
-// ✅ Sem novos inputs (apenas GUI expõe campos existentes)
-//    Magic Number, Trade Comment, Daily Limits agora na GUI
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v1.08 (Parte 026):
-// ✅ Novos inputs para BB Strategy (Bollinger Bands):
-//    inp_UseBB, inp_BBPriority, inp_BBPeriod, inp_BBDeviation,
-//    inp_BBApplied, inp_BBTF, inp_BBMode, inp_BBEntryMode, inp_BBExitMode
-// ✅ Novos inputs para BB Filter (Anti-Squeeze):
-//    inp_UseBBFilter, inp_BBFiltPeriod, inp_BBFiltDeviation,
-//    inp_BBFiltApplied, inp_BBFiltTF, inp_BBFiltMetric,
-//    inp_BBFiltThreshold, inp_BBFiltPercPeriod
-// ✅ Includes: BollingerBandsStrategy.mqh, BollingerBandsFilter.mqh
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v1.07:
-// ✅ inp_MACrossMinDistance integrado ao MACrossStrategy::Setup() (v2.26)
-//    Filtro de força do cruzamento: sinal só gerado se dist(MA rápida, MA lenta) >= N pontos
-// ✅ inp_RSISignalShift removido — RSIStrategy usa shift=1 fixo (v2.15)
-// ✅ Seção 007 TRADE MANAGER removida (grupo vazio no MT5 — era desnecessário)
-// CHANGELOG v1.06:
-// ✅ TODO (resolvido em v1.07): inp_MACrossMinDistance agora passado ao Setup()
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v1.05:
-// ✅ Novo input inp_ShowPanel (Seção 008 - Painel GUI):
-//    - Controla exibição do painel GUI no gráfico
-//    - Default: true (painel visível)
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v1.04:
-// ✅ Novo input inp_DrawdownPeakMode:
-//    - Permite escolher entre pico Realizado ou com Flutuante
-//    - Enum ENUM_DRAWDOWN_PEAK_MODE (definido em Blockers.mqh)
-// ═══════════════════════════════════════════════════════════════
-// CHANGELOG v1.03:
-// ✅ Remoção de inp_InitialBalance:
-//    - Input manual removido (auto-detectado via AccountBalance)
-// ═══════════════════════════════════════════════════════════════
+// Changelog: ver CHANGELOG.md
 
 //+------------------------------------------------------------------+
 //| INCLUDES NECESSÁRIOS PARA ENUMS                                  |
@@ -224,11 +184,11 @@ input int    inp_MACrossPriority = 10;                  // Prioridade MA Cross
 input int    inp_FastPeriod = 9;                        // Período MA Rápida
 input ENUM_MA_METHOD inp_FastMethod = MODE_EMA;         // Método MA Rápida
 input ENUM_APPLIED_PRICE inp_FastApplied = PRICE_CLOSE; // Preço MA Rápida
-input ENUM_TIMEFRAMES inp_FastTF = PERIOD_CURRENT;      // Timeframe MA Rápida
+input ENUM_TIMEFRAMES inp_FastTF = PERIOD_M1;           // Timeframe MA Rápida
 input int    inp_SlowPeriod = 21;                       // Período MA Lenta
 input ENUM_MA_METHOD inp_SlowMethod = MODE_EMA;         // Método MA Lenta
 input ENUM_APPLIED_PRICE inp_SlowApplied = PRICE_CLOSE; // Preço MA Lenta
-input ENUM_TIMEFRAMES inp_SlowTF = PERIOD_CURRENT;      // Timeframe MA Lenta
+input ENUM_TIMEFRAMES inp_SlowTF = PERIOD_M1;           // Timeframe MA Lenta
 input int    inp_MACrossMinDistance = 0;                // Distância Mínima entre MAs (0=desativado)
 input ENUM_ENTRY_MODE inp_EntryMode = ENTRY_NEXT_CANDLE; // Modo de Entrada
 input ENUM_EXIT_MODE inp_ExitMode = EXIT_TP_SL;       // Modo de Saída
@@ -239,7 +199,7 @@ input bool   inp_UseRSI = false;                        // Ativar RSI Strategy
 input int    inp_RSIPriority = 5;                       // Prioridade RSI
 input int    inp_RSIPeriod = 14;                        // Período RSI
 input ENUM_APPLIED_PRICE inp_RSIApplied = PRICE_CLOSE;  // Preço RSI
-input ENUM_TIMEFRAMES inp_RSITF = PERIOD_CURRENT;       // Timeframe RSI
+input ENUM_TIMEFRAMES inp_RSITF = PERIOD_M1;            // Timeframe RSI
 input int    inp_RSIOversold = 30;                      // Nível Oversold (Sobrevendido)
 input int    inp_RSIOverbought = 70;                    // Nível Overbought (Sobrecomprado)
 input ENUM_RSI_SIGNAL_MODE inp_RSIMode = RSI_MODE_CROSSOVER;  // Modo de Operação RSI
@@ -253,7 +213,7 @@ input int    inp_BBPriority = 3;                             // Prioridade BB
 input int    inp_BBPeriod = 20;                              // Período BB
 input double inp_BBDeviation = 2.0;                          // Desvio Padrão BB
 input ENUM_APPLIED_PRICE inp_BBApplied = PRICE_CLOSE;        // Preço Aplicado BB
-input ENUM_TIMEFRAMES inp_BBTF = PERIOD_CURRENT;             // Timeframe BB
+input ENUM_TIMEFRAMES inp_BBTF = PERIOD_M1;                  // Timeframe BB
 input ENUM_BB_SIGNAL_MODE inp_BBMode = BB_MODE_FFFD;         // Modo de Operação BB
 input ENUM_ENTRY_MODE inp_BBEntryMode = ENTRY_NEXT_CANDLE;   // Modo de Entrada BB
 input ENUM_EXIT_MODE inp_BBExitMode = EXIT_TP_SL;            // Modo de Saída BB
@@ -269,7 +229,7 @@ input bool   inp_UseTrendFilter = false;                // Ativar Trend Filter
 input int    inp_TrendMAPeriod = 50;                    // Período MA Tendência
 input ENUM_MA_METHOD inp_TrendMAMethod = MODE_SMA;      // Método MA Tendência
 input ENUM_APPLIED_PRICE inp_TrendMAApplied = PRICE_CLOSE; // Preço MA Tendência
-input ENUM_TIMEFRAMES inp_TrendMATF = PERIOD_CURRENT;   // Timeframe MA Tendência
+input ENUM_TIMEFRAMES inp_TrendMATF = PERIOD_M1;        // Timeframe MA Tendência
 input int    inp_TrendMinDistance = 0;                  // Distância Mínima do Preço à MA (0=desativado)
 
 //--- 📉 RSI FILTER (Filtro RSI)
@@ -277,7 +237,7 @@ input group "📉 RSI Filter"
 input bool   inp_UseRSIFilter = false;                  // Ativar RSI Filter
 input int    inp_RSIFilterPeriod = 14;                  // Período RSI (Filter)
 input ENUM_APPLIED_PRICE inp_RSIFilterApplied = PRICE_CLOSE; // Preço RSI (Filter)
-input ENUM_TIMEFRAMES inp_RSIFilterTF = PERIOD_CURRENT; // Timeframe RSI (Filter)
+input ENUM_TIMEFRAMES inp_RSIFilterTF = PERIOD_M1;      // Timeframe RSI (Filter)
 input ENUM_RSI_FILTER_MODE inp_RSIFilterMode = RSI_FILTER_ZONE;  // Modo do Filtro RSI
 input int    inp_RSIFilterOversold = 30;                // Nível Oversold (Filter)
 input int    inp_RSIFilterOverbought = 70;              // Nível Overbought (Filter)
@@ -291,7 +251,7 @@ input bool   inp_UseBBFilter = false;                        // Ativar BB Filter
 input int    inp_BBFiltPeriod = 20;                          // Período BB (Filter)
 input double inp_BBFiltDeviation = 2.0;                      // Desvio Padrão BB (Filter)
 input ENUM_APPLIED_PRICE inp_BBFiltApplied = PRICE_CLOSE;    // Preço BB (Filter)
-input ENUM_TIMEFRAMES inp_BBFiltTF = PERIOD_CURRENT;         // Timeframe BB (Filter)
+input ENUM_TIMEFRAMES inp_BBFiltTF = PERIOD_M1;              // Timeframe BB (Filter)
 input ENUM_BB_SQUEEZE_METRIC inp_BBFiltMetric = BB_SQUEEZE_RELATIVE; // Métrica Anti-Squeeze
 input double inp_BBFiltThreshold = 1.0;                      // Threshold Squeeze (depende da métrica)
 input int    inp_BBFiltPercPeriod = 50;                      // Período Percentil (só modo Percentil)

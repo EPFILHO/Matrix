@@ -7,18 +7,7 @@
 // Incluído por Panel.mqh ANTES da definição de CEPBotPanel.
 // Usa forward declaration para CEPBotPanel.
 //
-// CHANGELOG v1.05 (Parte 033):
-// + Reload(): virtual default no-op; painéis sobrescrevem para repopular
-//   campos GUI a partir do módulo (usado por ApplyLoadedConfig)
-//
-// CHANGELOG v1.04 (Parte 030):
-// + Apply(string &outErr): retorna nomes dos campos inválidos para o header
-//
-// CHANGELOG v1.03 (Parte 029):
-// + m_locked: flag para impedir Update() de sobrescrever estado travado
-//
-// CHANGELOG v1.02 (Parte 027) — Fase 2: Controle de Estado:
-// + Pure virtual Apply() e SetEnabled(bool) para controle centralizado
+// Changelog: ver CHANGELOG.md
 //+------------------------------------------------------------------+
 
 // Forward declaration — CEPBotPanel é definido em Panel.mqh

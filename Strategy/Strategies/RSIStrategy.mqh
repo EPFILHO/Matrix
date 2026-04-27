@@ -6,14 +6,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, EP Filho"
 #property version   "2.19"
-// CHANGELOG v2.19 (Parte 035):
-// * Fix GUI: Setup() não converte mais PERIOD_CURRENT para Period().
-//   Antes o painel RSI mostrava "M5" em vez de "ATUAL" porque
-//   GetTimeframe() retornava o TF do chart, não PERIOD_CURRENT (0).
-// CHANGELOG v2.18 (Parte 033) — Issue #28:
-// + GetShortName() override → "RSI" (para comentário das ordens)
-// CHANGELOG v2.17 (Parte 031):
-// * Limpeza: removidos `if(m_logger != NULL)` e `else Print()` fallbacks
+// Changelog: ver CHANGELOG.md
 #property strict
 
 // ═══════════════════════════════════════════════════════════════
@@ -22,42 +15,7 @@
 #include "../../Core/Logger.mqh"
 #include "../Base/StrategyBase.mqh"
 
-// ═══════════════════════════════════════════════════════════════
-// NOVIDADES v2.16 (Parte 031):
-// + SetSignalMode, SetOversold, SetOverbought, SetMiddle, SetEnabled:
-//   só logam se valor realmente mudar
-// + SetPeriod, SetTimeframe, SetAppliedPrice:
-//   skip Deinitialize+Initialize se parâmetros forem idênticos
-// + Removidos fallbacks else Print(...) — m_logger nunca é NULL
-//
-// NOVIDADES v2.15 (Parte 025):
-// + signal_shift removido do Setup() — hardcode 1 (última barra fechada)
-//   Elimina input inp_RSISignalShift desnecessário
-//   SetSignalShift() e m_inputSignalShift removidos
-//
-// NOVIDADES v2.14 (Parte 024):
-// + m_enabled removido — herdado de CStrategyBase v2.01
-// + SetEnabled override mantido (com logging via m_logger)
-// + GetEnabled herdado da base
-// ═══════════════════════════════════════════════════════════════════
-// NOVIDADES v2.13 (Parte 024):
-// + Setup(): m_enabled/m_inputEnabled não mais forçados a true
-//   Preserva estado do toggle definido antes do Setup()
-//   (fix: clicar APLICAR não reativava strategy desligada pelo usuário)
-// ═══════════════════════════════════════════════════════════════════
-// NOVIDADES v2.12 (Parte 024):
-// + m_enabled: toggle ON/OFF da estratégia em runtime
-// + SetEnabled(bool), GetEnabled(): getter/setter para o painel GUI
-// ═══════════════════════════════════════════════════════════════════
-// NOVIDADES v2.11:
-// + Fix: CopyBuffer validação alterada de <= 0 para < count
-//   (previne acesso fora dos limites se indicador retorna dados incompletos)
-// ═══════════════════════════════════════════════════════════════
-// NOVIDADES v2.10:
-// + Migração para Logger v3.00 (5 níveis + throttle inteligente)
-// + Todas as mensagens classificadas (ERROR/EVENT/SIGNAL/DEBUG)
-// + Adicionado LOG_SIGNAL para detecção de sinais RSI
-// ═══════════════════════════════════════════════════════════════
+// (Histórico de versões em CHANGELOG.md)
 
 //+------------------------------------------------------------------+
 //| Enumeração de Modos de Sinal RSI                                 |
