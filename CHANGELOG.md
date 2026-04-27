@@ -12,6 +12,20 @@ de trabalho). Cada Parte lista as mudanças por arquivo com a versão alvo.
 
 ## Parte 36 — Refatoração + Segurança Operacional
 
+**GUI/PanelTabConfig.mqh v1.40** — fix early-return falso em ApplyMagicNumberChange
+- O guard `if(newMagic == oldMagic) return;` usava `m_magicNumber` (membro
+  do painel) como referência. Em `REASON_CHARTCHANGE`, o painel sobrevive
+  e `m_magicNumber` é preservado, mas `g_magicNumber` (global) e os
+  módulos são resetados para `inp_MagicNumber` no OnInit.
+- Resultado do bug: ao auto-carregar `.cfg` pós-troca de TF, `Apply
+  MagicNumberChange(saved)` comparava `saved == m_magicNumber` (preservado),
+  retornava cedo, e nunca propagava para `g_magicNumber` nem para
+  Logger/Blockers/TradeManager. EA seguia operando com `inp_MagicNumber`.
+  Sintoma: trocar TF perdia o magic salvo; ao tentar gravar magic novo
+  o ciclo se repetia até perder de novo na próxima troca de TF.
+- Fix: condição agora exige `newMagic == g_magicNumber && newMagic ==
+  m_magicNumber` para o early-return — se qualquer um divergir, propaga.
+
 **GUI/PanelPersistence.mqh v1.09** — fix Magic Number ao auto-carregar config
 - `ApplyLoadedConfig`: quando `data.magicNumber > 0`, chama
   `ApplyMagicNumberChange(data.magicNumber)` em vez de só atualizar o

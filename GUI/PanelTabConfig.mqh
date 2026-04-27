@@ -2,7 +2,7 @@
 //|                                            PanelTabConfig.mqh    |
 //|                                         Copyright 2026, EP Filho |
 //|   Panel Tab: CONFIG — Sub-páginas + Hot Reload (APLICAR)          |
-//|                     Versão 1.39 - Claude Parte 035 (Claude Code) |
+//|                     Versão 1.40 - Claude Parte 36 (Claude Code)  |
 //+------------------------------------------------------------------+
 // Implementações de CEPBotPanel para a aba CONFIG.
 // Incluído por Panel.mqh — NÃO incluir diretamente.
@@ -1956,8 +1956,13 @@ bool CEPBotPanel::ApplyConfig(string &outErr)
 //+------------------------------------------------------------------+
 void CEPBotPanel::ApplyMagicNumberChange(int newMagic)
   {
-   int oldMagic = m_magicNumber;
-   if(newMagic == oldMagic) return;
+   // Comparamos contra g_magicNumber (e não m_magicNumber) porque é a
+   // global que reflete o que os módulos realmente usam. Em REASON_
+   // CHARTCHANGE o painel sobrevive (m_magicNumber preservado), mas
+   // g_magicNumber é resetado para inp_MagicNumber no OnInit. Comparar
+   // por m_magicNumber gerava falso early-return e o magic carregado do
+   // .cfg não propagava aos módulos.
+   if(newMagic == g_magicNumber && newMagic == m_magicNumber) return;
 
    // 1. Atualizar painel
    m_magicNumber = newMagic;
